@@ -45,32 +45,31 @@
      */
     function switchRagSubtab(subtabName) {
         console.log(`[RAG] Switching to subtab: ${subtabName}`);
-        
+
+        // Ensure RAG main tab is visible
+        const ragTab = $('#tab-rag');
+        if (ragTab) {
+            $$('.tab-content').forEach(el => el.classList.remove('active'));
+            ragTab.classList.add('active');
+        }
+
         // Update active subtab button
         $$('#rag-subtabs button').forEach(btn => {
             const isActive = btn.getAttribute('data-subtab') === subtabName;
             btn.classList.toggle('active', isActive);
         });
-        
-        // Hide all tab content
-        $$('.tab-content').forEach(content => {
-            content.classList.remove('active');
-        });
-        
-        // Show relevant content for this subtab
-        const contentIds = RAG_SUBTAB_MAP[subtabName] || [];
-        contentIds.forEach((id, index) => {
-            const content = $(`#tab-${id}`);
-            if (content) {
-                // Only show the first one as active, others are accessible via existing subtab navigation
-                if (index === 0) {
-                    content.classList.add('active');
-                }
-            }
-        });
-        
+
+        // Toggle internal RAG content panels
+        $$('#tab-rag .rag-subtab-content').forEach(el => el.classList.remove('active'));
+        const target = $(`#tab-rag-${subtabName}`);
+        if (target) {
+            target.classList.add('active');
+        } else {
+            console.warn(`[RAG] Missing panel for subtab: #tab-rag-${subtabName}`);
+        }
+
         currentSubtab = subtabName;
-        
+
         // Emit event
         if (events) {
             events.emit('rag:subtab-change', { subtab: subtabName });
@@ -83,6 +82,12 @@
     function handleTabChange(tabId) {
         if (tabId === 'rag') {
             showRagSubtabs();
+            // Ensure RAG container is active and a subtab is selected
+            const ragTab = $('#tab-rag');
+            if (ragTab) {
+                $$('.tab-content').forEach(el => el.classList.remove('active'));
+                ragTab.classList.add('active');
+            }
             switchRagSubtab(currentSubtab);
         } else {
             hideRagSubtabs();
@@ -199,4 +204,3 @@
 
     console.log('[RAG] RAG Navigation module loaded');
 })();
-

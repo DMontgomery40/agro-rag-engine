@@ -1,7 +1,18 @@
+import os
+from pathlib import Path
+
+# Initialize LangTrace FIRST - must precede ANY LLM/framework imports
+try:
+    from langtrace_python_sdk import langtrace
+    LANGTRACE_KEY = os.getenv('LANGTRACE_API_KEY', '0b20be5d3e82b7c514cd1bea1fa583f92683e55ebe895452ece7d9261d4412d2')
+    langtrace.init(api_key=LANGTRACE_KEY)
+    print("✅ LangTrace initialized in FastAPI server")
+except Exception as e:
+    print(f"⚠️ LangTrace init failed: {e}")
+
 from fastapi import FastAPI, Query, HTTPException, Request, UploadFile, File, Form
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
-from pathlib import Path
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from starlette.responses import StreamingResponse

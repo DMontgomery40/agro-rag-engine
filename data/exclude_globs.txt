@@ -83,3 +83,4 @@
 **/third_party/**
 **/install/**
 **/migrations/**
+***/public/***

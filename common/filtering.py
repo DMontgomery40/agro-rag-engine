@@ -19,9 +19,15 @@ def _prune_dirs_in_place(dirs: list[str]) -> None:
 
 def _should_index_file(name: str) -> bool:
     n = (name or "").lower()
-    # EXCLUDE MARKDOWN FILES COMPLETELY (per user requirement)
+    
+    # ALWAYS index important .txt files
+    if n in ("requirements.txt", "requirements-rag.txt", "exclude_globs.txt"):
+        return True
+    
+    # EXCLUDE MARKDOWN and generic text files (per user requirement)
     if n.endswith((".md", ".markdown", ".rst", ".txt")):
         return False
+    
     # Skip obvious binary or large files by suffix
     skip_suffixes = (".min.js", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".pdf", ".zip", ".tar", ".gz", ".bak", ".backup")
     if any(n.endswith(s) for s in skip_suffixes):

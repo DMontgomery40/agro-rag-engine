@@ -1,0 +1,784 @@
+{
+  "agro": [
+    {
+      "term": "rerank",
+      "score": 161.3,
+      "files": 68,
+      "mentions": 68,
+      "in_directories": true,
+      "domain_boost": true,
+      "sample_files": [
+        "public/agro/js/storage-calculator.js",
+        "gui/js/profile_logic.js",
+        "scripts/benchmark_improvements.py"
+      ]
+    },
+    {
+      "term": "retrieval",
+      "score": 94.33,
+      "files": 52,
+      "mentions": 52,
+      "in_directories": true,
+      "domain_boost": true,
+      "sample_files": [
+        "retrieval/synonym_expander.py",
+        "gui/js/profile_logic.js",
+        "gui/js/search.js"
+      ]
+    },
+    {
+      "term": "path",
+      "score": 40.48,
+      "files": 59,
+      "mentions": 59,
+      "in_directories": true,
+      "domain_boost": false,
+      "sample_files": [
+        "retrieval/synonym_expander.py",
+        "common/metadata.py",
+        "gui/js/cards.js"
+      ]
+    },
+    {
+      "term": "api",
+      "score": 40.48,
+      "files": 59,
+      "mentions": 59,
+      "in_directories": true,
+      "domain_boost": false,
+      "sample_files": [
+        "gui/js/vscode.js",
+        "gui/js/autotune.js",
+        "public/agro/js/chat.js"
+      ]
+    },
+    {
+      "term": "agro",
+      "score": 39.12,
+      "files": 58,
+      "mentions": 58,
+      "in_directories": true,
+      "domain_boost": false,
+      "sample_files": [
+        "public/agro/js/storage-calculator.js",
+        "public/agro/js/chat.js",
+        "public/agro/js/langsmith.js"
+      ]
+    },
+    {
+      "term": "gui",
+      "score": 36.47,
+      "files": 56,
+      "mentions": 56,
+      "in_directories": true,
+      "domain_boost": false,
+      "sample_files": [
+        "gui/js/profile_logic.js",
+        "gui/js/vscode.js",
+        "gui/js/cost_logic.js"
+      ]
+    },
+    {
+      "term": "repo",
+      "score": 36.47,
+      "files": 56,
+      "mentions": 56,
+      "in_directories": true,
+      "domain_boost": false,
+      "sample_files": [
+        "public/agro/js/storage-calculator.js",
+        "public/agro/js/chat.js",
+        "scripts/gui_debug.py"
+      ]
+    },
+    {
+      "term": "embedding",
+      "score": 30.77,
+      "files": 42,
+      "mentions": 42,
+      "in_directories": false,
+      "domain_boost": true,
+      "sample_files": [
+        "public/agro/js/storage-calculator.js",
+        "gui/js/profile_logic.js",
+        "scripts/benchmark_improvements.py"
+      ]
+    },
+    {
+      "term": "openai",
+      "score": 26.53,
+      "files": 39,
+      "mentions": 39,
+      "in_directories": false,
+      "domain_boost": true,
+      "sample_files": [
+        "gui/js/profile_logic.js",
+        "gui/js/cost_logic.js",
+        "scripts/archive/generate_metrics.py"
+      ]
+    },
+    {
+      "term": "json",
+      "score": 25.69,
+      "files": 47,
+      "mentions": 47,
+      "in_directories": true,
+      "domain_boost": false,
+      "sample_files": [
+        "retrieval/synonym_expander.py",
+        "gui/js/autotune.js",
+        "public/agro/js/chat.js"
+      ]
+    },
+    {
+      "term": "qdrant",
+      "score": 23.58,
+      "files": 26,
+      "mentions": 26,
+      "in_directories": true,
+      "domain_boost": true,
+      "sample_files": [
+        "public/agro/js/storage-calculator.js",
+        "gui/js/storage-calculator-template.js",
+        "gui/js/docker.js"
+      ]
+    },
+    {
+      "term": "hybrid",
+      "score": 23.58,
+      "files": 26,
+      "mentions": 26,
+      "in_directories": true,
+      "domain_boost": true,
+      "sample_files": [
+        "scripts/benchmark_improvements.py",
+        "retrieval/__init__.py",
+        "eval/eval_loop.py"
+      ]
+    },
+    {
+      "term": "error",
+      "score": 22.35,
+      "files": 62,
+      "mentions": 62,
+      "in_directories": false,
+      "domain_boost": false,
+      "sample_files": [
+        "gui/js/vscode.js",
+        "gui/js/cost_logic.js",
+        "gui/js/autotune.js"
+      ]
+    },
+    {
+      "term": "failed",
+      "score": 20.24,
+      "files": 59,
+      "mentions": 59,
+      "in_directories": false,
+      "domain_boost": false,
+      "sample_files": [
+        "gui/js/vscode.js",
+        "gui/js/cost_logic.js",
+        "gui/js/autotune.js"
+      ]
+    },
+    {
+      "term": "file",
+      "score": 19.55,
+      "files": 41,
+      "mentions": 41,
+      "in_directories": true,
+      "domain_boost": false,
+      "sample_files": [
+        "common/metadata.py",
+        "gui/js/cards.js",
+        "eval/eval_loop.py"
+      ]
+    },
+    {
+      "term": "public",
+      "score": 19.55,
+      "files": 41,
+      "mentions": 41,
+      "in_directories": true,
+      "domain_boost": false,
+      "sample_files": [
+        "public/agro/js/storage-calculator.js",
+        "gui/js/vscode.js",
+        "gui/js/cost_logic.js"
+      ]
+    },
+    {
+      "term": "chunk",
+      "score": 18.99,
+      "files": 33,
+      "mentions": 33,
+      "in_directories": false,
+      "domain_boost": true,
+      "sample_files": [
+        "public/agro/js/storage-calculator.js",
+        "common/metadata.py",
+        "gui/js/storage-calculator-template.js"
+      ]
+    },
+    {
+      "term": "content",
+      "score": 18.23,
+      "files": 56,
+      "mentions": 56,
+      "in_directories": false,
+      "domain_boost": false,
+      "sample_files": [
+        "gui/js/vscode.js",
+        "gui/js/autotune.js",
+        "gui/js/search.js"
+      ]
+    },
+    {
+      "term": "server",
+      "score": 17.69,
+      "files": 39,
+      "mentions": 39,
+      "in_directories": true,
+      "domain_boost": false,
+      "sample_files": [
+        "gui/js/vscode.js",
+        "common/metadata.py",
+        "scripts/archive/generate_metrics.py"
+      ]
+    },
+    {
+      "term": "loaded",
+      "score": 17.59,
+      "files": 55,
+      "mentions": 55,
+      "in_directories": false,
+      "domain_boost": false,
+      "sample_files": [
+        "gui/js/vscode.js",
+        "gui/js/autotune.js",
+        "gui/js/search.js"
+      ]
+    },
+    {
+      "term": "gpt",
+      "score": 16.76,
+      "files": 31,
+      "mentions": 31,
+      "in_directories": false,
+      "domain_boost": true,
+      "sample_files": [
+        "gui/js/profile_logic.js",
+        "gui/js/cost_logic.js",
+        "scripts/archive/generate_metrics.py"
+      ]
+    },
+    {
+      "term": "status",
+      "score": 15.92,
+      "files": 37,
+      "mentions": 37,
+      "in_directories": true,
+      "domain_boost": false,
+      "sample_files": [
+        "public/agro/js/storage-calculator.js",
+        "gui/js/vscode.js",
+        "gui/js/autotune.js"
+      ]
+    },
+    {
+      "term": "cohere",
+      "score": 15.7,
+      "files": 30,
+      "mentions": 30,
+      "in_directories": false,
+      "domain_boost": true,
+      "sample_files": [
+        "gui/js/profile_logic.js",
+        "gui/js/cost_logic.js",
+        "public/agro/js/model_flows.js"
+      ]
+    },
+    {
+      "term": "click",
+      "score": 14.53,
+      "files": 50,
+      "mentions": 50,
+      "in_directories": false,
+      "domain_boost": false,
+      "sample_files": [
+        "gui/js/vscode.js",
+        "gui/js/search.js",
+        "public/agro/js/chat.js"
+      ]
+    },
+    {
+      "term": "bm25",
+      "score": 13.67,
+      "files": 28,
+      "mentions": 28,
+      "in_directories": false,
+      "domain_boost": true,
+      "sample_files": [
+        "public/agro/js/storage-calculator.js",
+        "gui/js/storage-calculator-template.js",
+        "gui/js/index-display.js"
+      ]
+    },
+    {
+      "term": "build",
+      "score": 13.44,
+      "files": 34,
+      "mentions": 34,
+      "in_directories": true,
+      "domain_boost": false,
+      "sample_files": [
+        "gui/js/profile_logic.js",
+        "gui/js/cards.js",
+        "gui/js/docker.js"
+      ]
+    },
+    {
+      "term": "scripts",
+      "score": 13.44,
+      "files": 34,
+      "mentions": 34,
+      "in_directories": true,
+      "domain_boost": false,
+      "sample_files": [
+        "scripts/benchmark_improvements.py",
+        "scripts/gui_debug.py",
+        "scripts/archive/generate_metrics.py"
+      ]
+    },
+    {
+      "term": "exception",
+      "score": 12.84,
+      "files": 47,
+      "mentions": 47,
+      "in_directories": false,
+      "domain_boost": false,
+      "sample_files": [
+        "retrieval/synonym_expander.py",
+        "common/metadata.py",
+        "scripts/gui_debug.py"
+      ]
+    },
+    {
+      "term": "cost",
+      "score": 12.66,
+      "files": 33,
+      "mentions": 33,
+      "in_directories": true,
+      "domain_boost": false,
+      "sample_files": [
+        "gui/js/cost_logic.js",
+        "scripts/gui_debug.py",
+        "scripts/archive/generate_metrics.py"
+      ]
+    },
+    {
+      "term": "code",
+      "score": 11.91,
+      "files": 32,
+      "mentions": 32,
+      "in_directories": true,
+      "domain_boost": false,
+      "sample_files": [
+        "gui/js/vscode.js",
+        "public/agro/js/chat.js",
+        "common/metadata.py"
+      ]
+    },
+    {
+      "term": "model",
+      "score": 11.91,
+      "files": 32,
+      "mentions": 32,
+      "in_directories": true,
+      "domain_boost": false,
+      "sample_files": [
+        "gui/js/cost_logic.js",
+        "gui/js/storage-calculator-template.js",
+        "public/agro/js/model_flows.js"
+      ]
+    },
+    {
+      "term": "local",
+      "score": 11.91,
+      "files": 32,
+      "mentions": 32,
+      "in_directories": true,
+      "domain_boost": false,
+      "sample_files": [
+        "gui/js/profile_logic.js",
+        "gui/js/vscode.js",
+        "scripts/archive/generate_metrics.py"
+      ]
+    },
+    {
+      "term": "post",
+      "score": 11.77,
+      "files": 45,
+      "mentions": 45,
+      "in_directories": false,
+      "domain_boost": false,
+      "sample_files": [
+        "gui/js/autotune.js",
+        "public/agro/js/chat.js",
+        "gui/js/cards.js"
+      ]
+    },
+    {
+      "term": "load",
+      "score": 11.26,
+      "files": 44,
+      "mentions": 44,
+      "in_directories": false,
+      "domain_boost": false,
+      "sample_files": [
+        "retrieval/synonym_expander.py",
+        "gui/js/vscode.js",
+        "gui/js/cost_logic.js"
+      ]
+    },
+    {
+      "term": "keywords",
+      "score": 11.17,
+      "files": 31,
+      "mentions": 31,
+      "in_directories": true,
+      "domain_boost": false,
+      "sample_files": [
+        "common/metadata.py",
+        "gui/js/onboarding.js",
+        "gui/js/index-display.js"
+      ]
+    },
+    {
+      "term": "cards",
+      "score": 11.17,
+      "files": 31,
+      "mentions": 31,
+      "in_directories": true,
+      "domain_boost": false,
+      "sample_files": [
+        "public/agro/js/storage-calculator.js",
+        "scripts/gui_debug.py",
+        "gui/js/cards.js"
+      ]
+    },
+    {
+      "term": "pathlib",
+      "score": 10.26,
+      "files": 42,
+      "mentions": 42,
+      "in_directories": false,
+      "domain_boost": false,
+      "sample_files": [
+        "retrieval/synonym_expander.py",
+        "server/tracing.py",
+        "scripts/analyze_keywords_v2.py"
+      ]
+    },
+    {
+      "term": "start",
+      "score": 10.26,
+      "files": 42,
+      "mentions": 42,
+      "in_directories": false,
+      "domain_boost": false,
+      "sample_files": [
+        "gui/js/vscode.js",
+        "gui/js/search.js",
+        "public/agro/js/chat.js"
+      ]
+    },
+    {
+      "term": "reranker",
+      "score": 9.78,
+      "files": 29,
+      "mentions": 29,
+      "in_directories": true,
+      "domain_boost": false,
+      "sample_files": [
+        "gui/js/navigation.js",
+        "scripts/archive/generate_metrics.py",
+        "gui/js/storage-calculator-template.js"
+      ]
+    },
+    {
+      "term": "index",
+      "score": 9.78,
+      "files": 29,
+      "mentions": 29,
+      "in_directories": true,
+      "domain_boost": false,
+      "sample_files": [
+        "gui/js/search.js",
+        "common/metadata.py",
+        "gui/js/storage-calculator-template.js"
+      ]
+    },
+    {
+      "term": "data",
+      "score": 9.77,
+      "files": 41,
+      "mentions": 41,
+      "in_directories": false,
+      "domain_boost": false,
+      "sample_files": [
+        "retrieval/synonym_expander.py",
+        "gui/js/cards.js",
+        "gui/js/navigation.js"
+      ]
+    },
+    {
+      "term": "typing",
+      "score": 9.77,
+      "files": 41,
+      "mentions": 41,
+      "in_directories": false,
+      "domain_boost": false,
+      "sample_files": [
+        "retrieval/synonym_expander.py",
+        "common/metadata.py",
+        "scripts/gui_debug.py"
+      ]
+    },
+    {
+      "term": "name",
+      "score": 9.3,
+      "files": 40,
+      "mentions": 40,
+      "in_directories": false,
+      "domain_boost": false,
+      "sample_files": [
+        "gui/js/search.js",
+        "scripts/archive/generate_metrics.py",
+        "gui/js/onboarding.js"
+      ]
+    },
+    {
+      "term": "dense",
+      "score": 9.23,
+      "files": 23,
+      "mentions": 23,
+      "in_directories": false,
+      "domain_boost": true,
+      "sample_files": [
+        "gui/js/profile_logic.js",
+        "gui/js/tooltips.js",
+        "gui/js/simple_index.js"
+      ]
+    },
+    {
+      "term": "text",
+      "score": 8.4,
+      "files": 38,
+      "mentions": 38,
+      "in_directories": false,
+      "domain_boost": false,
+      "sample_files": [
+        "gui/js/search.js",
+        "public/agro/js/chat.js",
+        "run_diagnostics.js"
+      ]
+    },
+    {
+      "term": "main",
+      "score": 7.96,
+      "files": 37,
+      "mentions": 37,
+      "in_directories": false,
+      "domain_boost": false,
+      "sample_files": [
+        "scripts/gui_debug.py",
+        "gui/js/onboarding.js",
+        "public/agro/js/tabs.js"
+      ]
+    },
+    {
+      "term": "langgraph",
+      "score": 7.85,
+      "files": 15,
+      "mentions": 15,
+      "in_directories": true,
+      "domain_boost": true,
+      "sample_files": [
+        "scripts/test_token_comparison.py",
+        "public/agro/js/onboarding.js",
+        "public/agro/js/tooltips.js"
+      ]
+    },
+    {
+      "term": "info",
+      "score": 7.27,
+      "files": 25,
+      "mentions": 25,
+      "in_directories": true,
+      "domain_boost": false,
+      "sample_files": [
+        "public/agro/js/storage-calculator.js",
+        "gui/js/vscode.js",
+        "gui/js/storage-calculator-template.js"
+      ]
+    },
+    {
+      "term": "loading",
+      "score": 6.72,
+      "files": 34,
+      "mentions": 34,
+      "in_directories": false,
+      "domain_boost": false,
+      "sample_files": [
+        "gui/js/vscode.js",
+        "public/agro/js/chat.js",
+        "gui/js/cards.js"
+      ]
+    },
+    {
+      "term": "handles",
+      "score": 6.72,
+      "files": 34,
+      "mentions": 34,
+      "in_directories": false,
+      "domain_boost": false,
+      "sample_files": [
+        "gui/js/autotune.js",
+        "gui/js/search.js",
+        "public/agro/js/chat.js"
+      ]
+    },
+    {
+      "term": "ollama",
+      "score": 6.3,
+      "files": 19,
+      "mentions": 19,
+      "in_directories": false,
+      "domain_boost": true,
+      "sample_files": [
+        "gui/js/profile_logic.js",
+        "public/agro/js/model_flows.js",
+        "gui/js/tooltips.js"
+      ]
+    },
+    {
+      "term": "rag",
+      "score": 6.15,
+      "files": 23,
+      "mentions": 23,
+      "in_directories": true,
+      "domain_boost": false,
+      "sample_files": [
+        "gui/js/cards.js",
+        "gui/js/navigation.js",
+        "run_diagnostics.js"
+      ]
+    },
+    {
+      "term": "btn",
+      "score": 5.95,
+      "files": 32,
+      "mentions": 32,
+      "in_directories": false,
+      "domain_boost": false,
+      "sample_files": [
+        "gui/js/vscode.js",
+        "public/agro/js/chat.js",
+        "gui/js/cards.js"
+      ]
+    },
+    {
+      "term": "domcontentloaded",
+      "score": 5.95,
+      "files": 32,
+      "mentions": 32,
+      "in_directories": false,
+      "domain_boost": false,
+      "sample_files": [
+        "gui/js/vscode.js",
+        "public/agro/js/chat.js",
+        "scripts/gui_debug.py"
+      ]
+    },
+    {
+      "term": "vector",
+      "score": 5.65,
+      "files": 18,
+      "mentions": 18,
+      "in_directories": false,
+      "domain_boost": true,
+      "sample_files": [
+        "gui/js/profile_renderer.js",
+        "public/agro/js/trace.js",
+        "indexer/build_cards.py"
+      ]
+    },
+    {
+      "term": "semantic",
+      "score": 5.65,
+      "files": 18,
+      "mentions": 18,
+      "in_directories": false,
+      "domain_boost": true,
+      "sample_files": [
+        "retrieval/synonym_expander.py",
+        "public/agro/js/storage-calculator.js",
+        "gui/js/profile_renderer.js"
+      ]
+    },
+    {
+      "term": "run",
+      "score": 5.63,
+      "files": 22,
+      "mentions": 22,
+      "in_directories": true,
+      "domain_boost": false,
+      "sample_files": [
+        "public/agro/js/langsmith.js",
+        "run_diagnostics.js",
+        "server/tracing.py"
+      ]
+    },
+    {
+      "term": "check",
+      "score": 5.59,
+      "files": 31,
+      "mentions": 31,
+      "in_directories": false,
+      "domain_boost": false,
+      "sample_files": [
+        "gui/js/vscode.js",
+        "scripts/gui_debug.py",
+        "gui/js/navigation.js"
+      ]
+    },
+    {
+      "term": "save",
+      "score": 5.59,
+      "files": 31,
+      "mentions": 31,
+      "in_directories": false,
+      "domain_boost": false,
+      "sample_files": [
+        "public/agro/js/chat.js",
+        "gui/js/docker.js",
+        "gui/js/onboarding.js"
+      ]
+    },
+    {
+      "term": "__main__",
+      "score": 5.23,
+      "files": 30,
+      "mentions": 30,
+      "in_directories": false,
+      "domain_boost": false,
+      "sample_files": [
+        "scripts/gui_debug.py",
+        "indexer/build_cards.py",
+        "scripts/analyze_keywords_v2.py"
+      ]
+    }
+  ]
+}

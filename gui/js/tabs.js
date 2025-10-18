@@ -198,7 +198,9 @@
      * Bind click handlers to subtab buttons
      */
     function bindSubtabs() {
-        $$('.subtab-btn').forEach(btn => {
+        // Only bind generic subtabs that declare a parent context.
+        // RAG subtabs are handled separately by bindRagSubtabs().
+        $$('.subtab-btn[data-parent]').forEach(btn => {
             btn.addEventListener('click', () => {
                 const subtab = btn.getAttribute('data-subtab');
                 const parent = btn.getAttribute('data-parent');
@@ -211,12 +213,14 @@
                     }
                 }
 
-                // Hide all tabs
+                // Hide all parent tab contents, then show the requested section
                 $$('.tab-content').forEach(el => el.classList.remove('active'));
-
-                // Show the selected subtab
                 const target = document.getElementById(`tab-${subtab}`);
-                if (target) target.classList.add('active');
+                if (target) {
+                    target.classList.add('active');
+                } else {
+                    console.warn(`[tabs.js] Subtab target not found: #tab-${subtab}`);
+                }
 
                 // Update button states for this parent group
                 $$(`.subtab-btn[data-parent="${parent}"]`).forEach(b => b.classList.remove('active'));
