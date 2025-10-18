@@ -297,7 +297,7 @@
             border-bottom: 1px solid var(--line);
             position: sticky;
             top: 56px;
-            z-index: 98;
+            z-index: 100;
         }
         
         .subtab-bar button {
@@ -2257,13 +2257,13 @@
             </div>
             
             <!-- New RAG mega-tab (hidden by default, shown via JS) -->
-            <div id="rag-subtabs" class="subtab-bar" style="display: none;">
-                <button data-subtab="data-quality" class="active">Data Quality</button>
-                <button data-subtab="retrieval">Retrieval</button>
-                <button data-subtab="external-rerankers">External Rerankers</button>
-                <button data-subtab="learning-ranker">Learning Ranker</button>
-                <button data-subtab="indexing">Indexing</button>
-                <button data-subtab="evaluate">Evaluate</button>
+            <div id="rag-subtabs" class="subtab-bar">
+                <button class="subtab-btn active" data-subtab="data-quality">Data Quality</button>
+                <button class="subtab-btn" data-subtab="retrieval">Retrieval</button>
+                <button class="subtab-btn" data-subtab="external-rerankers">External Rerankers</button>
+                <button class="subtab-btn" data-subtab="learning-ranker">Learning Ranker</button>
+                <button class="subtab-btn" data-subtab="indexing">Indexing</button>
+                <button class="subtab-btn" data-subtab="evaluate">Evaluate</button>
             </div>
 
             <!-- NEW TAB STRUCTURE - Phase 3 Migration -->
