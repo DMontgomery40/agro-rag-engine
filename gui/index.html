@@ -330,9 +330,15 @@
 
         .tab-content.active {
             /* Active tab visible and fills available space */
-            display: block;
-            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
             flex: 1;
+            overflow-y: auto;
+        }
+
+        /* Remove top margin from first element to prevent blank space */
+        .tab-content.active > :first-child {
+            margin-top: 0;
         }
 
         /* RAG subtab content containers */
@@ -346,7 +352,14 @@
         }
 
         .rag-subtab-content.active {
-            display: block;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        /* Remove top margin from first element to prevent blank space */
+        .rag-subtab-content.active > :first-child {
+            margin-top: 0;
         }
 
         .subtab-bar {
@@ -521,7 +534,10 @@
             background: var(--card-bg);
             padding: 20px;
             overflow-y: auto;
-            position: relative;
+            position: sticky;
+            top: 56px;
+            height: calc(100vh - 56px);
+            align-self: start;
         }
 
         #profile-tooltip {
