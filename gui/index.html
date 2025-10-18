@@ -296,8 +296,8 @@
             background: var(--bg-elev2);
             border-bottom: 1px solid var(--line);
             position: sticky;
-            top: 56px;
-            z-index: 100;
+            top: 121px; /* Header (56px) + Tab bar (~65px) */
+            z-index: 98; /* Below tab-bar (99) but above content */
         }
         
         .subtab-bar button {
