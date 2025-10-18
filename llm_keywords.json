@@ -1,0 +1,24 @@
+{
+  "agro": [
+    "retrieval augmented generation",
+    "hybrid search implementation",
+    "vector database integration",
+    "semantic code analysis",
+    "multi query expansion",
+    "cross encoder reranking",
+    "embedding cache optimization",
+    "ast aware chunking",
+    "evaluation harness framework",
+    "model context protocol",
+    "langgraph pipeline design",
+    "bm25 sparse retrieval",
+    "dense vector search",
+    "confidence gating system",
+    "traceability integration",
+    "cost optimization profiles",
+    "local model deployment",
+    "keyword generation algorithms",
+    "cards semantic summarization",
+    "multi repository routing"
+  ]
+}

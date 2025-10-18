@@ -11,6 +11,7 @@ load_dotenv()
 GOLDEN_PATH = os.getenv('GOLDEN_PATH', 'golden.json')
 USE_MULTI = os.getenv('EVAL_MULTI','1') == '1'
 FINAL_K = int(os.getenv('EVAL_FINAL_K','5'))
+MULTI_M = int(os.getenv('EVAL_MULTI_M', '10'))  # Multi-query expansion count
 
 """
 Golden file format (golden.json):
@@ -39,7 +40,7 @@ def main():
         repo = row.get('repo') or os.getenv('REPO','project')
         expect = row.get('expect_paths') or []
         if USE_MULTI:
-            docs = search_routed_multi(q, repo_override=repo, m=4, final_k=FINAL_K)
+            docs = search_routed_multi(q, repo_override=repo, m=MULTI_M, final_k=FINAL_K)
         else:
             docs = search_routed(q, repo_override=repo, final_k=FINAL_K)
         paths = [d.get('file_path','') for d in docs]

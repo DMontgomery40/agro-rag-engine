@@ -14,6 +14,8 @@ LANG_MAP = {
     ".go": "go", ".java": "java", ".rs": "rust",
     ".c": "c", ".h": "c", ".cpp": "cpp", ".cc": "cpp", ".hpp": "cpp",
     ".sh": "bash", ".bash": "bash",
+    ".txt": "text",  # For requirements.txt, exclude_globs.txt, etc.
+    ".yml": "yaml", ".yaml": "yaml",
     ".md": "markdown",
 }
 

@@ -12,15 +12,24 @@ try:
 except Exception:
     pass
 
-# Initialize LangTrace for full observability (must be before LLM imports)
+# Get tracer and decorator (LangTrace initialized in server/app.py)
 try:
-    from langtrace_python_sdk import langtrace
-    langtrace.init(api_key=os.getenv('LANGTRACE_API_KEY', '0b20be5d3e82b7c514cd1bea1fa583f92683e55ebe895452ece7d9261d4412d2'))
-    from opentelemetry import trace
-    _tracer = trace.get_tracer(__name__)
-except Exception as e:
-    print(f"⚠ LangTrace init failed (continuing without tracing): {e}")
+    from opentelemetry import trace as otel_trace
+    from langtrace_python_sdk import with_langtrace_root_span, with_additional_attributes
+    _tracer = otel_trace.get_tracer(__name__)
+    _HAS_LANGTRACE = True
+except Exception:
     _tracer = None
+    _HAS_LANGTRACE = False
+    # Dummy decorator
+    def with_langtrace_root_span(name=None):
+        def decorator(func):
+            return func
+        return decorator
+    def with_additional_attributes(**kwargs):
+        def decorator(func):
+            return func
+        return decorator
 
 from qdrant_client import QdrantClient, models
 import bm25s
@@ -89,14 +98,69 @@ def _origin_bonus(origin: str, mode: str) -> float:
     return 0.0
 
 
+_DISCRIMINATIVE_KEYWORDS = None
+
+def _load_discriminative_keywords(repo: str) -> List[str]:
+    """Load discriminative keywords for a repo."""
+    global _DISCRIMINATIVE_KEYWORDS
+    if _DISCRIMINATIVE_KEYWORDS is not None:
+        return _DISCRIMINATIVE_KEYWORDS
+    
+    try:
+        from path_config import data_dir
+        # Try repo-specific first
+        kw_file = data_dir() / f"discriminative_keywords_{repo}.json"
+        if not kw_file.exists():
+            kw_file = data_dir() / "discriminative_keywords.json"
+        
+        if kw_file.exists():
+            data = json.loads(kw_file.read_text())
+            # Extract keywords from JSON (handle different formats)
+            if isinstance(data, list):
+                _DISCRIMINATIVE_KEYWORDS = [k['term'] if isinstance(k, dict) else str(k) for k in data]
+            elif isinstance(data, dict):
+                # Try repo-specific bucket
+                if repo in data:
+                    _DISCRIMINATIVE_KEYWORDS = [k['term'] if isinstance(k, dict) else str(k) for k in data[repo]]
+                else:
+                    # Flatten all keywords
+                    _DISCRIMINATIVE_KEYWORDS = []
+                    for v in data.values():
+                        if isinstance(v, list):
+                            _DISCRIMINATIVE_KEYWORDS.extend([k['term'] if isinstance(k, dict) else str(k) for k in v])
+            else:
+                _DISCRIMINATIVE_KEYWORDS = []
+        else:
+            _DISCRIMINATIVE_KEYWORDS = []
+    except Exception:
+        _DISCRIMINATIVE_KEYWORDS = []
+    
+    return _DISCRIMINATIVE_KEYWORDS
+
 def _feature_bonus(query: str, fp: str, code: str) -> float:
+    """Apply discriminative keyword boosting."""
     ql = (query or '').lower()
     fp = (fp or '').lower()
     code = (code or '').lower()
     bumps = 0.0
+    
+    # Load discriminative keywords
+    keywords = _load_discriminative_keywords(REPO)
+    
+    # Check if query contains discriminative keywords
+    query_keywords = [k for k in keywords if k.lower() in ql]
+    
+    # Boost if code/filepath contains query's discriminative keywords
+    for kw in query_keywords:
+        kw_lower = kw.lower()
+        if kw_lower in code or kw_lower in fp:
+            bumps += 0.08  # Boost per matching discriminative keyword
+    
+    # Legacy hardcoded boosts (keep for backward compat)
     if any(k in ql for k in ['diagnostic', 'health', 'event log', 'phi', 'hipaa']):
         if ('diagnostic' in fp) or ('diagnostic' in code) or ('event' in fp and 'log' in fp):
             bumps += 0.06
+    
     return bumps
 
 
@@ -265,13 +329,9 @@ def _load_cards_map(repo: str) -> Dict:
         return {'by_idx': {}, 'by_chunk_id': {}}
 
 
+@with_langtrace_root_span()
 def search(query: str, repo: str, topk_dense: int = 75, topk_sparse: int = 75, final_k: int = 10, trace: object | None = None) -> List[Dict]:
-    # Create root span for entire search operation
-    if _tracer:
-        with _tracer.start_as_current_span("agro.hybrid_search", attributes={"query": query, "repo": repo, "final_k": final_k}):
-            return _search_impl(query, repo, topk_dense, topk_sparse, final_k, trace)
-    else:
-        return _search_impl(query, repo, topk_dense, topk_sparse, final_k, trace)
+    return _search_impl(query, repo, topk_dense, topk_sparse, final_k, trace)
 
 def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final_k: int, trace: object | None) -> List[Dict]:
     chunks = _load_chunks(repo)
@@ -457,7 +517,14 @@ def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final
         docs = code_docs[:min(50, len(code_docs))] + other_docs[:max(25, final_k)]
     
     # SPAN: Cross-Encoder Reranking
-    if _tracer:
+    # Skip local reranking if Cohere will be used in search_routed_multi()
+    rerank_backend = (os.getenv('RERANK_BACKEND', 'local') or 'local').lower()
+    skip_local_rerank = (rerank_backend == 'cohere')  # Cohere will rerank later
+    
+    if skip_local_rerank:
+        # Just return docs without reranking - Cohere will do it in search_routed_multi()
+        docs = docs[:final_k]
+    elif _tracer:
         with _tracer.start_as_current_span("agro.cross_encoder_rerank", attributes={
             "candidates_count": len(docs),
             "top_k": final_k
@@ -614,6 +681,7 @@ def expand_queries(query: str, m: int = 4) -> list[str]:
         return [query]
 
 
+@with_langtrace_root_span()
 def search_routed_multi(query: str, repo_override: str | None = None, m: int = 4, final_k: int = 10, trace: object | None = None):
     repo = (repo_override or route_repo(query) or os.getenv('REPO', 'project')).strip()
     variants = expand_queries(query, m=m)

@@ -17,17 +17,25 @@ Commands:
 """
 import os
 import sys
-import requests
+import requests  # type: ignore[import-untyped]
 from pathlib import Path
+from typing import Any, Optional
 try:
-    from dotenv import load_dotenv
+    from dotenv import load_dotenv as _maybe_load_dotenv  # type: ignore
 except Exception:
-    # Graceful fallback if python-dotenv is not installed yet
-    def load_dotenv(*args, **kwargs):
-        return False
+    _maybe_load_dotenv = None  # type: ignore[assignment]
+
+def _load_env_file(env_path: Path) -> bool:
+    """Load environment variables from .env if python-dotenv is installed.
+
+    This wrapper avoids conditional redefinition errors in static analysis.
+    """
+    if _maybe_load_dotenv is not None:
+        return bool(_maybe_load_dotenv(env_path))
+    return False
 
 # Load environment
-load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+_load_env_file(Path(__file__).resolve().parents[1] / ".env")
 
 from server.langgraph_app import build_graph
 from common.config_loader import list_repos
@@ -56,7 +64,7 @@ class ChatCLI:
         """Initialize LangGraph with Redis checkpoints."""
         try:
             self.graph = build_graph()
-            console.print(f"[green]✓[/green] Graph initialized with Redis checkpoints")
+            console.print("[green]✓[/green] Graph initialized with Redis checkpoints")
         except Exception as e:
             console.print(f"[red]✗[/red] Failed to initialize graph: {e}")
             sys.exit(1)
@@ -93,7 +101,8 @@ class ChatCLI:
                     "confidence": 0.0,
                     "repo": self.repo
                 }
-                result = self.graph.invoke(state, self._get_config())
+                # mypy/pyright: self.graph is initialized in _init_graph or process exits
+                result = self.graph.invoke(state, self._get_config())  # type: ignore[call-arg]
                 result['event_id'] = None  # No event_id for direct calls
                 return result
         except Exception as e:
@@ -110,7 +119,7 @@ class ChatCLI:
         self.repo = new_repo
         console.print(f"[green]✓[/green] Switched to repo: [bold]{new_repo}[/bold]")
 
-    def submit_feedback(self, event_id: str, rating: int, note: str = None):
+    def submit_feedback(self, event_id: str, rating: int, note: Optional[str] = None):
         """Submit feedback for a query."""
         if not event_id:
             console.print("[red]No event ID available for feedback[/red]")

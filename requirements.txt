@@ -1,1 +1,36 @@
 rich>=13.0.0
+# Orchestration & eval
+langgraph==0.6.8
+langgraph-checkpoint-redis==0.1.2
+langchain==0.3.27
+langsmith==0.4.32
+langchain-openai==0.3.35
+python-dotenv==1.1.1
+tenacity==9.1.2
+tiktoken==0.12.0
+
+# Vector DB & hybrid search
+qdrant-client==1.15.1
+bm25s[hf]==0.2.14
+PyStemmer==3.0.0
+
+# Chunking / parsing
+# Prefer wheels that exist; skip on Python >=3.13 and fall back to regex chunking
+tree_sitter_languages==1.10.2; python_version < "3.13"
+
+# Reranking & Torch (MPS on Apple Silicon)
+rerankers>=0.4.1
+sentence-transformers==5.1.1
+transformers==4.57.0
+accelerate==1.10.1
+torch==2.8.0
+
+# Service
+fastapi==0.118.0
+uvicorn==0.37.0
+redis==6.4.0
+pydantic==2.11.10
+openai==2.2.0
+fastmcp>=0.3.0
+prometheus-client==0.21.1
+

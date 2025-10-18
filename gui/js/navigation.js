@@ -303,27 +303,122 @@
         }
 
         // 2.5 Handle RAG subtabs visibility
-        const ragSubtabs = $('#rag-subtabs');
-        if (ragSubtabs) {
-            if (domTabId === 'rag') {
-                console.log(`[navigation.js] Showing RAG subtabs`);
-                ragSubtabs.style.display = 'flex';
-
-                // Show first RAG subtab by default or the requested one
-                const subtabToShow = subtabId || 'data-quality';
-                $$('#tab-rag .rag-subtab-content').forEach(el => el.classList.remove('active'));
-                const firstSubtab = $(`#tab-rag-${subtabToShow}`);
-                if (firstSubtab) {
-                    firstSubtab.classList.add('active');
-                    console.log(`[navigation.js] Activated RAG subtab: ${subtabToShow}`);
+        // Handle subtab bars for all tabs uniformly
+        const barMap = {
+            'dashboard': '#dashboard-subtabs',
+            'chat': '#chat-subtabs',
+            'vscode': '#vscode-subtabs',
+            'grafana': '#grafana-subtabs',
+            'rag': '#rag-subtabs',
+            'profiles': '#profiles-subtabs',
+            'infrastructure': '#infrastructure-subtabs',
+            'admin': '#admin-subtabs'
+        };
+        // Hide all bars first
+        $$('.subtab-bar').forEach(el => { el.style.display = 'none'; });
+        const showBarSel = barMap[domTabId];
+        if (showBarSel) {
+            const bar = $(showBarSel);
+            if (bar) {
+                bar.style.display = 'flex';
+                // If RAG, also ensure one subtab content is active
+                if (domTabId === 'rag') {
+                    const subtabToShow = subtabId || 'data-quality';
+                    $$('#tab-rag .rag-subtab-content').forEach(el => el.classList.remove('active'));
+                    const firstSubtab = $(`#tab-rag-${subtabToShow}`);
+                    if (firstSubtab) firstSubtab.classList.add('active');
+                    try {
+                        $(`${showBarSel} button.active`)?.classList.remove('active');
+                        const btn = $(`${showBarSel} button[data-subtab="${subtabToShow}"]`);
+                        if (btn) btn.classList.add('active');
+                    } catch {}
+                } else if (domTabId === 'chat') {
+                    // Default Chat to Interface
+                    $$('#tab-chat .section-subtab').forEach(el => el.classList.remove('active'));
+                    $('#tab-chat-ui')?.classList.add('active');
+                    try {
+                        $(`${showBarSel} button.active`)?.classList.remove('active');
+                        $(`${showBarSel} button[data-subtab="chat-ui"]`)?.classList.add('active');
+                    } catch {}
+                } else if (domTabId === 'grafana') {
+                    // Default Grafana to Dashboard
+                    $$('#tab-grafana .section-subtab').forEach(el => el.classList.remove('active'));
+                    $('#tab-grafana-dashboard')?.classList.add('active');
+                    try {
+                        $(`${showBarSel} button.active`)?.classList.remove('active');
+                        $(`${showBarSel} button[data-subtab="dashboard"]`)?.classList.add('active');
+                    } catch {}
+                } else if (domTabId === 'profiles') {
+                    // Default Profiles to Budget
+                    $$('#tab-profiles .section-subtab').forEach(el => el.classList.remove('active'));
+                    $('#tab-profiles-budget')?.classList.add('active');
+                    try {
+                        $(`${showBarSel} button.active`)?.classList.remove('active');
+                        $(`${showBarSel} button[data-subtab="budget"]`)?.classList.add('active');
+                    } catch {}
                 }
-            } else {
-                console.log(`[navigation.js] Hiding RAG subtabs`);
-                ragSubtabs.style.display = 'none';
-                // Hide all RAG subtab content
-                $$('#tab-rag .rag-subtab-content').forEach(el => el.classList.remove('active'));
             }
         }
+
+        // Bind subtab buttons for this bar (once)
+        try {
+            if (showBarSel) {
+                const bar = $(showBarSel);
+                if (bar && !bar.dataset.bound) {
+                    bar.dataset.bound = '1';
+                    bar.addEventListener('click', async (ev) => {
+                        const btn = ev.target.closest('button.subtab-btn');
+                        if (!btn) return;
+                        const sub = btn.getAttribute('data-subtab');
+                        const parent = showBarSel.replace('#','').replace('-subtabs','');
+                        // Update active button
+                        bar.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        // Toggle by convention: #tab-{parent}-{sub}
+                        const container = $(`#tab-${parent}`);
+                        if (container) {
+                            const sections = container.querySelectorAll('.section-subtab');
+                            if (sections && sections.length) {
+                                sections.forEach(s => s.classList.remove('active'));
+                                const tgt = $(`#tab-${parent}-${sub}`);
+                                if (tgt) {
+                                    tgt.classList.add('active');
+                                    if (parent === 'grafana' && sub === 'dashboard') {
+                                        const emb = $('#grafana-embed'); if (emb) emb.style.display = '';
+                                    }
+                                    return;
+                                }
+                            }
+                        }
+                        // Special cross-tab routes per spec
+                        if (parent === 'vscode' && sub === 'editor-settings') {
+                            if (window.Navigation) {
+                                window.Navigation.navigateTo('admin');
+                                setTimeout(()=>{ const a = $('#admin-editor-settings-anchor'); if (a) a.scrollIntoView({behavior:'smooth'}); }, 50);
+                            }
+                            return;
+                        }
+                        if (parent === 'infrastructure' && sub === 'mcp') {
+                            if (window.Navigation) {
+                                window.Navigation.navigateTo('admin');
+                                setTimeout(()=>{ const a = $('#admin-integrations-anchor'); if (a) a.scrollIntoView({behavior:'smooth'}); }, 50);
+                            }
+                            return;
+                        }
+                        if (parent === 'admin' && sub === 'git') {
+                            if (window.Navigation) {
+                                window.Navigation.navigateTo('infrastructure');
+                                setTimeout(()=>{ const a = $('#infra-git-hooks-anchor'); if (a) a.scrollIntoView({behavior:'smooth'}); }, 50);
+                            }
+                            return;
+                        }
+                        // Fallback: scroll to anchor within the same tab
+                        const anchor = $(`#${parent}-${sub}-anchor`) || $(`#${sub}-anchor`);
+                        if (anchor) anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    });
+                }
+            }
+        } catch {}
 
         // 3. Update button states in both old and new tab bars
         $$('.tab-bar button, nav.tabs button').forEach(el => el.classList.remove('active'));
@@ -446,6 +541,13 @@
             };
         }
 
+        // Ensure DOM reflects current tab on first load (sets RAG subtab visibility correctly)
+        try {
+            navigateTo(navState.currentTab, navState.currentSubtab);
+        } catch (e) {
+            console.warn('[Navigation] Initial navigate failed:', e);
+        }
+
         console.log('[Navigation] Initialized in ' + 
                     (navState.compatibilityMode ? 'compatibility' : 'new') + ' mode');
     }
@@ -496,4 +598,3 @@
 
     console.log('[Navigation] Module loaded - use window.Navigation for navigation API');
 })();
-

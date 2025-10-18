@@ -84,7 +84,8 @@ COLLECTION = os.getenv('COLLECTION_NAME', f'code_chunks_{REPO}')
 SOURCE_EXTS = {
     ".py", ".rb", ".ts", ".tsx", ".js", ".jsx", ".go", ".rs", ".java",
     ".cs", ".c", ".h", ".cpp", ".hpp", ".m", ".mm", ".kt", ".kts", ".swift",
-    ".sql", ".yml", ".yaml", ".toml", ".ini", ".json", ".md", ".sh", ".bash"
+    ".sql", ".yml", ".yaml", ".toml", ".ini", ".json", ".txt", ".sh", ".bash"
+    # Note: .md excluded per user requirement - filtering.py blocks it
 }
 EXCLUDE_GLOBS_FILE = str((data_dir() / "exclude_globs.txt").resolve())
 

@@ -3,13 +3,7 @@ from typing import List, Dict, TypedDict, Annotated
 from pathlib import Path
 from dotenv import load_dotenv, find_dotenv
 
-# Initialize LangTrace FIRST (before any LLM/LangGraph imports)
-try:
-    from langtrace_python_sdk import langtrace
-    langtrace.init(api_key=os.getenv('LANGTRACE_API_KEY', '0b20be5d3e82b7c514cd1bea1fa583f92683e55ebe895452ece7d9261d4412d2'))
-    print("✓ LangTrace initialized for LangGraph observability")
-except Exception as e:
-    print(f"⚠ LangTrace init failed: {e}")
+# LangTrace already initialized in server/app.py - no need to re-init
 
 from langgraph.graph import END, StateGraph
 from langgraph.checkpoint.redis import RedisSaver

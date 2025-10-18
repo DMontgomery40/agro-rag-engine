@@ -76,17 +76,30 @@
     if (!handle) return;
 
     const MIN_WIDTH = 300;
-    const MAX_WIDTH = 800;
+    const MAX_WIDTH = 600; // prevent sidepanel from covering too much content
+    const DEFAULT_WIDTH = 360;
     const STORAGE_KEY = 'agro-sidepanel-width';
 
-    // Restore saved width
+    // Restore saved width with viewport constraints
     const savedWidth = localStorage.getItem(STORAGE_KEY);
     if (savedWidth) {
       const width = parseInt(savedWidth, 10);
-      if (width >= MIN_WIDTH && width <= MAX_WIDTH) {
+      const maxAllowed = Math.min(MAX_WIDTH, window.innerWidth * 0.45);
+      if (width >= MIN_WIDTH && width <= maxAllowed) {
         document.documentElement.style.setProperty('--sidepanel-width', width + 'px');
+      } else {
+        // Reset to default if saved width is out of bounds
+        document.documentElement.style.setProperty('--sidepanel-width', DEFAULT_WIDTH + 'px');
+        localStorage.setItem(STORAGE_KEY, DEFAULT_WIDTH.toString());
       }
     }
+
+    // Export reset function for use in other modules
+    window.resetSidepanelWidth = function() {
+      document.documentElement.style.setProperty('--sidepanel-width', DEFAULT_WIDTH + 'px');
+      localStorage.setItem(STORAGE_KEY, DEFAULT_WIDTH.toString());
+      console.log('Sidepanel width reset to default');
+    };
 
     let isDragging = false;
     let startX = 0;
