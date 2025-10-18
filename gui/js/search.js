@@ -105,16 +105,45 @@
 
     function sectionGroupFor(el) {
       const tc = el.closest('.tab-content');
-      if (!tc) return 'dashboard';
+      if (!tc) return 'start';
       const id = tc.id.replace('tab-', '');
+
+      // Map old tab IDs to new Navigation tab IDs
       const map = {
-        generation: 'models', embeddings: 'models', reranking: 'models',
-        retrieval: 'retrieval', confidence: 'retrieval',
-        repos: 'repos', indexing: 'repos',
-        infra: 'infra',
-        calculator: 'tools', eval: 'tools', misc: 'tools',
-        dashboard: 'dashboard'
+        // Old config tabs -> new tabs
+        generation: 'rag-generation',
+        embeddings: 'rag-embeddings',
+        reranking: 'rag-reranking',
+        retrieval: 'rag-retrieval',
+        confidence: 'rag-retrieval',
+        repos: 'rag-repos',
+        indexing: 'rag-indexing',
+
+        // Old devtools tabs -> new tabs
+        infra: 'infrastructure',
+        calculator: 'profiles',
+        eval: 'evaluation',
+        misc: 'experiments',
+
+        // Dashboard/start
+        dashboard: 'start',
+
+        // Pass through new tab IDs unchanged
+        'rag-generation': 'rag-generation',
+        'rag-embeddings': 'rag-embeddings',
+        'rag-reranking': 'rag-reranking',
+        'rag-retrieval': 'rag-retrieval',
+        'rag-repos': 'rag-repos',
+        'rag-indexing': 'rag-indexing',
+        'infrastructure': 'infrastructure',
+        'profiles': 'profiles',
+        'evaluation': 'evaluation',
+        'experiments': 'experiments',
+        'admin': 'admin',
+        'start': 'start',
+        'chat': 'chat'
       };
+
       return map[id] || id;
     }
 

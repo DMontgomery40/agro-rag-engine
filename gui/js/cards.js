@@ -103,13 +103,43 @@
     if (btnBuild && !btnBuild.dataset.bound){ btnBuild.dataset.bound='1'; btnBuild.addEventListener('click', build); }
   }
 
-  // Auto-init
-  if (document.readyState === 'loading') {
-    window.addEventListener('DOMContentLoaded', () => { load(); bind(); });
+  // Initialization function for data quality view
+  window.initCards = function() {
+    console.log('[cards.js] Initializing cards for rag-data-quality view');
+    load();
+    bind();
+  };
+
+  // Register view (PRIMARY module for rag-data-quality)
+  if (window.Navigation && typeof window.Navigation.registerView === 'function') {
+    window.Navigation.registerView({
+      id: 'rag-data-quality',
+      title: 'Data Quality',
+      mount: () => {
+        console.log('[cards.js] Mounted rag-data-quality view');
+        // Initialize cards (primary)
+        if (typeof window.initCards === 'function') window.initCards();
+        // Initialize cards builder
+        if (typeof window.initCardsBuilder === 'function') window.initCardsBuilder();
+        // Initialize keywords
+        if (typeof window.initKeywords === 'function') window.initKeywords();
+      },
+      unmount: () => {
+        console.log('[cards.js] Unmounted from rag-data-quality');
+      }
+    });
   } else {
-    load(); bind();
+    console.warn('[cards.js] Navigation API not available, falling back to legacy mode');
+    // Legacy mode: auto-init
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', () => { load(); bind(); });
+    } else {
+      load(); bind();
+    }
   }
 
   window.Cards = { load, refresh, build, jumpToLine, bind };
+
+  console.log('[cards.js] Module loaded (PRIMARY for rag-data-quality, coordinates cards_builder.js + keywords.js)');
 })();
 

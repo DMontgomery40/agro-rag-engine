@@ -17,7 +17,7 @@ A complete production-ready learning reranker system that:
 
 ### 1. Telemetry System (server/telemetry.py) ✓
 - **Purpose:** Log queries and feedback for training
-- **File:** `/Users/davidmontgomery/agro/server/telemetry.py`
+- **File:** `/Users/davidmontgomery/agro-rag-engine/server/telemetry.py`
 - **Functions:**
   - `log_query_event()` - Logs query, retrieved docs, answer, latency, cost
   - `log_feedback_event()` - Logs thumbs up/down, clicks, notes
@@ -29,7 +29,7 @@ A complete production-ready learning reranker system that:
 
 ### 2. Feedback API (server/feedback.py) ✓
 - **Purpose:** REST endpoint to record user feedback
-- **File:** `/Users/davidmontgomery/agro/server/feedback.py`
+- **File:** `/Users/davidmontgomery/agro-rag-engine/server/feedback.py`
 - **Endpoint:** `POST /api/feedback`
 - **Payload:**
   ```json
@@ -44,7 +44,7 @@ A complete production-ready learning reranker system that:
 
 ### 3. Cross-Encoder Reranker (server/reranker.py) ✓
 - **Purpose:** Runtime reranking with trained model
-- **File:** `/Users/davidmontgomery/agro/server/reranker.py`
+- **File:** `/Users/davidmontgomery/agro-rag-engine/server/reranker.py`
 - **Functions:**
   - `get_reranker()` - Lazy-load model (singleton pattern)
   - `rerank_candidates()` - Blend original + cross-encoder scores

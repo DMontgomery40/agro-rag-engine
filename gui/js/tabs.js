@@ -36,21 +36,92 @@
         }
     }
 
+    // Tab ID aliases for backward compatibility
+    // Maps old tab IDs to new Navigation view IDs
+    const TAB_ALIASES = {
+        // Old main tabs → new view IDs
+        'onboarding': 'start',
+        'config': 'rag',
+        'data': 'rag',
+        'devtools': 'vscode',
+        'analytics': 'profiles',
+        'metrics': 'grafana',
+        'settings': 'admin',
+
+        // Old subtabs → new view IDs
+        'tab-onboarding': 'start',
+        'tab-metrics': 'grafana',
+        'tab-devtools-editor': 'vscode',
+        'tab-devtools-testing': 'rag-evaluate',
+        'tab-data-indexing': 'rag-indexing',
+        'tab-reranker': 'rag-learning-ranker',
+        'tab-devtools-reranker': 'rag-learning-ranker',
+        'tab-config-models': 'rag-retrieval',
+        'tab-config-retrieval': 'rag-retrieval',
+        'tab-config-repos': 'rag-data-quality',
+        'tab-analytics-cost': 'profiles',
+        'tab-settings-profiles': 'profiles',
+        'tab-config-infra': 'infrastructure',
+        'tab-settings-docker': 'infrastructure',
+        'tab-devtools-integrations': 'infrastructure',
+        'tab-analytics-performance': 'infrastructure',
+        'tab-analytics-usage': 'infrastructure',
+        'tab-analytics-tracing': 'infrastructure',
+        'tab-settings-general': 'admin',
+        'tab-settings-integrations': 'admin',
+        'tab-settings-secrets': 'admin',
+        'tab-devtools-debug': 'admin'
+    };
+
     /**
      * Switch to a main tab and its default subtabs
      * @param {string} tabName - Main tab identifier (e.g., 'config', 'data', 'analytics')
      */
     function switchTab(tabName) {
+        console.log(`[tabs.js] switchTab called with: ${tabName}`);
+
+        // If Navigation API is available, use it with alias resolution
+        if (window.Navigation && typeof window.Navigation.navigateTo === 'function') {
+            const newTabId = TAB_ALIASES[tabName] || tabName;
+            console.log(`[tabs.js] Routing ${tabName} → ${newTabId} via Navigation API`);
+            console.log(`[tabs.js] Looking for div: #tab-${newTabId}`);
+
+            // CHECK: Does the div exist?
+            const targetDiv = document.getElementById(`tab-${newTabId}`);
+            console.log(`[tabs.js] Div exists: ${!!targetDiv}`);
+            if (targetDiv) {
+                console.log(`[tabs.js] Div content length: ${targetDiv.innerHTML.length}`);
+            }
+
+            window.Navigation.navigateTo(newTabId);
+
+            // Emit old-style event for backward compatibility
+            if (window.CoreUtils && window.CoreUtils.events) {
+                window.CoreUtils.events.emit('tab-switched', {
+                    tab: newTabId,
+                    from: tabName
+                });
+            }
+            return;
+        }
+
+        // Fallback to old tab switching (compatibility mode)
         const groups = {
             start: ['onboarding'],
             dashboard: ['dashboard'],
             chat: ['chat'],
-            config: ['config-models'],  // Show only first subtab initially
-            data: ['data-indexing'],
-            devtools: ['devtools-editor'],  // Show only first subtab initially
-            analytics: ['analytics-cost'],  // Show only first subtab initially
-            metrics: ['metrics'],  // Metrics & Observability tab
-            settings: ['settings-general']  // Show only first subtab initially
+            vscode: ['devtools-editor'],  // New promoted tab
+            grafana: ['metrics'],  // New promoted tab
+            rag: ['config-models'],  // New mega-tab (defaults to retrieval)
+            profiles: ['analytics-cost'],  // New consolidated tab
+            infrastructure: ['settings-docker'],  // New consolidated tab
+            admin: ['settings-general'],  // New consolidated tab
+            config: ['config-models'],  // Keep for compatibility
+            data: ['data-indexing'],  // Keep for compatibility
+            devtools: ['devtools-editor'],  // Keep for compatibility
+            analytics: ['analytics-cost'],  // Keep for compatibility
+            metrics: ['metrics'],  // Keep for compatibility
+            settings: ['settings-general']  // Keep for compatibility
         };
         const show = groups[tabName] || [tabName];
         $$('.tab-content').forEach(el => el.classList.remove('active'));
@@ -60,12 +131,12 @@
         if (btn) btn.classList.add('active');
 
         // Load storage calculator when the tab is opened
-        if (tabName === 'analytics') {
+        if (tabName === 'analytics' || tabName === 'profiles') {
             loadStorageCalculator();
         }
 
         // Initialize onboarding when first opened
-        if (tabName === 'start') {
+        if (tabName === 'start' || tabName === 'onboarding') {
             if (typeof window.ensureOnboardingInit === 'function') {
                 window.ensureOnboardingInit();
             }
@@ -90,6 +161,37 @@
                 }
             });
         }
+    }
+
+    /**
+     * Bind click handlers to RAG subtab buttons
+     */
+    function bindRagSubtabs() {
+        const ragSubtabsBar = document.getElementById('rag-subtabs');
+        if (!ragSubtabsBar) return;
+
+        ragSubtabsBar.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const subtabId = btn.getAttribute('data-subtab');
+                if (!subtabId) return;
+
+                console.log(`[tabs.js] RAG subtab clicked: ${subtabId}`);
+
+                // Hide all RAG subtabs
+                $$('#tab-rag .rag-subtab-content').forEach(el => el.classList.remove('active'));
+
+                // Show selected subtab
+                const targetSubtab = document.getElementById(`tab-rag-${subtabId}`);
+                if (targetSubtab) {
+                    targetSubtab.classList.add('active');
+                    console.log(`[tabs.js] Showing RAG subtab: tab-rag-${subtabId}`);
+                }
+
+                // Update button states
+                ragSubtabsBar.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
     }
 
     /**
@@ -140,6 +242,21 @@
         bindSubtabs,
         loadStorageCalculator
     };
+
+    // Auto-initialize when DOM is ready
+    function initTabs() {
+        bindTabs();
+        bindSubtabs();
+        bindRagSubtabs();
+        console.log('[tabs.js] Tab buttons bound and ready');
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initTabs);
+    } else {
+        // DOM already loaded
+        initTabs();
+    }
 
     console.log('[tabs.js] Module loaded');
 })();

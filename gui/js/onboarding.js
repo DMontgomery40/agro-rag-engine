@@ -45,7 +45,12 @@
 
   function nextOnboard(){
     if (onboardingState.step === onboardingState.maxStep){
-      if (window.Tabs && window.Tabs.switchTab) window.Tabs.switchTab('dashboard');
+      // Navigate to start tab using new Navigation API
+      if (window.Navigation && window.Navigation.navigateTo) {
+        window.Navigation.navigateTo('start');
+      } else if (window.Tabs && window.Tabs.switchTab) {
+        window.Tabs.switchTab('start'); // Fallback to compatibility layer
+      }
       try { localStorage.removeItem('onboarding_step'); } catch {}
       return;
     }
@@ -171,7 +176,7 @@
     const saveProject=$('#onboard-save-project'), runEval=$('#onboard-run-eval'); if (saveProject) saveProject.addEventListener('click', saveAsProject); if (runEval) runEval.addEventListener('click', runTinyEval);
     const helpSend=$('#onboard-help-send'); if (helpSend) helpSend.addEventListener('click', askHelpQuestion);
     $$('.ob-help-pill').forEach(pill=>{ pill.addEventListener('click', ()=>{ const q=pill.getAttribute('data-q'); const input=$('#onboard-help-input'); if(input&&q){ input.value=q; askHelpQuestion(); } }); });
-    const openChat=$('#onboard-open-chat'); if (openChat){ openChat.addEventListener('click',(e)=>{ e.preventDefault(); if (window.Tabs && window.Tabs.switchTab) window.Tabs.switchTab('chat'); }); }
+    const openChat=$('#onboard-open-chat'); if (openChat){ openChat.addEventListener('click',(e)=>{ e.preventDefault(); if (window.Navigation && window.Navigation.navigateTo) { window.Navigation.navigateTo('chat'); } else if (window.Tabs && window.Tabs.switchTab) { window.Tabs.switchTab('chat'); } }); }
     const backBtn=$('#onboard-back'), nextBtn=$('#onboard-next'); if (backBtn) backBtn.addEventListener('click', backOnboard); if (nextBtn) nextBtn.addEventListener('click', nextOnboard);
     showOnboardStep(onboardingState.step);
   }

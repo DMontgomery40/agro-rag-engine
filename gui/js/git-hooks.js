@@ -35,11 +35,18 @@
     }
   }
 
+  // Initialization function called by secrets.js when admin view mounts
+  // Does NOT register view - secrets.js handles that
+  window.initGitHooks = function() {
+    console.log('[git-hooks.js] Initializing git hooks for admin view');
+    refreshHooksStatus();
+  };
+
   // Export public API
   window.GitHooks = {
     refreshHooksStatus,
     installHooks
   };
 
-  console.log('[GitHooks] Loaded');
+  console.log('[git-hooks.js] Module loaded (coordination with secrets.js for admin view)');
 })();

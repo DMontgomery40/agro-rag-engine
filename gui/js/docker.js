@@ -581,13 +581,20 @@
         downloadLogs
     };
 
-    // Auto-initialize when DOM is ready
+    // Initialization function called by mcp_server.js when infrastructure view mounts
+    // Does NOT register view - mcp_server.js handles that
+    window.initDocker = function() {
+        console.log('[docker.js] Initializing docker for infrastructure view');
+        initDocker();
+    };
+
+    // Legacy mode: auto-init
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initDocker);
     } else {
         initDocker();
     }
 
-    console.log('[docker.js] Module loaded');
+    console.log('[docker.js] Module loaded (coordination with mcp_server.js for infrastructure view)');
 })();
 

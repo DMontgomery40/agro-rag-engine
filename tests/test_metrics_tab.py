@@ -24,7 +24,7 @@ async def test_metrics_tab():
         await asyncio.sleep(3)
 
         # Take screenshot
-        screenshot_path = "/Users/davidmontgomery/agro/metrics_tab_screenshot.png"
+        screenshot_path = "/Users/davidmontgomery/agro-rag-engine/metrics_tab_screenshot.png"
         await page.screenshot(path=screenshot_path, full_page=True)
         print(f"Screenshot saved: {screenshot_path}")
 

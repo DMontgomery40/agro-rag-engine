@@ -544,77 +544,109 @@ function autoResizeTextarea(textarea) {
     textarea.style.height = newHeight + 'px';
 }
 
-// Initialize chat when DOM is ready
-if (typeof window !== 'undefined') {
-    window.addEventListener('DOMContentLoaded', () => {
-        const input = document.getElementById('chat-input');
-        const sendBtn = document.getElementById('chat-send');
-        const clearBtn = document.getElementById('chat-clear');
-        const historyBtn = document.getElementById('chat-history');
-        const exportHistoryBtn = document.getElementById('chat-export-history');
-        const clearHistoryBtn = document.getElementById('chat-clear-history');
-        const saveSettingsBtn = document.getElementById('chat-save-settings');
-        const resetSettingsBtn = document.getElementById('chat-reset-settings');
+// Initialize chat UI and event listeners
+function initChatUI() {
+    const input = document.getElementById('chat-input');
+    const sendBtn = document.getElementById('chat-send');
+    const clearBtn = document.getElementById('chat-clear');
+    const historyBtn = document.getElementById('chat-history');
+    const exportHistoryBtn = document.getElementById('chat-export-history');
+    const clearHistoryBtn = document.getElementById('chat-clear-history');
+    const saveSettingsBtn = document.getElementById('chat-save-settings');
+    const resetSettingsBtn = document.getElementById('chat-reset-settings');
 
-        if (input) {
-            // Send on Ctrl+Enter
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && e.ctrlKey) {
-                    e.preventDefault();
-                    sendMessage();
-                }
-            });
-
-            // Auto-resize as user types
-            input.addEventListener('input', () => {
-                autoResizeTextarea(input);
-            });
-        }
-
-        if (sendBtn) {
-            sendBtn.addEventListener('click', sendMessage);
-        }
-
-        if (clearBtn) {
-            clearBtn.addEventListener('click', clearChat);
-        }
-
-        if (historyBtn) {
-            historyBtn.addEventListener('click', () => {
-                const dropdown = document.getElementById('history-dropdown');
-                dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
-            });
-        }
-
-        if (exportHistoryBtn) {
-            exportHistoryBtn.addEventListener('click', exportChatHistory);
-        }
-
-        if (clearHistoryBtn) {
-            clearHistoryBtn.addEventListener('click', clearChatHistory);
-        }
-
-        if (saveSettingsBtn) {
-            saveSettingsBtn.addEventListener('click', saveChatSettings);
-        }
-
-        if (resetSettingsBtn) {
-            resetSettingsBtn.addEventListener('click', resetChatSettings);
-        }
-
-        // Apply loaded settings on page load
-        applyChatSettings();
-
-        // Load chat history if enabled
-        loadChatHistory();
-
-        // Hide dropdown when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('#chat-history') && !e.target.closest('#history-dropdown')) {
-                const dropdown = document.getElementById('history-dropdown');
-                if (dropdown) dropdown.style.display = 'none';
+    if (input) {
+        // Send on Ctrl+Enter
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                e.preventDefault();
+                sendMessage();
             }
         });
+
+        // Auto-resize as user types
+        input.addEventListener('input', () => {
+            autoResizeTextarea(input);
+        });
+    }
+
+    if (sendBtn) {
+        sendBtn.addEventListener('click', sendMessage);
+    }
+
+    if (clearBtn) {
+        clearBtn.addEventListener('click', clearChat);
+    }
+
+    if (historyBtn) {
+        historyBtn.addEventListener('click', () => {
+            const dropdown = document.getElementById('history-dropdown');
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        });
+    }
+
+    if (exportHistoryBtn) {
+        exportHistoryBtn.addEventListener('click', exportChatHistory);
+    }
+
+    if (clearHistoryBtn) {
+        clearHistoryBtn.addEventListener('click', clearChatHistory);
+    }
+
+    if (saveSettingsBtn) {
+        saveSettingsBtn.addEventListener('click', saveChatSettings);
+    }
+
+    if (resetSettingsBtn) {
+        resetSettingsBtn.addEventListener('click', resetChatSettings);
+    }
+
+    // Apply loaded settings on page load
+    applyChatSettings();
+
+    // Load chat history if enabled
+    loadChatHistory();
+
+    // Hide dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#chat-history') && !e.target.closest('#history-dropdown')) {
+            const dropdown = document.getElementById('history-dropdown');
+            if (dropdown) dropdown.style.display = 'none';
+        }
+    });
+}
+
+// Cleanup function for unmounting
+function cleanupChatUI() {
+    // Clear any pending requests or intervals
+    // (Currently no cleanup needed, but placeholder for future)
+    console.log('[chat.js] Unmounted');
+}
+
+// Register with Navigation API
+if (typeof window !== 'undefined') {
+    window.addEventListener('DOMContentLoaded', () => {
+        // Register view with Navigation system
+        if (window.Navigation && typeof window.Navigation.registerView === 'function') {
+            window.Navigation.registerView({
+                id: 'chat',
+                title: 'Chat',
+                mount: () => {
+                    console.log('[chat.js] Mounted');
+                    initChatUI();
+                },
+                unmount: () => {
+                    cleanupChatUI();
+                }
+            });
+        }
+
+        // Initialize immediately if chat tab is already active
+        // This handles backward compatibility with old tab system
+        const chatTab = document.getElementById('tab-chat');
+        if (chatTab && chatTab.classList.contains('active')) {
+            initChatUI();
+        }
     });
 }
 

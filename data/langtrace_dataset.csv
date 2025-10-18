@@ -1,0 +1,452 @@
+id,input,output,expected_output,repo,hit
+golden_1,Where is the hybrid search implementation that combines BM25 and vector search?,"1. /Users/davidmontgomery/agro-rag-engine/retrieval/hybrid_search.py
+2. /Users/davidmontgomery/agro-rag-engine/public/agro/js/profile_renderer.js
+3. /Users/davidmontgomery/agro-rag-engine/retrieval/hybrid_search.py
+4. /Users/davidmontgomery/agro-rag-engine/retrieval/hybrid_search.py
+5. /Users/davidmontgomery/agro-rag-engine/retrieval/hybrid_search.py","Expected files:
+  - retrieval/hybrid_search.py
+  - server/langgraph_app.py
+  - server/app.py
+  - eval/eval_rag.py",agro,true
+golden_2,How does the indexing pipeline work? Where is the main indexer?,"1. /Users/davidmontgomery/agro-rag-engine/gui/js/index_status.js
+2. /Users/davidmontgomery/agro-rag-engine/indexer/index_repo.py
+3. /Users/davidmontgomery/agro-rag-engine/gui/js/indexing.js
+4. /Users/davidmontgomery/agro-rag-engine/tools/playwright.config.ts
+5. /Users/davidmontgomery/agro-rag-engine/gui/js/indexing.js","Expected files:
+  - indexer/index_repo.py
+  - retrieval/ast_chunker.py
+  - common/filtering.py
+  - common/config_loader.py
+  - retrieval/embed_cache.py
+  - common/qdrant_utils.py",agro,true
+golden_3,Where is the FastAPI server and main API routes defined?,"1. /Users/davidmontgomery/agro-rag-engine/server/app.py
+2. /Users/davidmontgomery/agro-rag-engine/server/metrics.py
+3. /Users/davidmontgomery/agro-rag-engine/scripts/test_backend.py
+4. /Users/davidmontgomery/agro-rag-engine/server/feedback.py
+5. /Users/davidmontgomery/agro-rag-engine/server/reranker_info.py","Expected files:
+  - server/app.py
+  - server/langgraph_app.py
+  - server/feedback.py
+  - server/telemetry.py
+  - server/metrics.py",agro,true
+golden_4,Where is the LangGraph conversational RAG pipeline implemented?,"1. /Users/davidmontgomery/agro-rag-engine/cli/chat_cli.py
+2. /Users/davidmontgomery/agro-rag-engine/server/langgraph_app.py
+3. /Users/davidmontgomery/agro-rag-engine/cli/chat_cli.py
+4. /Users/davidmontgomery/agro-rag-engine/server/langgraph_app.py
+5. /Users/davidmontgomery/agro-rag-engine/server/langgraph_app.py","Expected files:
+  - server/langgraph_app.py
+  - retrieval/hybrid_search.py
+  - server/tracing.py
+  - server/app.py",agro,true
+golden_5,How does the cross-encoder reranker work?,"1. /Users/davidmontgomery/agro-rag-engine/scripts/train_reranker.py
+2. /Users/davidmontgomery/agro-rag-engine/server/reranker.py
+3. /Users/davidmontgomery/agro-rag-engine/scripts/train_reranker.py
+4. /Users/davidmontgomery/agro-rag-engine/scripts/promote_reranker.py
+5. /Users/davidmontgomery/agro-rag-engine/retrieval/rerank.py","Expected files:
+  - retrieval/rerank.py
+  - retrieval/hybrid_search.py
+  - scripts/train_reranker.py
+  - scripts/mine_triplets.py
+  - gui/js/reranker.js",agro,true
+golden_6,Where is the MCP (Model Context Protocol) server for stdio transport?,"1. /Users/davidmontgomery/agro-rag-engine/gui/js/mcp_server.js
+2. /Users/davidmontgomery/agro-rag-engine/gui/js/mcp_server.js
+3. /Users/davidmontgomery/agro-rag-engine/gui/js/mcp_server.js
+4. /Users/davidmontgomery/agro-rag-engine/server/app.py
+5. /Users/davidmontgomery/agro-rag-engine/server/mcp/server.py","Expected files:
+  - server/mcp/server.py
+  - server/mcp/http.py
+  - node_mcp/server.js
+  - server/langgraph_app.py",agro,true
+golden_7,Where is the GUI main HTML and JavaScript?,"1. /Users/davidmontgomery/agro-rag-engine/playwright.gui.config.ts
+2. /Users/davidmontgomery/agro-rag-engine/tests/playwright.gui.config.ts
+3. /Users/davidmontgomery/agro-rag-engine/gui/app.js
+4. /Users/davidmontgomery/agro-rag-engine/public/agro/app.js
+5. /Users/davidmontgomery/agro-rag-engine/gui/app.js","Expected files:
+  - gui/index.html
+  - gui/app.js
+  - gui/js/navigation.js
+  - gui/js/chat.js
+  - gui/js/dashboard.js
+  - gui/css/styles.css",agro,true
+golden_8,How does the navigation system work in the GUI?,"1. /Users/davidmontgomery/agro-rag-engine/tests/gui/navigation.spec.ts
+2. /Users/davidmontgomery/agro-rag-engine/gui/js/navigation.js
+3. /Users/davidmontgomery/agro-rag-engine/gui/js/navigation.js
+4. /Users/davidmontgomery/agro-rag-engine/gui/js/navigation.js
+5. /Users/davidmontgomery/agro-rag-engine/gui/js/navigation.js","Expected files:
+  - gui/js/navigation.js
+  - gui/index.html
+  - gui/app.js",agro,true
+golden_9,Where is the chat interface implementation?,"1. /Users/davidmontgomery/agro-rag-engine/public/agro/js/chat.js
+2. /Users/davidmontgomery/agro-rag-engine/gui/js/chat.js
+3. /Users/davidmontgomery/agro-rag-engine/gui/js/chat.js
+4. /Users/davidmontgomery/agro-rag-engine/public/agro/js/chat.js
+5. /Users/davidmontgomery/agro-rag-engine/gui/js/chat.js","Expected files:
+  - gui/js/chat.js
+  - gui/index.html
+  - server/app.py
+  - server/langgraph_app.py
+  - cli/chat_cli.py",agro,true
+golden_10,Where is the AST-aware code chunking implemented?,"1. /Users/davidmontgomery/agro-rag-engine/retrieval/ast_chunker.py
+2. /Users/davidmontgomery/agro-rag-engine/retrieval/ast_chunker.py
+3. /Users/davidmontgomery/agro-rag-engine/retrieval/ast_chunker.py
+4. /Users/davidmontgomery/agro-rag-engine/retrieval/ast_chunker.py
+5. /Users/davidmontgomery/agro-rag-engine/retrieval/ast_chunker.py","Expected files:
+  - retrieval/ast_chunker.py
+  - indexer/index_repo.py
+  - common/filtering.py",agro,true
+golden_11,How does the embedding cache work to avoid recomputation?,"1. /Users/davidmontgomery/agro-rag-engine/retrieval/embed_cache.py
+2. /Users/davidmontgomery/agro-rag-engine/retrieval/embed_cache.py
+3. /Users/davidmontgomery/agro-rag-engine/retrieval/hybrid_search.py
+4. /Users/davidmontgomery/agro-rag-engine/public/agro/app.js
+5. /Users/davidmontgomery/agro-rag-engine/public/agro/js/storage-calculator.js","Expected files:
+  - retrieval/embed_cache.py
+  - indexer/index_repo.py
+  - retrieval/hybrid_search.py",agro,true
+golden_12,Where is the semantic card building logic?,"1. /Users/davidmontgomery/agro-rag-engine/public/agro/js/cards_builder.js
+2. /Users/davidmontgomery/agro-rag-engine/public/agro/js/cards.js
+3. /Users/davidmontgomery/agro-rag-engine/public/agro/js/cards.js
+4. /Users/davidmontgomery/agro-rag-engine/public/agro/js/cards.js
+5. /Users/davidmontgomery/agro-rag-engine/gui/js/cards.js","Expected files:
+  - indexer/build_cards.py
+  - common/metadata.py
+  - server/cards_builder.py
+  - gui/js/cards.js",agro,true
+golden_13,Where is the repository configuration loaded from repos.json?,"1. /Users/davidmontgomery/agro-rag-engine/public/agro/app.js
+2. /Users/davidmontgomery/agro-rag-engine/gui/app.js
+3. /Users/davidmontgomery/agro-rag-engine/common/config_loader.py
+4. /Users/davidmontgomery/agro-rag-engine/scripts/make_repos_json.py
+5. /Users/davidmontgomery/agro-rag-engine/scripts/make_repos_json.py","Expected files:
+  - common/config_loader.py
+  - repos.json
+  - server/app.py
+  - gui/js/config.js
+  - indexer/index_repo.py",agro,true
+golden_14,How are file filtering and exclusion rules defined?,"1. /Users/davidmontgomery/agro-rag-engine/common/filtering.py
+2. /Users/davidmontgomery/agro-rag-engine/indexer/index_repo.py
+3. /Users/davidmontgomery/agro-rag-engine/indexer/index_repo.py
+4. /Users/davidmontgomery/agro-rag-engine/scripts/scan_root_orphans.py
+5. /Users/davidmontgomery/agro-rag-engine/infra/playwright.config.ts","Expected files:
+  - common/filtering.py
+  - data/exclude_globs.txt
+  - retrieval/ast_chunker.py
+  - indexer/index_repo.py",agro,true
+golden_15,Where is the metadata enrichment for code chunks?,"1. /Users/davidmontgomery/agro-rag-engine/common/metadata.py
+2. /Users/davidmontgomery/agro-rag-engine/public/agro/js/tooltips.js
+3. /Users/davidmontgomery/agro-rag-engine/public/agro/app.js
+4. /Users/davidmontgomery/agro-rag-engine/public/agro/app.js
+5. /Users/davidmontgomery/agro-rag-engine/gui/app.js","Expected files:
+  - common/metadata.py
+  - indexer/build_cards.py
+  - server/cards_builder.py",agro,true
+golden_16,Where is the Qdrant vector database integration?,"1. /Users/davidmontgomery/agro-rag-engine/common/qdrant_utils.py
+2. /Users/davidmontgomery/agro-rag-engine/public/agro/js/tooltips.js
+3. /Users/davidmontgomery/agro-rag-engine/retrieval/hybrid_search.py
+4. /Users/davidmontgomery/agro-rag-engine/infra/playwright.config.ts
+5. /Users/davidmontgomery/agro-rag-engine/retrieval/hybrid_search.py","Expected files:
+  - common/qdrant_utils.py
+  - retrieval/hybrid_search.py
+  - indexer/index_repo.py
+  - docker-compose.yml",agro,true
+golden_17,How does multi-query expansion work?,"1. /Users/davidmontgomery/agro-rag-engine/public/agro/js/profile_renderer.js
+2. /Users/davidmontgomery/agro-rag-engine/retrieval/hybrid_search.py
+3. /Users/davidmontgomery/agro-rag-engine/retrieval/hybrid_search.py
+4. /Users/davidmontgomery/agro-rag-engine/retrieval/synonym_expander.py
+5. /Users/davidmontgomery/agro-rag-engine/server/langgraph_app.py","Expected files:
+  - retrieval/hybrid_search.py
+  - server/langgraph_app.py
+  - retrieval/synonym_expander.py",agro,true
+golden_18,Where is the tracing system for debugging RAG pipelines?,"1. /Users/davidmontgomery/agro-rag-engine/server/tracing.py
+2. /Users/davidmontgomery/agro-rag-engine/infra/playwright.config.ts
+3. /Users/davidmontgomery/agro-rag-engine/public/agro/js/mcp_rag.js
+4. /Users/davidmontgomery/agro-rag-engine/tools/playwright.config.ts
+5. /Users/davidmontgomery/agro-rag-engine/public/agro/js/trace.js","Expected files:
+  - server/tracing.py
+  - server/app.py
+  - server/langgraph_app.py
+  - gui/js/traces.js",agro,true
+golden_19,Where are the keyword generation scripts?,"1. /Users/davidmontgomery/agro-rag-engine/public/agro/app.js
+2. /Users/davidmontgomery/agro-rag-engine/server/app.py
+3. /Users/davidmontgomery/agro-rag-engine/public/agro/app.js
+4. /Users/davidmontgomery/agro-rag-engine/gui/app.js
+5. /Users/davidmontgomery/agro-rag-engine/public/agro/js/keywords.js","Expected files:
+  - scripts/generate_smart_keywords.py
+  - data/discriminative_keywords.json
+  - data/semantic_keywords.json
+  - data/llm_keywords.json
+  - retrieval/hybrid_search.py",agro,false
+golden_20,How does the reranker training with triplets work?,"1. /Users/davidmontgomery/agro-rag-engine/scripts/train_reranker.py
+2. /Users/davidmontgomery/agro-rag-engine/scripts/eval_reranker.py
+3. /Users/davidmontgomery/agro-rag-engine/gui/js/reranker.js
+4. /Users/davidmontgomery/agro-rag-engine/scripts/train_reranker.py
+5. /Users/davidmontgomery/agro-rag-engine/scripts/promote_reranker.py","Expected files:
+  - scripts/mine_triplets.py
+  - scripts/train_reranker.py
+  - data/training/triplets.jsonl
+  - retrieval/rerank.py
+  - data/logs/queries.jsonl",agro,true
+golden_21,Where is the Docker Compose and infrastructure setup?,"1. /Users/davidmontgomery/agro-rag-engine/scripts/quick_setup.py
+2. /Users/davidmontgomery/agro-rag-engine/scripts/up.sh
+3. /Users/davidmontgomery/agro-rag-engine/gui/js/docker.js
+4. /Users/davidmontgomery/agro-rag-engine/gui/js/docker.js
+5. /Users/davidmontgomery/agro-rag-engine/gui/js/docker.js","Expected files:
+  - docker-compose.yml
+  - docker-compose.services.yml
+  - Dockerfile
+  - Dockerfile.node
+  - scripts/up.sh
+  - scripts/down.sh",agro,true
+golden_22,Where is the Grafana dashboard configuration?,"1. /Users/davidmontgomery/agro-rag-engine/gui/js/grafana.js
+2. /Users/davidmontgomery/agro-rag-engine/telemetry/grafana_dash.py
+3. /Users/davidmontgomery/agro-rag-engine/scripts/setup_grafana.sh
+4. /Users/davidmontgomery/agro-rag-engine/gui/js/grafana.js
+5. /Users/davidmontgomery/agro-rag-engine/gui/js/grafana.js","Expected files:
+  - infra/grafana/provisioning/dashboards/agro_overview.json
+  - infra/grafana/provisioning/dashboards/dashboard.yml
+  - infra/grafana/provisioning/datasources/datasource.yml
+  - docker-compose.yml
+  - gui/js/grafana.js",agro,true
+golden_23,Where is the Prometheus metrics configuration?,"1. /Users/davidmontgomery/agro-rag-engine/server/metrics.py
+2. /Users/davidmontgomery/agro-rag-engine/telemetry/grafana_dash.py
+3. /Users/davidmontgomery/agro-rag-engine/telemetry/grafana_dash.py
+4. /Users/davidmontgomery/agro-rag-engine/infra/playwright.config.ts
+5. /Users/davidmontgomery/agro-rag-engine/tests/playwright.gui.config.ts","Expected files:
+  - infra/prometheus.yml
+  - infra/prometheus-alert-rules.yml
+  - server/metrics.py
+  - telemetry/prometheus.yml
+  - docker-compose.yml",agro,true
+golden_24,How does the CLI chat tool work?,"1. /Users/davidmontgomery/agro-rag-engine/cli/chat_cli.py
+2. /Users/davidmontgomery/agro-rag-engine/cli/chat_cli.py
+3. /Users/davidmontgomery/agro-rag-engine/gui/js/chat.js
+4. /Users/davidmontgomery/agro-rag-engine/public/agro/js/chat.js
+5. /Users/davidmontgomery/agro-rag-engine/gui/js/chat.js","Expected files:
+  - cli/chat_cli.py
+  - server/app.py
+  - server/langgraph_app.py
+  - retrieval/hybrid_search.py",agro,true
+golden_25,Where are the Playwright end-to-end tests?,"1. /Users/davidmontgomery/agro-rag-engine/playwright.gui.config.ts
+2. /Users/davidmontgomery/agro-rag-engine/tests/playwright.gui.config.ts
+3. /Users/davidmontgomery/agro-rag-engine/infra/playwright.config.ts","Expected files:
+  - tests/gui.spec.ts
+  - tests/api.spec.ts
+  - tests/test_dashboard.py
+  - tests/test_metrics_tab.py
+  - tools/playwright.config.ts",agro,false
+golden_26,Where is the evaluation harness for testing RAG quality?,"1. /Users/davidmontgomery/agro-rag-engine/eval/eval_rag.py
+2. /Users/davidmontgomery/agro-rag-engine/public/agro/js/eval_runner.js
+3. /Users/davidmontgomery/agro-rag-engine/eval/eval_rag.py
+4. /Users/davidmontgomery/agro-rag-engine/tests/playwright.gui.config.ts
+5. /Users/davidmontgomery/agro-rag-engine/infra/playwright.config.ts","Expected files:
+  - eval/eval_rag.py
+  - eval/eval_loop.py
+  - data/golden.json
+  - data/evals/eval_baseline.json
+  - gui/js/golden_questions.js",agro,true
+golden_27,How does the theme system work in the GUI?,"1. /Users/davidmontgomery/agro-rag-engine/gui/js/theme.js
+2. /Users/davidmontgomery/agro-rag-engine/gui/js/theme.js
+3. /Users/davidmontgomery/agro-rag-engine/gui/js/theme.js
+4. /Users/davidmontgomery/agro-rag-engine/public/agro/js/theme.js
+5. /Users/davidmontgomery/agro-rag-engine/gui/js/theme.js","Expected files:
+  - gui/js/theme.js
+  - gui/css/styles.css
+  - gui/index.html
+  - gui/app.js",agro,true
+golden_28,Where is the configuration management in the GUI?,"1. /Users/davidmontgomery/agro-rag-engine/playwright.gui.config.ts
+2. /Users/davidmontgomery/agro-rag-engine/tests/playwright.gui.config.ts
+3. /Users/davidmontgomery/agro-rag-engine/public/agro/js/config.js
+4. /Users/davidmontgomery/agro-rag-engine/gui/js/config.js
+5. /Users/davidmontgomery/agro-rag-engine/gui/js/config.js","Expected files:
+  - gui/js/config.js
+  - server/app.py
+  - common/config_loader.py
+  - repos.json",agro,true
+golden_29,Where is the index statistics computation?,"1. /Users/davidmontgomery/agro-rag-engine/server/index_stats.py
+2. /Users/davidmontgomery/agro-rag-engine/gui/js/indexing.js
+3. /Users/davidmontgomery/agro-rag-engine/server/app.py
+4. /Users/davidmontgomery/agro-rag-engine/indexer/index_stats.py
+5. /Users/davidmontgomery/agro-rag-engine/tools/playwright.config.ts","Expected files:
+  - server/index_stats.py
+  - indexer/index_stats.py
+  - server/app.py
+  - gui/js/index_display.js",agro,true
+golden_30,How does the confidence gating work in LangGraph?,"1. /Users/davidmontgomery/agro-rag-engine/server/langgraph_app.py
+2. /Users/davidmontgomery/agro-rag-engine/server/langgraph_app.py
+3. /Users/davidmontgomery/agro-rag-engine/server/langgraph_app.py
+4. /Users/davidmontgomery/agro-rag-engine/server/langgraph_app.py
+5. /Users/davidmontgomery/agro-rag-engine/server/langgraph_app.py","Expected files:
+  - server/langgraph_app.py
+  - retrieval/hybrid_search.py
+  - retrieval/rerank.py",agro,true
+golden_31,Where are the API endpoint handlers for RAG queries?,"1. /Users/davidmontgomery/agro-rag-engine/node_mcp/server.js
+2. /Users/davidmontgomery/agro-rag-engine/public/agro/js/mcp_rag.js
+3. /Users/davidmontgomery/agro-rag-engine/public/agro/js/mcp_rag.js
+4. /Users/davidmontgomery/agro-rag-engine/infra/playwright.config.ts
+5. /Users/davidmontgomery/agro-rag-engine/scripts/test_backend.py","Expected files:
+  - server/app.py
+  - server/langgraph_app.py
+  - server/mcp/server.py
+  - server/mcp/http.py",agro,false
+golden_32,How does the query rewriting work when confidence is low?,"1. /Users/davidmontgomery/agro-rag-engine/server/langgraph_app.py
+2. /Users/davidmontgomery/agro-rag-engine/server/langgraph_app.py
+3. /Users/davidmontgomery/agro-rag-engine/server/langgraph_app.py
+4. /Users/davidmontgomery/agro-rag-engine/public/agro/js/profile_renderer.js
+5. /Users/davidmontgomery/agro-rag-engine/server/langgraph_app.py","Expected files:
+  - server/langgraph_app.py
+  - retrieval/hybrid_search.py
+  - server/env_model.py",agro,true
+golden_33,Where is the synonym expansion for semantic search?,"1. /Users/davidmontgomery/agro-rag-engine/retrieval/synonym_expander.py
+2. /Users/davidmontgomery/agro-rag-engine/retrieval/synonym_expander.py
+3. /Users/davidmontgomery/agro-rag-engine/retrieval/synonym_expander.py
+4. /Users/davidmontgomery/agro-rag-engine/public/agro/js/profile_renderer.js
+5. /Users/davidmontgomery/agro-rag-engine/scripts/analyze_keywords_v2.py","Expected files:
+  - retrieval/synonym_expander.py
+  - data/semantic_synonyms.json
+  - retrieval/hybrid_search.py",agro,true
+golden_34,Where are the cost calculation utilities for token usage?,"1. /Users/davidmontgomery/agro-rag-engine/public/agro/js/cost_logic.js
+2. /Users/davidmontgomery/agro-rag-engine/gui/js/cost_logic.js
+3. /Users/davidmontgomery/agro-rag-engine/scripts/quick_token_test.py
+4. /Users/davidmontgomery/agro-rag-engine/gui/js/cost_logic.js
+5. /Users/davidmontgomery/agro-rag-engine/public/agro/app.js","Expected files:
+  - gui/js/cost.js
+  - gui/prices.json
+  - server/metrics.py
+  - gui/index.html",agro,false
+golden_35,How does the dashboard tab render system status?,"1. /Users/davidmontgomery/agro-rag-engine/gui/js/index_status.js
+2. /Users/davidmontgomery/agro-rag-engine/telemetry/grafana_dash.py
+3. /Users/davidmontgomery/agro-rag-engine/gui/js/index_status.js
+4. /Users/davidmontgomery/agro-rag-engine/gui/app.js
+5. /Users/davidmontgomery/agro-rag-engine/public/agro/app.js","Expected files:
+  - gui/js/dashboard.js
+  - server/app.py
+  - server/index_stats.py
+  - gui/index.html",agro,false
+golden_36,Where is the telemetry logging for queries and feedback?,"1. /Users/davidmontgomery/agro-rag-engine/server/telemetry.py
+2. /Users/davidmontgomery/agro-rag-engine/server/telemetry.py
+3. /Users/davidmontgomery/agro-rag-engine/server/telemetry.py
+4. /Users/davidmontgomery/agro-rag-engine/server/feedback.py
+5. /Users/davidmontgomery/agro-rag-engine/playwright.gui.config.ts","Expected files:
+  - server/telemetry.py
+  - data/logs/queries.jsonl
+  - server/app.py
+  - server/feedback.py",agro,true
+golden_37,How does the MCP HTTP server work?,"1. /Users/davidmontgomery/agro-rag-engine/gui/js/mcp_server.js
+2. /Users/davidmontgomery/agro-rag-engine/gui/js/mcp_server.js
+3. /Users/davidmontgomery/agro-rag-engine/gui/js/mcp_server.js
+4. /Users/davidmontgomery/agro-rag-engine/server/app.py
+5. /Users/davidmontgomery/agro-rag-engine/gui/js/mcp_server.js","Expected files:
+  - server/mcp/http.py
+  - server/mcp/server.py
+  - server/langgraph_app.py",agro,false
+golden_38,Where is the Node.js MCP server implementation?,"1. /Users/davidmontgomery/agro-rag-engine/node_mcp/server.js
+2. /Users/davidmontgomery/agro-rag-engine/gui/js/mcp_server.js
+3. /Users/davidmontgomery/agro-rag-engine/node_mcp/server.js
+4. /Users/davidmontgomery/agro-rag-engine/gui/js/mcp_server.js
+5. /Users/davidmontgomery/agro-rag-engine/node_mcp/server.js","Expected files:
+  - node_mcp/server.js
+  - node_mcp/package.json
+  - server/langgraph_app.py",agro,true
+golden_39,Where are the common path utilities?,"1. /Users/davidmontgomery/agro-rag-engine/common/__init__.py
+2. /Users/davidmontgomery/agro-rag-engine/common/paths.py
+3. /Users/davidmontgomery/agro-rag-engine/common/config_loader.py
+4. /Users/davidmontgomery/agro-rag-engine/public/agro/js/core-utils.js
+5. /Users/davidmontgomery/agro-rag-engine/gui/app.js","Expected files:
+  - common/paths.py
+  - common/config_loader.py
+  - indexer/index_repo.py",agro,true
+golden_40,How does the file selection and upload work in the GUI?,"1. /Users/davidmontgomery/agro-rag-engine/gui/js/onboarding.js
+2. /Users/davidmontgomery/agro-rag-engine/public/agro/js/secrets.js
+3. /Users/davidmontgomery/agro-rag-engine/tests/playwright.gui.config.ts
+4. /Users/davidmontgomery/agro-rag-engine/playwright.gui.config.ts
+5. /Users/davidmontgomery/agro-rag-engine/gui/js/secrets.js","Expected files:
+  - gui/js/dropzone.js
+  - gui/index.html
+  - server/app.py",agro,false
+golden_41,Where is the golden questions test runner?,"1. /Users/davidmontgomery/agro-rag-engine/public/agro/js/golden_questions.js
+2. /Users/davidmontgomery/agro-rag-engine/gui/js/golden_questions.js
+3. /Users/davidmontgomery/agro-rag-engine/gui/js/golden_questions.js
+4. /Users/davidmontgomery/agro-rag-engine/public/agro/js/golden_questions.js
+5. /Users/davidmontgomery/agro-rag-engine/gui/js/golden_questions.js","Expected files:
+  - gui/js/golden_questions.js
+  - data/golden.json
+  - eval/eval_rag.py
+  - server/app.py",agro,true
+golden_42,How does the auto-profile wizard work?,"1. /Users/davidmontgomery/agro-rag-engine/gui/js/profile_logic.js
+2. /Users/davidmontgomery/agro-rag-engine/public/agro/app.js
+3. /Users/davidmontgomery/agro-rag-engine/public/agro/app.js
+4. /Users/davidmontgomery/agro-rag-engine/public/agro/js/profile_logic.js
+5. /Users/davidmontgomery/agro-rag-engine/gui/js/profile_logic.js","Expected files:
+  - gui/js/autotune.js
+  - gui/autotune_policy.json
+  - gui/index.html
+  - server/app.py",agro,false
+golden_43,Where is the infrastructure management in the GUI?,"1. /Users/davidmontgomery/agro-rag-engine/gui/js/mcp_server.js
+2. /Users/davidmontgomery/agro-rag-engine/infra/tests/test_interactions.py
+3. /Users/davidmontgomery/agro-rag-engine/gui/js/docker.js
+4. /Users/davidmontgomery/agro-rag-engine/gui/js/docker.js
+5. /Users/davidmontgomery/agro-rag-engine/gui/js/docker.js","Expected files:
+  - gui/js/infrastructure.js
+  - docker-compose.yml
+  - scripts/up.sh
+  - scripts/status.sh",agro,false
+golden_44,How does the reranker UI component work?,"1. /Users/davidmontgomery/agro-rag-engine/gui/js/reranker.js
+2. /Users/davidmontgomery/agro-rag-engine/gui/js/reranker.js
+3. /Users/davidmontgomery/agro-rag-engine/gui/js/reranker.js
+4. /Users/davidmontgomery/agro-rag-engine/gui/js/reranker.js
+5. /Users/davidmontgomery/agro-rag-engine/gui/js/reranker.js","Expected files:
+  - gui/js/reranker.js
+  - retrieval/rerank.py
+  - server/app.py
+  - gui/index.html",agro,true
+golden_45,Where are the alert configuration and management?,"1. /Users/davidmontgomery/agro-rag-engine/server/alert_config.py
+2. /Users/davidmontgomery/agro-rag-engine/gui/js/alerts.js
+3. /Users/davidmontgomery/agro-rag-engine/gui/js/alerts.js
+4. /Users/davidmontgomery/agro-rag-engine/gui/js/alerts.js
+5. /Users/davidmontgomery/agro-rag-engine/infra/playwright.config.ts","Expected files:
+  - gui/js/alerts.js
+  - infra/alertmanager.yml
+  - infra/prometheus-alert-rules.yml
+  - server/metrics.py",agro,true
+golden_46,How does the profiles system work for saving configurations?,"1. /Users/davidmontgomery/agro-rag-engine/public/agro/app.js
+2. /Users/davidmontgomery/agro-rag-engine/gui/js/index_profiles.js
+3. /Users/davidmontgomery/agro-rag-engine/server/app.py
+4. /Users/davidmontgomery/agro-rag-engine/gui/js/config.js
+5. /Users/davidmontgomery/agro-rag-engine/gui/js/profile_logic.js","Expected files:
+  - gui/js/profiles.js
+  - gui/profiles/
+  - server/app.py
+  - gui/index.html",agro,true
+golden_47,Where is the VS Code integration for embedded editor?,"1. /Users/davidmontgomery/agro-rag-engine/gui/js/vscode.js
+2. /Users/davidmontgomery/agro-rag-engine/gui/js/vscode.js
+3. /Users/davidmontgomery/agro-rag-engine/gui/js/editor.js
+4. /Users/davidmontgomery/agro-rag-engine/gui/js/vscode.js
+5. /Users/davidmontgomery/agro-rag-engine/gui/js/vscode.js","Expected files:
+  - gui/js/vscode.js
+  - gui/index.html
+  - scripts/editor_up.sh
+  - scripts/editor_down.sh",agro,true
+golden_48,How does the Makefile orchestrate development tasks?,"1. /Users/davidmontgomery/agro-rag-engine/scripts/dev_up.sh
+2. /Users/davidmontgomery/agro-rag-engine/scripts/editor_up.sh
+3. /Users/davidmontgomery/agro-rag-engine/scripts/editor_up.sh
+4. /Users/davidmontgomery/agro-rag-engine/infra/playwright.config.ts
+5. /Users/davidmontgomery/agro-rag-engine/scripts/select_index.sh","Expected files:
+  - Makefile
+  - scripts/up.sh
+  - scripts/down.sh
+  - docker-compose.yml",agro,false
+golden_49,Where are the Python requirements defined?,"1. /Users/davidmontgomery/agro-rag-engine/scripts/setup.sh
+2. /Users/davidmontgomery/agro-rag-engine/scripts/setup.sh
+3. /Users/davidmontgomery/agro-rag-engine/scripts/archive/watchdog.py
+4. /Users/davidmontgomery/agro-rag-engine/scripts/quick_setup.py
+5. /Users/davidmontgomery/agro-rag-engine/scripts/quick_setup.py","Expected files:
+  - requirements.txt
+  - requirements-rag.txt
+  - requirements.lock",agro,false
+golden_50,How does the feedback collection system work?,"1. /Users/davidmontgomery/agro-rag-engine/gui/js/reranker.js
+2. /Users/davidmontgomery/agro-rag-engine/server/feedback.py
+3. /Users/davidmontgomery/agro-rag-engine/server/feedback.py
+4. /Users/davidmontgomery/agro-rag-engine/gui/js/reranker.js
+5. /Users/davidmontgomery/agro-rag-engine/gui/js/ux-feedback.js","Expected files:
+  - server/feedback.py
+  - server/telemetry.py
+  - data/logs/queries.jsonl
+  - server/app.py",agro,true

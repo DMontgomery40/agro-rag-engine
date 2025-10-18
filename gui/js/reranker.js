@@ -589,106 +589,124 @@ async function runSmokeTest() {
 
 // ============ INITIALIZE ============
 
+function initRerankerUI() {
+    // Mine button
+    const mineBtn = document.getElementById('reranker-mine-btn');
+    if (mineBtn) {
+        mineBtn.addEventListener('click', async () => {
+            mineBtn.disabled = true;
+            mineBtn.textContent = 'Mining...';
+            try {
+                await mineTriplets();
+            } catch (error) {
+                alert(error.message);
+            } finally {
+                setTimeout(() => {
+                    mineBtn.disabled = false;
+                    mineBtn.textContent = 'Mine Triplets';
+                }, 2000);
+            }
+        });
+    }
+
+    // Train button
+    const trainBtn = document.getElementById('reranker-train-btn');
+    if (trainBtn) {
+        trainBtn.addEventListener('click', async () => {
+            const epochs = parseInt(document.getElementById('reranker-epochs')?.value || '2');
+            const batchSize = parseInt(document.getElementById('reranker-batch')?.value || '16');
+
+            trainBtn.disabled = true;
+            trainBtn.textContent = 'Training...';
+            try {
+                await trainReranker({ epochs, batch_size: batchSize });
+            } catch (error) {
+                alert(error.message);
+            } finally {
+                setTimeout(() => {
+                    trainBtn.disabled = false;
+                    trainBtn.textContent = 'Train Model';
+                }, 2000);
+            }
+        });
+    }
+
+    // Eval button
+    const evalBtn = document.getElementById('reranker-eval-btn');
+    if (evalBtn) {
+        evalBtn.addEventListener('click', async () => {
+            evalBtn.disabled = true;
+            evalBtn.textContent = 'Evaluating...';
+            try {
+                await evaluateReranker();
+            } catch (error) {
+                alert(error.message);
+            } finally {
+                setTimeout(() => {
+                    evalBtn.disabled = false;
+                    evalBtn.textContent = 'Evaluate';
+                }, 2000);
+            }
+        });
+    }
+
+    // Log viewer buttons
+    const viewLogsBtn = document.getElementById('reranker-view-logs');
+    if (viewLogsBtn) viewLogsBtn.addEventListener('click', viewLogs);
+
+    const downloadLogsBtn = document.getElementById('reranker-download-logs');
+    if (downloadLogsBtn) downloadLogsBtn.addEventListener('click', downloadLogs);
+
+    const clearLogsBtn = document.getElementById('reranker-clear-logs');
+    if (clearLogsBtn) clearLogsBtn.addEventListener('click', clearLogs);
+
+    // Automation buttons
+    const setupCronBtn = document.getElementById('reranker-setup-cron');
+    if (setupCronBtn) setupCronBtn.addEventListener('click', setupNightlyJob);
+
+    const removeCronBtn = document.getElementById('reranker-remove-cron');
+    if (removeCronBtn) removeCronBtn.addEventListener('click', removeNightlyJob);
+
+    // Baseline buttons
+    const saveBaselineBtn = document.getElementById('reranker-save-baseline');
+    if (saveBaselineBtn) saveBaselineBtn.addEventListener('click', saveBaseline);
+
+    const compareBaselineBtn = document.getElementById('reranker-compare-baseline');
+    if (compareBaselineBtn) compareBaselineBtn.addEventListener('click', compareBaseline);
+
+    const rollbackBtn = document.getElementById('reranker-rollback');
+    if (rollbackBtn) rollbackBtn.addEventListener('click', rollbackModel);
+
+    // Smoke test button
+    const smokeTestBtn = document.getElementById('reranker-smoke-test');
+    if (smokeTestBtn) smokeTestBtn.addEventListener('click', runSmokeTest);
+
+    // Load initial stats
+    setTimeout(updateRerankerStats, 100);
+}
+
+// Register with Navigation API
+function registerRerankerView() {
+    if (window.Navigation && typeof window.Navigation.registerView === 'function') {
+        window.Navigation.registerView({
+            id: 'rag-learning-ranker',
+            title: 'Learning Ranker',
+            mount: () => {
+                console.log('[reranker.js] Mounted as rag-learning-ranker');
+                initRerankerUI();
+            },
+            unmount: () => {
+                console.log('[reranker.js] Unmounted');
+                // No cleanup needed currently
+            }
+        });
+    }
+}
+
 if (typeof window !== 'undefined') {
     window.addEventListener('DOMContentLoaded', () => {
-        // Mine button
-        const mineBtn = document.getElementById('reranker-mine-btn');
-        if (mineBtn) {
-            mineBtn.addEventListener('click', async () => {
-                mineBtn.disabled = true;
-                mineBtn.textContent = 'Mining...';
-                try {
-                    await mineTriplets();
-                } catch (error) {
-                    alert(error.message);
-                } finally {
-                    setTimeout(() => {
-                        mineBtn.disabled = false;
-                        mineBtn.textContent = 'Mine Triplets';
-                    }, 2000);
-                }
-            });
-        }
-        
-        // Train button
-        const trainBtn = document.getElementById('reranker-train-btn');
-        if (trainBtn) {
-            trainBtn.addEventListener('click', async () => {
-                const epochs = parseInt(document.getElementById('reranker-epochs')?.value || '2');
-                const batchSize = parseInt(document.getElementById('reranker-batch')?.value || '16');
-                
-                trainBtn.disabled = true;
-                trainBtn.textContent = 'Training...';
-                try {
-                    await trainReranker({ epochs, batch_size: batchSize });
-                } catch (error) {
-                    alert(error.message);
-                } finally {
-                    setTimeout(() => {
-                        trainBtn.disabled = false;
-                        trainBtn.textContent = 'Train Model';
-                    }, 2000);
-                }
-            });
-        }
-        
-        // Eval button
-        const evalBtn = document.getElementById('reranker-eval-btn');
-        if (evalBtn) {
-            evalBtn.addEventListener('click', async () => {
-                evalBtn.disabled = true;
-                evalBtn.textContent = 'Evaluating...';
-                try {
-                    await evaluateReranker();
-                } catch (error) {
-                    alert(error.message);
-                } finally {
-                    setTimeout(() => {
-                        evalBtn.disabled = false;
-                        evalBtn.textContent = 'Evaluate';
-                    }, 2000);
-                }
-            });
-        }
-        
-        // Log viewer buttons
-        const viewLogsBtn = document.getElementById('reranker-view-logs');
-        if (viewLogsBtn) viewLogsBtn.addEventListener('click', viewLogs);
-        
-        const downloadLogsBtn = document.getElementById('reranker-download-logs');
-        if (downloadLogsBtn) downloadLogsBtn.addEventListener('click', downloadLogs);
-        
-        const clearLogsBtn = document.getElementById('reranker-clear-logs');
-        if (clearLogsBtn) clearLogsBtn.addEventListener('click', clearLogs);
-        
-        // Automation buttons
-        const setupCronBtn = document.getElementById('reranker-setup-cron');
-        if (setupCronBtn) setupCronBtn.addEventListener('click', setupNightlyJob);
-        
-        const removeCronBtn = document.getElementById('reranker-remove-cron');
-        if (removeCronBtn) removeCronBtn.addEventListener('click', removeNightlyJob);
-        
-        // Baseline buttons
-        const saveBaselineBtn = document.getElementById('reranker-save-baseline');
-        if (saveBaselineBtn) saveBaselineBtn.addEventListener('click', saveBaseline);
-        
-        const compareBaselineBtn = document.getElementById('reranker-compare-baseline');
-        if (compareBaselineBtn) compareBaselineBtn.addEventListener('click', compareBaseline);
-        
-        const rollbackBtn = document.getElementById('reranker-rollback');
-        if (rollbackBtn) rollbackBtn.addEventListener('click', rollbackModel);
-        
-        // Smoke test button
-        const smokeTestBtn = document.getElementById('reranker-smoke-test');
-        if (smokeTestBtn) smokeTestBtn.addEventListener('click', runSmokeTest);
-        
-        // Load initial stats when reranker tab is activated
-        const rerankerTab = document.querySelector('[data-tab="reranker"]');
-        if (rerankerTab) {
-            rerankerTab.addEventListener('click', () => {
-                setTimeout(updateRerankerStats, 100);
-            });
-        }
+        initRerankerUI();
+        registerRerankerView();
     });
 }
 

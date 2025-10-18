@@ -232,6 +232,15 @@
     if (clearBtn) clearBtn.addEventListener('click', hideProgress);
   });
 
+  // Initialization function called by cards.js when rag-data-quality view mounts
+  // Does NOT register view - cards.js handles that
+  window.initCardsBuilder = function() {
+    console.log('[cards_builder.js] Initializing cards builder for rag-data-quality view');
+    populateRepoSelect();
+  };
+
   window.CardsBuilder = { startCardsBuild, cancelCardsBuild, showLogs, updateProgress, populateRepoSelect };
+
+  console.log('[cards_builder.js] Module loaded (coordination with cards.js for rag-data-quality view)');
 })();
 

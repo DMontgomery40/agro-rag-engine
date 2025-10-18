@@ -20,6 +20,16 @@
     return proposeProfile(scan, budget);
   }
 
+  // Initialization function called by config.js when profiles view mounts
+  // Does NOT register view - config.js handles that since it serves both rag-retrieval and profiles
+  window.initProfileLogic = function() {
+    console.log('[profile_logic.js] Initializing profile logic for profiles view');
+    // Initialize profile algorithm state here if needed
+    // Currently stateless, so nothing to do
+  };
+
   window.ProfileLogic = { proposeProfile, buildWizardProfile };
+
+  console.log('[profile_logic.js] Module loaded (coordination with config.js for profiles view)');
 })();
 

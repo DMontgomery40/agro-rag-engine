@@ -160,6 +160,15 @@ export const CostLogic = {
   }
 };
 
+// Initialization function called by config.js when profiles view mounts
+// Does NOT register view - config.js handles that
+window.initCostLogic = function() {
+  console.log('[cost_logic.js] Initializing cost logic for profiles view');
+  // Initialize cost calculation state here if needed
+  // Currently uses async load + cache, so nothing to do
+};
+
+console.log('[cost_logic.js] Module loaded (coordination with config.js for profiles view)');
+
 // For inline testing in the browser console:
 // (async () => { console.log(await CostLogic.estimate({ chat:{provider:"openai",model:"gpt-4o-mini",input_tokens:1000,output_tokens:200}, embed:{provider:"openai",model:"text-embedding-3-large",embed_tokens:3882000}, rerank:{provider:"cohere",model:"rerank-v3.5",requests:50} })); })();
-EOF

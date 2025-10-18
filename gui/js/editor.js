@@ -161,5 +161,31 @@
     bindControls();
   }
 
+  // Register with Navigation API
+  function registerEditorView() {
+    if (window.Navigation && typeof window.Navigation.registerView === 'function') {
+      window.Navigation.registerView({
+        id: 'vscode',
+        title: 'VS Code',
+        mount: () => {
+          console.log('[editor.js] Mounted as vscode');
+          bindControls();
+          initEditorHealthCheck();
+        },
+        unmount: () => {
+          console.log('[editor.js] Unmounted');
+          stopEditorHealthCheck();
+        }
+      });
+    }
+  }
+
+  // Register when Navigation is ready
+  if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', registerEditorView);
+  } else {
+    registerEditorView();
+  }
+
   window.Editor = { checkEditorHealth, openEditorWindow, copyEditorUrl, restartEditor, initEditorHealthCheck, stopEditorHealthCheck, bindControls };
 })();

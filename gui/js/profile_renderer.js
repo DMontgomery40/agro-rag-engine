@@ -167,6 +167,14 @@
     return html;
   }
 
+  // Initialization function called by config.js when profiles view mounts
+  // Does NOT register view - config.js handles that
+  window.initProfileRenderer = function() {
+    console.log('[profile_renderer.js] Initializing profile renderer for profiles view');
+    // Initialize renderer state here if needed
+    // Currently stateless rendering, so nothing to do
+  };
+
   window.ProfileRenderer = { renderProfileResults: renderProfileResults };
   window.ProfileRenderer.bindTooltips = function bindTooltips(root){
     if (!root) return;
@@ -185,4 +193,6 @@
       document.addEventListener('click', (evt)=>{ if (!wrap.contains(evt.target)) bubble.classList.remove('tooltip-visible'); });
     });
   }
+
+  console.log('[profile_renderer.js] Module loaded (coordination with config.js for profiles view)');
 })();

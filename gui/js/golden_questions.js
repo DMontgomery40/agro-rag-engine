@@ -439,6 +439,43 @@ async function runAllGoldenTests() {
     }
 }
 
+// Initialization function for rag-evaluate view (PRIMARY module)
+window.initGoldenQuestions = function() {
+    console.log('[golden_questions.js] Initializing golden questions for rag-evaluate view');
+    loadGoldenQuestions();
+    bindGoldenQuestions();
+};
+
+// Register view (PRIMARY module for rag-evaluate)
+if (window.Navigation && typeof window.Navigation.registerView === 'function') {
+    window.Navigation.registerView({
+        id: 'rag-evaluate',
+        title: 'Evaluate',
+        mount: () => {
+            console.log('[golden_questions.js] Mounted rag-evaluate view');
+            // Initialize golden questions (primary)
+            if (typeof window.initGoldenQuestions === 'function') window.initGoldenQuestions();
+            // Initialize eval runner
+            if (typeof window.initEvalRunner === 'function') window.initEvalRunner();
+        },
+        unmount: () => {
+            console.log('[golden_questions.js] Unmounted from rag-evaluate');
+        }
+    });
+} else {
+    console.warn('[golden_questions.js] Navigation API not available, falling back to legacy mode');
+    // Legacy mode: auto-init
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            loadGoldenQuestions();
+            bindGoldenQuestions();
+        });
+    } else {
+        loadGoldenQuestions();
+        bindGoldenQuestions();
+    }
+}
+
 // Defensive binding via event delegation (in case direct bind missed)
 document.addEventListener('click', (e) => {
     const run = e.target && (e.target.id === 'btn-golden-run-tests' || (e.target.closest && e.target.closest('#btn-golden-run-tests')));
@@ -446,3 +483,5 @@ document.addEventListener('click', (e) => {
     if (run) { e.preventDefault(); runAllGoldenTests(); }
     if (load) { e.preventDefault(); bulkAddRecommended(); }
 }, true);
+
+console.log('[golden_questions.js] Module loaded (PRIMARY for rag-evaluate, coordinates eval_runner.js)');

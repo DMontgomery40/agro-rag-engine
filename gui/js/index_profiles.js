@@ -167,13 +167,20 @@
         PROFILES
     };
 
-    // Auto-initialize when DOM is ready
+    // Initialization function called by indexing.js when rag-indexing view mounts
+    // Does NOT register view - indexing.js handles that
+    window.initIndexProfiles = function() {
+        console.log('[index_profiles.js] Initializing index profiles for rag-indexing view');
+        initIndexProfiles();
+    };
+
+    // Legacy mode: auto-init
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initIndexProfiles);
     } else {
         initIndexProfiles();
     }
 
-    console.log('[index_profiles.js] Module loaded');
+    console.log('[index_profiles.js] Module loaded (coordination with indexing.js for rag-indexing view)');
 })();
 
