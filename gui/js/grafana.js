@@ -72,9 +72,47 @@
     if (prevBtn) prevBtn.addEventListener('click', (e) => { e.preventDefault(); preview(); });
     const openBtn = document.getElementById('grafana-open');
     if (openBtn) openBtn.addEventListener('click', (e) => { e.preventDefault(); openExternal(); });
-    // If user navigates to Metrics tab, just reveal container if enabled
-    const metricsBtn = document.querySelector('.tab-bar button[data-tab="metrics"]');
-    if (metricsBtn) metricsBtn.addEventListener('click', () => { applyEmbedVisibility(); });
+  }
+
+  function showDashboard() {
+    preview();
+  }
+
+  function hideDashboard() {
+    const wrap = document.getElementById('grafana-embed');
+    if (wrap) wrap.style.display = 'none';
+  }
+
+  function isVisible() {
+    const wrap = document.getElementById('grafana-embed');
+    return wrap && wrap.style.display !== 'none';
+  }
+
+  function getConfig() {
+    return {
+      baseUrl: vFromDom('GRAFANA_BASE_URL', 'http://127.0.0.1:3000'),
+      dashboardUid: vFromDom('GRAFANA_DASHBOARD_UID', 'agro-overview'),
+      embedEnabled: vFromDom('GRAFANA_EMBED_ENABLED', 'true')
+    };
+  }
+
+  // Register with Navigation API
+  function registerGrafanaView() {
+    if (window.Navigation && typeof window.Navigation.registerView === 'function') {
+      window.Navigation.registerView({
+        id: 'grafana',
+        title: 'Grafana',
+        mount: () => {
+          console.log('[grafana.js] Mounted');
+          init();
+          applyEmbedVisibility();
+        },
+        unmount: () => {
+          console.log('[grafana.js] Unmounted');
+          // No cleanup needed currently
+        }
+      });
+    }
   }
 
   // Expose minimal API
@@ -82,11 +120,17 @@
     buildUrl,
     preview,
     openExternal,
+    showDashboard,
+    hideDashboard,
+    isVisible,
+    getConfig
   };
 
   // Initialize after DOM + after Config first load
   document.addEventListener('DOMContentLoaded', () => {
     // If Config is already loaded, init now, else hook into loadConfig completion
     setTimeout(init, 0);
+    // Register with Navigation API
+    registerGrafanaView();
   });
 })();

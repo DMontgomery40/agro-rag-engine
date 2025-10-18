@@ -102,14 +102,14 @@ def get_index_stats() -> Dict[str, Any]:
 
     total_chunks = 0
 
-    # Index profiles to scan (shared, gui, devclean)
-    base_paths = ["out.noindex-shared", "out.noindex-gui", "out.noindex-devclean"]
+    # Index profiles to scan (default out, shared, gui, devclean)
+    base_paths = ["out", "out.noindex-shared", "out.noindex-gui", "out.noindex-devclean"]
     discovered_ts: List[str] = []
     for base in base_paths:
         base_path = repo_root() / base
         if not base_path.exists():
             continue
-        profile_name = base.replace("out.noindex-", "")
+        profile_name = "default" if base == "out" else base.replace("out.noindex-", "")
         repo_dirs = [d for d in base_path.iterdir() if d.is_dir()]
         for repo_dir in repo_dirs:
             repo_name = repo_dir.name

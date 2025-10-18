@@ -72,11 +72,39 @@
     });
   }
 
+  // Initialization function for admin view
+  window.initSecrets = function() {
+    console.log('[secrets.js] Initializing secrets for admin view');
+    bindDropzone();
+  };
+
+  // Register view (PRIMARY module for admin)
+  if (window.Navigation && typeof window.Navigation.registerView === 'function') {
+    window.Navigation.registerView({
+      id: 'admin',
+      title: 'Admin',
+      mount: () => {
+        console.log('[secrets.js] Mounted admin view');
+        // Initialize secrets (primary)
+        if (typeof window.initSecrets === 'function') window.initSecrets();
+        // Initialize git hooks
+        if (typeof window.initGitHooks === 'function') window.initGitHooks();
+        // Initialize langsmith
+        if (typeof window.initLangSmith === 'function') window.initLangSmith();
+      },
+      unmount: () => {
+        console.log('[secrets.js] Unmounted from admin');
+      }
+    });
+  } else {
+    console.warn('[secrets.js] Navigation API not available');
+  }
+
   // Export public API
   window.Secrets = {
     ingestFile,
     bindDropzone
   };
 
-  console.log('[Secrets] Loaded');
+  console.log('[secrets.js] Module loaded (PRIMARY for admin, coordinates git-hooks.js + langsmith.js)');
 })();

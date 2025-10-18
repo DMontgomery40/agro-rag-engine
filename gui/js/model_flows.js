@@ -101,6 +101,15 @@
     alert('Model added to pricing catalog.');
   }
 
+  // Initialization function called by config.js when rag-retrieval view mounts
+  // Does NOT register view - config.js handles that
+  window.initModelFlows = function() {
+    console.log('[model_flows.js] Initializing model flows for rag-retrieval view');
+    // Model flows are utility functions, no specific init needed
+  };
+
   window.ModelFlows = { updateEnv, upsertPrice, promptStr, addGenModelFlow, addEmbedModelFlow, addRerankModelFlow, addCostModelFlow };
+
+  console.log('[model_flows.js] Module loaded (coordination with config.js for rag-retrieval view)');
 })();
 

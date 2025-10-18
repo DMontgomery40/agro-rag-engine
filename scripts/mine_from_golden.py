@@ -15,7 +15,7 @@ from retrieval.hybrid_search import search
 
 # Get repo root (scripts/ -> agro/)
 REPO_ROOT = Path(__file__).parent.parent
-GOLDEN = REPO_ROOT / "golden.json"
+GOLDEN = REPO_ROOT / "data" / "golden.json"
 OUT = REPO_ROOT / "data" / "training" / "triplets.jsonl"
 
 def main():

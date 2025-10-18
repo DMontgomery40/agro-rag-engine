@@ -470,13 +470,70 @@
         }
     }
 
+    // Split initialization based on which view is active
+    function initConfigRetrieval() {
+        console.log('[config.js] Initializing for rag-retrieval view');
+        loadConfig();
+        // Initialize model flows module
+        if (typeof window.initModelFlows === 'function') window.initModelFlows();
+        // Future: Add retrieval-specific UI initialization here
+    }
+
+    function initProfilesUI() {
+        console.log('[config.js] Initializing for profiles view');
+        loadConfig();
+        // Future: Add profiles-specific UI initialization here
+        // Will coordinate with profile_logic.js, cost_logic.js, etc.
+    }
+
+    // Register for rag-retrieval tab
+    if (window.Navigation && typeof window.Navigation.registerView === 'function') {
+        window.Navigation.registerView({
+            id: 'rag-retrieval',
+            title: 'Retrieval',
+            mount: () => {
+                console.log('[config.js] Mounted for rag-retrieval');
+                initConfigRetrieval();
+            },
+            unmount: () => {
+                console.log('[config.js] Unmounted from rag-retrieval');
+            }
+        });
+
+        // Register for profiles tab (dual registration)
+        window.Navigation.registerView({
+            id: 'profiles',
+            title: 'Profiles',
+            mount: () => {
+                console.log('[config.js] Mounted for profiles');
+                initProfilesUI();
+                // Call profile module init functions if available
+                if (typeof window.initProfileLogic === 'function') window.initProfileLogic();
+                if (typeof window.initCostLogic === 'function') window.initCostLogic();
+            },
+            unmount: () => {
+                console.log('[config.js] Unmounted from profiles');
+            }
+        });
+    } else {
+        console.warn('[config.js] Navigation API not available, falling back to legacy mode');
+        // Legacy mode: initialize immediately
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadConfig);
+        } else {
+            loadConfig();
+        }
+    }
+
     // Export to window
     window.Config = {
         loadConfig,
         populateConfigForm,
         gatherConfigForm,
-        saveConfig
+        saveConfig,
+        initConfigRetrieval,
+        initProfilesUI
     };
 
-    console.log('[config.js] Module loaded');
+    console.log('[config.js] Module loaded with dual registration (rag-retrieval + profiles)');
 })();

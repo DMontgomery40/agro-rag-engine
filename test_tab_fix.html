@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tab Fix Verification</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #0f0;
+            padding: 30px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #0ff;
+            border-bottom: 2px solid #0ff;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #ff0;
+            margin-top: 30px;
+        }
+        .pass {
+            color: #0f0;
+            font-weight: bold;
+        }
+        .fail {
+            color: #f00;
+            font-weight: bold;
+        }
+        pre {
+            background: #000;
+            border: 1px solid #333;
+            padding: 15px;
+            overflow-x: auto;
+            border-left: 3px solid #0f0;
+        }
+        .instruction {
+            background: #1a1a1a;
+            border: 2px solid #ff0;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 12px 24px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: all 0.2s;
+        }
+        button:hover {
+            background: #0ff;
+            transform: scale(1.05);
+        }
+        #results {
+            margin-top: 20px;
+        }
+        .result-item {
+            background: #000;
+            border-left: 4px solid #0f0;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        .result-item.fail {
+            border-left-color: #f00;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔥 AGRO TAB FIX VERIFICATION 🔥</h1>
+
+    <div class="instruction">
+        <h2>⚠️ MANUAL VERIFICATION REQUIRED</h2>
+        <ol>
+            <li><strong>Hard refresh the main GUI:</strong> <code>http://127.0.0.1:8012/gui/index.html</code></li>
+            <li>Press <code>Cmd+Shift+R</code> (Mac) or <code>Ctrl+Shift+F5</code> (Windows/Linux)</li>
+            <li>Open DevTools (F12)</li>
+            <li>Look in the Console tab</li>
+        </ol>
+    </div>
+
+    <h2>✅ EXPECTED CONSOLE OUTPUT</h2>
+    <pre>
+[navigation.js] Module loaded - use window.Navigation for navigation API
+[tabs.js] Module loaded
+[tabs.js] Tab buttons bound and ready  <-- THIS IS THE KEY LINE!
+    </pre>
+
+    <h2>🧪 VERIFICATION TESTS</h2>
+    <p>Run these in the DevTools console on the main GUI page:</p>
+
+    <h3>Test 1: Check if buttons have click listeners</h3>
+    <pre>
+// Should show click listeners
+const btn = document.querySelector('.tab-bar button[data-tab="dashboard"]');
+getEventListeners(btn);
+// Look for "click" with at least 1 listener
+    </pre>
+
+    <h3>Test 2: Test manual navigation</h3>
+    <pre>
+// All tabs should have content
+['start', 'dashboard', 'chat', 'vscode', 'grafana', 'rag'].forEach(id => {
+    const el = document.getElementById('tab-' + id);
+    console.log(`tab-${id}:`, el ? '✓ EXISTS' : '✗ MISSING',
+                `content: ${el?.innerHTML.length || 0} chars`);
+});
+    </pre>
+
+    <h3>Test 3: Click navigation</h3>
+    <pre>
+// Click dashboard button
+document.querySelector('.tab-bar button[data-tab="dashboard"]').click();
+setTimeout(() => {
+    console.log('Active tab:', document.querySelector('.tab-content.active')?.id);
+}, 100);
+
+// Click chat button
+document.querySelector('.tab-bar button[data-tab="chat"]').click();
+setTimeout(() => {
+    console.log('Active tab:', document.querySelector('.tab-content.active')?.id);
+}, 100);
+    </pre>
+
+    <h3>Test 4: Navigation API</h3>
+    <pre>
+// Use Navigation API directly
+window.Navigation.navigateTo('vscode');
+setTimeout(() => {
+    console.log('Current tab:', window.Navigation.getCurrentTab());
+    console.log('Active DOM tab:', document.querySelector('.tab-content.active')?.id);
+}, 100);
+    </pre>
+
+    <h2>🎯 SUCCESS CRITERIA</h2>
+    <ul>
+        <li><span class="pass">✓</span> Console shows "[tabs.js] Tab buttons bound and ready"</li>
+        <li><span class="pass">✓</span> All tab buttons are clickable and switch content</li>
+        <li><span class="pass">✓</span> Dashboard shows content (status cards, quick actions)</li>
+        <li><span class="pass">✓</span> Chat shows content (message area, input box)</li>
+        <li><span class="pass">✓</span> Getting Started shows onboarding flow</li>
+        <li><span class="pass">✓</span> VS Code tab shows iframe embed</li>
+        <li><span class="pass">✓</span> No console errors</li>
+    </ul>
+
+    <h2>🐛 IF IT STILL DOESN'T WORK</h2>
+    <div class="instruction">
+        <h3>Debug Steps:</h3>
+        <ol>
+            <li>Check browser cache is cleared (hard refresh)</li>
+            <li>Verify tabs.js loaded with the new code:
+                <pre>window.Tabs.bindTabs.toString()</pre>
+            </li>
+            <li>Check for JavaScript errors in console</li>
+            <li>Verify DOM is ready:
+                <pre>document.readyState  // should be "complete"</pre>
+            </li>
+            <li>Manually bind tabs:
+                <pre>window.Tabs.bindTabs(); window.Tabs.bindSubtabs();</pre>
+            </li>
+        </ol>
+    </div>
+
+    <h2>📋 WHAT WAS FIXED</h2>
+    <div style="background: #1a1a1a; padding: 15px; border-left: 4px solid #0ff;">
+        <p><strong>File:</strong> <code>/Users/davidmontgomery/agro-rag-engine/gui/js/tabs.js</code></p>
+        <p><strong>Change:</strong> Added auto-initialization at the bottom of the file</p>
+        <p><strong>Lines added:</strong> 204-216</p>
+        <p><strong>Function:</strong> Automatically calls <code>bindTabs()</code> and <code>bindSubtabs()</code> when DOM is ready</p>
+        <p><strong>Why this was needed:</strong> The bind functions existed but were never called, so tab buttons had no click handlers</p>
+    </div>
+
+    <h2>🚀 NEXT STEPS</h2>
+    <ol>
+        <li>Verify the fix works (use tests above)</li>
+        <li>If working, test all 9 tabs</li>
+        <li>Check subtabs in RAG mega-tab work</li>
+        <li>Test mobile drawer navigation</li>
+        <li>Run Playwright tests: <code>npm run test:gui</code></li>
+    </ol>
+
+    <script>
+        // This is just a static verification page - tests must be run on main GUI
+        console.log('%c[Verification Page] This is a helper page for manual testing', 'color: #0ff; font-weight: bold;');
+        console.log('%cGo to http://127.0.0.1:8012/gui/index.html and run the tests there', 'color: #ff0;');
+    </script>
+</body>
+</html>

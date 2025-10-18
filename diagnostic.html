@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AGRO DOM Diagnostics</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 20px;
+        }
+        .result {
+            background: #000;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #00ff00;
+        }
+        .error {
+            color: #ff0000;
+        }
+        .success {
+            color: #00ff00;
+        }
+        .warning {
+            color: #ffaa00;
+        }
+        button {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>AGRO DOM DIAGNOSTICS</h1>
+    <button onclick="runDiagnostics()">RUN DIAGNOSTICS</button>
+    <button onclick="openAgro()">OPEN AGRO GUI</button>
+    <div id="output"></div>
+
+    <script>
+        function openAgro() {
+            window.open('http://127.0.0.1:8012', '_blank');
+        }
+
+        function log(message, className = '') {
+            const div = document.createElement('div');
+            div.className = 'result ' + className;
+            div.innerHTML = message;
+            document.getElementById('output').appendChild(div);
+        }
+
+        function runDiagnostics() {
+            document.getElementById('output').innerHTML = '';
+
+            // Open AGRO in iframe to inspect
+            const iframe = document.createElement('iframe');
+            iframe.src = 'http://127.0.0.1:8012';
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
+
+            iframe.onload = function() {
+                try {
+                    const doc = iframe.contentDocument || iframe.contentWindow.document;
+
+                    log('=== CONTENT CHECK ===', 'success');
+                    const tabs = ['start', 'dashboard', 'chat', 'vscode', 'grafana', 'rag', 'profiles', 'infrastructure', 'admin'];
+                    tabs.forEach(id => {
+                        const el = doc.getElementById('tab-' + id);
+                        if (!el) {
+                            log(`tab-${id}: <span class="error">✗ NOT FOUND</span>`);
+                        } else {
+                            const size = el.innerHTML.length;
+                            const visible = el.offsetHeight > 0;
+                            const active = el.classList.contains('active');
+                            log(`tab-${id}: ${size > 0 ? '<span class="success">✓ ' + size + ' chars</span>' : '<span class="error">✗ EMPTY</span>'} | Visible: ${visible ? '<span class="success">YES</span>' : '<span class="error">NO</span>'} | Active: ${active ? '<span class="success">YES</span>' : '<span class="warning">NO</span>'}`);
+                        }
+                    });
+
+                    log('<br>=== ACTIVE TAB ===', 'success');
+                    const active = doc.querySelector('.tab-content.active');
+                    if (active) {
+                        log('Active tab ID: <span class="success">' + active.id + '</span>');
+                        log('Active tab content length: <span class="success">' + active.innerHTML.length + ' chars</span>');
+                        log('Active tab visible: <span class="' + (active.offsetHeight > 0 ? 'success' : 'error') + '">' + (active.offsetHeight > 0 ? 'YES' : 'NO') + '</span>');
+                    } else {
+                        log('<span class="error">NO ACTIVE TAB FOUND!</span>');
+                    }
+
+                    log('<br>=== TAB BUTTONS ===', 'success');
+                    const buttons = doc.querySelectorAll('[data-tab]');
+                    log('Total buttons: <span class="success">' + buttons.length + '</span>');
+                    buttons.forEach(btn => {
+                        const tabId = btn.getAttribute('data-tab');
+                        const isActive = btn.classList.contains('active');
+                        log(`Button: <span class="warning">${tabId}</span> - Active: ${isActive ? '<span class="success">YES</span>' : '<span class="error">NO</span>'}`);
+                    });
+
+                    log('<br>=== CSS CLASSES ===', 'success');
+                    const allTabContents = doc.querySelectorAll('.tab-content');
+                    log('Total .tab-content divs: <span class="success">' + allTabContents.length + '</span>');
+
+                    log('<br>=== TESTING TAB SWITCH ===', 'success');
+                    const dashboardBtn = doc.querySelector('[data-tab="dashboard"]');
+                    if (dashboardBtn) {
+                        log('Found dashboard button, clicking...');
+                        dashboardBtn.click();
+
+                        setTimeout(() => {
+                            const dashboard = doc.getElementById('tab-dashboard');
+                            log('After clicking dashboard:');
+                            log('  Button .active: <span class="' + (dashboardBtn.classList.contains('active') ? 'success' : 'error') + '">' + dashboardBtn.classList.contains('active') + '</span>');
+                            log('  Div .active: <span class="' + (dashboard?.classList.contains('active') ? 'success' : 'error') + '">' + (dashboard?.classList.contains('active')) + '</span>');
+                            log('  Div visible: <span class="' + (dashboard?.offsetHeight > 0 ? 'success' : 'error') + '">' + (dashboard?.offsetHeight > 0) + '</span>');
+                            log('  Div height: <span class="warning">' + (dashboard?.offsetHeight || 0) + 'px</span>');
+                        }, 100);
+                    } else {
+                        log('<span class="error">Dashboard button not found!</span>');
+                    }
+
+                    log('<br>=== CHECKING tabs.js ===', 'success');
+                    const tabsLoaded = typeof iframe.contentWindow.Tabs !== 'undefined';
+                    log('window.Tabs exists: <span class="' + (tabsLoaded ? 'success' : 'error') + '">' + tabsLoaded + '</span>');
+                    if (tabsLoaded) {
+                        log('window.Tabs methods: <span class="warning">' + Object.keys(iframe.contentWindow.Tabs).join(', ') + '</span>');
+                    }
+
+                } catch (e) {
+                    log('<span class="error">ERROR: ' + e.message + '</span>');
+                    log('<span class="warning">Note: If you see CORS errors, you need to run this diagnostic from the same origin (http://127.0.0.1:8012)</span>');
+                }
+            };
+        }
+    </script>
+</body>
+</html>

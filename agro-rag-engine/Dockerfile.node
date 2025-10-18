@@ -1,9 +1,0 @@
-FROM node:20-alpine
-WORKDIR /app
-COPY node_mcp/package.json ./node_mcp/package.json
-RUN cd node_mcp && npm install --omit=dev
-COPY node_mcp ./node_mcp
-WORKDIR /app/node_mcp
-EXPOSE 8014
-CMD ["npm", "start"]
-

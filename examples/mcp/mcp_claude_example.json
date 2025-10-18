@@ -43,7 +43,7 @@ The function sets up various event listeners for buttons related to the active t
 - `btn-trace-open-ls` → opens LangSmith URL
 - `chat-send` → `sendChat`
 
-**Source:** `/Users/davidmontgomery/agro/gui/app.js:1-39`
+**Source:** `/Users/davidmontgomery/agro-rag-engine/gui/app.js:1-39`
 
 ---
 
@@ -67,7 +67,7 @@ The function sets up various event listeners for buttons related to the active t
 - `tab-infra`
 - `tab-tools`
 
-**Source:** `/Users/davidmontgomery/agro/infra/tests/test_gui_basic.py:20-34`
+**Source:** `/Users/davidmontgomery/agro-rag-engine/infra/tests/test_gui_basic.py:20-34`
 
 ---
 
@@ -173,7 +173,7 @@ function initThemeFromEnv(env) {
 }
 ```
 
-**Source:** `/Users/davidmontgomery/agro/gui/app.js` and `/Users/davidmontgomery/agro/gui/js/chat.js`
+**Source:** `/Users/davidmontgomery/agro-rag-engine/gui/app.js` and `/Users/davidmontgomery/agro-rag-engine/gui/js/chat.js`
 
 ---
 
@@ -235,7 +235,7 @@ loadChatSettings() {
 }
 ```
 
-**Source:** `/Users/davidmontgomery/agro/gui/js/chat.js:1-32`
+**Source:** `/Users/davidmontgomery/agro-rag-engine/gui/js/chat.js:1-32`
 
 ---
 
@@ -264,7 +264,7 @@ function bindTabs() {
 2. **Event Listener** - Adds `click` event listener to each button
 3. **Switching** - Retrieves tab name from `data-tab` attribute and calls `switchTab()`
 
-**Source:** `/Users/davidmontgomery/agro/gui/app.js`
+**Source:** `/Users/davidmontgomery/agro-rag-engine/gui/app.js`
 
 ---
 
@@ -288,7 +288,7 @@ function bindTabs() {
 | Storage      | `storage`                           |
 | Editor       | `editor`                            |
 
-**Source:** `/Users/davidmontgomery/agro/gui/app.js:1-33`
+**Source:** `/Users/davidmontgomery/agro-rag-engine/gui/app.js:1-33`
 
 ---
 
@@ -329,7 +329,7 @@ function loadStorageCalculator() {
 - Only loads once, preventing unnecessary reloading when switching tabs
 - Loads HTML template and initializes calculator on first access
 
-**Source:** `/Users/davidmontgomery/agro/gui/app.js:1-37`
+**Source:** `/Users/davidmontgomery/agro-rag-engine/gui/app.js:1-37`
 
 ---
 

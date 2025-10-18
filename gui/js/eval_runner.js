@@ -377,6 +377,22 @@ function showToast(message, type = 'info') {
 
 // Initialize
 if (typeof window !== 'undefined') {
+    // Initialization function called by golden_questions.js when rag-evaluate view mounts
+    // Does NOT register view - golden_questions.js handles that
+    window.initEvalRunner = function() {
+        console.log('[eval_runner.js] Initializing eval runner for rag-evaluate view');
+        const btnRun = document.getElementById('btn-eval-run');
+        const btnSaveBaseline = document.getElementById('btn-eval-save-baseline');
+        const btnCompare = document.getElementById('btn-eval-compare');
+        const btnExport = document.getElementById('btn-eval-export');
+
+        if (btnRun) btnRun.addEventListener('click', runEvaluation);
+        if (btnSaveBaseline) btnSaveBaseline.addEventListener('click', saveBaseline);
+        if (btnCompare) btnCompare.addEventListener('click', compareWithBaseline);
+        if (btnExport) btnExport.addEventListener('click', exportEvalResults);
+    };
+
+    // Legacy mode support
     window.addEventListener('DOMContentLoaded', () => {
         const btnRun = document.getElementById('btn-eval-run');
         const btnSaveBaseline = document.getElementById('btn-eval-save-baseline');
@@ -388,4 +404,6 @@ if (typeof window !== 'undefined') {
         if (btnCompare) btnCompare.addEventListener('click', compareWithBaseline);
         if (btnExport) btnExport.addEventListener('click', exportEvalResults);
     });
+
+    console.log('[eval_runner.js] Module loaded (coordination with golden_questions.js for rag-evaluate view)');
 }

@@ -28,6 +28,8 @@ def main():
         print('No golden file found at', GOLDEN_PATH)
         return
     gold = json.load(open(GOLDEN_PATH))
+    # Filter out comment entries
+    gold = [row for row in gold if 'q' in row]
     total = len(gold)
     hits_top1 = 0
     hits_topk = 0

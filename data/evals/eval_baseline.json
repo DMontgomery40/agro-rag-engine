@@ -17,16 +17,16 @@
         "mcp"
       ],
       "top1_path": [
-        "/Users/davidmontgomery/agro/langgraph_app.py"
+        "/Users/davidmontgomery/agro-rag-engine/langgraph_app.py"
       ],
       "top1_hit": false,
       "topk_hit": true,
       "top_paths": [
-        "/Users/davidmontgomery/agro/langgraph_app.py",
-        "/Users/davidmontgomery/agro/scripts/test_token_comparison.py",
-        "/Users/davidmontgomery/agro/scripts/quick_token_test.py",
-        "/Users/davidmontgomery/agro/infra/tests/test_api.py",
-        "/Users/davidmontgomery/agro/node_mcp/server.js"
+        "/Users/davidmontgomery/agro-rag-engine/langgraph_app.py",
+        "/Users/davidmontgomery/agro-rag-engine/scripts/test_token_comparison.py",
+        "/Users/davidmontgomery/agro-rag-engine/scripts/quick_token_test.py",
+        "/Users/davidmontgomery/agro-rag-engine/infra/tests/test_api.py",
+        "/Users/davidmontgomery/agro-rag-engine/node_mcp/server.js"
       ]
     },
     {
@@ -36,16 +36,16 @@
         "/server/mcp"
       ],
       "top1_path": [
-        "/Users/davidmontgomery/agro/mcp_server.py"
+        "/Users/davidmontgomery/agro-rag-engine/mcp_server.py"
       ],
       "top1_hit": false,
       "topk_hit": true,
       "top_paths": [
-        "/Users/davidmontgomery/agro/mcp_server.py",
-        "/Users/davidmontgomery/agro/mcp_server_http.py",
-        "/Users/davidmontgomery/agro/server/mcp/__init__.py",
-        "/Users/davidmontgomery/agro/server/mcp/server.py",
-        "/Users/davidmontgomery/agro/scripts/full_comparison.py"
+        "/Users/davidmontgomery/agro-rag-engine/mcp_server.py",
+        "/Users/davidmontgomery/agro-rag-engine/mcp_server_http.py",
+        "/Users/davidmontgomery/agro-rag-engine/server/mcp/__init__.py",
+        "/Users/davidmontgomery/agro-rag-engine/server/mcp/server.py",
+        "/Users/davidmontgomery/agro-rag-engine/scripts/full_comparison.py"
       ]
     },
     {
@@ -58,16 +58,16 @@
         "app.js"
       ],
       "top1_path": [
-        "/Users/davidmontgomery/agro/gui/app.js"
+        "/Users/davidmontgomery/agro-rag-engine/gui/app.js"
       ],
       "top1_hit": true,
       "topk_hit": true,
       "top_paths": [
-        "/Users/davidmontgomery/agro/gui/app.js",
-        "/Users/davidmontgomery/agro/gui/app.js",
-        "/Users/davidmontgomery/agro/gui/app.js",
-        "/Users/davidmontgomery/agro/gui/app.js",
-        "/Users/davidmontgomery/agro/gui/app.js"
+        "/Users/davidmontgomery/agro-rag-engine/gui/app.js",
+        "/Users/davidmontgomery/agro-rag-engine/gui/app.js",
+        "/Users/davidmontgomery/agro-rag-engine/gui/app.js",
+        "/Users/davidmontgomery/agro-rag-engine/gui/app.js",
+        "/Users/davidmontgomery/agro-rag-engine/gui/app.js"
       ]
     },
     {
@@ -78,16 +78,16 @@
         "example"
       ],
       "top1_path": [
-        "/Users/davidmontgomery/agro/tests/api.spec.ts"
+        "/Users/davidmontgomery/agro-rag-engine/tests/api.spec.ts"
       ],
       "top1_hit": true,
       "topk_hit": true,
       "top_paths": [
-        "/Users/davidmontgomery/agro/tests/api.spec.ts",
-        "/Users/davidmontgomery/agro/scripts/test_token_savings.py",
-        "/Users/davidmontgomery/agro/tests/api.spec.ts",
-        "/Users/davidmontgomery/agro/infra/tests/test_interactions.py",
-        "/Users/davidmontgomery/agro/node_mcp/server.js"
+        "/Users/davidmontgomery/agro-rag-engine/tests/api.spec.ts",
+        "/Users/davidmontgomery/agro-rag-engine/scripts/test_token_savings.py",
+        "/Users/davidmontgomery/agro-rag-engine/tests/api.spec.ts",
+        "/Users/davidmontgomery/agro-rag-engine/infra/tests/test_interactions.py",
+        "/Users/davidmontgomery/agro-rag-engine/node_mcp/server.js"
       ]
     },
     {
@@ -97,16 +97,16 @@
         "retrieval/hybrid_search.py"
       ],
       "top1_path": [
-        "/Users/davidmontgomery/agro/retrieval/__init__.py"
+        "/Users/davidmontgomery/agro-rag-engine/retrieval/__init__.py"
       ],
       "top1_hit": false,
       "topk_hit": false,
       "top_paths": [
-        "/Users/davidmontgomery/agro/retrieval/__init__.py",
-        "/Users/davidmontgomery/agro/hybrid_search.py",
-        "/Users/davidmontgomery/agro/scripts/test_token_comparison.py",
-        "/Users/davidmontgomery/agro/scripts/test_token_savings.py",
-        "/Users/davidmontgomery/agro/gui/js/profile_renderer.js"
+        "/Users/davidmontgomery/agro-rag-engine/retrieval/__init__.py",
+        "/Users/davidmontgomery/agro-rag-engine/hybrid_search.py",
+        "/Users/davidmontgomery/agro-rag-engine/scripts/test_token_comparison.py",
+        "/Users/davidmontgomery/agro-rag-engine/scripts/test_token_savings.py",
+        "/Users/davidmontgomery/agro-rag-engine/gui/js/profile_renderer.js"
       ]
     },
     {
@@ -117,16 +117,16 @@
         "keywords/generate"
       ],
       "top1_path": [
-        "/Users/davidmontgomery/agro/server/app.py"
+        "/Users/davidmontgomery/agro-rag-engine/server/app.py"
       ],
       "top1_hit": true,
       "topk_hit": true,
       "top_paths": [
-        "/Users/davidmontgomery/agro/server/app.py",
-        "/Users/davidmontgomery/agro/gui/app.js",
-        "/Users/davidmontgomery/agro/gui/app.js",
-        "/Users/davidmontgomery/agro/gui/app.js",
-        "/Users/davidmontgomery/agro/server/app.py"
+        "/Users/davidmontgomery/agro-rag-engine/server/app.py",
+        "/Users/davidmontgomery/agro-rag-engine/gui/app.js",
+        "/Users/davidmontgomery/agro-rag-engine/gui/app.js",
+        "/Users/davidmontgomery/agro-rag-engine/gui/app.js",
+        "/Users/davidmontgomery/agro-rag-engine/server/app.py"
       ]
     },
     {
@@ -136,16 +136,16 @@
         "metadata_enricher.py"
       ],
       "top1_path": [
-        "/Users/davidmontgomery/agro/common/metadata.py"
+        "/Users/davidmontgomery/agro-rag-engine/common/metadata.py"
       ],
       "top1_hit": false,
       "topk_hit": false,
       "top_paths": [
-        "/Users/davidmontgomery/agro/common/metadata.py",
-        "/Users/davidmontgomery/agro/server/app.py",
-        "/Users/davidmontgomery/agro/gui/js/tooltips.js",
-        "/Users/davidmontgomery/agro/gui/app.js",
-        "/Users/davidmontgomery/agro/gui/app.js"
+        "/Users/davidmontgomery/agro-rag-engine/common/metadata.py",
+        "/Users/davidmontgomery/agro-rag-engine/server/app.py",
+        "/Users/davidmontgomery/agro-rag-engine/gui/js/tooltips.js",
+        "/Users/davidmontgomery/agro-rag-engine/gui/app.js",
+        "/Users/davidmontgomery/agro-rag-engine/gui/app.js"
       ]
     },
     {
@@ -155,16 +155,16 @@
         "indexer/index_repo.py"
       ],
       "top1_path": [
-        "/Users/davidmontgomery/agro/retrieval/hybrid_search.py"
+        "/Users/davidmontgomery/agro-rag-engine/retrieval/hybrid_search.py"
       ],
       "top1_hit": false,
       "topk_hit": false,
       "top_paths": [
-        "/Users/davidmontgomery/agro/retrieval/hybrid_search.py",
-        "/Users/davidmontgomery/agro/gui/js/profile_renderer.js",
-        "/Users/davidmontgomery/agro/server/app.py",
-        "/Users/davidmontgomery/agro/hybrid_search.py",
-        "/Users/davidmontgomery/agro/retrieval/hybrid_search.py"
+        "/Users/davidmontgomery/agro-rag-engine/retrieval/hybrid_search.py",
+        "/Users/davidmontgomery/agro-rag-engine/gui/js/profile_renderer.js",
+        "/Users/davidmontgomery/agro-rag-engine/server/app.py",
+        "/Users/davidmontgomery/agro-rag-engine/hybrid_search.py",
+        "/Users/davidmontgomery/agro-rag-engine/retrieval/hybrid_search.py"
       ]
     },
     {
@@ -176,16 +176,16 @@
         "index/status"
       ],
       "top1_path": [
-        "/Users/davidmontgomery/agro/server/app.py"
+        "/Users/davidmontgomery/agro-rag-engine/server/app.py"
       ],
       "top1_hit": true,
       "topk_hit": true,
       "top_paths": [
-        "/Users/davidmontgomery/agro/server/app.py",
-        "/Users/davidmontgomery/agro/gui/app.js",
-        "/Users/davidmontgomery/agro/gui/app.js",
-        "/Users/davidmontgomery/agro/gui/js/index-display.js",
-        "/Users/davidmontgomery/agro/gui/app.js"
+        "/Users/davidmontgomery/agro-rag-engine/server/app.py",
+        "/Users/davidmontgomery/agro-rag-engine/gui/app.js",
+        "/Users/davidmontgomery/agro-rag-engine/gui/app.js",
+        "/Users/davidmontgomery/agro-rag-engine/gui/js/index-display.js",
+        "/Users/davidmontgomery/agro-rag-engine/gui/app.js"
       ]
     },
     {
@@ -197,16 +197,16 @@
         "indexer/build_cards.py"
       ],
       "top1_path": [
-        "/Users/davidmontgomery/agro/indexer/build_cards.py"
+        "/Users/davidmontgomery/agro-rag-engine/indexer/build_cards.py"
       ],
       "top1_hit": true,
       "topk_hit": true,
       "top_paths": [
-        "/Users/davidmontgomery/agro/indexer/build_cards.py",
-        "/Users/davidmontgomery/agro/build_cards.py",
-        "/Users/davidmontgomery/agro/scripts/analyze_keywords_v2.py",
-        "/Users/davidmontgomery/agro/gui/app.js",
-        "/Users/davidmontgomery/agro/scripts/test_backend.py"
+        "/Users/davidmontgomery/agro-rag-engine/indexer/build_cards.py",
+        "/Users/davidmontgomery/agro-rag-engine/build_cards.py",
+        "/Users/davidmontgomery/agro-rag-engine/scripts/analyze_keywords_v2.py",
+        "/Users/davidmontgomery/agro-rag-engine/gui/app.js",
+        "/Users/davidmontgomery/agro-rag-engine/scripts/test_backend.py"
       ]
     },
     {
@@ -217,16 +217,16 @@
         "api/golden"
       ],
       "top1_path": [
-        "/Users/davidmontgomery/agro/gui/js/golden_questions.js"
+        "/Users/davidmontgomery/agro-rag-engine/gui/js/golden_questions.js"
       ],
       "top1_hit": false,
       "topk_hit": true,
       "top_paths": [
-        "/Users/davidmontgomery/agro/gui/js/golden_questions.js",
-        "/Users/davidmontgomery/agro/server/app.py",
-        "/Users/davidmontgomery/agro/gui/js/golden_questions.js",
-        "/Users/davidmontgomery/agro/server/app.py",
-        "/Users/davidmontgomery/agro/gui/js/golden_questions.js"
+        "/Users/davidmontgomery/agro-rag-engine/gui/js/golden_questions.js",
+        "/Users/davidmontgomery/agro-rag-engine/server/app.py",
+        "/Users/davidmontgomery/agro-rag-engine/gui/js/golden_questions.js",
+        "/Users/davidmontgomery/agro-rag-engine/server/app.py",
+        "/Users/davidmontgomery/agro-rag-engine/gui/js/golden_questions.js"
       ]
     },
     {
@@ -237,16 +237,16 @@
         "api/golden/test"
       ],
       "top1_path": [
-        "/Users/davidmontgomery/agro/server/app.py"
+        "/Users/davidmontgomery/agro-rag-engine/server/app.py"
       ],
       "top1_hit": true,
       "topk_hit": true,
       "top_paths": [
-        "/Users/davidmontgomery/agro/server/app.py",
-        "/Users/davidmontgomery/agro/server/app.py",
-        "/Users/davidmontgomery/agro/server/app.py",
-        "/Users/davidmontgomery/agro/gui/js/golden_questions.js",
-        "/Users/davidmontgomery/agro/gui/js/golden_questions.js"
+        "/Users/davidmontgomery/agro-rag-engine/server/app.py",
+        "/Users/davidmontgomery/agro-rag-engine/server/app.py",
+        "/Users/davidmontgomery/agro-rag-engine/server/app.py",
+        "/Users/davidmontgomery/agro-rag-engine/gui/js/golden_questions.js",
+        "/Users/davidmontgomery/agro-rag-engine/gui/js/golden_questions.js"
       ]
     },
     {
@@ -258,16 +258,16 @@
         "gui/index.html"
       ],
       "top1_path": [
-        "/Users/davidmontgomery/agro/server/app.py"
+        "/Users/davidmontgomery/agro-rag-engine/server/app.py"
       ],
       "top1_hit": true,
       "topk_hit": true,
       "top_paths": [
-        "/Users/davidmontgomery/agro/server/app.py",
-        "/Users/davidmontgomery/agro/tests/gui.spec.ts",
-        "/Users/davidmontgomery/agro/common/paths.py",
-        "/Users/davidmontgomery/agro/gui/js/tooltips.js",
-        "/Users/davidmontgomery/agro/gui/app.js"
+        "/Users/davidmontgomery/agro-rag-engine/server/app.py",
+        "/Users/davidmontgomery/agro-rag-engine/tests/gui.spec.ts",
+        "/Users/davidmontgomery/agro-rag-engine/common/paths.py",
+        "/Users/davidmontgomery/agro-rag-engine/gui/js/tooltips.js",
+        "/Users/davidmontgomery/agro-rag-engine/gui/app.js"
       ]
     },
     {
@@ -277,16 +277,16 @@
         "config_loader.py"
       ],
       "top1_path": [
-        "/Users/davidmontgomery/agro/common/config_loader.py"
+        "/Users/davidmontgomery/agro-rag-engine/common/config_loader.py"
       ],
       "top1_hit": true,
       "topk_hit": true,
       "top_paths": [
-        "/Users/davidmontgomery/agro/common/config_loader.py",
-        "/Users/davidmontgomery/agro/scripts/quick_setup.py",
-        "/Users/davidmontgomery/agro/scripts/make_repos_json.py",
-        "/Users/davidmontgomery/agro/server/index_stats.py",
-        "/Users/davidmontgomery/agro/common/config_loader.py"
+        "/Users/davidmontgomery/agro-rag-engine/common/config_loader.py",
+        "/Users/davidmontgomery/agro-rag-engine/scripts/quick_setup.py",
+        "/Users/davidmontgomery/agro-rag-engine/scripts/make_repos_json.py",
+        "/Users/davidmontgomery/agro-rag-engine/server/index_stats.py",
+        "/Users/davidmontgomery/agro-rag-engine/common/config_loader.py"
       ]
     },
     {
@@ -296,16 +296,16 @@
         "server/mcp/server.py"
       ],
       "top1_path": [
-        "/Users/davidmontgomery/agro/server/mcp/server.py"
+        "/Users/davidmontgomery/agro-rag-engine/server/mcp/server.py"
       ],
       "top1_hit": true,
       "topk_hit": true,
       "top_paths": [
-        "/Users/davidmontgomery/agro/server/mcp/server.py",
-        "/Users/davidmontgomery/agro/scripts/test_token_savings.py",
-        "/Users/davidmontgomery/agro/server/mcp/server.py",
-        "/Users/davidmontgomery/agro/scripts/test_token_comparison.py",
-        "/Users/davidmontgomery/agro/mcp_server_http.py"
+        "/Users/davidmontgomery/agro-rag-engine/server/mcp/server.py",
+        "/Users/davidmontgomery/agro-rag-engine/scripts/test_token_savings.py",
+        "/Users/davidmontgomery/agro-rag-engine/server/mcp/server.py",
+        "/Users/davidmontgomery/agro-rag-engine/scripts/test_token_comparison.py",
+        "/Users/davidmontgomery/agro-rag-engine/mcp_server_http.py"
       ]
     },
     {
@@ -316,16 +316,16 @@
         "api/traces"
       ],
       "top1_path": [
-        "/Users/davidmontgomery/agro/gui/app.js"
+        "/Users/davidmontgomery/agro-rag-engine/gui/app.js"
       ],
       "top1_hit": false,
       "topk_hit": true,
       "top_paths": [
-        "/Users/davidmontgomery/agro/gui/app.js",
-        "/Users/davidmontgomery/agro/server/langgraph_app.py",
-        "/Users/davidmontgomery/agro/server/tracing.py",
-        "/Users/davidmontgomery/agro/langgraph_app.py",
-        "/Users/davidmontgomery/agro/server/app.py"
+        "/Users/davidmontgomery/agro-rag-engine/gui/app.js",
+        "/Users/davidmontgomery/agro-rag-engine/server/langgraph_app.py",
+        "/Users/davidmontgomery/agro-rag-engine/server/tracing.py",
+        "/Users/davidmontgomery/agro-rag-engine/langgraph_app.py",
+        "/Users/davidmontgomery/agro-rag-engine/server/app.py"
       ]
     }
   ]

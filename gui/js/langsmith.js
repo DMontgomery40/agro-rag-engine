@@ -41,6 +41,15 @@
     });
   }
 
+  // Initialization function called by secrets.js when admin view mounts
+  // Does NOT register view - secrets.js handles that
+  window.initLangSmith = function() {
+    console.log('[langsmith.js] Initializing langsmith for admin view');
+    bind();
+  };
+
   window.LangSmith = { bind };
+
+  console.log('[langsmith.js] Module loaded (coordination with secrets.js for admin view)');
 })();
 

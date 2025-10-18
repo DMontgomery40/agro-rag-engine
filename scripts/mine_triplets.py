@@ -30,7 +30,8 @@ def main():
     n_in, n_out = 0, 0
     OUT.parent.mkdir(parents=True, exist_ok=True)
     
-    with OUT.open("w", encoding="utf-8") as out:
+    # APPEND mode to not overwrite golden triplets
+    with OUT.open("a", encoding="utf-8") as out:
         # First pass: collect feedback by event_id
         thumbs = {}
         clicks = {}

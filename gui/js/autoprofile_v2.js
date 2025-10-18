@@ -187,5 +187,15 @@
     }
   }
 
+  // Initialization function called by config.js when profiles view mounts
+  // Does NOT register view - config.js handles that
+  window.initAutoProfile = function() {
+    console.log('[autoprofile_v2.js] Initializing AutoProfile v2 for profiles view');
+    // Initialize autoprofile state here if needed
+    // Currently stateless, so nothing to do
+  };
+
   window.AutoProfileV2 = { run };
+
+  console.log('[autoprofile_v2.js] Module loaded (coordination with config.js for profiles view)');
 })();

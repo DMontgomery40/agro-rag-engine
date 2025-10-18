@@ -12,6 +12,16 @@ try:
 except Exception:
     pass
 
+# Initialize LangTrace for full observability (must be before LLM imports)
+try:
+    from langtrace_python_sdk import langtrace
+    langtrace.init(api_key=os.getenv('LANGTRACE_API_KEY', '0b20be5d3e82b7c514cd1bea1fa583f92683e55ebe895452ece7d9261d4412d2'))
+    from opentelemetry import trace
+    _tracer = trace.get_tracer(__name__)
+except Exception as e:
+    print(f"⚠ LangTrace init failed (continuing without tracing): {e}")
+    _tracer = None
+
 from qdrant_client import QdrantClient, models
 import bm25s
 from bm25s.tokenization import Tokenizer
@@ -256,6 +266,14 @@ def _load_cards_map(repo: str) -> Dict:
 
 
 def search(query: str, repo: str, topk_dense: int = 75, topk_sparse: int = 75, final_k: int = 10, trace: object | None = None) -> List[Dict]:
+    # Create root span for entire search operation
+    if _tracer:
+        with _tracer.start_as_current_span("agro.hybrid_search", attributes={"query": query, "repo": repo, "final_k": final_k}):
+            return _search_impl(query, repo, topk_dense, topk_sparse, final_k, trace)
+    else:
+        return _search_impl(query, repo, topk_dense, topk_sparse, final_k, trace)
+
+def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final_k: int, trace: object | None) -> List[Dict]:
     chunks = _load_chunks(repo)
     if not chunks:
         return []
@@ -264,55 +282,103 @@ def search(query: str, repo: str, topk_dense: int = 75, topk_sparse: int = 75, f
     use_synonyms = str(os.getenv('USE_SEMANTIC_SYNONYMS', '1')).strip().lower() in {'1', 'true', 'on'}
     expanded_query = expand_query_with_synonyms(query, repo, max_expansions=3) if use_synonyms else query
     
+    # SPAN: Vector Search (Qdrant)
     dense_pairs = []
-    qc = QdrantClient(url=QDRANT_URL)
-    coll = os.getenv('COLLECTION_NAME', f'code_chunks_{repo}')
-    try:
-        # Use expanded query for embedding
-        e = _get_embedding(expanded_query, kind="query")
-    except Exception:
-        e = []
-    try:
-        backend = (os.getenv('VECTOR_BACKEND','qdrant') or 'qdrant').lower()
-        if backend == 'faiss':
-            # Experimental FAISS backend (offline). If not present, fall back to sparse-only.
+    if _tracer:
+        with _tracer.start_as_current_span("agro.vector_search", attributes={"query": expanded_query, "topk": topk_dense}) as span:
+            qc = QdrantClient(url=QDRANT_URL)
+            coll = os.getenv('COLLECTION_NAME', f'code_chunks_{repo}')
+            try:
+                e = _get_embedding(expanded_query, kind="query")
+                backend = (os.getenv('VECTOR_BACKEND','qdrant') or 'qdrant').lower()
+                if backend != 'faiss':
+                    dres = qc.query_points(
+                        collection_name=coll,
+                        query=e,
+                        using='dense',
+                        limit=topk_dense,
+                        with_payload=models.PayloadSelectorInclude(include=['file_path', 'start_line', 'end_line', 'language', 'layer', 'repo', 'hash', 'id'])
+                    )
+                    points = getattr(dres, 'points', dres)
+                    dense_pairs = [(str(p.id), dict(p.payload)) for p in points]
+                    span.set_attribute("results_count", len(dense_pairs))
+            except Exception as ex:
+                span.set_attribute("error", str(ex))
+                dense_pairs = []
+    else:
+        # No tracing
+        qc = QdrantClient(url=QDRANT_URL)
+        coll = os.getenv('COLLECTION_NAME', f'code_chunks_{repo}')
+        try:
+            e = _get_embedding(expanded_query, kind="query")
+        except Exception:
+            e = []
+        try:
+            backend = (os.getenv('VECTOR_BACKEND','qdrant') or 'qdrant').lower()
+            if backend == 'faiss':
+                dense_pairs = []
+            else:
+                dres = qc.query_points(
+                    collection_name=coll,
+                    query=e,
+                    using='dense',
+                    limit=topk_dense,
+                    with_payload=models.PayloadSelectorInclude(include=['file_path', 'start_line', 'end_line', 'language', 'layer', 'repo', 'hash', 'id'])
+                )
+                points = getattr(dres, 'points', dres)
+                dense_pairs = [(str(p.id), dict(p.payload)) for p in points]
+        except Exception:
             dense_pairs = []
-        else:
-            dres = qc.query_points(
-                collection_name=coll,
-                query=e,
-                using='dense',
-                limit=topk_dense,
-                with_payload=models.PayloadSelectorInclude(include=['file_path', 'start_line', 'end_line', 'language', 'layer', 'repo', 'hash', 'id'])
-            )
-            points = getattr(dres, 'points', dres)
-            dense_pairs = [(str(p.id), dict(p.payload)) for p in points]
-    except Exception:
-        dense_pairs = []
 
-    idx_dir = os.path.join(out_dir(repo), 'bm25_index')
-    retriever = bm25s.BM25.load(idx_dir)
-    tokenizer = Tokenizer(stemmer=Stemmer('english'), stopwords='en')
-    # Use expanded query for BM25 sparse retrieval
-    tokens = tokenizer.tokenize([expanded_query])
-    ids, _ = retriever.retrieve(tokens, k=topk_sparse)
-    ids = ids.tolist()[0] if hasattr(ids, 'tolist') else list(ids[0])
-    id_map = _load_bm25_map(idx_dir)
-    by_chunk_id = {str(c['id']): c for c in chunks}
-    sparse_pairs = []
-    for i in ids:
-        if id_map is not None:
-            if 0 <= i < len(id_map):
-                pid_or_cid = id_map[i]
-                key = str(pid_or_cid)
-                if key in by_chunk_id:
-                    sparse_pairs.append((key, by_chunk_id[key]))
+    # SPAN: BM25 Sparse Retrieval
+    if _tracer:
+        with _tracer.start_as_current_span("agro.bm25_search", attributes={"query": expanded_query, "topk": topk_sparse}) as span:
+            idx_dir = os.path.join(out_dir(repo), 'bm25_index')
+            retriever = bm25s.BM25.load(idx_dir)
+            tokenizer = Tokenizer(stemmer=Stemmer('english'), stopwords='en')
+            tokens = tokenizer.tokenize([expanded_query])
+            ids, _ = retriever.retrieve(tokens, k=topk_sparse)
+            ids = ids.tolist()[0] if hasattr(ids, 'tolist') else list(ids[0])
+            id_map = _load_bm25_map(idx_dir)
+            by_chunk_id = {str(c['id']): c for c in chunks}
+            sparse_pairs = []
+            for i in ids:
+                if id_map is not None:
+                    if 0 <= i < len(id_map):
+                        pid_or_cid = id_map[i]
+                        key = str(pid_or_cid)
+                        if key in by_chunk_id:
+                            sparse_pairs.append((key, by_chunk_id[key]))
+                        else:
+                            if 0 <= i < len(chunks):
+                                sparse_pairs.append((str(chunks[i]['id']), chunks[i]))
                 else:
                     if 0 <= i < len(chunks):
                         sparse_pairs.append((str(chunks[i]['id']), chunks[i]))
-        else:
-            if 0 <= i < len(chunks):
-                sparse_pairs.append((str(chunks[i]['id']), chunks[i]))
+            span.set_attribute("results_count", len(sparse_pairs))
+    else:
+        idx_dir = os.path.join(out_dir(repo), 'bm25_index')
+        retriever = bm25s.BM25.load(idx_dir)
+        tokenizer = Tokenizer(stemmer=Stemmer('english'), stopwords='en')
+        tokens = tokenizer.tokenize([expanded_query])
+        ids, _ = retriever.retrieve(tokens, k=topk_sparse)
+        ids = ids.tolist()[0] if hasattr(ids, 'tolist') else list(ids[0])
+        id_map = _load_bm25_map(idx_dir)
+        by_chunk_id = {str(c['id']): c for c in chunks}
+        sparse_pairs = []
+        for i in ids:
+            if id_map is not None:
+                if 0 <= i < len(id_map):
+                    pid_or_cid = id_map[i]
+                    key = str(pid_or_cid)
+                    if key in by_chunk_id:
+                        sparse_pairs.append((key, by_chunk_id[key]))
+                    else:
+                        if 0 <= i < len(chunks):
+                            sparse_pairs.append((str(chunks[i]['id']), chunks[i]))
+            else:
+                if 0 <= i < len(chunks):
+                    sparse_pairs.append((str(chunks[i]['id']), chunks[i]))
 
     card_chunk_ids: set = set()
     cards_retr = _load_cards_bm25(repo)
@@ -330,9 +396,21 @@ def search(query: str, repo: str, topk_dense: int = 75, topk_sparse: int = 75, f
         except Exception:
             pass
 
+    # SPAN: RRF Fusion
     dense_ids = [pid for pid, _ in dense_pairs]
     sparse_ids = [pid for pid, _ in sparse_pairs]
-    fused = rrf(dense_ids, sparse_ids, k=max(final_k, 2 * final_k)) if dense_pairs else sparse_ids[:final_k]
+    
+    if _tracer:
+        with _tracer.start_as_current_span("agro.rrf_fusion", attributes={
+            "dense_count": len(dense_ids),
+            "sparse_count": len(sparse_ids),
+            "final_k": final_k
+        }) as span:
+            fused = rrf(dense_ids, sparse_ids, k=max(final_k, 2 * final_k)) if dense_pairs else sparse_ids[:final_k]
+            span.set_attribute("fused_count", len(fused))
+    else:
+        fused = rrf(dense_ids, sparse_ids, k=max(final_k, 2 * final_k)) if dense_pairs else sparse_ids[:final_k]
+    
     by_id = {pid: p for pid, p in (dense_pairs + sparse_pairs)}
     docs = [by_id[pid] for pid in fused if pid in by_id]
     HYDRATION_MODE = (os.getenv('HYDRATION_MODE', 'lazy') or 'lazy').lower()
@@ -366,13 +444,44 @@ def search(query: str, repo: str, topk_dense: int = 75, topk_sparse: int = 75, f
     except Exception:
         pass
 
-    docs = ce_rerank(query, docs, top_k=final_k, trace=trace)
+    # Detect implementation queries BEFORE reranking
+    q_lower = query.lower()
+    wants_code = any(k in q_lower for k in ['implementation', 'where is', 'how does', 'function', 'class', 'method', 'api', 'code'])
+    
+    # If query wants code, ensure code files are prioritized in rerank candidates
+    if wants_code:
+        # Split into code vs non-code
+        code_docs = [d for d in docs if d.get('language', '').lower() in ('python', 'javascript', 'typescript', 'go', 'rust', 'java', 'cpp', 'c', 'php', 'ruby')]
+        other_docs = [d for d in docs if d not in code_docs]
+        # Take top code files + fill rest with others, but ensure we send more candidates to reranker
+        docs = code_docs[:min(50, len(code_docs))] + other_docs[:max(25, final_k)]
+    
+    # SPAN: Cross-Encoder Reranking
+    if _tracer:
+        with _tracer.start_as_current_span("agro.cross_encoder_rerank", attributes={
+            "candidates_count": len(docs),
+            "top_k": final_k
+        }) as span:
+            docs = ce_rerank(query, docs, top_k=final_k, trace=trace)
+            span.set_attribute("reranked_count", len(docs))
+    else:
+        docs = ce_rerank(query, docs, top_k=final_k, trace=trace)
 
     intent = _classify_query(query)
+    
     for d in docs:
         fp = d.get('file_path', '')
         layer = (d.get('layer') or '').lower()
+        lang = (d.get('language') or '').lower()
         score = float(d.get('rerank_score', 0.0) or 0.0)
+        
+        # MASSIVE adjustment for code vs docs queries
+        if wants_code:
+            if lang in ('python', 'javascript', 'typescript', 'go', 'rust', 'java', 'cpp', 'c'):
+                score += 0.50  # Huge boost for actual code
+            elif lang in ('markdown', 'md', 'rst', 'txt'):
+                score -= 0.50  # Massive penalty for docs
+        
         # Card hit bonus (semantic cards retrieval via BM25 over summaries)
         try:
             cid = str(d.get('id', '') or '')
@@ -443,10 +552,29 @@ def _apply_filename_boosts(docs: list[dict], question: str) -> None:
         fn = os.path.basename(fp)
         parts = fp.split('/')
         score = float(d.get('rerank_score', 0.0) or 0.0)
+        
+        # Apply boosts for filename/path matches
         if any(t and t in fn for t in terms):
             score *= 1.5
         if any(t and t in p for t in terms for p in parts):
             score *= 1.2
+        
+        # Apply boosts for high-value code files
+        if fp.endswith('.py'):
+            score *= 1.3  # Boost Python files
+        elif fp.endswith('index.html') or fp.endswith('/index.html'):
+            score *= 1.25  # Boost index.html files
+        elif fp.endswith(('.ts', '.tsx', '.js', '.jsx')):
+            score *= 1.2  # Boost TypeScript/JavaScript files
+        elif fp.endswith(('.go', '.rs', '.java', '.cpp', '.c')):
+            score *= 1.15  # Boost other code files
+        
+        # Apply penalties for documentation files (prefer code over docs)
+        if fp.endswith('.md'):
+            score *= 0.3  # Heavy penalty for markdown files
+        elif fp.endswith('.txt') or fp.endswith('.rst'):
+            score *= 0.5  # Medium penalty for text/rst files
+        
         d['rerank_score'] = score
     docs.sort(key=lambda x: x.get('rerank_score', 0.0), reverse=True)
 
@@ -517,6 +645,15 @@ def search_routed_multi(query: str, repo_override: str | None = None, m: int = 4
             continue
         seen.add(key)
         uniq.append(d)
+    
+    # CRITICAL: Prioritize code files for implementation queries BEFORE final rerank
+    q_lower = query.lower()
+    wants_code = any(k in q_lower for k in ['implementation', 'where is', 'how does', 'function', 'class', 'method', 'api', 'code'])
+    if wants_code:
+        code_docs = [d for d in uniq if d.get('language', '').lower() in ('python', 'javascript', 'typescript', 'go', 'rust', 'java', 'cpp', 'c')]
+        other_docs = [d for d in uniq if d not in code_docs]
+        uniq = code_docs + other_docs  # Code first
+    
     try:
         from .rerank import rerank_results as _rr
         reranked = _rr(query, uniq, top_k=final_k)

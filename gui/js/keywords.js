@@ -60,10 +60,17 @@
     }
   }
 
+  // Initialization function called by cards.js when rag-data-quality view mounts
+  // Does NOT register view - cards.js handles that
+  window.initKeywords = function() {
+    console.log('[keywords.js] Initializing keywords for rag-data-quality view');
+    loadKeywords();
+  };
+
   // Export public API
   window.Keywords = {
     loadKeywords
   };
 
-  console.log('[Keywords] Loaded');
+  console.log('[keywords.js] Module loaded (coordination with cards.js for rag-data-quality view)');
 })();

@@ -2,6 +2,13 @@
 # Lines starting with # are comments.
 # These patterns are applied in addition to built-in directory pruning in filtering.py.
 
+# Backup files
+**/*.bak
+**/*.bak[0-9]
+**/*.backup
+**/*.backup-*
+**/*backup-*
+
 # Build artifacts / vendor / caches
 **/node_modules/**
 **/vendor/**
@@ -38,12 +45,12 @@
 **/*.generated.*
 **/*.json.gz
 
-# Lockfiles (rarely helpful for RAG)
-**/pnpm-lock.yaml
-**/package-lock.json
-**/yarn.lock
-**/poetry.lock
-**/Pipfile.lock
+# Lockfiles - DISABLED for SOTA RAG (can be helpful for dependency context)
+# **/pnpm-lock.yaml
+# **/package-lock.json
+# **/yarn.lock
+# **/poetry.lock
+# **/Pipfile.lock
 
 # Binary or image formats
 **/*.png
@@ -58,17 +65,17 @@
 **/*.gz
 **/*.7z
 
-# Test files and data
-**/test/**
-**/tests/**
-**/*.spec.ts
-**/*.test.ts
-**/*.spec.js
-**/*.test.js
-**/fixtures/**
-**/mocks/**
-**/__mocks__/**
-**/test-data/**
+# Test files and data - DISABLED for SOTA RAG (tests contain valuable context)
+# **/test/**
+# **/tests/**
+# **/*.spec.ts
+# **/*.test.ts
+# **/*.spec.js
+# **/*.test.js
+# **/fixtures/**
+# **/mocks/**
+# **/__mocks__/**
+# **/test-data/**
 
 # Generated/vendor code
 **/*.d.ts

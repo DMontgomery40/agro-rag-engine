@@ -205,10 +205,10 @@
         // Initial status check
         updateHTTPStatus();
 
-        // Auto-refresh status every 10 seconds if on debug tab
+        // Auto-refresh status every 10 seconds if on infrastructure tab
         setInterval(() => {
-            const debugTab = $('#tab-devtools-debug');
-            if (debugTab && debugTab.classList.contains('active')) {
+            const infraTab = $('#tab-infrastructure');
+            if (infraTab && infraTab.classList.contains('active')) {
                 updateHTTPStatus();
             }
         }, 10000);
@@ -224,12 +224,37 @@
         initMCPServerUI
     };
 
-    // Auto-initialize when DOM is ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initMCPServerUI);
-    } else {
+    // Initialization function for infrastructure view
+    window.initMCPServer = function() {
+        console.log('[mcp_server.js] Initializing MCP server for infrastructure view');
         initMCPServerUI();
+    };
+
+    // Register view (PRIMARY module for infrastructure)
+    if (window.Navigation && typeof window.Navigation.registerView === 'function') {
+        window.Navigation.registerView({
+            id: 'infrastructure',
+            title: 'Infrastructure',
+            mount: () => {
+                console.log('[mcp_server.js] Mounted infrastructure view');
+                // Initialize MCP server (primary)
+                if (typeof window.initMCPServer === 'function') window.initMCPServer();
+                // Initialize docker
+                if (typeof window.initDocker === 'function') window.initDocker();
+            },
+            unmount: () => {
+                console.log('[mcp_server.js] Unmounted from infrastructure');
+            }
+        });
+    } else {
+        console.warn('[mcp_server.js] Navigation API not available, falling back to legacy mode');
+        // Legacy mode: auto-init
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initMCPServerUI);
+        } else {
+            initMCPServerUI();
+        }
     }
 
-    console.log('[mcp_server.js] Module loaded');
+    console.log('[mcp_server.js] Module loaded (PRIMARY for infrastructure, coordinates docker.js)');
 })();

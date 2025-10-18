@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head><title>Test Navigation</title></head>
+<body>
+<script src="http://localhost:8012/gui/js/core-utils.js"></script>
+<script src="http://localhost:8012/gui/js/navigation.js"></script>
+<script>
+setTimeout(() => {
+  console.log('Navigation API:', window.Navigation ? 'Loaded' : 'Missing');
+  console.log('Registry:', window.Navigation?.getRegistry());
+  console.log('Compatibility Mode:', window.Navigation?.isCompatibilityMode());
+}, 100);
+</script>
+Check console for results
+</body>
+</html>

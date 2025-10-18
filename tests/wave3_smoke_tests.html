@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Wave 3 Smoke Tests</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #0f0;
+        }
+        .test {
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #333;
+            background: #000;
+        }
+        .pass { color: #0f0; }
+        .fail { color: #f00; }
+        .waiting { color: #ff0; }
+        h2 { color: #0ff; }
+        pre { background: #111; padding: 10px; overflow-x: auto; }
+        button {
+            background: #333;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 10px 20px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0f0; color: #000; }
+        .results { margin-top: 20px; }
+        #finalReport { white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>🔬 Wave 3 Smoke Test Suite</h1>
+    <p>Testing GUI at: <a href="http://127.0.0.1:8012/gui/index.html" target="_blank">http://127.0.0.1:8012/gui/index.html</a></p>
+
+    <button onclick="runAllTests()">▶ RUN ALL TESTS</button>
+    <button onclick="generateReport()">📄 GENERATE REPORT</button>
+
+    <div class="results" id="results"></div>
+    <div class="results">
+        <h2>Final Report:</h2>
+        <pre id="finalReport"></pre>
+    </div>
+
+    <script>
+        const testResults = {};
+
+        function log(testNum, message, isError = false) {
+            const color = isError ? 'fail' : 'pass';
+            const resultsDiv = document.getElementById('results');
+            const testDiv = document.getElementById(`test${testNum}`) || createTestDiv(testNum);
+            testDiv.innerHTML += `<div class="${color}">${message}</div>`;
+        }
+
+        function createTestDiv(testNum) {
+            const resultsDiv = document.getElementById('results');
+            const testDiv = document.createElement('div');
+            testDiv.id = `test${testNum}`;
+            testDiv.className = 'test';
+            testDiv.innerHTML = `<h2>Test ${testNum}</h2>`;
+            resultsDiv.appendChild(testDiv);
+            return testDiv;
+        }
+
+        async function runAllTests() {
+            document.getElementById('results').innerHTML = '';
+            await test1_AllTabsLoad();
+            await test2_InfrastructureConsolidation();
+            await test3_NoDuplicateIDs();
+            await test4_RAGSubtabs();
+            await test5_ConsoleClean();
+            await test6_Performance();
+            generateReport();
+        }
+
+        async function test1_AllTabsLoad() {
+            log(1, '=== TEST 1: All 9 Tabs Load Without Errors ===');
+            const tabs = [
+                'get-started', 'dashboard', 'chat', 'vscode', 'grafana',
+                'rag', 'profiles', 'infrastructure', 'admin'
+            ];
+
+            const errors = [];
+            let tabsLoaded = 0;
+
+            // Open test window
+            const testWindow = window.open('http://127.0.0.1:8012/gui/index.html', 'waveTest');
+
+            // Wait for load
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            if (!testWindow || testWindow.closed) {
+                log(1, '❌ FAIL: Could not open test window', true);
+                testResults.test1 = { status: 'FAIL', reason: 'Could not open window' };
+                return;
+            }
+
+            // Check console errors
+            const originalError = testWindow.console.error;
+            const consoleErrors = [];
+            testWindow.console.error = function(...args) {
+                consoleErrors.push(args.join(' '));
+                originalError.apply(testWindow.console, args);
+            };
+
+            // Click each tab
+            for (const tabId of tabs) {
+                const tab = testWindow.document.querySelector(`[data-tab="${tabId}"]`);
+                if (tab) {
+                    tab.click();
+                    await new Promise(resolve => setTimeout(resolve, 500));
+
+                    const content = testWindow.document.querySelector('.tab-content.active');
+                    if (content && !content.innerHTML.includes('404')) {
+                        tabsLoaded++;
+                        log(1, `✅ Tab "${tabId}" loaded`);
+                    } else {
+                        errors.push(`Tab "${tabId}" failed to load or 404`);
+                        log(1, `❌ Tab "${tabId}" failed`, true);
+                    }
+                } else {
+                    errors.push(`Tab "${tabId}" not found in DOM`);
+                    log(1, `❌ Tab "${tabId}" not found`, true);
+                }
+            }
+
+            // Check for console errors
+            if (consoleErrors.length > 0) {
+                errors.push(...consoleErrors);
+                log(1, `Console errors: ${consoleErrors.length}`, true);
+            }
+
+            testWindow.close();
+
+            const passed = errors.length === 0 && tabsLoaded === 9;
+            log(1, `\nRESULT: ${passed ? '✅ PASS' : '❌ FAIL'}`);
+            log(1, `Tabs loaded: ${tabsLoaded}/9`);
+            if (errors.length > 0) {
+                log(1, `Errors: ${errors.length}`, true);
+                errors.slice(0, 3).forEach(e => log(1, `  - ${e}`, true));
+            }
+
+            testResults.test1 = {
+                status: passed ? 'PASS' : 'FAIL',
+                tabsLoaded: `${tabsLoaded}/9`,
+                errors: errors.length,
+                errorSamples: errors.slice(0, 3)
+            };
+        }
+
+        async function test2_InfrastructureConsolidation() {
+            log(2, '=== TEST 2: Infrastructure Consolidation ===');
+
+            const testWindow = window.open('http://127.0.0.1:8012/gui/index.html', 'waveTest2');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            if (!testWindow || testWindow.closed) {
+                log(2, '❌ FAIL: Could not open test window', true);
+                testResults.test2 = { status: 'FAIL', reason: 'Could not open window' };
+                return;
+            }
+
+            // Click Infrastructure tab
+            const infraTab = testWindow.document.querySelector('[data-tab="infrastructure"]');
+            if (infraTab) {
+                infraTab.click();
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            const expectedSections = [
+                'Services',
+                'MCP Servers',
+                'Paths & Endpoints',
+                'Performance',
+                'Usage',
+                'Tracing'
+            ];
+
+            const foundSections = [];
+            const missingSections = [];
+
+            for (const section of expectedSections) {
+                const found = testWindow.document.body.innerText.includes(section);
+                if (found) {
+                    foundSections.push(section);
+                    log(2, `✅ Found: ${section}`);
+                } else {
+                    missingSections.push(section);
+                    log(2, `❌ Missing: ${section}`, true);
+                }
+            }
+
+            testWindow.close();
+
+            const passed = missingSections.length === 0;
+            log(2, `\nRESULT: ${passed ? '✅ PASS' : '❌ FAIL'}`);
+            log(2, `Sections found: ${foundSections.length}/6`);
+
+            testResults.test2 = {
+                status: passed ? 'PASS' : 'FAIL',
+                found: `${foundSections.length}/6`,
+                missing: missingSections
+            };
+        }
+
+        async function test3_NoDuplicateIDs() {
+            log(3, '=== TEST 3: No Duplicate Form IDs ===');
+
+            const testWindow = window.open('http://127.0.0.1:8012/gui/index.html', 'waveTest3');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            if (!testWindow || testWindow.closed) {
+                log(3, '❌ FAIL: Could not open test window', true);
+                testResults.test3 = { status: 'FAIL', reason: 'Could not open window' };
+                return;
+            }
+
+            const ids = {};
+            const dups = [];
+
+            testWindow.document.querySelectorAll('[id]').forEach(el => {
+                if (ids[el.id]) {
+                    dups.push(el.id);
+                }
+                ids[el.id] = true;
+            });
+
+            testWindow.close();
+
+            const passed = dups.length === 0;
+            log(3, `\nRESULT: ${passed ? '✅ PASS' : '❌ FAIL'}`);
+            log(3, `Duplicates found: ${dups.length}`);
+            if (dups.length > 0) {
+                dups.slice(0, 5).forEach(id => log(3, `  - ${id}`, true));
+            }
+
+            testResults.test3 = {
+                status: passed ? 'PASS' : 'FAIL',
+                duplicates: dups.length,
+                examples: dups.slice(0, 5)
+            };
+        }
+
+        async function test4_RAGSubtabs() {
+            log(4, '=== TEST 4: RAG Subtabs All Work ===');
+
+            const testWindow = window.open('http://127.0.0.1:8012/gui/index.html', 'waveTest4');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            if (!testWindow || testWindow.closed) {
+                log(4, '❌ FAIL: Could not open test window', true);
+                testResults.test4 = { status: 'FAIL', reason: 'Could not open window' };
+                return;
+            }
+
+            // Click RAG tab
+            const ragTab = testWindow.document.querySelector('[data-tab="rag"]');
+            if (ragTab) {
+                ragTab.click();
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            const subtabs = [
+                'data-quality', 'retrieval', 'external-rerankers',
+                'learning-ranker', 'indexing', 'evaluate'
+            ];
+
+            const issues = [];
+            let working = 0;
+
+            for (const subtabId of subtabs) {
+                const subtab = testWindow.document.querySelector(`[data-subtab="${subtabId}"]`);
+                if (subtab) {
+                    subtab.click();
+                    await new Promise(resolve => setTimeout(resolve, 300));
+
+                    const content = testWindow.document.querySelector('.subtab-content.active');
+                    if (content && content.offsetHeight > 0) {
+                        working++;
+                        log(4, `✅ Subtab "${subtabId}" works`);
+                    } else {
+                        issues.push(`Subtab "${subtabId}" has no visible content`);
+                        log(4, `❌ Subtab "${subtabId}" no content`, true);
+                    }
+                } else {
+                    issues.push(`Subtab "${subtabId}" not found`);
+                    log(4, `❌ Subtab "${subtabId}" not found`, true);
+                }
+            }
+
+            testWindow.close();
+
+            const passed = issues.length === 0 && working === 6;
+            log(4, `\nRESULT: ${passed ? '✅ PASS' : '❌ FAIL'}`);
+            log(4, `Subtabs working: ${working}/6`);
+
+            testResults.test4 = {
+                status: passed ? 'PASS' : 'FAIL',
+                working: `${working}/6`,
+                issues: issues
+            };
+        }
+
+        async function test5_ConsoleClean() {
+            log(5, '=== TEST 5: Console Clean ===');
+
+            const testWindow = window.open('http://127.0.0.1:8012/gui/index.html', 'waveTest5');
+
+            const errors = [];
+            const originalError = console.error;
+
+            // Capture errors
+            if (testWindow && !testWindow.closed) {
+                testWindow.console.error = function(...args) {
+                    errors.push(args.join(' '));
+                    originalError.apply(console, args);
+                };
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
+            if (testWindow && !testWindow.closed) {
+                testWindow.close();
+            }
+
+            const passed = errors.length === 0;
+            log(5, `\nRESULT: ${passed ? '✅ PASS' : '❌ FAIL'}`);
+            log(5, `Red errors: ${errors.length}`);
+            if (errors.length > 0) {
+                errors.slice(0, 3).forEach(e => log(5, `  - ${e}`, true));
+            }
+
+            testResults.test5 = {
+                status: passed ? 'PASS' : 'FAIL',
+                errors: errors.length,
+                samples: errors.slice(0, 3)
+            };
+        }
+
+        async function test6_Performance() {
+            log(6, '=== TEST 6: Performance Check ===');
+            log(6, 'ℹ️  Manual performance profiling required in DevTools');
+            log(6, 'Auto-test: Measuring tab switch speed...');
+
+            const testWindow = window.open('http://127.0.0.1:8012/gui/index.html', 'waveTest6');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            if (!testWindow || testWindow.closed) {
+                log(6, '❌ FAIL: Could not open test window', true);
+                testResults.test6 = { status: 'FAIL', reason: 'Could not open window' };
+                return;
+            }
+
+            const tabs = ['dashboard', 'chat', 'vscode', 'grafana', 'rag', 'profiles'];
+            const timings = [];
+
+            for (const tabId of tabs) {
+                const start = performance.now();
+                const tab = testWindow.document.querySelector(`[data-tab="${tabId}"]`);
+                if (tab) {
+                    tab.click();
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                const end = performance.now();
+                timings.push(end - start);
+            }
+
+            testWindow.close();
+
+            const avgTime = timings.reduce((a, b) => a + b, 0) / timings.length;
+            const maxTime = Math.max(...timings);
+
+            const passed = avgTime < 200 && maxTime < 500; // Fast enough
+            log(6, `\nRESULT: ${passed ? '✅ PASS' : '❌ FAIL'}`);
+            log(6, `Average tab switch: ${avgTime.toFixed(2)}ms`);
+            log(6, `Max delay: ${maxTime.toFixed(2)}ms`);
+            log(6, 'ℹ️  For full frame rate analysis, use DevTools Performance tab');
+
+            testResults.test6 = {
+                status: passed ? 'PASS' : 'FAIL',
+                avgSwitch: `${avgTime.toFixed(2)}ms`,
+                maxDelay: `${maxTime.toFixed(2)}ms`,
+                note: 'Full profiling requires manual DevTools check'
+            };
+        }
+
+        function generateReport() {
+            const allPassed = Object.values(testResults).every(t => t.status === 'PASS');
+            const overallStatus = allPassed ? 'PASS' : 'FAIL';
+
+            let report = `# Wave 3 Smoke Test Results\n\n`;
+            report += `## Overall Status: ${overallStatus}\n\n`;
+
+            for (let i = 1; i <= 6; i++) {
+                const result = testResults[`test${i}`];
+                if (!result) continue;
+
+                const emoji = result.status === 'PASS' ? '✅' : '❌';
+                report += `### Test ${i}: ${emoji} ${result.status}\n`;
+                report += JSON.stringify(result, null, 2) + '\n\n';
+            }
+
+            report += `## Final Decision\n`;
+            report += allPassed ? 'APPROVED FOR WAVE 4\n' : 'NEEDS FIXES\n';
+            report += `\n## Next Steps\n`;
+            report += allPassed ? 'Proceed to Wave 4 cleanup' : 'Fix failures and retest\n';
+
+            document.getElementById('finalReport').textContent = report;
+
+            // Also log to console
+            console.log(report);
+        }
+    </script>
+</body>
+</html>

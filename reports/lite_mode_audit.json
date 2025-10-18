@@ -1,5 +1,5 @@
 {
-  "root": "/Users/davidmontgomery/agro/gui",
+  "root": "/Users/davidmontgomery/agro-rag-engine/gui",
   "tokens_path": "gui/css/tokens.css",
   "summary": {
     "hardcoded_hex_count": 45,

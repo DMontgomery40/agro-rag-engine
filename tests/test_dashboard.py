@@ -24,7 +24,7 @@ async def test_dashboard():
         await asyncio.sleep(5)  # Give panels time to render
 
         # Take screenshot
-        screenshot_path = "/Users/davidmontgomery/agro/dashboard_screenshot.png"
+        screenshot_path = "/Users/davidmontgomery/agro-rag-engine/dashboard_screenshot.png"
         await page.screenshot(path=screenshot_path, full_page=True)
         print(f"Screenshot saved: {screenshot_path}")
 

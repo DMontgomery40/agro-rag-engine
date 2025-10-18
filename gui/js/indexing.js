@@ -327,6 +327,35 @@
         console.log('[indexing] Initialized');
     }
 
+    // Cleanup function for unmounting
+    function cleanupIndexing() {
+        // Stop any polling intervals
+        if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+        }
+        console.log('[indexing.js] Unmounted');
+    }
+
+    // Register with Navigation API
+    function registerIndexingView() {
+        if (window.Navigation && typeof window.Navigation.registerView === 'function') {
+            window.Navigation.registerView({
+                id: 'rag-indexing',
+                title: 'Indexing',
+                mount: () => {
+                    console.log('[indexing.js] Mounted as rag-indexing');
+                    initIndexing();
+                    // Initialize index profiles module
+                    if (typeof window.initIndexProfiles === 'function') window.initIndexProfiles();
+                },
+                unmount: () => {
+                    cleanupIndexing();
+                }
+            });
+        }
+    }
+
     // Export to window
     window.Indexing = {
         initIndexing,
@@ -339,9 +368,13 @@
 
     // Auto-initialize when DOM is ready
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initIndexing);
+        document.addEventListener('DOMContentLoaded', () => {
+            initIndexing();
+            registerIndexingView();
+        });
     } else {
         initIndexing();
+        registerIndexingView();
     }
 
     console.log('[indexing.js] Module loaded');
