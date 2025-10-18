@@ -1,0 +1,272 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - heading "AGRO Another Good RAG Option" [level=1] [ref=e3]:
+      - generic [ref=e4]: AGRO
+      - generic [ref=e5]: Another Good RAG Option
+    - generic [ref=e6]:
+      - searchbox "Search settings (Ctrl+K)" [ref=e7]
+      - combobox "Theme Mode" [ref=e8]:
+        - option "Auto"
+        - option "Dark" [selected]
+        - option "Light"
+      - button "Health" [ref=e9] [cursor=pointer]
+      - generic [ref=e10]: OK @ 10/16/2025, 4:17:33 AM
+  - navigation [ref=e11]:
+    - button "🚀 Get Started" [ref=e12] [cursor=pointer]
+    - button "📊 Dashboard" [ref=e13] [cursor=pointer]
+    - button "💬 Chat" [ref=e14] [cursor=pointer]
+    - button "⚙️ Configuration" [ref=e15] [cursor=pointer]
+    - button "🗄️ Data & Indexing" [ref=e16] [cursor=pointer]
+    - button "🛠️ Developer Tools" [ref=e17] [cursor=pointer]
+    - button "📈 Analytics" [ref=e18] [cursor=pointer]
+    - button "⚙️ Settings" [ref=e19] [cursor=pointer]
+  - generic [ref=e20]:
+    - generic [ref=e22]:
+      - generic [ref=e23]:
+        - button "🚀 Get Started" [ref=e24] [cursor=pointer]
+        - button "📊 Dashboard" [ref=e25] [cursor=pointer]
+        - button "💬 Chat" [ref=e26] [cursor=pointer]
+        - button "⚙️ Configuration" [ref=e27] [cursor=pointer]
+        - button "🗄️ Data & Indexing" [ref=e28] [cursor=pointer]
+        - button "🧠 Learning Reranker" [ref=e29] [cursor=pointer]
+        - button "🛠️ Developer Tools" [ref=e30] [cursor=pointer]
+        - button "📈 Analytics" [ref=e31] [cursor=pointer]
+        - button "📊 Metrics" [ref=e32] [cursor=pointer]
+        - button "⚙️ Settings" [ref=e33] [cursor=pointer]
+      - generic [ref=e34]:
+        - generic [ref=e36]:
+          - generic [ref=e37]:
+            - heading "System Status" [level=3] [ref=e38]: System Status
+            - generic [ref=e40]:
+              - generic [ref=e41]:
+                - generic [ref=e42]: Health
+                - generic [ref=e43]: healthy (graph ready)
+              - generic [ref=e44]:
+                - generic [ref=e45]: Repo
+                - generic [ref=e46]: agro (2 repos)
+              - generic [ref=e47]:
+                - generic [ref=e48]: Cards
+                - generic [ref=e49]: 527 cards
+              - generic [ref=e50]:
+                - generic [ref=e51]: MCP
+                - generic [ref=e52]: 0.0.0.0:8013/mcp
+              - generic [ref=e53]:
+                - generic [ref=e54]: Auto-Tune
+                - generic [ref=e55]: disabled
+          - generic [ref=e56]:
+            - heading "Quick Actions" [level=3] [ref=e57]:
+              - img [ref=e58]
+              - text: Quick Actions
+            - generic [ref=e60]:
+              - button "Generate Keywords" [ref=e61] [cursor=pointer]:
+                - img [ref=e62]
+                - generic [ref=e64]: Generate Keywords
+              - button "Change Repo" [ref=e65] [cursor=pointer]:
+                - img [ref=e66]
+                - generic [ref=e68]: Change Repo
+              - button "Run Indexer" [ref=e69] [cursor=pointer]:
+                - img [ref=e70]
+                - generic [ref=e73]: Run Indexer
+              - button "Reload Config" [ref=e74] [cursor=pointer]:
+                - img [ref=e75]
+                - generic [ref=e79]: Reload Config
+              - button "Refresh Status" [ref=e80] [cursor=pointer]:
+                - img [ref=e81]
+                - generic [ref=e85]: Refresh Status
+            - generic [ref=e86]:
+              - generic [ref=e87]:
+                - generic [ref=e90]:
+                  - generic [ref=e91]: agro
+                  - generic [ref=e92]: "Branch: -test"
+                - generic [ref=e93]: 10/15/2025, 2:19:31 AM
+              - generic [ref=e94]:
+                - generic [ref=e95]:
+                  - img [ref=e96]
+                  - text: Embedding Configuration
+                - generic [ref=e99]:
+                  - generic [ref=e100]:
+                    - generic [ref=e101]: Model
+                    - generic [ref=e102]: text-embedding-3-large
+                  - generic [ref=e103]:
+                    - generic [ref=e104]: Dimensions
+                    - generic [ref=e105]: "512"
+                  - generic [ref=e106]:
+                    - generic [ref=e107]: Precision
+                    - generic [ref=e108]: float32
+              - generic [ref=e109]:
+                - generic [ref=e110]:
+                  - img [ref=e111]
+                  - text: Indexing Costs
+                - generic [ref=e113]:
+                  - generic [ref=e114]:
+                    - generic [ref=e115]: Total Tokens
+                    - generic [ref=e116]: 695,250
+                  - generic [ref=e117]:
+                    - generic [ref=e118]: Embedding Cost
+                    - generic [ref=e119]: $0.0904
+              - generic [ref=e120]:
+                - generic [ref=e121]:
+                  - img [ref=e122]
+                  - text: Storage Requirements
+                - generic [ref=e124]:
+                  - generic [ref=e125]:
+                    - generic [ref=e126]: Chunks JSON
+                    - generic [ref=e127]: 1.818 MiB
+                  - generic [ref=e128]:
+                    - generic [ref=e129]: Raw Embeddings
+                    - generic [ref=e130]: 1.811 MiB
+                  - generic [ref=e131]:
+                    - generic [ref=e132]: Qdrant (w/overhead)
+                    - generic [ref=e133]: 2.716 MiB
+                  - generic [ref=e134]:
+                    - generic [ref=e135]: BM25 Index
+                    - generic [ref=e136]: 3.779 MiB
+                  - generic [ref=e137]:
+                    - generic [ref=e138]: Cards/Summary
+                    - generic [ref=e139]: 51.872 KiB
+                  - generic [ref=e140]:
+                    - generic [ref=e141]: Reranker Cache
+                    - generic [ref=e142]: 927 KiB
+                  - generic [ref=e143]:
+                    - generic [ref=e144]: Redis Cache
+                    - generic [ref=e145]: 400 MiB
+                  - generic [ref=e146]:
+                    - generic [ref=e147]: Keywords
+                    - generic [ref=e148]: "0"
+              - group [ref=e149]:
+                - generic "▸ Index Profiles (2)" [ref=e150] [cursor=pointer]
+              - generic [ref=e151]:
+                - generic [ref=e152]: Total Index Storage
+                - generic [ref=e153]: 409.269 MiB
+        - generic [ref=e156]:
+          - heading "● Auto-Profile" [level=3] [ref=e157]:
+            - generic [ref=e158]: ●
+            - text: Auto-Profile
+          - paragraph [ref=e159]: The only platform where you can mix any provider, model, and database. We analyze your hardware and budget to configure the optimal RAG automatically.
+          - generic [ref=e160]:
+            - generic [ref=e161]:
+              - generic [ref=e162]:
+                - generic [ref=e163]: Monthly Budget ($)
+                - spinbutton [ref=e164]: "0"
+              - generic [ref=e166]:
+                - generic [ref=e167]: Auto‑Profile Engine
+                - generic [ref=e168]:
+                  - checkbox [ref=e169]
+                  - generic [ref=e170]: Use v2 engine (deterministic selector)
+              - button "Configure Automatically" [ref=e171] [cursor=pointer]
+              - generic [ref=e172]:
+                - generic [ref=e174]: Quick Options
+                - generic [ref=e175]:
+                  - button "Free Tier (Local Only)" [ref=e176] [cursor=pointer]
+                  - button "Starter ($10/mo)" [ref=e177] [cursor=pointer]
+                  - button "Professional ($50/mo)" [ref=e178] [cursor=pointer]
+                  - button "Enterprise ($200/mo)" [ref=e179] [cursor=pointer]
+              - generic [ref=e181] [cursor=pointer]:
+                - generic [ref=e182]: Advanced (v2)
+                - generic [ref=e183]: toggle
+            - generic [ref=e185]:
+              - img [ref=e186]
+              - paragraph [ref=e189]: Click "Configure Automatically" or select a quick option to generate your optimized RAG profile based on your hardware and budget.
+      - button "Apply All Changes" [ref=e191] [cursor=pointer]
+    - generic [ref=e192]:
+      - generic [ref=e193]:
+        - heading "▸ Live Cost Calculator LIVE" [level=4] [ref=e194]:
+          - text: ▸ Live Cost Calculator
+          - generic [ref=e195]: LIVE
+        - generic [ref=e197]:
+          - generic [ref=e198]: Inference Provider
+          - combobox [ref=e199]:
+            - option "openai" [selected]
+            - option "anthropic"
+            - option "google"
+            - option "mistral"
+            - option "cohere"
+            - option "local"
+        - generic [ref=e200]:
+          - generic [ref=e201]: Inference Model
+          - combobox [ref=e202]: gpt-4o-mini
+        - generic [ref=e203]:
+          - generic [ref=e204]:
+            - generic [ref=e205]: Embeddings Provider
+            - combobox [ref=e206]:
+              - option "Use current"
+              - option "OpenAI" [selected]
+              - option "Voyage"
+              - option "MXBAI"
+              - option "Local"
+          - generic [ref=e207]:
+            - generic [ref=e208]: Embedding Model
+            - combobox "text-embedding-3-small" [ref=e209]
+        - generic [ref=e210]:
+          - generic [ref=e211]:
+            - generic [ref=e212]: Reranker
+            - combobox [ref=e213]:
+              - option "Use current"
+              - option "Cohere" [selected]
+              - option "Hugging Face"
+              - option "Local"
+              - option "None"
+          - generic [ref=e214]:
+            - generic [ref=e215]: Rerank Model
+            - textbox "rerank-english-v3.0" [ref=e216]
+        - generic [ref=e217]:
+          - generic [ref=e218]:
+            - generic [ref=e219]: Tokens In
+            - spinbutton [ref=e220]: "500"
+          - generic [ref=e221]:
+            - generic [ref=e222]: Tokens Out
+            - spinbutton [ref=e223]: "800"
+        - generic [ref=e224]:
+          - generic [ref=e225]:
+            - generic [ref=e226]: Embeds
+            - spinbutton [ref=e227]: "0"
+          - generic [ref=e228]:
+            - generic [ref=e229]: Reranks
+            - spinbutton [ref=e230]: "0"
+        - generic [ref=e231]:
+          - generic [ref=e232]: Requests / Day
+          - spinbutton [ref=e233]: "100"
+        - button "Calculate Cost" [ref=e234] [cursor=pointer]
+        - button "Add Model" [ref=e235] [cursor=pointer]
+        - generic [ref=e236]:
+          - generic [ref=e237]:
+            - generic [ref=e238]: Daily
+            - generic [ref=e239]: —
+          - generic [ref=e240]:
+            - generic [ref=e241]: Monthly
+            - generic [ref=e242]: —
+      - generic [ref=e243]:
+        - heading "▸ Profiles" [level=4] [ref=e244]
+        - generic [ref=e245]:
+          - generic [ref=e246]: Save Current As
+          - textbox "my-config" [ref=e247]
+        - button "Save Profile" [ref=e248] [cursor=pointer]
+        - generic [ref=e249]:
+          - generic [ref=e250]: Saved Profiles
+          - list [ref=e251]:
+            - listitem [ref=e252] [cursor=pointer]: defaults
+            - listitem [ref=e253] [cursor=pointer]: min_local
+            - listitem [ref=e254] [cursor=pointer]: onboard-wizard-test-project
+            - listitem [ref=e255] [cursor=pointer]: pw-test
+      - generic [ref=e256]:
+        - heading "▸ Auto‑Tune" [level=4] [ref=e257]
+        - generic [ref=e259]:
+          - checkbox "Enable Auto‑Tune" [ref=e260]
+          - text: Enable Auto‑Tune
+        - generic [ref=e262]: "Current Mode: —"
+        - generic [ref=e263]:
+          - generic [ref=e264]: Last Indexed
+          - generic [ref=e265]: 10/15/2025, 2:19:31 AM
+        - button "Refresh Status" [ref=e266] [cursor=pointer]
+      - generic [ref=e267]:
+        - heading "▸ Secrets Ingest" [level=4] [ref=e268]
+        - generic [ref=e269] [cursor=pointer]:
+          - text: Drop .env / .txt / .md
+          - text: or click to upload
+        - generic [ref=e271] [cursor=pointer]:
+          - checkbox "Persist to defaults.json" [ref=e272]
+          - generic [ref=e273]: Persist to defaults.json
+```

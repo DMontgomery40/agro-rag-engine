@@ -1,0 +1,225 @@
+# Editor data
+.editor_data/
+out/editor/
+
+# Python
+__pycache__/
+*.py[codz]
+*.pyc
+*.pyo
+*.pyd
+*.so
+*$py.class
+.mcp.json
+*/data/
+/out.noindex/
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Environments
+.env
+.env.*
+.envrc
+env/
+.venv/
+venv/
+ENV/
+env.bak/
+venv.bak/
+*/.env
+*/.env.*
+*/env
+*/venv
+*/.venv
+*/.pdm-python
+*/.pdm-build/
+
+# Build / cache / data
+*out.noindex/
+out.noindex-*/
+*/agro/out.noindex/
+*/agro/out/
+*/agro/data/
+.dist/
+.cache
+*.egg-info/
+
+# Runtime data (generated, not committed)
+data/qdrant/
+data/qdrant.bak.*
+data/redis/
+
+# Local config with secrets (never commit)
+.mcp.json
+.env
+.env.*
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+nosetests.xml
+coverage.xml
+*.cover
+*.py.cover
+.hypothesis/
+.pytest_cache/
+cover/
+*/internal_docs/
+
+# Logs
+*.log
+# Explicitly ignore any root logs
+/server.log
+/*.log
+pip-log.txt
+pip-delete-this-directory.txt
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Django
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask
+instance/
+.webassets-cache
+
+# Scrapy
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# Translations
+*.mo
+*.pot
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath
+*.sage.py
+
+# UV
+#uv.lock
+
+# poetry
+#poetry.lock
+#poetry.toml
+
+# pdm
+#pdm.lock
+#pdm.toml
+.pdm-python
+.pdm-build/
+
+# pixi
+#pixi.lock
+.pixi
+
+# PEP 582
+__pypackages__/
+
+# mkdocs
+/site
+
+# Type checkers
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+
+# Debug symbols
+cython_debug/
+
+# PyCharm / IDEs
+#.idea/
+
+# Abstra
+.abstra/
+
+# VSCode
+# .vscode/
+
+# Ruff
+.ruff_cache/
+
+# PyPI
+.pypirc
+
+# Cursor
+.cursorignore
+.cursorindexingignore
+
+# Marimo
+marimo/_static/
+marimo/_lsp/
+__marimo__/
+test-results/gui-GUI-smoke-cost-calculator-estimates-include-embeddings/error-context.md
+test-results/gui-GUI-smoke-cost-calculator-estimates-include-embeddings/test-failed-1.png
+test-results/gui-GUI-smoke-cost-calculator-estimates-include-embeddings/video.webm
+test-results/gui-GUI-smoke-Git-hooks-install-via-Tools-tab/error-context.md
+test-results/gui-GUI-smoke-Git-hooks-install-via-Tools-tab/test-failed-1.png
+test-results/gui-GUI-smoke-Git-hooks-install-via-Tools-tab/video.webm
+test-results/gui-GUI-smoke-global-search-highlights/error-context.md
+test-results/gui-GUI-smoke-global-search-highlights/test-failed-1.png
+test-results/gui-GUI-smoke-global-search-highlights/video.webm
+test-results/gui-GUI-smoke-indexer-quick-action-updates-status/error-context.md
+test-results/gui-GUI-smoke-indexer-quick-action-updates-status/test-failed-1.png
+test-results/gui-GUI-smoke-indexer-quick-action-updates-status/video.webm
+test-results/gui-GUI-smoke-profiles-save-and-list-updates/error-context.md
+test-results/gui-GUI-smoke-profiles-save-and-list-updates/test-failed-1.png
+test-results/gui-GUI-smoke-profiles-save-and-list-updates/video.webm
+test-results/gui-GUI-smoke-tab-switching-works/error-context.md
+test-results/gui-GUI-smoke-tab-switching-works/test-failed-1.png
+test-results/gui-GUI-smoke-tab-switching-works/video.webm
+test-results/gui-GUI-smoke-wizard-one-click-config-produces-preview/error-context.md
+test-results/gui-GUI-smoke-wizard-one-click-config-produces-preview/test-failed-1.png
+test-results/gui-GUI-smoke-wizard-one-click-config-produces-preview/video.webm
+
+out/**
+!out.noindex-shared/**
+ test-results/**
+*.png

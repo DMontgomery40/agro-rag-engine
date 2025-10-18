@@ -1,0 +1,88 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.15.5
+    container_name: qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    environment:
+      - QDRANT__STORAGE__USE_MMAP=false
+      - QDRANT__STORAGE__ON_DISK_PERSISTENCE=true
+    volumes:
+      # Use repo-relative storage directory (infra/.. -> data)
+      - ../data/qdrant:/qdrant/storage
+  redis:
+    image: redis/redis-stack:7.2.0-v10
+    container_name: rag-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    environment:
+      # Dev mode: no persistence (prevents AOF corruption on crash)
+      - REDIS_ARGS=--save ""
+    # No volumes needed without persistence
+    # volumes:
+    #   - ../data/redis:/data
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: agro-alertmanager
+    restart: unless-stopped
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    ports:
+      - "9093:9093"
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: agro-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus-alert-rules.yml:/etc/prometheus/prometheus-alert-rules.yml:ro
+      - prom_data:/prometheus
+    ports:
+      - "9090:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - alertmanager
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: agro-grafana
+    restart: unless-stopped
+    environment:
+      # Allow AGRO to embed Grafana in an <iframe>
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      # Anonymous editor access (local network only)
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Editor
+      # Dark theme by default
+      - GF_USERS_DEFAULT_THEME=dark
+      # Admin credentials
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=Trenton2023
+      # Cookie same-site disabled for easier iframe embedding
+      - GF_SECURITY_COOKIE_SAMESITE=disabled
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  prom_data:
+  alertmanager_data:
+  grafana_data:

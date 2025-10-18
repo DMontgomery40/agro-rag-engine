@@ -1,0 +1,379 @@
+version: 1
+generated_by: codex
+description: |
+  Exhaustive list of runtime knobs and settings for AGRO RAG.
+  Includes environment variables, code-level constants, defaults, and tunables
+  across retrieval, reranking, generation, indexing, hydration, routing, eval,
+  and MCP/HTTP. Intended for GUI surfacing and agent ingestion.
+
+categories:
+  repo_scoped:
+    - group: repos.json editable fields
+      scope: per-repo
+      operations:
+        - name: add_keyword
+          target: repos[].keywords
+          type: string
+          validator: 
+            pattern: "^[a-zA-Z0-9._:-]{2,64}$"
+            note: lowercased at load time (config_loader.get_repo_keywords)
+        - name: remove_keyword
+          target: repos[].keywords
+        - name: add_path_boost
+          target: repos[].path_boosts
+          type: string
+          validator:
+            max_length: 200
+            note: treated as substring match; prefer stable prefixes
+        - name: remove_path_boost
+          target: repos[].path_boosts
+        - name: set_layer_bonus
+          target: repos[].layer_bonuses[<intent>][<layer>]
+          type: float
+          validator: {min: -1.0, max: 1.0}
+          note: values are normalized floats; GUI should clamp and warn if outside safe range
+        - name: unset_layer_bonus
+          target: repos[].layer_bonuses[<intent>][<layer>]
+        - name: add_repo_path
+          target: repos[].path (string or list[string])
+          type: path
+          note: path entries are expanded with ~ and can be arrays
+        - name: remove_repo_path
+          target: repos[].path
+      notes:
+        - Editing repos.json changes routing (choose_repo_from_query) and boosts without code changes
+        - After path edits, rebuild indices for affected repos to reflect new sources
+        - GUI should offer preview/diff and validation before write
+
+  generation:
+    - key: GEN_MODEL
+      type: string
+      default: gpt-4o-mini (or qwen3-coder:30b in docs/docker)
+      description: Primary text generation model (Responses API or local)
+      notes: Overrides ENRICH_MODEL if set
+    - key: GEN_MODEL_HTTP
+      type: string
+      default: null
+      description: Optional override model for HTTP server responses
+    - key: GEN_MODEL_MCP
+      type: string
+      default: null
+      description: Optional override model for MCP server responses
+    - key: GEN_MODEL_CLI
+      type: string
+      default: null
+      description: Optional override model for CLI chat
+    - key: OPENAI_API_KEY
+      type: string
+      default: null
+      description: OpenAI API key for embeddings/generation (Responses API)
+    - key: OPENAI_BASE_URL
+      type: string
+      default: null
+      description: Optional OpenAI-compatible base URL (e.g., vLLM proxy)
+    - key: OLLAMA_URL
+      type: url
+      default: null
+      description: Local model endpoint for generation (Qwen etc.)
+    - key: ENRICH_BACKEND
+      type: enum
+      default: ""
+      allowed: ["", mlx, ollama]
+      description: Force backend for generate_text (Apple MLX or Ollama)
+    - key: ENRICH_MODEL
+      type: string
+      default: gpt-4o-mini
+      description: Back-compat alias; superseded by GEN_MODEL
+
+  embeddings:
+    - key: EMBEDDING_TYPE
+      type: enum
+      default: openai
+      allowed: [openai, local, voyage, mxbai]
+      description: Embedding provider selection
+    - key: VOYAGE_API_KEY
+      type: string
+      default: null
+      description: API key for Voyage embeddings
+    - key: VOYAGE_EMBED_DIM
+      type: integer
+      default: 512
+      description: Output dimension for voyage-code-3 embeddings
+    - key: EMBEDDING_DIM
+      type: integer
+      default: 512
+      description: Dimension for MXBAI embeddings (truncation/renorm)
+    - key: SKIP_DENSE
+      type: flag
+      default: "0"
+      description: Skip dense embeddings + Qdrant upsert during indexing
+    - key: ENRICH_CODE_CHUNKS
+      type: flag
+      default: false
+      description: Add per-chunk summaries/keywords before embeddings
+
+  reranking:
+    - key: RERANK_BACKEND
+      type: enum
+      default: local
+      allowed: [local, cohere, hf, none, off, disabled]
+      description: Cross-encoder backend choice
+    - key: RERANKER_MODEL
+      type: string
+      default: BAAI/bge-reranker-v2-m3
+      description: Local cross-encoder model (rerankers lib)
+    - key: COHERE_API_KEY
+      type: string
+      default: null
+      description: Key for Cohere reranking
+    - key: COHERE_RERANK_MODEL
+      type: string
+      default: rerank-3.5
+      description: Cohere reranker model
+    - key: TRANSFORMERS_TRUST_REMOTE_CODE
+      type: flag
+      default: "1"
+      description: Allow HF pipeline trust_remote_code (Jina reranker path)
+    - const: RERANK_INPUT_SNIPPET_CHARS
+      value: {cohere: 700, local: 600}
+      description: Code context characters sent to reranker per doc
+
+  retrieval:
+    - key: FINAL_K
+      type: integer
+      default: 10
+      description: Final top-K after fusion + rerank (APIs vary; graph often uses 20)
+    - key: TOPK_DENSE
+      type: integer
+      default: 75
+      description: Dense candidate count (Qdrant)
+    - key: TOPK_SPARSE
+      type: integer
+      default: 75
+      description: Sparse candidate count (BM25)
+    - key: MQ_REWRITES
+      type: integer
+      default: 2
+      description: Multi-query expansion count (conditional on query type)
+    - key: HYDRATION_MODE
+      type: enum
+      default: lazy
+      allowed: [lazy, none]
+      description: Whether to hydrate code bodies from chunks.jsonl
+    - key: HYDRATION_MAX_CHARS
+      type: integer
+      default: 2000
+      description: Truncation length per hydrated code snippet
+    - key: VENDOR_MODE
+      type: enum
+      default: prefer_first_party
+      allowed: [prefer_first_party, prefer_vendor]
+      description: Path bonus toggle by origin (first_party vs vendor)
+    - key: agro_PATH_BOOSTS
+      type: csv
+      default: "app/,lib/,config/,scripts/,server/,api/,api/app,app/services,app/routers,api/admin_ui,app/plugins"
+      description: Extra path substrings to boost (agro repo only)
+    - const: RRF.kdiv
+      value: 60
+      description: Rank fusion dampening constant
+    - const: CARD_BONUS
+      value: 0.08
+      description: Bonus added when a chunk is referenced by a matching card
+    - const: PROVIDER_HINT_BONUS
+      value: 0.06
+      description: Bonus for files with provider/integration hints (heuristic)
+    - const: FEATURE_HINT_BONUS
+      value: 0.06
+      description: Bonus applied when query mentions diagnostics/PHI and path matches
+    - const: CARDS_TOPK
+      value: "min(TOPK_SPARSE, 30)"
+      description: Card-based retrieval budget for boosts
+    - const: FILENAME_BOOST_MULTIPLIERS
+      value: {basename_hit: 1.5, path_segment_hit: 1.2}
+      description: Post-rerank filename/path multipliers
+
+  confidence_gating:
+    - key: CONF_TOP1
+      type: float
+      default: 0.62
+      description: Threshold to accept generation if top-1 doc exceeds
+    - key: CONF_AVG5
+      type: float
+      default: 0.55
+      description: Threshold to accept if avg of top-5 exceeds
+    - key: CONF_ANY
+      type: float
+      default: 0.55
+      description: Fallback accept if overall confidence exceeds
+    - const: MAX_RETRIEVE_ITERATIONS
+      value: 3
+      description: Retrieval→rewrite loop cap before fallback
+
+  infra:
+    - key: QDRANT_URL
+      type: url
+      default: http://127.0.0.1:6333
+      description: Qdrant endpoint for dense vector search
+    - key: REDIS_URL
+      type: url
+      default: redis://127.0.0.1:6379/0
+      description: Redis for LangGraph checkpointer
+    - key: COLLECTION_NAME
+      type: string
+      default: code_chunks_{REPO}
+      description: Qdrant collection name override
+    - key: COLLECTION_SUFFIX
+      type: string
+      default: default
+      description: Optional suffix for collection grouping
+    - key: REPO
+      type: string
+      default: agro
+      description: Active repository tag for routing and out dirs
+    - key: REPO_PATH
+      type: path
+      default: null
+      description: Fallback path when repos.json is absent
+    - key: REPOS_FILE
+      type: path
+      default: ./repos.json
+      description: Repo routing and metadata config file
+    - key: OUT_DIR_BASE
+      type: path
+      default: ./out.noindex or ./out
+      description: Base directory for per-repo outputs
+    - key: RAG_OUT_BASE
+      type: path
+      default: null
+      description: Alternate env for OUT_DIR_BASE
+
+  repos_config:
+    - json: repos.json
+      schema:
+        default_repo: string
+        repos[]:
+          name: string
+          path: string|[string]
+          keywords: [string]
+          path_boosts: [string]
+          layer_bonuses: { intent: { layer: float } }
+      description: Repo routing, boosts, and intent-layer bonuses
+
+  indexing:
+    - const: SOURCE_EXTS
+      value: [".py", ".rb", ".ts", ".tsx", ".js", ".jsx", ".go", ".rs", ".java", ".cs", ".c", ".h", ".cpp", ".hpp", ".m", ".mm", ".kt", ".kts", ".swift", ".sql", ".yml", ".yaml", ".toml", ".ini", ".json", ".md"]
+      description: File extensions considered for indexing
+    - file: data/exclude_globs.txt
+      description: Glob patterns excluded from indexing
+    - const: PRUNE_DIRS
+      value: ['.git','.worktrees','.venv','venv','env','.venv_ci','node_modules','vendor','dist','build','.next','.turbo','.svelte-kit','coverage','site','_site','__pycache__','.pytest_cache','.mypy_cache','.cache']
+      description: Directory names pruned during walk
+    - const: VALID_EXTS
+      value: ['.py','.ts','.tsx','.js','.jsx','.go','.rs','.java','.c','.cpp','.md','.mdx','.yaml','.yml','.toml','.json']
+      description: Allowed extensions (filtering)
+    - const: SKIP_EXTS
+      value: ['.map','.pyc','.ds_store']
+      description: Skipped extensions (filtering)
+    - const: AST_CHUNK_TARGET
+      value: 900
+      description: Target non-whitespace char budget per chunk
+    - const: OVERLAP_LINES
+      value: 20
+      description: Lines of pre-context to include before AST unit
+    - const: BM25_PARAMS
+      value: {method: lucene, k1: 1.2, b: 0.65}
+      description: BM25S indexing/retrieval configuration
+    - const: EMBED_BATCH
+      value: 64
+      description: Batch size for embedding upserts
+    - const: MAX_FILE_SIZE_BYTES
+      value: 2000000
+      description: Soft cap to skip overly large files during indexing (heuristic)
+    - const: AVG_LINE_LENGTH_MINIFIED_THRESHOLD
+      value: 2500
+      description: Skip files with suspiciously long average line length (likely minified)
+
+  cards:
+    - key: CARDS_MAX
+      type: integer
+      default: 0
+      description: Limit number of chunks summarized into cards (0=all)
+
+  http_api:
+    - const: /answer
+      params: {q: string, repo: string?}
+      description: Answer with citations (LangGraph pipeline)
+    - const: /search
+      params: {q: string, repo: string?, top_k: integer}
+      description: Retrieval-only endpoint
+
+  mcp_server_http:
+    - key: MCP_HTTP_HOST
+      type: string
+      default: 0.0.0.0
+      description: HTTP host for MCP server
+    - key: MCP_HTTP_PORT
+      type: integer
+      default: 8013
+      description: HTTP port for MCP server
+    - key: MCP_HTTP_PATH
+      type: string
+      default: /mcp
+      description: HTTP path prefix for MCP server
+    - key: NETLIFY_API_KEY
+      type: string
+      default: null
+      description: API key for netlify_deploy tool
+
+  evaluation:
+    - key: GOLDEN_PATH
+      type: path
+      default: golden.json
+      description: Golden questions file for evals
+    - key: EVAL_MULTI
+      type: flag
+      default: "1"
+      description: Whether to use multi-query in eval
+    - key: EVAL_FINAL_K
+      type: integer
+      default: 5
+      description: Final top-K during eval
+    - key: BASELINE_PATH
+      type: path
+      default: eval_baseline.json
+      description: Where eval baselines are saved/compared
+
+  misc:
+    - key: AGRO_EDITION
+      type: string
+      default: null
+      description: Edition/variant tag (if used by deployments)
+    - key: THREAD_ID
+      type: string
+      default: http or cli-chat
+      description: LangGraph thread id (configurable per client)
+    - key: PORT
+      type: integer
+      default: 8012
+      description: Uvicorn port for serve entrypoints
+    - key: agro_PATH
+      type: path
+      default: null
+      description: Optional reference path used by some helpers
+    - key: LANGCHAIN_TRACING_V2
+      type: flag
+      default: "0"
+      description: Optional tracing flag for LangChain-compatible tooling (if used externally)
+    - key: LANGCHAIN_agro
+      type: string
+      default: null
+      description: Optional tracing agro name
+    - key: ENRICH_MODEL_OLLAMA
+      type: string
+      default: qwen3-coder:30b
+      description: Ollama model for metadata_enricher when ENRICH_BACKEND=ollama
+
+notes:
+  - This file captures both env-driven and code-defined constants that influence behavior.
+  - Some constants may require code support to hot-reload at runtime; mark such fields read-only in GUI until wired.
+  - For repo-specific boosts (path/layer), prefer repos.json to keep tuning declarative.

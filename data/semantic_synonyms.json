@@ -1,0 +1,32 @@
+{
+  "": {
+    "auth": ["authentication", "oauth", "jwt", "bearer", "token", "session", "login", "credentials"],
+    "events": ["sse", "ws", "websocket", "subscribe", "pubsub", "notification", "webhook"],
+    "camera": ["video", "stream", "rtsp", "onvif", "ffmpeg", "snapshot", "recording"],
+    "plugin": ["device", "integration", "addon", "extension", "module"],
+    "motion": ["detection", "sensor", "movement", "activity", "trigger"],
+    "homekit": ["hap", "bridge", "accessory", "siri", "apple"],
+    "mqtt": ["broker", "publish", "subscribe", "topic", "message"],
+    "webrtc": ["peer", "connection", "sdp", "ice", "candidate", "datachannel"],
+    "automation": ["rule", "trigger", "action", "workflow", "script"],
+    "storage": ["database", "cache", "persist", "save", "load"],
+    "discovery": ["scan", "detect", "find", "enumerate", "probe"],
+    "interface": ["api", "contract", "protocol", "endpoint", "method"]
+  },
+  "agro": {
+    "search": ["retrieval", "query", "lookup", "find", "discover"],
+    "embedding": ["vector", "dense", "semantic", "encode", "representation"],
+    "index": ["build", "create", "rebuild", "refresh", "update"],
+    "chunk": ["segment", "block", "fragment", "piece", "section"],
+    "rerank": ["rescore", "reorder", "sort", "prioritize"],
+    "hybrid": ["fusion", "combined", "mixed", "multi-modal"],
+    "keywords": ["terms", "tokens", "words", "phrases"],
+    "card": ["summary", "digest", "overview", "brief", "abstract"],
+    "qdrant": ["vector-db", "vectordb", "collection", "points"],
+    "redis": ["cache", "store", "session", "memory"],
+    "bm25": ["sparse", "lexical", "keyword-match", "term-frequency"],
+    "confidence": ["score", "relevance", "ranking", "threshold"]
+  }
+}
+
+

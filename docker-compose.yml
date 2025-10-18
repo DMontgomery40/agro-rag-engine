@@ -1,0 +1,9 @@
+# Convenience wrapper: delegates to infra/docker-compose.yml
+# This allows running `docker compose ps` from the repo root
+# Note: Use COMPOSE_PROJECT_NAME=infra or run from infra/ directory
+
+name: infra
+
+include:
+  - infra/docker-compose.yml
+

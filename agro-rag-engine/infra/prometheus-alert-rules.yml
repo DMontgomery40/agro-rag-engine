@@ -1,0 +1,219 @@
+groups:
+  - name: agro_core_alerts
+    interval: 30s  # Evaluate rules every 30s
+    rules:
+      # ============================================================================
+      # P0: Cost & Token Burn (MOST CRITICAL - catches the orphaned loop)
+      # ============================================================================
+
+      # Cost spike: > $0.10/hour (3x baseline of ~$0.03/hour)
+      - alert: CostBurnSpike
+        expr: |
+          rate(agro_cost_usd_total[5m]) * 3600 > 0.10
+        for: 2m
+        labels:
+          severity: "critical"
+          component: "cost-tracking"
+        annotations:
+          summary: "🔴 CRITICAL: Cost burn spike detected"
+          description: "Current burn rate: ${{ $value | humanize }}USD/hour (alert threshold: $0.10/hour). Likely runaway API calls or loop."
+          runbook: "https://wiki.company.com/runbooks/cost-spike"
+
+      # Token burn: > 5,000 tokens/min (normal baseline ~500/min)
+      - alert: TokenBurnSpike
+        expr: |
+          rate(agro_tokens_total[5m]) * 60 > 5000
+        for: 2m
+        labels:
+          severity: "critical"
+          component: "token-tracking"
+        annotations:
+          summary: "🔴 CRITICAL: Token consumption spike"
+          description: "Current rate: {{ $value | humanize }} tokens/min (alert threshold: 5000/min). Check for runaway reranking or embedding loops."
+          runbook: "Check retrieval/rerank.py for document reranking limits"
+
+      # Token burn sustained: > 2,000 tokens/min for 15+ minutes (orphaned loop pattern)
+      - alert: TokenBurnSustained
+        expr: |
+          rate(agro_tokens_total[5m]) * 60 > 2000
+        for: 15m
+        labels:
+          severity: "warning"
+          component: "token-tracking"
+        annotations:
+          summary: "⚠️  WARNING: Sustained high token burn (15+ min)"
+          description: "Sustained rate: {{ $value | humanize }} tokens/min. This pattern indicates orphaned process or infinite loop."
+          resolution: "Check for background processes, orphaned shells, or infinite retry loops"
+
+      # ============================================================================
+      # P1: API Call Frequency Anomalies (catches repeated calls from same IP)
+      # ============================================================================
+
+      # /api/chat endpoint called > 10x/min from single client (orphaned loop signature)
+      - alert: EndpointCallFrequencyAnomaly
+        expr: |
+          rate(agro_requests_total{route="/api/chat"}[5m]) > 10
+        for: 3m
+        labels:
+          severity: "warning"
+          component: "api-anomaly"
+        annotations:
+          summary: "⚠️  WARNING: Abnormal /api/chat call frequency"
+          description: "Rate: {{ $value | humanize }} calls/min (alert: >10/min). Check client IP in request logs."
+          resolution: "Review recent requests; this pattern indicates bot, loop, or retry storm"
+
+      # Cohere reranking calls spike: > 20 requests/min (normally 1-5/min)
+      - alert: CoreheRerankingSpike
+        expr: |
+          rate(agro_requests_total{route="/api/rerank"}[5m]) > 20
+        for: 2m
+        labels:
+          severity: "warning"
+          component: "reranker"
+        annotations:
+          summary: "⚠️  WARNING: Cohere reranking API call spike"
+          description: "Rate: {{ $value | humanize }} calls/min (alert: >20/min). Each call costs tokens. Check COHERE_RERANK_TOP_N limit."
+          resolution: "Verify COHERE_RERANK_TOP_N env var is set (default: 50). Check /retrieval/rerank.py:101"
+
+      # ============================================================================
+      # P1: Error Rate & Provider Issues
+      # ============================================================================
+
+      # Error rate > 5% over 5 minutes
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(agro_errors_total[5m])) /
+          sum(rate(agro_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: "warning"
+          component: "reliability"
+        annotations:
+          summary: "⚠️  WARNING: Error rate > 5%"
+          description: "Current error rate: {{ $value | humanizePercentage }}. Check application logs and provider status."
+          resolution: "Review server logs: tail -f data/logs/queries.jsonl"
+
+      # Specific provider errors: Cohere rate limit
+      - alert: CoreheRateLimitExceeded
+        expr: |
+          increase(agro_errors_total{type="rate_limit"}[5m]) > 5
+        for: 1m
+        labels:
+          severity: "warning"
+          component: "provider"
+        annotations:
+          summary: "⚠️  WARNING: Cohere rate limit errors detected"
+          description: "{{ $value | humanize }} rate limit errors in last 5 minutes. Cost spike may be triggering throttling."
+          resolution: "Check Cohere API dashboard; consider reducing COHERE_RERANK_TOP_N"
+
+      # Timeout errors spike
+      - alert: TimeoutErrorSpike
+        expr: |
+          increase(agro_errors_total{type="timeout"}[5m]) > 10
+        for: 2m
+        labels:
+          severity: "warning"
+          component: "reliability"
+        annotations:
+          summary: "⚠️  WARNING: Request timeout errors spike"
+          description: "{{ $value | humanize }} timeouts in last 5 minutes. Check provider response times and network latency."
+          resolution: "Monitor request_duration_seconds histogram; check external provider status"
+
+      # ============================================================================
+      # P2: Cost Thresholds (Monthly spend cap warnings)
+      # ============================================================================
+
+      # Total cost exceeds $5 since process start (monthly budget warning)
+      - alert: MonthlyBudgetWarning
+        expr: |
+          agro_cost_usd_total > 5
+        for: 5m
+        labels:
+          severity: "info"
+          component: "cost-tracking"
+        annotations:
+          summary: "📊 INFO: Monthly cost exceeds $5"
+          description: "Total cost: ${{ $value | humanize }}. Remaining budget: ~$45/month (assuming $50 cap)."
+          resolution: "Monitor Grafana Cost panel; check if Cohere reranking should be disabled for non-critical queries"
+
+      # Total cost exceeds $40 (nearing monthly cap)
+      - alert: MonthlyBudgetCritical
+        expr: |
+          agro_cost_usd_total > 40
+        for: 5m
+        labels:
+          severity: "critical"
+          component: "cost-tracking"
+        annotations:
+          summary: "🔴 CRITICAL: Monthly cost near cap ($40/$50)"
+          description: "Total cost: ${{ $value | humanize }}. Remaining budget: ~$10 (assuming $50 cap)."
+          resolution: "URGENT: Disable expensive features or increase budget. Check Grafana Cost vs Model breakdown."
+
+      # ============================================================================
+      # P3: Performance & Latency
+      # ============================================================================
+
+      # Request latency p99 > 10 seconds (normally <2s)
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.99, rate(agro_request_duration_seconds_bucket[5m])) > 10
+        for: 5m
+        labels:
+          severity: "warning"
+          component: "performance"
+        annotations:
+          summary: "⚠️  WARNING: p99 request latency > 10s"
+          description: "p99 latency: {{ $value | humanize }}s (threshold: 10s). Check Grafana Request Latency panel."
+          resolution: "Monitor provider response times; consider enabling response caching or reducing top_k"
+
+      # ============================================================================
+      # P3: Retrieval Quality Degradation
+      # ============================================================================
+
+      # MRR drops below 0.6 (indicates degraded retrieval)
+      - alert: RetrievalQualityDegraded
+        expr: |
+          agro_rr_mrr < 0.6
+        for: 30m
+        labels:
+          severity: "info"
+          component: "retrieval"
+        annotations:
+          summary: "📉 INFO: Retrieval quality degraded (MRR < 0.6)"
+          description: "Mean Reciprocal Rank: {{ $value | humanize }}. This may affect answer quality."
+          resolution: "Check if indexing is stale; consider re-running embeddings or reranker evaluation"
+
+      # Canary pass rate < 90% (quality regression)
+      - alert: CanaryPassRateLow
+        expr: |
+          sum(rate(agro_canary_pass_total[5m])) /
+          sum(rate(agro_canary_total[5m])) < 0.90
+        for: 15m
+        labels:
+          severity: "warning"
+          component: "canary"
+        annotations:
+          summary: "⚠️  WARNING: Canary pass rate < 90%"
+          description: "Pass rate: {{ $value | humanizePercentage }}. Quality may have regressed."
+          resolution: "Review canary test results; check for model changes or indexing issues"
+
+  # ============================================================================
+  # Additional group: Cohere-specific monitoring (easy to add more providers)
+  # ============================================================================
+  - name: cohere_monitoring
+    interval: 30s
+    rules:
+      # Track Cohere API cost separately (usually >90% of total cost)
+      - alert: CohereAPINotResponsive
+        expr: |
+          increase(agro_errors_total{type="provider"}[5m]) > 5 and
+          absent(agro_requests_total{provider="cohere"})
+        for: 2m
+        labels:
+          severity: "warning"
+          component: "provider"
+        annotations:
+          summary: "⚠️  WARNING: Cohere API appears unresponsive"
+          description: "No successful Cohere requests in last 5 minutes; > 5 provider errors detected."
+          resolution: "Check Cohere status: https://status.cohere.com. Check firewall/network connectivity."
+

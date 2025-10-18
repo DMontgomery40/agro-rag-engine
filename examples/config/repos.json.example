@@ -1,0 +1,33 @@
+{
+  "default_repo": "repo-a",
+  "repos": [
+    {
+      "name": "repo-a",
+      "path": "/abs/path/to/repo-a",
+      "keywords": ["auth", "backend", "oauth", "service"],
+      "path_boosts": ["src/server/", "server/", "api/", "backend/"],
+      "layer_bonuses": {
+        "server": {"kernel": 0.10, "plugin": 0.04},
+        "ui": {"ui": 0.12, "docs": 0.06},
+        "sdk": {"sdk": 0.12},
+        "infra": {"infra": 0.12}
+      }
+    },
+    {
+      "name": "repo-b",
+      "path": "/abs/path/to/repo-b",
+      "keywords": ["ui", "frontend", "component", "react"],
+      "path_boosts": ["core/admin_ui/", "ui/", "web/", "docs/"],
+      "layer_bonuses": {
+        "ui": {"ui": 0.12, "docs": 0.06},
+        "server": {"kernel": 0.04},
+        "infra": {"infra": 0.06}
+      }
+    }
+  ]
+}
+
+// Copy to repos.json and edit paths. You may add more repos or omit optional fields.
+// Env overrides:
+//   REPOS_FILE=/path/to/custom.json
+//   REPO=myrepo  REPO_PATH=/abs/path/to/myrepo   # single-repo fallback when no repos.json

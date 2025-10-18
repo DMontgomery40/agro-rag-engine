@@ -1,0 +1,29 @@
+[
+  {
+    "id": "cuda-driver-incompat-001",
+    "conditions": {
+      "runtime": "cuda",
+      "min_driver": "550.00",
+      "max_driver": null,
+      "notes": "Update CUDA driver if using new PyTorch nightly"
+    },
+    "message": "Potential CUDA incompatibility detected with recent PyTorch builds.",
+    "refs": [
+      "https://developer.nvidia.com/cuda-toolkit"
+    ]
+  },
+  {
+    "id": "coreml-macos15-electron-compat-001",
+    "conditions": {
+      "runtime": "coreml",
+      "os": ">=15.0",
+      "framework": "electron<30",
+      "notes": "Electron CoreML bindings may require updates on macOS 15"
+    },
+    "message": "CoreML + Electron compatibility may be limited on macOS 15.",
+    "refs": [
+      "https://developer.apple.com/documentation/coreml"
+    ]
+  }
+]
+
