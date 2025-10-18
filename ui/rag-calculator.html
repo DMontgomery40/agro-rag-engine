@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AGRO - Enterprise RAG Storage Calculator</title>
+    <!-- AGRO Storage Calculator v1.2 - With helpful tooltips and clear explanations -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            line-height: 1.6;
+            padding: 40px 20px;
+        }
+
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #2a2a2a;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 300;
+            letter-spacing: -1px;
+            margin-bottom: 8px;
+        }
+
+        .header .brand {
+            font-weight: 700;
+            color: #00ff88;
+        }
+
+        .header .subtitle {
+            color: #888;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .calculators-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 1024px) {
+            .calculators-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .calculator {
+            background: #111111;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            padding: 24px;
+        }
+
+        .calculator-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #2a2a2a;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .calculator-badge {
+            background: #00ff88;
+            color: #000;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .input-section {
+            margin-bottom: 24px;
+        }
+
+        .input-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .input-group.full-width {
+            grid-column: span 2;
+        }
+
+        label {
+            font-size: 11px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        .label-with-tooltip {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tooltip {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            background: #333;
+            color: #888;
+            border-radius: 50%;
+            font-size: 10px;
+            text-align: center;
+            line-height: 14px;
+            cursor: help;
+            position: relative;
+            font-weight: 400;
+            text-transform: none;
+        }
+
+        .tooltip:hover {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .tooltip:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #fff;
+            color: #000;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 10;
+            max-width: 250px;
+            white-space: normal;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            font-weight: 400;
+            letter-spacing: normal;
+        }
+
+        input, select {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+            transition: all 0.2s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #00ff88;
+            background: #1f1f1f;
+        }
+
+        .unit-input {
+            display: flex;
+            gap: 8px;
+        }
+
+        .unit-input input {
+            flex: 1;
+        }
+
+        .unit-input select {
+            width: 70px;
+        }
+
+        .results {
+            background: #0a0a0a;
+            border: 1px solid #2a2a2a;
+            border-radius: 4px;
+            padding: 16px;
+            margin-top: 20px;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #1a1a1a;
+        }
+
+        .result-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .result-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+        }
+
+        .total-row {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 2px solid #2a2a2a;
+        }
+
+        .total-row .result-item {
+            border: none;
+            padding: 12px;
+            background: #1a1a1a;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .total-row .result-value {
+            font-size: 18px;
+            color: #00ff88;
+        }
+
+        .warning {
+            background: #331a00;
+            border: 1px solid #664400;
+            color: #ffaa00;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        .success {
+            background: #003311;
+            border: 1px solid #006622;
+            color: #00ff88;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        .plans-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #2a2a2a;
+        }
+
+        .plan-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #666;
+            margin-bottom: 12px;
+            letter-spacing: 1px;
+        }
+
+        .plan-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .plan-card {
+            background: #0a0a0a;
+            border: 1px solid #2a2a2a;
+            padding: 12px;
+            border-radius: 4px;
+        }
+
+        .plan-card.fits {
+            border-color: #006622;
+        }
+
+        .plan-card.exceeds {
+            border-color: #664400;
+        }
+
+        .plan-name {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .plan-details {
+            font-size: 11px;
+            color: #888;
+            line-height: 1.6;
+        }
+
+        .plan-total {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #2a2a2a;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .fits .plan-total {
+            color: #00ff88;
+        }
+
+        .exceeds .plan-total {
+            color: #ffaa00;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #2a2a2a;
+            color: #666;
+            font-size: 12px;
+        }
+
+        .footer a {
+            color: #00ff88;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="header">
+            <h1><span class="brand">AGRO</span> Storage Calculator Suite</h1>
+            <p class="subtitle">Another Good RAG Option • Enterprise Memory Planning</p>
+            <div style="max-width: 800px; margin: 20px auto 0; padding: 15px; background: #1a1a1a; border-radius: 8px; border: 1px solid #333;">
+                <p style="color: #aaa; font-size: 13px; line-height: 1.6; text-align: left;">
+                    <strong style="color: #fff;">Left:</strong> Calculate exact storage needs for your configuration.<br>
+                    <strong style="color: #fff;">Right:</strong> See if your data fits within a target limit using different strategies.
+                </p>
+            </div>
+        </div>
+
+        <div class="calculators-grid">
+            <!-- Calculator 1: Comprehensive Storage Requirements -->
+            <div class="calculator">
+                <div class="calculator-title">
+                    Storage Requirements
+                    <span class="calculator-badge">Full Stack</span>
+                </div>
+
+                <p style="font-size: 12px; color: #888; margin-bottom: 20px; line-height: 1.5;">
+                    Calculate total storage for your chosen configuration with all components.
+                </p>
+
+                <div class="input-section">
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label for="calc1-repoSize">
+                                <div class="label-with-tooltip">
+                                    Repository Size
+                                    <span class="tooltip" data-tooltip="Total size of your data/documents to index">?</span>
+                                </div>
+                            </label>
+                            <div class="unit-input">
+                                <input type="number" id="calc1-repoSize" value="5" step="0.1" min="0.1" aria-label="Repository size value">
+                                <select id="calc1-repoUnit" aria-label="Repository size unit">
+                                    <option value="1073741824" selected>GiB</option>
+                                    <option value="1099511627776">TiB</option>
+                                    <option value="1048576">MiB</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label for="calc1-chunkSize">
+                                <div class="label-with-tooltip">
+                                    Chunk Size
+                                    <span class="tooltip" data-tooltip="Size of text chunks for embedding. Typically 1-8 KiB">?</span>
+                                </div>
+                            </label>
+                            <div class="unit-input">
+                                <input type="number" id="calc1-chunkSize" value="4" step="1" min="0.001" aria-label="Chunk size value">
+                                <select id="calc1-chunkUnit" aria-label="Chunk size unit">
+                                    <option value="1024" selected>KiB</option>
+                                    <option value="1048576">MiB</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label for="calc1-embDim">
+                                <div class="label-with-tooltip">
+                                    Embedding Dimension
+                                    <span class="tooltip" data-tooltip="Vector size: 512 (small), 768 (BERT), 1536 (OpenAI)">?</span>
+                                </div>
+                            </label>
+                            <input type="number" id="calc1-embDim" value="512" step="1" min="1" aria-label="Embedding dimension">
+                        </div>
+                        <div class="input-group">
+                            <label for="calc1-precision">
+                                <div class="label-with-tooltip">
+                                    Precision
+                                    <span class="tooltip" data-tooltip="float32: full precision, float16: half size, int8: quarter size">?</span>
+                                </div>
+                            </label>
+                            <select id="calc1-precision" aria-label="Data precision">
+                                <option value="4" selected>float32</option>
+                                <option value="2">float16</option>
+                                <option value="1">int8</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label for="calc1-qdrant">
+                                <div class="label-with-tooltip">
+                                    Qdrant Overhead
+                                    <span class="tooltip" data-tooltip="Vector DB index overhead. Typically 1.5x embedding size">?</span>
+                                </div>
+                            </label>
+                            <input type="number" id="calc1-qdrant" value="1.5" step="0.1" min="1" aria-label="Qdrant overhead multiplier">
+                        </div>
+                        <div class="input-group">
+                            <label for="calc1-hydration">
+                                <div class="label-with-tooltip">
+                                    Hydration %
+                                    <span class="tooltip" data-tooltip="% of raw data kept in RAM for instant retrieval. 0% = fetch from disk, 100% = everything in memory">?</span>
+                                </div>
+                            </label>
+                            <input type="number" id="calc1-hydration" value="100" step="10" min="0" max="100" aria-label="Hydration percentage">
+                        </div>
+                    </div>
+
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label for="calc1-redis">
+                                <div class="label-with-tooltip">
+                                    Redis Cache (MiB)
+                                    <span class="tooltip" data-tooltip="Session/chat memory storage">?</span>
+                                </div>
+                            </label>
+                            <input type="number" id="calc1-redis" value="400" step="50" min="0" aria-label="Redis cache size">
+                        </div>
+                        <div class="input-group">
+                            <label for="calc1-replication">
+                                <div class="label-with-tooltip">
+                                    Replication Factor
+                                    <span class="tooltip" data-tooltip="Number of copies for HA/scaling">?</span>
+                                </div>
+                            </label>
+                            <input type="number" id="calc1-replication" value="3" step="1" min="1" aria-label="Replication factor">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="results">
+                    <div class="result-grid">
+                        <div class="result-item">
+                            <span class="result-label">Chunks</span>
+                            <span class="result-value" id="calc1-chunks">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Raw Embeddings</span>
+                            <span class="result-value" id="calc1-embeddings">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Qdrant</span>
+                            <span class="result-value" id="calc1-qdrantSize">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">BM25 Index</span>
+                            <span class="result-value" id="calc1-bm25">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Cards/Summary</span>
+                            <span class="result-value" id="calc1-cards">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Hydration</span>
+                            <span class="result-value" id="calc1-hydr">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Reranker</span>
+                            <span class="result-value" id="calc1-reranker">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Redis</span>
+                            <span class="result-value" id="calc1-redisSize">-</span>
+                        </div>
+                    </div>
+
+                    <div class="total-row">
+                        <div class="result-item">
+                            <span class="result-label">Single Instance</span>
+                            <span class="result-value" id="calc1-single">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Replicated (×<span id="calc1-repFactor">3</span>)</span>
+                            <span class="result-value" id="calc1-replicated">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calculator 2: Optimization & Fitting -->
+            <div class="calculator">
+                <div class="calculator-title">
+                    Optimization Planner
+                    <span class="calculator-badge">Fit Analysis</span>
+                </div>
+
+                <p style="font-size: 12px; color: #888; margin-bottom: 20px; line-height: 1.5;">
+                    Compare two strategies: <strong>Minimal</strong> (smallest footprint, fetches data on-demand) vs <strong>Low Latency</strong> (everything in RAM for instant access).
+                </p>
+
+                <div class="input-section">
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label for="calc2-repoSize">
+                                <div class="label-with-tooltip">
+                                    Repository Size
+                                    <span class="tooltip" data-tooltip="Same as left calculator - your total data">?</span>
+                                </div>
+                            </label>
+                            <div class="unit-input">
+                                <input type="number" id="calc2-repoSize" value="5" step="0.1" min="0.1" aria-label="Repository size value">
+                                <select id="calc2-repoUnit" aria-label="Repository size unit">
+                                    <option value="1073741824" selected>GiB</option>
+                                    <option value="1099511627776">TiB</option>
+                                    <option value="1048576">MiB</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label for="calc2-targetSize">
+                                <div class="label-with-tooltip">
+                                    Target Limit
+                                    <span class="tooltip" data-tooltip="Max storage you want to use">?</span>
+                                </div>
+                            </label>
+                            <div class="unit-input">
+                                <input type="number" id="calc2-targetSize" value="5" step="0.5" min="0.1" aria-label="Target storage limit">
+                                <select id="calc2-targetUnit" aria-label="Target limit unit">
+                                    <option value="1073741824" selected>GiB</option>
+                                    <option value="1099511627776">TiB</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label for="calc2-chunkSize">
+                                <div class="label-with-tooltip">
+                                    Chunk Size
+                                    <span class="tooltip" data-tooltip="Smaller chunks = more vectors = more storage">?</span>
+                                </div>
+                            </label>
+                            <div class="unit-input">
+                                <input type="number" id="calc2-chunkSize" value="4" step="1" min="0.001" aria-label="Chunk size value">
+                                <select id="calc2-chunkUnit" aria-label="Chunk size unit">
+                                    <option value="1024" selected>KiB</option>
+                                    <option value="1048576">MiB</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label for="calc2-embDim">
+                                <div class="label-with-tooltip">
+                                    Embedding Dims
+                                    <span class="tooltip" data-tooltip="Must match your model choice">?</span>
+                                </div>
+                            </label>
+                            <input type="number" id="calc2-embDim" value="512" step="1" min="1" aria-label="Embedding dimension">
+                        </div>
+                    </div>
+
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label for="calc2-bm25pct">
+                                <div class="label-with-tooltip">
+                                    BM25 Overhead %
+                                    <span class="tooltip" data-tooltip="Text search index, typically 20% of data">?</span>
+                                </div>
+                            </label>
+                            <input type="number" id="calc2-bm25pct" value="20" step="5" min="0" max="100" aria-label="BM25 overhead percentage">
+                        </div>
+                        <div class="input-group">
+                            <label for="calc2-cardspct">
+                                <div class="label-with-tooltip">
+                                    Cards/Summary %
+                                    <span class="tooltip" data-tooltip="Metadata/summaries, typically 10% of data">?</span>
+                                </div>
+                            </label>
+                            <input type="number" id="calc2-cardspct" value="10" step="5" min="0" max="100" aria-label="Cards/summary percentage">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="results">
+                    <div class="result-grid">
+                        <div class="result-item">
+                            <span class="result-label">Chunks</span>
+                            <span class="result-value" id="calc2-chunks">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">Repository</span>
+                            <span class="result-value" id="calc2-baseStorage">-</span>
+                        </div>
+                    </div>
+
+                    <div class="plan-title">Embedding Size by Precision (raw vectors only)</div>
+                    <div class="result-grid">
+                        <div class="result-item">
+                            <span class="result-label">float32 (baseline)</span>
+                            <span class="result-value" id="calc2-float32">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">float16 (half size)</span>
+                            <span class="result-value" id="calc2-float16">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">int8 (quarter size)</span>
+                            <span class="result-value" id="calc2-int8">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">
+                                Product Quantization
+                                <span class="tooltip" data-tooltip="Aggressive compression: 8× smaller but ~5% accuracy loss" style="margin-left: 4px;">?</span>
+                            </span>
+                            <span class="result-value" id="calc2-pq8">-</span>
+                        </div>
+                    </div>
+
+                    <div class="plans-section">
+                        <div class="plan-title">Configuration Plans</div>
+                        <div class="plan-grid">
+                            <div class="plan-card" id="calc2-aggressive-plan">
+                                <div class="plan-name">Minimal (No Hydration)</div>
+                                <div class="plan-details" id="calc2-aggressive-details" style="line-height: 1.8;">
+                                    <strong>Includes:</strong><br>
+                                    • Product Quantized vectors<br>
+                                    • Qdrant index<br>
+                                    • BM25 search<br>
+                                    • Cards/metadata<br>
+                                    • Reranker cache<br>
+                                    • Redis<br>
+                                    <strong>Excludes:</strong><br>
+                                    • Raw data (fetched on-demand)
+                                </div>
+                                <div class="plan-total" id="calc2-aggressive-total">-</div>
+                            </div>
+                            <div class="plan-card" id="calc2-conservative-plan">
+                                <div class="plan-name">Low Latency (Full Cache)</div>
+                                <div class="plan-details" id="calc2-conservative-details" style="line-height: 1.8;">
+                                    <strong>Includes:</strong><br>
+                                    • float16 vectors<br>
+                                    • Qdrant index<br>
+                                    • BM25 search<br>
+                                    • Cards/metadata<br>
+                                    • Reranker cache<br>
+                                    • Redis<br>
+                                    • <span style="color: #ffaa00;">Data in RAM (per left hydration %)</span>
+                                </div>
+                                <div class="plan-total" id="calc2-conservative-total">-</div>
+                            </div>
+                        </div>
+
+                        <p style="font-size: 11px; color: #666; margin: 16px 0 8px; padding: 12px; background: #0a0a0a; border-radius: 4px; line-height: 1.5;">
+                            💡 <strong>Why the big difference?</strong> Low Latency keeps data in RAM based on hydration % from left panel (currently adding <span id="hydrationInfo">100%</span> of repo size). Minimal only stores compressed vectors and indexes, fetching actual data from disk when needed.
+                        </p>
+
+                        <div class="total-row" style="margin-top: 20px;">
+                            <div class="result-item">
+                                <span class="result-label">Minimal × <span id="calc2-aggRepFactor">3</span> replicas</span>
+                                <span class="result-value" id="calc2-aggressive-replicated">-</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="result-label">Low Latency × <span id="calc2-consRepFactor">3</span> replicas</span>
+                                <span class="result-value" id="calc2-conservative-replicated">-</span>
+                            </div>
+                        </div>
+
+                        <div id="calc2-status" style="margin-top: 12px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>AGRO (Another Good RAG Option) • Enterprise Storage Calculator v1.2</p>
+            <p>Precision calculations for vector search infrastructure</p>
+        </div>
+    </div>
+
+    <script>
+        // Improved formatBytes function with consistent formatting
+        function formatBytes(bytes) {
+            if (!isFinite(bytes) || bytes === 0) return '0 B';
+            const abs = Math.abs(bytes);
+            const KB = 1024;
+            const MB = KB * 1024;
+            const GB = MB * 1024;
+            const TB = GB * 1024;
+            const nf = new Intl.NumberFormat('en-US', { maximumFractionDigits: 3 });
+
+            if (abs < KB) return `${bytes.toFixed(0)} B`;
+            if (abs < MB) return `${nf.format(bytes / KB)} KiB`;
+            if (abs < GB) return `${nf.format(bytes / MB)} MiB`;
+            if (abs < TB) return `${nf.format(bytes / GB)} GiB`;
+            return `${nf.format(bytes / TB)} TiB`;
+        }
+
+        function formatNumber(num) {
+            return new Intl.NumberFormat('en-US').format(num);
+        }
+
+        // Calculator 1: Full Storage Requirements
+        function calculateStorage1() {
+            const R = parseFloat(document.getElementById('calc1-repoSize').value) *
+                     parseFloat(document.getElementById('calc1-repoUnit').value);
+            const C = parseFloat(document.getElementById('calc1-chunkSize').value) *
+                     parseFloat(document.getElementById('calc1-chunkUnit').value);
+
+            // Guard against invalid chunk size
+            if (!C || C <= 0) {
+                console.warn("Chunk size must be > 0");
+                return;
+            }
+
+            const D = parseFloat(document.getElementById('calc1-embDim').value);
+            const B = parseFloat(document.getElementById('calc1-precision').value);
+            const Q = parseFloat(document.getElementById('calc1-qdrant').value);
+            const hydrationPct = parseFloat(document.getElementById('calc1-hydration').value) / 100;
+            const redisBytes = parseFloat(document.getElementById('calc1-redis').value) * 1048576;
+            const replFactor = parseFloat(document.getElementById('calc1-replication').value);
+
+            // Calculate
+            const N = Math.ceil(R / C);
+            const E = N * D * B;
+            const Q_bytes = E * Q;
+            const BM25 = 0.20 * R;
+            const CARDS = 0.10 * R;
+            const HYDR = hydrationPct * R;
+            const RER = 0.5 * E;
+
+            // Update display
+            document.getElementById('calc1-chunks').textContent = formatNumber(N);
+            document.getElementById('calc1-embeddings').textContent = formatBytes(E);
+            document.getElementById('calc1-qdrantSize').textContent = formatBytes(Q_bytes);
+            document.getElementById('calc1-bm25').textContent = formatBytes(BM25);
+            document.getElementById('calc1-cards').textContent = formatBytes(CARDS);
+            document.getElementById('calc1-hydr').textContent = formatBytes(HYDR);
+            document.getElementById('calc1-reranker').textContent = formatBytes(RER);
+            document.getElementById('calc1-redisSize').textContent = formatBytes(redisBytes);
+
+            // Totals
+            const singleTotal = E + Q_bytes + BM25 + CARDS + HYDR + RER + redisBytes;
+            const criticalComponents = E + Q_bytes + HYDR + CARDS + RER;
+            const replicatedTotal = singleTotal + (replFactor - 1) * criticalComponents;
+
+            document.getElementById('calc1-single').textContent = formatBytes(singleTotal);
+            document.getElementById('calc1-replicated').textContent = formatBytes(replicatedTotal);
+            document.getElementById('calc1-repFactor').textContent = replFactor;
+        }
+
+        // Calculator 2: Optimization & Fitting (corrected version)
+        function calculateStorage2() {
+            // Read base values (uses same unit semantics as calc1)
+            const R = parseFloat(document.getElementById('calc2-repoSize').value) *
+                      parseFloat(document.getElementById('calc2-repoUnit').value);
+
+            const targetBytes = parseFloat(document.getElementById('calc2-targetSize').value) *
+                                parseFloat(document.getElementById('calc2-targetUnit').value);
+
+            const C = parseFloat(document.getElementById('calc2-chunkSize').value) *
+                      parseFloat(document.getElementById('calc2-chunkUnit').value);
+
+            // Guard against invalid chunk size
+            if (!C || C <= 0) {
+                console.warn("Chunk size must be > 0");
+                return;
+            }
+
+            const D = parseFloat(document.getElementById('calc2-embDim').value);
+            const bm25Pct = parseFloat(document.getElementById('calc2-bm25pct').value) / 100;
+            const cardsPct = parseFloat(document.getElementById('calc2-cardspct').value) / 100;
+
+            // Try to reuse calc1 inputs if present (keeps both calculators consistent)
+            const qdrantMultiplier = (document.getElementById('calc1-qdrant') ? parseFloat(document.getElementById('calc1-qdrant').value) : 1.5);
+            const hydrationPct = (document.getElementById('calc1-hydration') ? (parseFloat(document.getElementById('calc1-hydration').value) / 100) : 1.0);
+            const redisBytesInput = (document.getElementById('calc1-redis') ? parseFloat(document.getElementById('calc1-redis').value) * 1048576 : 390 * 1048576);
+            const replicationFactor = (document.getElementById('calc1-replication') ? parseFloat(document.getElementById('calc1-replication').value) : 3);
+
+            // Derived values
+            const N = Math.ceil(R / C);
+            const E_float32 = N * D * 4;
+            const E_float16 = E_float32 / 2;
+            const E_int8 = E_float32 / 4;
+            const E_pq8 = E_float32 / 8;
+
+            const BM25 = bm25Pct * R;
+            const CARDS = cardsPct * R;
+
+            // Update display
+            document.getElementById('calc2-chunks').textContent = formatNumber(N);
+            document.getElementById('calc2-baseStorage').textContent = formatBytes(R);
+            document.getElementById('calc2-float32').textContent = formatBytes(E_float32);
+            document.getElementById('calc2-float16').textContent = formatBytes(E_float16);
+            document.getElementById('calc2-int8').textContent = formatBytes(E_int8);
+            document.getElementById('calc2-pq8').textContent = formatBytes(E_pq8);
+
+            // Aggressive plan: PQ 8x, no local hydration (hydrate = 0)
+            const aggressiveEmbedding = E_pq8;
+            const aggressiveQ = E_pq8 * qdrantMultiplier;
+            const aggressiveRer = 0.5 * E_pq8; // reranker scaled with PQ embedding bytes
+            const aggressiveTotal = aggressiveEmbedding + aggressiveQ + BM25 + CARDS + redisBytesInput + aggressiveRer;
+            const aggressiveCritical = aggressiveEmbedding + aggressiveQ + CARDS + aggressiveRer; // no hydration
+            const aggressiveReplicated = aggressiveTotal + (replicationFactor - 1) * aggressiveCritical;
+            const aggressiveFits = aggressiveTotal <= targetBytes;
+
+            document.getElementById('calc2-aggressive-total').textContent = formatBytes(aggressiveTotal);
+            document.getElementById('calc2-aggressive-replicated').textContent = formatBytes(aggressiveReplicated);
+            document.getElementById('calc2-aggressive-plan').className = 'plan-card ' + (aggressiveFits ? 'fits' : 'exceeds');
+
+                            // Conservative plan: float16 precision, full hydration
+            const conservativeEmbedding = E_float16;
+            const conservativeQ = conservativeEmbedding * qdrantMultiplier;
+            const conservativeRer = 0.5 * conservativeEmbedding;
+            const conservativeHydration = hydrationPct * R;
+            const conservativeTotal = conservativeEmbedding + conservativeQ + conservativeHydration + BM25 + CARDS + conservativeRer + redisBytesInput;
+            const conservativeCritical = conservativeEmbedding + conservativeQ + conservativeHydration + CARDS + conservativeRer;
+            const conservativeReplicated = conservativeTotal + (replicationFactor - 1) * conservativeCritical;
+            const conservativeFits = conservativeTotal <= targetBytes;
+
+            document.getElementById('calc2-conservative-total').textContent = formatBytes(conservativeTotal);
+            document.getElementById('calc2-conservative-replicated').textContent = formatBytes(conservativeReplicated);
+            document.getElementById('calc2-conservative-plan').className = 'plan-card ' + (conservativeFits ? 'fits' : 'exceeds');
+
+            // Update replication factor display
+            document.getElementById('calc2-aggRepFactor').textContent = replicationFactor;
+            document.getElementById('calc2-consRepFactor').textContent = replicationFactor;
+
+            // Update hydration info display
+            const hydrationInfoEl = document.getElementById('hydrationInfo');
+            if (hydrationInfoEl) {
+                hydrationInfoEl.textContent = Math.round(hydrationPct * 100) + '%';
+            }
+
+            // Status message
+            const statusEl = document.getElementById('calc2-status');
+            if (aggressiveFits && conservativeFits) {
+                statusEl.className = 'success';
+                statusEl.textContent = '✓ Both configurations fit within your ' + formatBytes(targetBytes) + ' limit';
+            } else if (aggressiveFits) {
+                statusEl.className = 'warning';
+                statusEl.textContent = '⚠ Only Minimal config fits. Low Latency config needs ' + formatBytes(conservativeTotal - targetBytes) + ' more storage.';
+            } else {
+                statusEl.className = 'warning';
+                statusEl.textContent = '⚠ Both exceed limit. Minimal needs ' + formatBytes(aggressiveTotal - targetBytes) + ' more. Consider larger chunks or stronger compression.';
+            }
+        }
+
+        // Event listeners for Calculator 1
+        ['calc1-repoSize', 'calc1-repoUnit', 'calc1-chunkSize', 'calc1-chunkUnit',
+         'calc1-embDim', 'calc1-precision', 'calc1-qdrant', 'calc1-hydration',
+         'calc1-redis', 'calc1-replication'].forEach(id => {
+            document.getElementById(id).addEventListener('input', () => {
+                calculateStorage1();
+                calculateStorage2(); // Recalc calc2 when calc1 shared params change
+            });
+        });
+
+        // Event listeners for Calculator 2
+        ['calc2-repoSize', 'calc2-repoUnit', 'calc2-targetSize', 'calc2-targetUnit',
+         'calc2-chunkSize', 'calc2-chunkUnit', 'calc2-embDim', 'calc2-bm25pct',
+         'calc2-cardspct'].forEach(id => {
+            document.getElementById(id).addEventListener('input', calculateStorage2);
+        });
+
+        // Initial calculations
+        calculateStorage1();
+        calculateStorage2();
+    </script>
+</body>
+</html>

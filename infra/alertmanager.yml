@@ -1,0 +1,120 @@
+global:
+  resolve_timeout: 5m
+  # IMPORTANT: Configure these to receive notifications
+  # For development, you can log alerts to the console instead
+  # smtp_smarthost: 'localhost:25'
+  # smtp_from: 'alertmanager@example.com'
+
+# The root route with all parameters, which are inherited by the child
+# routes and can be overwritten on each route.
+route:
+  # The labels by which incoming alerts are grouped together. For example,
+  # multiple alerts coming in for cluster=A and alertname=InstanceDown would
+  # be batched into a single group.
+  #
+  # To aggregate by all possible labels use the empty label
+  # name '...' as the sole label name, for example:
+  # group_by: ['...']
+  group_by: ['alertname', 'cluster', 'service']
+
+  # How long to initially wait to send a notification for a group
+  # of alerts. Allows to wait for an incoming alerts to be aggregated and then
+  # send a single notification about the whole group. (Usually ~0s to few seconds.)
+  group_wait: 10s
+
+  # How long to wait before sending a notification about new alerts added to
+  # a group of alerts for which an initial notification has already been sent.
+  # (Usually ~5m or more.)
+  group_interval: 10s
+
+  # How long to keep an alert in a receiver's state before detaching from it.
+  # (Usually ~hours or more.)
+  repeat_interval: 12h
+
+  # A default receiver, used if an alert does not match any of the following
+  # routes. Guard it by making sure that it is filled by these mandatory fields:
+  # - match_re or match: required
+  # - receiver: required
+  receiver: 'null'
+
+  # All the above fields are inherited by all child routes and can
+  # be overwritten on each route.
+
+  routes:
+    # Critical alerts: Cost spike, token burn, rate limit issues
+    - match:
+        severity: critical
+      receiver: 'critical'
+      group_wait: 30s
+      repeat_interval: 1h
+
+    # Warning alerts: Latency, error rates, anomalies
+    - match:
+        severity: warning
+      receiver: 'warning'
+      group_wait: 1m
+      repeat_interval: 4h
+
+    # Info alerts: Budget warnings, quality metrics
+    - match:
+        severity: info
+      receiver: 'info'
+      group_wait: 5m
+      repeat_interval: 24h
+
+# Inhibition rules allow to mute a set of alerts given that another alert is
+# firing.
+#
+# We use this to mute any warning-level notifications if the critical-level
+# alert for the same alert is already firing.
+inhibit_rules:
+  # If the critical alert is firing, inhibit all warning and info alerts
+  # for the same component
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning|info'
+    equal: ['component']
+
+  # If error rate is high, inhibit latency warnings (they're usually correlated)
+  - source_match:
+      alertname: 'HighErrorRate'
+    target_match_re:
+      alertname: 'HighLatency|RequestDuration.*'
+
+# Receiver configurations
+# IMPORTANT: For local development, use 'null' receiver
+# In production, configure email, Slack, PagerDuty, etc.
+
+receivers:
+  - name: 'null'
+    # No-op receiver - receives but does nothing
+
+  - name: 'critical'
+    # For production, configure:
+    # webhook_configs:
+    #   - url: 'http://your-webhook-server/critical'
+    # slack_configs:
+    #   - api_url: 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL'
+    #     channel: '#alerts-critical'
+    #     title: 'CRITICAL ALERT'
+    # pagerduty_configs:
+    #   - service_key: 'YOUR-SERVICE-KEY'
+    webhook_configs:
+      - url: 'http://host.docker.internal:8012/webhooks/alertmanager'
+        send_resolved: true
+
+  - name: 'warning'
+    # webhook_configs:
+    #   - url: 'http://your-webhook-server/warning'
+    webhook_configs:
+      - url: 'http://host.docker.internal:8012/webhooks/alertmanager'
+        send_resolved: true
+
+  - name: 'info'
+    # webhook_configs:
+    #   - url: 'http://your-webhook-server/info'
+    webhook_configs:
+      - url: 'http://host.docker.internal:8012/webhooks/alertmanager'
+        send_resolved: true
+

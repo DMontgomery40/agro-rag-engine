@@ -1,0 +1,4 @@
+{
+  "ok": true,
+  "output": "Loading model from models/cross-encoder-agro...\nEvaluating on 1 triplets...\n\nEvaluated on 1 items\nMRR@all: 1.0000\nHit@1: 1.0000\nHit@3: 1.0000\nHit@5: 1.0000\nHit@10: 1.0000\n"
+}

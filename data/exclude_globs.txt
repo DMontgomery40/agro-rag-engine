@@ -1,0 +1,78 @@
+# RAG ignore patterns (glob)
+# Lines starting with # are comments.
+# These patterns are applied in addition to built-in directory pruning in filtering.py.
+
+# Build artifacts / vendor / caches
+**/node_modules/**
+**/vendor/**
+**/dist/**
+**/build/**
+**/.venv/**
+**/venv/**
+**/env/**
+**/.virtualenv/**
+**/virtualenv/**
+**/.pyenv/**
+**/.next/**
+**/.turbo/**
+**/.svelte-kit/**
+**/coverage/**
+**/__pycache__/**
+**/.pytest_cache/**
+**/.mypy_cache/**
+**/.cache/**
+**/Pods/**
+**/Godeps/**
+**/.bundle/**
+**/bundle/**
+
+# Docs build outputs
+**/_site/**
+**/site/**
+
+# Minified or large static
+**/*.min.js
+**/*.min.css
+**/*.map
+**/*.bundle.js
+**/*.generated.*
+**/*.json.gz
+
+# Lockfiles (rarely helpful for RAG)
+**/pnpm-lock.yaml
+**/package-lock.json
+**/yarn.lock
+**/poetry.lock
+**/Pipfile.lock
+
+# Binary or image formats
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.gif
+**/*.svg
+**/*.ico
+**/*.pdf
+**/*.zip
+**/*.tar
+**/*.gz
+**/*.7z
+
+# Test files and data
+**/test/**
+**/tests/**
+**/*.spec.ts
+**/*.test.ts
+**/*.spec.js
+**/*.test.js
+**/fixtures/**
+**/mocks/**
+**/__mocks__/**
+**/test-data/**
+
+# Generated/vendor code
+**/*.d.ts
+**/external/**
+**/third_party/**
+**/install/**
+**/migrations/**

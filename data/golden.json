@@ -1,0 +1,981 @@
+
+[
+  {
+    "_comment": "Example questions from author's healthcare app and Rails service",
+    "_comment2": "Replace these with questions specific to YOUR repositories"
+  },
+  {
+    "q": "Where is OAuth token validated?",
+    "repo": "agro",
+    "expect_paths": [
+      "server",
+      "mcp"
+    ]
+  },
+  {
+    "q": "Where is the mcp server?",
+    "repo": "agro",
+    "expect_paths": [
+      "/server/mcp",
+      "/node_mcp"
+    ]
+  },
+  {
+    "q": "Where is auto-profile wizard rendered?",
+    "repo": "agro",
+    "expect_paths": [
+      "dashboard",
+      "gui",
+      "api",
+      "app.js"
+    ]
+  },
+  {
+    "q": "Test question from curl",
+    "repo": "agro",
+    "expect_paths": [
+      "test",
+      "example"
+    ]
+  },
+  {
+    "q": "Where is hybrid retrieval implemented?",
+    "repo": "agro",
+    "expect_paths": [
+      "retrieval/hybrid_search.py"
+    ]
+  },
+  {
+    "q": "Where is keyword generation handled server-side?",
+    "repo": "agro",
+    "expect_paths": [
+      "server/app.py",
+      "keywords/generate"
+    ]
+  },
+  {
+    "q": "Where is the metadata enrichment logic for code/keywords?",
+    "repo": "agro",
+    "expect_paths": [
+      "metadata_enricher.py"
+    ]
+  },
+  {
+    "q": "Where is the indexing pipeline (BM25 and dense) implemented?",
+    "repo": "agro",
+    "expect_paths": [
+      "indexer/index_repo.py"
+    ]
+  },
+  {
+    "q": "Where is comprehensive index status computed?",
+    "repo": "agro",
+    "expect_paths": [
+      "server/app.py",
+      "server/index_stats.py",
+      "index/status"
+    ]
+  },
+  {
+    "q": "Where are semantic cards built or listed?",
+    "repo": "agro",
+    "expect_paths": [
+      "server/app.py",
+      "api/cards",
+      "indexer/build_cards.py",
+      "/gui"
+    ]
+  },
+  {
+    "q": "Where are golden questions API routes defined?",
+    "repo": "agro",
+    "expect_paths": [
+      "server/app.py",
+      "api/golden"
+    ]
+  },
+  {
+    "q": "Where is the endpoint to test a single golden question?",
+    "repo": "agro",
+    "expect_paths": [
+      "server/app.py",
+      "api/golden/test"
+    ]
+  },
+  {
+    "q": "Where are GUI assets mounted and served?",
+    "repo": "agro",
+    "expect_paths": [
+      "server/app.py",
+      "/gui",
+      "gui/index.html"
+    ]
+  },
+  {
+    "q": "Where is repository configuration (repos.json) loaded?",
+    "repo": "agro",
+    "expect_paths": [
+      "config_loader.py"
+    ]
+  },
+  {
+    "q": "Where are MCP stdio tools implemented (rag_answer, rag_search)?",
+    "repo": "agro",
+    "expect_paths": [
+      "server/mcp/server.py"
+    ]
+  },
+  {
+    "q": "Where can I list or fetch latest LangGraph traces?",
+    "repo": "agro",
+    "expect_paths": [
+      "server/app.py",
+      "api/traces",
+      "gui/app.js"
+    ]
+  },
+  {
+    "q": "How do camera plugins work in ?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/camera",
+      "plugins/ffmpeg-camera",
+      "camera-plugin"
+    ]
+  },
+  {
+    "q": "Where is HomeKit integration implemented?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/homekit",
+      "homekit-plugin",
+      "homekit-bridge"
+    ]
+  },
+  {
+    "q": "How does motion detection work?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/motion",
+      "motion-detection",
+      "ai-detection"
+    ]
+  },
+  {
+    "q": "Where is RTSP streaming handled?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/rtsp",
+      "rtsp-client",
+      "streaming-protocol"
+    ]
+  },
+  {
+    "q": "How are webhook notifications sent?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/webhook",
+      "webhook-handler",
+      "notification-system"
+    ]
+  },
+  {
+    "q": "Where is device discovery implemented?",
+    "repo": "",
+    "expect_paths": [
+      "device-manager",
+      "device-discovery",
+      "plugin-architecture"
+    ]
+  },
+  {
+    "q": "How does FFmpeg video processing work?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/ffmpeg-camera",
+      "ffmpeg-process",
+      "video-processing"
+    ]
+  },
+  {
+    "_comment": "=== SCRYPTED CONFUSING NAMING PATTERNS ===",
+    "_comment2": "These questions train the RAG to understand 's non-standard architecture"
+  },
+  {
+    "q": "What is DeviceManager and how is it different from DeviceBase?",
+    "repo": "",
+    "expect_paths": [
+      "sdk/types",
+      "DeviceManager",
+      "DeviceBase",
+      "interface",
+      "class"
+    ]
+  },
+  {
+    "q": "How does DeviceProvider relate to DeviceManager in  architecture?",
+    "repo": "",
+    "expect_paths": [
+      "sdk/types",
+      "DeviceProvider",
+      "DeviceManager",
+      "interface"
+    ]
+  },
+  {
+    "q": "What is DeviceBase and how does it extend DeviceBase?",
+    "repo": "",
+    "expect_paths": [
+      "sdk/src/index.ts",
+      "DeviceBase",
+      "DeviceBase",
+      "extends"
+    ]
+  },
+  {
+    "q": "How do you create a plugin that implements DeviceProvider?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/dummy-switch",
+      "DummyDeviceProvider",
+      "implements DeviceProvider",
+      "DeviceBase"
+    ]
+  },
+  {
+    "q": "What is SettingsMixinDeviceBase and when do you use it?",
+    "repo": "",
+    "expect_paths": [
+      "common/src/settings-mixin",
+      "SettingsMixinDeviceBase",
+      "MixinDeviceBase",
+      "extends"
+    ]
+  },
+  {
+    "q": "How do device URLs work in ? Everything is a device in URLs?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/core/src/launcher-mixin.ts",
+      "#/device/",
+      "device.*url",
+      "applicationInfo"
+    ]
+  },
+  {
+    "q": "What is the difference between Device and DeviceState interfaces?",
+    "repo": "",
+    "expect_paths": [
+      "sdk/types/dist/index.d.ts",
+      "Device",
+      "DeviceState",
+      "interface"
+    ]
+  },
+  {
+    "q": "How do mixins work in ? What is MixinProvider?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/webhook",
+      "MixinProvider",
+      "mixin",
+      "implements"
+    ]
+  },
+  {
+    "q": "What is Interface and how does it relate to device types?",
+    "repo": "",
+    "expect_paths": [
+      "sdk/types",
+      "Interface",
+      "interfaces",
+      "providedInterfaces"
+    ]
+  },
+  {
+    "q": "How do you implement a camera device in ?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/snapshot",
+      "SnapshotMixin",
+      "implements Camera",
+      "DeviceBase"
+    ]
+  },
+  {
+    "q": "What is the relationship between nativeId and device ID in ?",
+    "repo": "",
+    "expect_paths": [
+      "sdk/types",
+      "nativeId",
+      "id",
+      "DeviceState"
+    ]
+  },
+  {
+    "q": "How does device discovery work with DeviceCreator interface?",
+    "repo": "",
+    "expect_paths": [
+      "sdk/types",
+      "DeviceCreator",
+      "DeviceProvider",
+      "discovery"
+    ]
+  },
+  {
+    "q": "What is DeviceManifest and how is it used with onDevicesChanged?",
+    "repo": "",
+    "expect_paths": [
+      "sdk/types",
+      "DeviceManifest",
+      "onDevicesChanged",
+      "DeviceManager"
+    ]
+  },
+  {
+    "q": "How do you handle device state updates in  plugins?",
+    "repo": "",
+    "expect_paths": [
+      "sdk/types",
+      "DeviceState",
+      "onDeviceEvent",
+      "deviceManager"
+    ]
+  },
+  {
+    "q": "What is the difference between providedInterfaces and interfaces in device state?",
+    "repo": "",
+    "expect_paths": [
+      "sdk/types",
+      "providedInterfaces",
+      "interfaces",
+      "DeviceState"
+    ]
+  },
+  {
+    "q": "How do you implement a device that can be both a switch and a sensor?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/dummy-switch",
+      "DummyDevice",
+      "OnOff",
+      "MotionSensor",
+      "implements"
+    ]
+  },
+  {
+    "q": "What is DeviceType and how does it relate to device interfaces?",
+    "repo": "",
+    "expect_paths": [
+      "sdk/types",
+      "DeviceType",
+      "providedType",
+      "type"
+    ]
+  },
+  {
+    "q": "How does the plugin system work with DeviceProvider and device creation?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/dummy-switch",
+      "DummyDeviceProvider",
+      "getDevice",
+      "onDevicesChanged"
+    ]
+  },
+  {
+    "q": "What is DiscoveredDevice interface and how is it used?",
+    "repo": "",
+    "expect_paths": [
+      "sdk/types",
+      "DiscoveredDevice",
+      "device discovery",
+      "interface"
+    ]
+  },
+  {
+    "q": "How do you handle device removal with onDeviceRemoved?",
+    "repo": "",
+    "expect_paths": [
+      "sdk/types",
+      "onDeviceRemoved",
+      "DeviceManager",
+      "remove device"
+    ]
+  },
+  {
+    "q": "What is AdoptDevice interface and when is it used?",
+    "repo": "",
+    "expect_paths": [
+      "sdk/types",
+      "AdoptDevice",
+      "adopt",
+      "interface"
+    ]
+  },
+  {
+    "q": "How do you implement HTTP request handling in a  plugin?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/webhook",
+      "HttpRequestHandler",
+      "handle",
+      "HttpRequest"
+    ]
+  },
+  {
+    "q": "What is the difference between WritableDeviceState and DeviceState?",
+    "repo": "",
+    "expect_paths": [
+      "sdk/types",
+      "WritableDeviceState",
+      "DeviceState",
+      "interface"
+    ]
+  },
+  {
+    "q": "How do you implement settings for a  plugin?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/webhook",
+      "Settings",
+      "Setting",
+      "implements"
+    ]
+  },
+  {
+    "q": "What is RuntimeArguments and how is it used?",
+    "repo": "",
+    "expect_paths": [
+      "sdk/types",
+      "RuntimeArguments",
+      "RuntimeArguments",
+      "DeviceState"
+    ]
+  },
+  {
+    "q": "How do you create a plugin that provides multiple device types?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/dummy-switch",
+      "DummyDeviceProvider",
+      "multiple devices",
+      "DeviceProvider"
+    ]
+  },
+  {
+    "q": "What is the relationship between pluginId and providerId in device state?",
+    "repo": "",
+    "expect_paths": [
+      "sdk/types",
+      "pluginId",
+      "providerId",
+      "DeviceState"
+    ]
+  },
+  {
+    "q": "How do you handle device events and notifications in ?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/webhook",
+      "PushHandler",
+      "device events",
+      "notifications"
+    ]
+  },
+  {
+    "q": "What is MixinDeviceBase and how does it differ from DeviceBase?",
+    "repo": "",
+    "expect_paths": [
+      "sdk/types",
+      "MixinDeviceBase",
+      "DeviceBase",
+      "extends"
+    ]
+  },
+  {
+    "q": "How do you implement device pairing and discovery in a  plugin?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/onvif",
+      "device discovery",
+      "pairing",
+      "DeviceProvider"
+    ]
+  },
+  {
+    "_comment": "=== ADVANCED NOTIFIER & MQTT COMPLEX PATTERNS ===",
+    "_comment2": "These questions train the RAG on the most sophisticated  plugin patterns"
+  },
+  {
+    "q": "How does the Advanced Notifier plugin handle complex MQTT patterns and data fetching?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/mqtt",
+      "mqtt-utils",
+      "dataFetcher",
+      "advanced patterns",
+      "complex architecture"
+    ]
+  },
+  {
+    "q": "What is ScriptableDeviceBase and how does it extend DeviceBase for script execution?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/mqtt/src/-eval.ts",
+      "ScriptableDeviceBase",
+      "DeviceBase",
+      "extends",
+      "script execution"
+    ]
+  },
+  {
+    "q": "How does MqttDeviceBase implement Settings and handle MQTT client connections?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/mqtt/src/api/mqtt-device-base.ts",
+      "MqttDeviceBase",
+      "implements Settings",
+      "MQTT client",
+      "connections"
+    ]
+  },
+  {
+    "q": "What is MqttAutoDiscoveryProvider and how does it handle device auto-discovery?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/mqtt/src/autodiscovery.ts",
+      "MqttAutoDiscoveryProvider",
+      "auto-discovery",
+      "device discovery",
+      "extends MqttDeviceBase"
+    ]
+  },
+  {
+    "q": "How does MqttPublisherMixin work with SettingsMixinDeviceBase for device state publishing?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/mqtt/src/main.ts",
+      "MqttPublisherMixin",
+      "SettingsMixinDeviceBase",
+      "device state",
+      "publishing"
+    ]
+  },
+  {
+    "q": "What is the relationship between MqttClient interface and ScriptDevice for MQTT operations?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/mqtt/src/api/mqtt-client.ts",
+      "MqttClient",
+      "ScriptDevice",
+      "interface",
+      "MQTT operations"
+    ]
+  },
+  {
+    "q": "How does MqttProvider implement DeviceProvider, Settings, MixinProvider, and DeviceCreator?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/mqtt/src/main.ts",
+      "MqttProvider",
+      "implements DeviceProvider",
+      "Settings",
+      "MixinProvider",
+      "DeviceCreator"
+    ]
+  },
+  {
+    "q": "What is the difference between MqttEvent interface and MqttSubscriptions for event handling?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/mqtt/src/api/mqtt-client.ts",
+      "MqttEvent",
+      "MqttSubscriptions",
+      "interface",
+      "event handling"
+    ]
+  },
+  {
+    "q": "How does MqttAutoDiscoveryDevice implement multiple interfaces like Online, OnOff, Brightness?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/mqtt/src/autodiscovery.ts",
+      "MqttAutoDiscoveryDevice",
+      "implements Online",
+      "OnOff",
+      "Brightness",
+      "multiple interfaces"
+    ]
+  },
+  {
+    "q": "What is the Component interface and how does it define device interfaces for auto-discovery?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/mqtt/src/autodiscovery.ts",
+      "Component interface",
+      "device interfaces",
+      "auto-discovery",
+      "interfaces definition"
+    ]
+  },
+  {
+    "q": "How does the Advanced Notifier plugin handle sensor mixins and data processing?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/mqtt",
+      "sensorMixin",
+      "sensor mixins",
+      "data processing",
+      "advanced patterns"
+    ]
+  },
+  {
+    "q": "What is AutoDiscoveryConfig interface and how is it used for device configuration?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/mqtt/src/autodiscovery.ts",
+      "AutoDiscoveryConfig",
+      "interface",
+      "device configuration",
+      "auto-discovery"
+    ]
+  },
+  {
+    "q": "How does the Advanced Notifier implement AI utilities and data fetching patterns?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/mqtt",
+      "aiUtils",
+      "dataFetcher",
+      "AI utilities",
+      "data fetching"
+    ]
+  },
+  {
+    "q": "What is the relationship between MqttClientPublishOptions and MqttSubscriptions for MQTT messaging?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/mqtt/src/api/mqtt-client.ts",
+      "MqttClientPublishOptions",
+      "MqttSubscriptions",
+      "MQTT messaging",
+      "publish subscribe"
+    ]
+  },
+  {
+    "q": "How does Eval function work with ScriptableDeviceBase for script execution?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/mqtt/src/-eval.ts",
+      "Eval function",
+      "ScriptableDeviceBase",
+      "script execution",
+      "eval"
+    ]
+  },
+  {
+    "q": "What is publishAutoDiscovery function and how does it handle device publishing?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/mqtt/src/autodiscovery.ts",
+      "publishAutoDiscovery",
+      "function",
+      "device publishing",
+      "auto-discovery"
+    ]
+  },
+  {
+    "q": "How does the Advanced Notifier plugin structure complex class hierarchies with multiple inheritance?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/mqtt",
+      "complex class hierarchies",
+      "multiple inheritance",
+      "extends",
+      "implements"
+    ]
+  },
+  {
+    "q": "What is the difference between MqttDevice and MqttAutoDiscoveryDevice classes?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/mqtt/src/main.ts",
+      "plugins/mqtt/src/autodiscovery.ts",
+      "MqttDevice",
+      "MqttAutoDiscoveryDevice",
+      "class differences"
+    ]
+  },
+  {
+    "q": "How does the Advanced Notifier handle complex MQTT broker integration and client management?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/mqtt",
+      "MQTT broker",
+      "integration",
+      "client management",
+      "advanced patterns"
+    ]
+  },
+  {
+    "q": "What is the role of monacoEvalDefaults in the MQTT plugin's script execution?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/mqtt/src/monaco.ts",
+      "monacoEvalDefaults",
+      "script execution",
+      "monaco",
+      "defaults"
+    ]
+  },
+  {
+    "q": "How does the Advanced Notifier implement sophisticated data fetching and sensor processing?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/mqtt",
+      "data fetching",
+      "sensor processing",
+      "sophisticated patterns",
+      "advanced implementation"
+    ]
+  },
+  {
+    "q": "What is the relationship between isPublishable function and publishable-types for MQTT?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/mqtt/src/publishable-types.ts",
+      "isPublishable function",
+      "publishable-types",
+      "MQTT",
+      "type checking"
+    ]
+  },
+  {
+    "q": "How does the Advanced Notifier plugin demonstrate the most complex  plugin architecture?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/mqtt",
+      "complex architecture",
+      "advanced plugin",
+      "sophisticated patterns",
+      "most complex"
+    ]
+  },
+  {
+    "_comment": "=== SCRYPTED PLUGIN DEVELOPMENT MISTAKES PREVENTION ===",
+    "_comment2": "These questions catch common plugin development errors and ensure proper architecture"
+  },
+  {
+    "q": "What is the proper way to add a search bar or chat interface to the  management console?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/webhook",
+      "HttpRequestHandler",
+      "management console",
+      "UI integration",
+      "frontend component"
+    ]
+  },
+  {
+    "q": "How do you implement real-time chat functionality in a  plugin instead of using Settings?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/webhook",
+      "HttpRequestHandler",
+      "real-time",
+      "chat functionality",
+      "WebSocket",
+      "not Settings"
+    ]
+  },
+  {
+    "q": "What interfaces should you implement for a plugin that provides interactive UI components?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/webhook",
+      "HttpRequestHandler",
+      "UI components",
+      "interactive",
+      "interface",
+      "not DeviceProvider alone"
+    ]
+  },
+  {
+    "q": "How do you create a plugin manifest with proper metadata and dependencies?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/webhook/package.json",
+      "manifest",
+      "metadata",
+      "dependencies",
+      "plugin registration"
+    ]
+  },
+  {
+    "q": "What is the difference between using Settings interface vs HttpRequestHandler for user interaction?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/webhook",
+      "Settings interface",
+      "HttpRequestHandler",
+      "user interaction",
+      "when to use each"
+    ]
+  },
+  {
+    "q": "How do you add custom UI elements to the  management console from a plugin?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/webhook",
+      "management console",
+      "custom UI",
+      "frontend integration",
+      "UI elements"
+    ]
+  },
+  {
+    "q": "What is the proper error handling pattern for  plugins with external API calls?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/webhook",
+      "error handling",
+      "external API",
+      "fetch",
+      "try catch",
+      "graceful degradation"
+    ]
+  },
+  {
+    "q": "How do you implement proper loading states and user feedback in  plugins?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/webhook",
+      "loading states",
+      "user feedback",
+      "async operations",
+      "UI feedback"
+    ]
+  },
+  {
+    "q": "What is the difference between DeviceProvider and HttpRequestHandler for plugin functionality?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/webhook",
+      "DeviceProvider",
+      "HttpRequestHandler",
+      "interface differences",
+      "when to use each"
+    ]
+  },
+  {
+    "q": "How do you configure plugin settings for external API endpoints like AGRO?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/webhook",
+      "Settings interface",
+      "external API",
+      "endpoint configuration",
+      "API keys"
+    ]
+  },
+  {
+    "q": "What is the proper way to handle async operations in  plugins without blocking?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/webhook",
+      "async operations",
+      "non-blocking",
+      "Promise handling",
+      "async await"
+    ]
+  },
+  {
+    "q": "How do you implement proper logging and debugging in  plugins?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/webhook",
+      "logging",
+      "debugging",
+      "console.log",
+      "error tracking"
+    ]
+  },
+  {
+    "q": "What is the correct way to structure a  plugin for production deployment?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/webhook",
+      "production deployment",
+      "plugin structure",
+      "build process",
+      "npm scripts"
+    ]
+  },
+  {
+    "q": "How do you implement proper input validation and sanitization in  plugins?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/webhook",
+      "input validation",
+      "sanitization",
+      "security",
+      "user input"
+    ]
+  },
+  {
+    "q": "What is the proper way to handle plugin configuration changes and updates?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/webhook",
+      "configuration changes",
+      "plugin updates",
+      "settings management",
+      "putSetting"
+    ]
+  },
+  {
+    "q": "How do you implement proper TypeScript types and interfaces for  plugins?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/webhook",
+      "TypeScript",
+      "types",
+      "interfaces",
+      "type safety"
+    ]
+  },
+  {
+    "q": "What is the difference between a basic plugin scaffold and a production-ready plugin?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/webhook",
+      "plugin scaffold",
+      "production ready",
+      "error handling",
+      "proper architecture"
+    ]
+  },
+  {
+    "q": "How do you implement proper plugin lifecycle management in ?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/webhook",
+      "plugin lifecycle",
+      "initialization",
+      "cleanup",
+      "resource management"
+    ]
+  },
+  {
+    "q": "What is the proper way to handle plugin dependencies and external libraries?",
+    "repo": "",
+    "expect_paths": [
+      "plugins/webhook",
+      "dependencies",
+      "external libraries",
+      "npm packages",
+      "bundling"
+    ]
+  }
+]

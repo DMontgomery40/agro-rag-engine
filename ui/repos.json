@@ -1,0 +1,31 @@
+{
+  "default_repo": "agro",
+  "repos": [
+    {
+      "name": "agro",
+      "slug": "agro",
+      "path": "/Users/davidmontgomery/agro",
+      "keywords": [
+        "models",
+        "python",
+        "openai",
+        "final_k",
+        "float",
+        "local",
+        "search",
+        "hybrid_search",
+        "redis",
+        "tokens"
+      ],
+      "path_boosts": [
+        "/gui",
+        "/server",
+        "/indexer",
+        "/retrieval",
+        "/scripts",
+        "/gui/js"
+      ],
+      "layer_bonuses": {}
+    }
+  ]
+}

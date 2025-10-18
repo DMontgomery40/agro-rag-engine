@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "rag-service": {
+      "command": "python",
+      "args": ["/absolute/path/to/agro/mcp_server.py"]
+    }
+  }
+}
+

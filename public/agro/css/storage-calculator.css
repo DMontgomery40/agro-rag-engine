@@ -1,0 +1,300 @@
+/* AGRO Storage Calculator v1.2 - CSS Styles */
+/* All styles for the storage calculator component */
+
+.storage-calc-wrapper {
+    padding: 20px;
+}
+
+.storage-calc-header {
+    text-align: center;
+    margin-bottom: 40px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--line);
+}
+
+.storage-calc-header h1 {
+    font-size: 32px;
+    font-weight: 300;
+    letter-spacing: -1px;
+    margin-bottom: 8px;
+}
+
+.storage-calc-header .brand { font-weight: 700; color: var(--accent); }
+
+.storage-calc-header .subtitle {
+    color: #888;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.storage-calc-header .info-box {
+    max-width: 800px;
+    margin: 20px auto 0;
+    padding: 15px;
+    background: var(--bg-elev2);
+    border-radius: 8px;
+    border: 1px solid var(--line);
+}
+
+.storage-calc-header .info-box p {
+    color: #aaa;
+    font-size: 13px;
+    line-height: 1.6;
+    text-align: left;
+}
+
+.storage-calc-header .info-box strong {
+    color: #fff;
+}
+
+.calculators-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    margin-bottom: 40px;
+}
+
+@media (max-width: 1024px) {
+    .calculators-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.calculator {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 24px;
+}
+
+.calculator-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.calculator-badge {
+    background: var(--accent);
+    color: var(--accent-contrast);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.calculator .input-section {
+    margin-bottom: 24px;
+}
+
+.calculator .input-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.calculator .input-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.calculator .input-group.full-width {
+    grid-column: span 2;
+}
+
+.calculator label {
+    font-size: 11px;
+    color: var(--fg-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+    font-weight: 500;
+}
+
+.calculator .label-with-tooltip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.calculator .tooltip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    background: #333;
+    color: #9ad1ff;
+    border-radius: 50%;
+    font-size: 10px;
+    cursor: help;
+    border: 1px solid #444;
+}
+
+.calculator .tooltip:hover { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
+
+.unit-input {
+    display: flex;
+    gap: 8px;
+}
+
+.unit-input input {
+    flex: 1;
+}
+
+.unit-input select {
+    width: 70px;
+}
+
+.calculator .results {
+    background: var(--card-bg);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 16px;
+    margin-top: 20px;
+}
+
+.result-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.calculator .result-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.calculator .result-label {
+    font-size: 12px;
+    color: var(--fg-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.calculator .result-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--fg);
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+}
+
+.total-row {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 2px solid var(--line);
+}
+
+.total-row .result-item {
+    border: none;
+    padding: 12px;
+    background: #1a1a1a;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.total-row .result-value { font-size: 18px; color: var(--accent); }
+
+.warning {
+    background: #331a00;
+    border: 1px solid #664400;
+    color: #ffaa00;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-top: 8px;
+}
+
+.success {
+    background: #003311;
+    border: 1px solid #006622;
+    color: #00ff88;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-top: 8px;
+}
+
+.plans-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #2a2a2a;
+}
+
+.plan-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    color: #666;
+    margin-bottom: 12px;
+    letter-spacing: 1px;
+}
+
+.plan-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.plan-card {
+    background: #0a0a0a;
+    border: 1px solid #2a2a2a;
+    padding: 12px;
+    border-radius: 4px;
+}
+
+.plan-card.fits {
+    border-color: #006622;
+}
+
+.plan-card.exceeds {
+    border-color: #664400;
+}
+
+.plan-name {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.plan-details {
+    font-size: 11px;
+    color: #888;
+    line-height: 1.6;
+}
+
+.plan-total {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #2a2a2a;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.fits .plan-total {
+    color: #00ff88;
+}
+
+.exceeds .plan-total {
+    color: #ffaa00;
+}
+
+.storage-calc-footer {
+    text-align: center;
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    color: var(--fg-muted);
+    font-size: 12px;
+}
+
+.storage-calc-footer a { color: var(--accent); text-decoration: none; }

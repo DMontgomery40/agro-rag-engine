@@ -1,0 +1,590 @@
+{
+  "root": "/Users/davidmontgomery/agro/gui",
+  "tokens_path": "gui/css/tokens.css",
+  "summary": {
+    "hardcoded_hex_count": 45,
+    "risky_feature_count": 27,
+    "low_contrast_inline_count": 0
+  },
+  "findings": [
+    {
+      "file": "gui/css/tokens.css",
+      "line": 6,
+      "kind": "hardcoded_hex",
+      "value": "#0a0a0a",
+      "suggestion": null,
+      "note": "Closest var(--chip-bg) but distance=47.1; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 7,
+      "kind": "hardcoded_hex",
+      "value": "#111111",
+      "suggestion": null,
+      "note": "Closest var(--chip-bg) but distance=45.5; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 8,
+      "kind": "hardcoded_hex",
+      "value": "#1a1a1a",
+      "suggestion": null,
+      "note": "Closest var(--line) but distance=41.9; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 9,
+      "kind": "hardcoded_hex",
+      "value": "#111111",
+      "suggestion": null,
+      "note": "Closest var(--chip-bg) but distance=45.5; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 10,
+      "kind": "hardcoded_hex",
+      "value": "#2a2a2a",
+      "suggestion": null,
+      "note": "Closest var(--line) but distance=34.1; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 12,
+      "kind": "hardcoded_hex",
+      "value": "#ffffff",
+      "suggestion": null,
+      "note": "Closest var(--input-bg) but distance=45.4; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 13,
+      "kind": "hardcoded_hex",
+      "value": "#9fb1c7",
+      "suggestion": null,
+      "note": "Closest var(--fg-muted) but distance=17.9; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 15,
+      "kind": "hardcoded_hex",
+      "value": "#00ff88",
+      "suggestion": null,
+      "note": "Closest var(--accent) but distance=18.5; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 16,
+      "kind": "hardcoded_hex",
+      "value": "#000000",
+      "suggestion": null,
+      "note": "Closest var(--chip-bg) but distance=49.8; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 17,
+      "kind": "hardcoded_hex",
+      "value": "#5b9dff",
+      "suggestion": null,
+      "note": "Closest var(--link) but distance=17.2; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 19,
+      "kind": "hardcoded_hex",
+      "value": "#00ff88",
+      "suggestion": null,
+      "note": "Closest var(--accent) but distance=18.5; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 20,
+      "kind": "hardcoded_hex",
+      "value": "#ffaa00",
+      "suggestion": null,
+      "note": "Closest var(--warn) but distance=20.7; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 21,
+      "kind": "hardcoded_hex",
+      "value": "#ff6b6b",
+      "suggestion": null,
+      "note": "Closest var(--err) but distance=13.2; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 23,
+      "kind": "hardcoded_hex",
+      "value": "#0f0f0f",
+      "suggestion": null,
+      "note": "Closest var(--chip-bg) but distance=45.5; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 24,
+      "kind": "hardcoded_hex",
+      "value": "#1a1a1a",
+      "suggestion": null,
+      "note": "Closest var(--line) but distance=41.9; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 25,
+      "kind": "hardcoded_hex",
+      "value": "#0a0a0a",
+      "suggestion": null,
+      "note": "Closest var(--chip-bg) but distance=47.1; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 26,
+      "kind": "hardcoded_hex",
+      "value": "#111111",
+      "suggestion": null,
+      "note": "Closest var(--chip-bg) but distance=45.5; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 28,
+      "kind": "hardcoded_hex",
+      "value": "#0f0f0f",
+      "suggestion": null,
+      "note": "Closest var(--chip-bg) but distance=45.5; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 29,
+      "kind": "hardcoded_hex",
+      "value": "#dddddd",
+      "suggestion": null,
+      "note": "Closest var(--fg-muted) but distance=37.7; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 36,
+      "kind": "hardcoded_hex",
+      "value": "#F7F8FB",
+      "suggestion": null,
+      "note": "Closest var(--bg-elev2) but distance=45.1; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 37,
+      "kind": "hardcoded_hex",
+      "value": "#FFFFFF",
+      "suggestion": null,
+      "note": "Closest var(--input-bg) but distance=45.4; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 38,
+      "kind": "hardcoded_hex",
+      "value": "#F1F3F7",
+      "suggestion": null,
+      "note": "Closest var(--bg-elev2) but distance=43.3; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 39,
+      "kind": "hardcoded_hex",
+      "value": "#FFFFFF",
+      "suggestion": null,
+      "note": "Closest var(--input-bg) but distance=45.4; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 40,
+      "kind": "hardcoded_hex",
+      "value": "#CBD5E1",
+      "suggestion": null,
+      "note": "Closest var(--fg-muted) but distance=32.1; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 42,
+      "kind": "hardcoded_hex",
+      "value": "#0F1220",
+      "suggestion": null,
+      "note": "Closest var(--code-fg) but distance=41.5; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 43,
+      "kind": "hardcoded_hex",
+      "value": "#475569",
+      "suggestion": null,
+      "note": "Closest var(--fg-muted) but distance=17.9; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 45,
+      "kind": "hardcoded_hex",
+      "value": "#16A34A",
+      "suggestion": null,
+      "note": "Closest var(--accent) but distance=18.5; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 46,
+      "kind": "hardcoded_hex",
+      "value": "#FFFFFF",
+      "suggestion": null,
+      "note": "Closest var(--input-bg) but distance=45.4; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 47,
+      "kind": "hardcoded_hex",
+      "value": "#2563EB",
+      "suggestion": null,
+      "note": "Closest var(--link) but distance=17.2; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 49,
+      "kind": "hardcoded_hex",
+      "value": "#16A34A",
+      "suggestion": null,
+      "note": "Closest var(--accent) but distance=18.5; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 50,
+      "kind": "hardcoded_hex",
+      "value": "#B45309",
+      "suggestion": null,
+      "note": "Closest var(--warn) but distance=20.7; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 51,
+      "kind": "hardcoded_hex",
+      "value": "#DC2626",
+      "suggestion": null,
+      "note": "Closest var(--err) but distance=13.2; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 53,
+      "kind": "hardcoded_hex",
+      "value": "#EEF2F7",
+      "suggestion": null,
+      "note": "Closest var(--fg-muted) but distance=43.3; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 54,
+      "kind": "hardcoded_hex",
+      "value": "#FFFFFF",
+      "suggestion": null,
+      "note": "Closest var(--input-bg) but distance=45.4; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 55,
+      "kind": "hardcoded_hex",
+      "value": "#FFFFFF",
+      "suggestion": null,
+      "note": "Closest var(--input-bg) but distance=45.4; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 56,
+      "kind": "hardcoded_hex",
+      "value": "#FFFFFF",
+      "suggestion": null,
+      "note": "Closest var(--input-bg) but distance=45.4; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 58,
+      "kind": "hardcoded_hex",
+      "value": "#F5F7FA",
+      "suggestion": null,
+      "note": "Closest var(--bg-elev2) but distance=44.7; manual review"
+    },
+    {
+      "file": "gui/css/tokens.css",
+      "line": 59,
+      "kind": "hardcoded_hex",
+      "value": "#0F1220",
+      "suggestion": null,
+      "note": "Closest var(--code-fg) but distance=41.5; manual review"
+    },
+    {
+      "file": "gui/js/theme.js",
+      "line": 33,
+      "kind": "hardcoded_hex",
+      "value": "#ddd",
+      "suggestion": null,
+      "note": "Closest var(--fg-muted) but distance=37.7; manual review"
+    },
+    {
+      "file": "gui/js/theme.js",
+      "line": 34,
+      "kind": "hardcoded_hex",
+      "value": "#ffffff",
+      "suggestion": null,
+      "note": "Closest var(--input-bg) but distance=45.4; manual review"
+    },
+    {
+      "file": "gui/js/theme.js",
+      "line": 37,
+      "kind": "hardcoded_hex",
+      "value": "#ff9b5e",
+      "suggestion": null,
+      "note": "Closest var(--warn) but distance=30.9; manual review"
+    },
+    {
+      "file": "gui/js/theme.js",
+      "line": 40,
+      "kind": "hardcoded_hex",
+      "value": "#ddd",
+      "suggestion": null,
+      "note": "Closest var(--fg-muted) but distance=37.7; manual review"
+    },
+    {
+      "file": "gui/js/theme.js",
+      "line": 40,
+      "kind": "hardcoded_hex",
+      "value": "#ffffff",
+      "suggestion": null,
+      "note": "Closest var(--input-bg) but distance=45.4; manual review"
+    },
+    {
+      "file": "gui/js/theme.js",
+      "line": 40,
+      "kind": "hardcoded_hex",
+      "value": "#ff9b5e",
+      "suggestion": null,
+      "note": "Closest var(--warn) but distance=30.9; manual review"
+    },
+    {
+      "file": "gui/js/config.js",
+      "line": 283,
+      "kind": "hardcoded_hex",
+      "value": "#add",
+      "suggestion": null,
+      "note": "Closest var(--fg-muted) but distance=36.8; manual review"
+    }
+  ],
+  "risky_features": [
+    {
+      "file": "gui/index.html",
+      "line": 1319,
+      "kind": "risky_feature",
+      "value": "color-mix(",
+      "suggestion": null,
+      "note": "Flag for compatibility review"
+    },
+    {
+      "file": "gui/index.html",
+      "line": 1329,
+      "kind": "risky_feature",
+      "value": "color-mix(",
+      "suggestion": null,
+      "note": "Flag for compatibility review"
+    },
+    {
+      "file": "gui/index.html",
+      "line": 4504,
+      "kind": "risky_feature",
+      "value": "color-mix(",
+      "suggestion": null,
+      "note": "Flag for compatibility review"
+    },
+    {
+      "file": "gui/index.html",
+      "line": 4504,
+      "kind": "risky_feature",
+      "value": "color-mix(",
+      "suggestion": null,
+      "note": "Flag for compatibility review"
+    },
+    {
+      "file": "gui/index.html",
+      "line": 5317,
+      "kind": "risky_feature",
+      "value": "color-mix(",
+      "suggestion": null,
+      "note": "Flag for compatibility review"
+    },
+    {
+      "file": "gui/index.html",
+      "line": 5317,
+      "kind": "risky_feature",
+      "value": "color-mix(",
+      "suggestion": null,
+      "note": "Flag for compatibility review"
+    },
+    {
+      "file": "gui/index.html",
+      "line": 5342,
+      "kind": "risky_feature",
+      "value": "color-mix(",
+      "suggestion": null,
+      "note": "Flag for compatibility review"
+    },
+    {
+      "file": "gui/index.html",
+      "line": 5342,
+      "kind": "risky_feature",
+      "value": "color-mix(",
+      "suggestion": null,
+      "note": "Flag for compatibility review"
+    },
+    {
+      "file": "gui/index.html",
+      "line": 4049,
+      "kind": "risky_feature",
+      "value": "mix-blend-mode",
+      "suggestion": null,
+      "note": "Flag for compatibility review"
+    },
+    {
+      "file": "gui/rag-calculator.html",
+      "line": 191,
+      "kind": "risky_feature",
+      "value": "color-mix(",
+      "suggestion": null,
+      "note": "Flag for compatibility review"
+    },
+    {
+      "file": "gui/rag-calculator.html",
+      "line": 192,
+      "kind": "risky_feature",
+      "value": "color-mix(",
+      "suggestion": null,
+      "note": "Flag for compatibility review"
+    },
+    {
+      "file": "gui/rag-calculator.html",
+      "line": 201,
+      "kind": "risky_feature",
+      "value": "color-mix(",
+      "suggestion": null,
+      "note": "Flag for compatibility review"
+    },
+    {
+      "file": "gui/rag-calculator.html",
+      "line": 202,
+      "kind": "risky_feature",
+      "value": "color-mix(",
+      "suggestion": null,
+      "note": "Flag for compatibility review"
+    },
+    {
+      "file": "gui/css/storage-calculator.css",
+      "line": 209,
+      "kind": "risky_feature",
+      "value": "color-mix(",
+      "suggestion": null,
+      "note": "Flag for compatibility review"
+    },
+    {
+      "file": "gui/css/storage-calculator.css",
+      "line": 210,
+      "kind": "risky_feature",
+      "value": "color-mix(",
+      "suggestion": null,
+      "note": "Flag for compatibility review"
+    },
+    {
+      "file": "gui/css/storage-calculator.css",
+      "line": 219,
+      "kind": "risky_feature",
+      "value": "color-mix(",
+      "suggestion": null,
+      "note": "Flag for compatibility review"
+    },
+    {
+      "file": "gui/css/storage-calculator.css",
+      "line": 220,
+      "kind": "risky_feature",
+      "value": "color-mix(",
+      "suggestion": null,
+      "note": "Flag for compatibility review"
+    },
+    {
+      "file": "gui/js/index-display.js",
+      "line": 71,
+      "kind": "risky_feature",
+      "value": "color-mix(",
+      "suggestion": null,
+      "note": "Flag for compatibility review"
+    },
+    {
+      "file": "gui/js/index-display.js",
+      "line": 71,
+      "kind": "risky_feature",
+      "value": "color-mix(",
+      "suggestion": null,
+      "note": "Flag for compatibility review"
+    },
+    {
+      "file": "gui/js/index-display.js",
+      "line": 80,
+      "kind": "risky_feature",
+      "value": "color-mix(",
+      "suggestion": null,
+      "note": "Flag for compatibility review"
+    },
+    {
+      "file": "gui/js/index-display.js",
+      "line": 84,
+      "kind": "risky_feature",
+      "value": "color-mix(",
+      "suggestion": null,
+      "note": "Flag for compatibility review"
+    },
+    {
+      "file": "gui/js/index-display.js",
+      "line": 154,
+      "kind": "risky_feature",
+      "value": "color-mix(",
+      "suggestion": null,
+      "note": "Flag for compatibility review"
+    },
+    {
+      "file": "gui/js/chat.js",
+      "line": 225,
+      "kind": "risky_feature",
+      "value": "color-mix(",
+      "suggestion": null,
+      "note": "Flag for compatibility review"
+    },
+    {
+      "file": "gui/js/chat.js",
+      "line": 225,
+      "kind": "risky_feature",
+      "value": "color-mix(",
+      "suggestion": null,
+      "note": "Flag for compatibility review"
+    },
+    {
+      "file": "gui/js/eval_runner.js",
+      "line": 289,
+      "kind": "risky_feature",
+      "value": "color-mix(",
+      "suggestion": null,
+      "note": "Flag for compatibility review"
+    },
+    {
+      "file": "gui/js/eval_runner.js",
+      "line": 305,
+      "kind": "risky_feature",
+      "value": "color-mix(",
+      "suggestion": null,
+      "note": "Flag for compatibility review"
+    },
+    {
+      "file": "gui/js/eval_runner.js",
+      "line": 321,
+      "kind": "risky_feature",
+      "value": "color-mix(",
+      "suggestion": null,
+      "note": "Flag for compatibility review"
+    }
+  ],
+  "low_contrast": []
+}
