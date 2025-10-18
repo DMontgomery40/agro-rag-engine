@@ -178,7 +178,7 @@
         .layout {
             display: grid;
             grid-template-columns: 1fr var(--sidepanel-width);
-            height: calc(100vh - 65px);
+            height: calc(100vh - 56px); /* Only account for topbar height, not the mystery 65px */
             position: relative;
         }
 
@@ -288,13 +288,16 @@
             color: var(--on-link);
         }
         
-        /* RAG Subtabs */
+        /* RAG Subtabs - Hidden by default, shown when RAG tab active */
         .subtab-bar {
             display: flex;
             gap: 4px;
-            padding: 8px 24px;
-            background: var(--bg-elev1);
+            padding: 8px 16px;
+            background: var(--bg-elev2);
             border-bottom: 1px solid var(--line);
+            position: sticky;
+            top: 56px;
+            z-index: 98;
         }
         
         .subtab-bar button {
@@ -334,11 +337,7 @@
             flex-direction: column;
             flex: 1;
             overflow-y: auto;
-        }
-
-        /* Remove top margin from first element to prevent blank space */
-        .tab-content.active > :first-child {
-            margin-top: 0;
+            padding: 24px;
         }
 
         /* RAG subtab content containers */
@@ -1256,6 +1255,7 @@
         }
 
         .mobile-nav-drawer {
+            display: none; /* HIDDEN - causes layout issues, use .tab-bar instead */
             position: fixed;
             top: 0;
             left: -100%;
@@ -1314,6 +1314,7 @@
         }
 
         .mobile-nav-overlay {
+            display: none; /* HIDDEN - not needed, causes layout issues */
             position: fixed;
             top: 0;
             left: 0;
@@ -2595,8 +2596,6 @@
                 </div>
             </div>
 
-            </div>
-
             <!-- Tab: Grafana (NEW - promoted from metrics) -->
             <div id="tab-grafana" class="tab-content">
                 <div class="settings-section">
@@ -2673,8 +2672,6 @@
                         <iframe id="grafana-iframe" style="width:100%; height:600px; border:0; background: var(--bg);"></iframe>
                     </div>
                 </div>
-            </div>
-
             </div>
 
             <!-- Tab: RAG Mega-Tab (NEW - contains 6 subtabs) -->
@@ -3254,6 +3251,56 @@
                                 <input type="number" name="TRACE_RETENTION" value="50" min="1" max="500">
                             </div>
                         </div>
+
+                        <!-- LangSmith / LangChain Tracing Settings -->
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>LangChain Tracing V2 (LANGCHAIN_TRACING_V2)</label>
+                                <select name="LANGCHAIN_TRACING_V2">
+                                    <option value="0">Off</option>
+                                    <option value="1">On</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>LangSmith Endpoint (LANGCHAIN_ENDPOINT)</label>
+                                <input type="text" name="LANGCHAIN_ENDPOINT" placeholder="https://api.smith.langchain.com">
+                            </div>
+                        </div>
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>LangSmith API Key (LANGCHAIN_API_KEY)</label>
+                                <input type="password" name="LANGCHAIN_API_KEY" placeholder="sk-...">
+                            </div>
+                            <div class="input-group">
+                                <label>LangSmith API Key (alias) (LANGSMITH_API_KEY)</label>
+                                <input type="password" name="LANGSMITH_API_KEY" placeholder="ls_...">
+                            </div>
+                        </div>
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>LangSmith Project (LANGCHAIN_PROJECT)</label>
+                                <input type="text" name="LANGCHAIN_PROJECT" placeholder="agro">
+                            </div>
+                        </div>
+
+                        <!-- LangTrace Settings -->
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>LangTrace API Host (LANGTRACE_API_HOST)</label>
+                                <input type="text" name="LANGTRACE_API_HOST" placeholder="https://app.langtrace.ai/project/.../traces">
+                            </div>
+                            <div class="input-group">
+                                <label>LangTrace Project ID (LANGTRACE_PROJECT_ID)</label>
+                                <input type="text" name="LANGTRACE_PROJECT_ID" placeholder="cmg...">
+                            </div>
+                        </div>
+                        <div class="input-row">
+                            <div class="input-group full-width">
+                                <label>LangTrace API Key (LANGTRACE_API_KEY)</label>
+                                <input type="password" name="LANGTRACE_API_KEY" placeholder="...">
+                            </div>
+                        </div>
+
                         <div id="trace-output" class="result-display" style="min-height:120px;white-space:pre-wrap"></div>
                     </div>
                 </div>
@@ -4452,33 +4499,7 @@
                             <input type="text" name="agro_PATH">
                         </div>
                     </div>
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label>LangChain Tracing V2</label>
-                            <select name="LANGCHAIN_TRACING_V2">
-                                <option value="0">Off</option>
-                                <option value="1">On</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label>LangChain Project</label>
-                            <input type="text" name="LANGCHAIN_PROJECT" placeholder="agro">
-                        </div>
-                    </div>
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label>LangSmith Endpoint</label>
-                            <input type="text" name="LANGCHAIN_ENDPOINT" placeholder="https://api.smith.langchain.com">
-                        </div>
-                        <div class="input-group">
-                            <label>LangSmith API Key</label>
-                            <input type="password" name="LANGCHAIN_API_KEY" placeholder="sk-...">
-                        </div>
-                        <div class="input-group">
-                            <label>LangSmith API Key (alias)</label>
-                            <input type="password" name="LANGSMITH_API_KEY" placeholder="ls_...">
-                        </div>
-                    </div>
+                    
                     <div class="input-row">
                         <div class="input-group">
                             <label>Netlify API Key</label>
