@@ -229,7 +229,7 @@
             gap: 6px;
             overflow-x: auto;
             position: sticky;
-            top: 56px;
+            top: 0;
             z-index: 99;
         }
 
@@ -296,7 +296,7 @@
             background: var(--bg-elev2);
             border-bottom: 1px solid var(--line);
             position: sticky;
-            top: 121px; /* Header (56px) + Tab bar (~65px) */
+            top: 65px; /* Tab bar height (~65px) */
             z-index: 98; /* Below tab-bar (99) but above content */
         }
         
@@ -353,23 +353,14 @@
         .rag-subtab-content.active {
             display: flex;
             flex-direction: column;
+            flex: 1;
             overflow-y: auto;
+            padding: 24px;
         }
 
         /* Remove top margin from first element to prevent blank space */
         .rag-subtab-content.active > :first-child {
             margin-top: 0;
-        }
-
-        .subtab-bar {
-            background: var(--bg-elev2);
-            padding: 8px 16px;
-            border-bottom: 1px solid var(--line);
-            display: flex;
-            gap: 4px;
-            position: sticky;
-            top: 56px;
-            z-index: 98;
         }
 
         .subtab-btn {
