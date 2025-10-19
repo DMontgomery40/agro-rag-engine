@@ -27,11 +27,12 @@ If you use Claude Code or GitHub Copilot heavily, you've hit this wall: **rate l
 
 Claude Pro ($200/month) still limits you to ~1.27M tokens per week for Sonnet, ~300K for Opus. Without RAG, a single complex query can burn 12,700+ tokens. That's only **100 queries per week** on Sonnet before you're blocked.
 
-**AGRO solves this:**
-- **91% token reduction**: 12,700 tokens → 1,141 tokens per query
-- **11x more queries**: 100/week → 1,110/week on the same Claude Pro plan
-- **Same quality answers**: RAG context is just as good (often better) than file reading
-- **2-3x faster**: No file I/O overhead
+## AGRO Solves This
+
+**91% token reduction**: 12,700 tokens → 1,141 tokens per query
+**11x more queries**: 100/week → 1,110/week on the same plan
+**Same answer quality**: RAG context matches or beats file reading
+**2-3x faster**: No file I/O overhead
 
 ### Real-World Impact
 
@@ -44,10 +45,25 @@ Without AGRO:
 - Friday: RATE LIMITED 🚫
 
 With AGRO:
-- Monday through Friday: Code freely
-- 200+ queries per week, no rate limits
-- Never think about token usage again
+Monday-Friday: Code freely
+200+ queries per week, zero rate limits
+Never think about token usage again
 ```
+
+## What is AGRO?
+
+AGRO is **NOT just another RAG engine.** It's a complete, production-ready development workspace:
+
+- **Hybrid RAG**: BM25 + vector search + reranking (not "just throw it at a vector DB")
+- **Self-learning reranker**: Gets smarter as you use it
+- **GUI-first**: Every feature accessible (ADA-compliant accessibility design)
+- **Embedded VS Code**: Edit code right in the browser
+- **Grafana telemetry**: Custom dashboards with alerting
+- **Multi-transport MCP**: HTTP, SSE, STDIO, WebSocket
+- **Cost estimation**: Know what you'll pay before clicking "run"
+- **Zero to production**: Evals, monitoring, regression tracking included
+
+![AGRO Dashboard](/img/screenshots/dashboard.png)
 
 ## Quick Start
 
@@ -60,221 +76,197 @@ make dev
 # GUI at http://127.0.0.1:8012/
 ```
 
-That's it. The onboarding wizard walks you through:
+The onboarding wizard walks you through:
 1. Adding your repositories
 2. Configuring models (local or cloud)
 3. Running your first index
 4. Testing retrieval quality
 5. Connecting to Claude Code/Codex
 
-## What Makes AGRO Different
+**That's it.** No config file editing. No terminal-only gatekeeping. Everything has a GUI.
 
-### 1. GUI-First Design (Accessibility Focus)
+## Key Features
 
-**Every feature is accessible through the GUI.** This isn't an afterthought - it's a requirement per ADA compliance for users with dyslexia and other accessibility needs.
+### Hybrid Search That Actually Works
 
-![Settings & Profiles](/img/screenshots/settings%20tab-%20profiles%20subtab.png)
-
-- **Settings management**: All environment variables, repo configs, model selection
-- **Cost estimation**: See exactly what your config will cost before running it
-- **Storage calculator**: Plan your index size and disk usage
-- **Evaluation interface**: Run golden tests, compare baselines, track regressions
-- **Real-time metrics**: Grafana dashboards embedded right in the UI
-- **VS Code integration**: Optional embedded editor (because why not?)
-
-![Embedded VS Code](/img/screenshots/dev%20tools%20-%20editor%20-%20embedded%20vscode%20editor%20-%20way%20cool.png)
-
-**Analytics & Cost Tracking**
-
-![Cost Estimation](/img/screenshots/analystics%20tab%20-%20cost%20subtab.png)
-
-### 2. Self-Learning Reranker
-
-AGRO includes a **complete ML pipeline** that trains a custom transformer model on YOUR codebase:
+Not "throw embeddings at Qdrant and hope":
 
 ```
-User Feedback → Triplet Mining → Model Training → Evaluation → Auto-Promotion
-```
-
-Every time you click a search result or give thumbs up/down feedback, AGRO learns. The reranker gets better at finding what YOU actually need, not what worked for someone else's repo.
-
-![Learning Reranker Pipeline](/img/screenshots/learning%20reranker%20pt%201.png)
-
-**Full pipeline included:**
-- Automatic feedback collection (clicks, ratings)
-- Triplet mining from logs and golden questions
-- Cross-encoder training with sentence-transformers
-- MRR and Hit@K evaluation metrics
-- Hot-reload deployment (no server restart needed)
-
-![Reranker Training](/img/screenshots/learning%20reranker%20pt%202.png)
-
-### 3. Multi-Transport MCP
-
-Most MCP servers only do STDIO. AGRO supports **four transports**:
-
-- **STDIO**: For local Claude Code, Codex CLI
-- **HTTP**: For remote agents and web platforms
-- **SSE (Server-Sent Events)**: For streaming responses
-- **WebSocket**: For bidirectional real-time communication
-
-**Per-transport configuration**: Use different models for different clients. Maybe HTTP gets GPT-4o-mini (cheap), but your local STDIO uses Qwen3-Coder 30B (free, powerful).
-
-### 4. Hybrid Search Architecture
-
-Not just "throw it at a vector database and hope":
-
-```
-Query
-  ↓
-Multi-Query Expansion (4+ variants)
+Query → Multi-Query Expansion (4 variants)
   ↓
 Parallel Retrieval:
-  ├─ BM25 Sparse Search (keyword matching)
-  ├─ Dense Vector Search (semantic similarity)
-  └─ Semantic Cards (high-level summaries)
+  ├─ BM25 Sparse (keyword matching)
+  ├─ Dense Vectors (semantic similarity)
+  └─ Semantic Cards (conceptual summaries)
   ↓
-Reciprocal Rank Fusion (RRF)
+Reciprocal Rank Fusion
   ↓
-Cross-Encoder Reranking (learned model)
+Cross-Encoder Reranking
   ↓
-Confidence Gating & Local Hydration
+Path/Layer/Language Bonuses
   ↓
 Top-K Results with Citations
 ```
 
-**Keywords auto-generated** from your codebase. **Path boosting** for important directories. **Layer bonuses** for matching file types.
+**Why this matters:** Code isn't prose. You need exact matches (BM25) AND semantic understanding (vectors) AND learned preferences (reranker). AGRO does all three.
 
-### 5. Complete Observability
+### Self-Learning Reranker
+
+Every click, every thumbs-up, every query trains your custom model:
+
+```
+User Feedback → Triplet Mining → Model Training → Eval → Auto-Promotion
+```
+
+![Learning Reranker Pipeline](/img/screenshots/learning%20reranker%20pt%201.png)
+
+**Full pipeline included:**
+- Automatic feedback collection
+- Triplet mining from logs + golden questions
+- Cross-encoder training with sentence-transformers
+- MRR and Hit@K evaluation
+- Hot-reload deployment (no server restart)
+
+![Reranker Training](/img/screenshots/learning%20reranker%20pt%202.png)
+
+### GUI-First Design (Accessibility Requirement)
+
+**Every feature is accessible through the GUI.** This isn't an afterthought—it's an ADA compliance requirement for users with dyslexia and accessibility needs.
+
+![Settings & Profiles](/img/screenshots/settings%20tab-%20profiles%20subtab.png)
+
+- **Settings management**: All env vars, repo configs, model selection
+- **Cost estimation**: See exactly what your config will cost
+- **Storage calculator**: Plan index size and disk usage
+- **Evaluation interface**: Run tests, compare baselines
+- **Real-time metrics**: Grafana dashboards embedded
+- **VS Code integration**: Optional embedded editor
+
+![Embedded VS Code](/img/screenshots/dev%20tools%20-%20editor%20-%20embedded%20vscode%20editor%20-%20way%20cool.png)
+
+![Cost Estimation](/img/screenshots/analystics%20tab%20-%20cost%20subtab.png)
+
+### Multi-Transport MCP
+
+Most MCP servers only do STDIO. AGRO supports **four transports**:
+
+- **STDIO**: Local Claude Code, Codex CLI
+- **HTTP**: Remote agents, web platforms
+- **SSE**: Streaming responses
+- **WebSocket**: Real-time bidirectional
+
+**Per-transport configuration:** HTTP gets GPT-4o-mini (cheap), STDIO gets Qwen3-Coder 30B (free local).
+
+### Complete Observability
 
 ![Grafana Telemetry](/img/screenshots/matrics%20-%20embedded%20grafana%20dash.png)
 
-- **Grafana dashboards**: Request rates, latency, cache hits, error rates
-- **Prometheus metrics**: Full instrumentation of retrieval and generation
-- **LangSmith tracing**: See exactly what the LLM saw and generated
-- **Query logging**: Every search tracked for training data
+- **Grafana dashboards**: Request rates, latency, cache hits
+- **Prometheus metrics**: Full pipeline instrumentation
+- **LangSmith tracing**: See what the LLM saw
+- **Query logging**: Every search tracked for training
 - **Cost tracking**: Know exactly what you're spending
 
 ![Chat Interface](/img/screenshots/chat%20tab.png)
 
-### 6. Production-Ready Features
-
-**Evaluation & Regression Tracking:**
-- Golden question sets with expect_paths matching
-- Top-1 and Top-K accuracy metrics
-- Baseline comparison (detect when changes break retrieval)
-- Continuous eval mode (watch for degradation)
-
-**Indexing Intelligence:**
-- AST-aware code chunking (respects function boundaries)
-- Language detection (Python, JS, TS, Go, Rust, Ruby, Java, C++)
-- Smart filtering (excludes node_modules, .venv, build artifacts)
-- Incremental updates (only re-index changed files)
-
-**Cost Control:**
-- Embedding caching (never re-embed unchanged code)
-- Local model fallbacks (zero API cost option)
-- Batch processing (minimize API calls)
-- Storage optimization (quantization, compression)
-
-## Key Features
-
-### RAG & Retrieval
-- Hybrid search (BM25 + dense vectors + reranking)
-- Multi-query expansion for better recall
-- Confidence gating to prevent hallucination
-- Local chunk hydration (add context from adjacent code)
-- Repository isolation (never mix agro with agro)
-
-### Learning & Training
-- Self-learning reranker with feedback collection
-- Automatic triplet mining from usage logs
-- Cross-encoder training pipeline
-- MRR/Hit@K evaluation
-- Golden test suite with regression tracking
-
-### MCP Integration
-- 4 transport modes (STDIO, HTTP, SSE, WebSocket)
-- Tools: `rag_answer`, `rag_search`, `netlify_deploy`, `web_get`
-- Per-transport model configuration
-- Streaming response support
-- OAuth 2.0 authentication (optional)
-
-### GUI & Accessibility
-- Complete settings management
-- Cost estimation calculator
-- Storage planning tool
-- Evaluation interface
-- Grafana metrics integration
-- Embedded VS Code (optional)
-- Alert management
-- Profile switching
-
-### Developer Experience
-- CLI chat interface with memory
-- Rich terminal UI with Markdown rendering
-- Repository switching mid-conversation
-- Code citations with line numbers
-- Confidence scores for every result
-
 ## Model Flexibility
 
 **Cloud options:**
-- OpenAI (GPT-4o, GPT-4o-mini, text-embedding-3-large)
+- OpenAI (GPT-4o, embeddings)
 - Anthropic Claude (Haiku, Sonnet, Opus)
 - Google Gemini (Flash 2.5, Pro 2.5)
-- Cohere (rerank-3.5, rerank-2.5)
+- Cohere (rerank-3.5)
 - Voyage AI (embeddings)
 
 **Local options:**
-- Ollama (Qwen3-Coder, DeepSeek-Coder, etc.)
-- MLX (Apple Silicon optimized - uses Metal GPU, not ANE)
+- Ollama (Qwen3-Coder, DeepSeek-Coder)
+- MLX (Apple Silicon optimized—uses Metal GPU)
 - Sentence Transformers (BGE, NV-Embed, Nomic)
-- HuggingFace models (any cross-encoder)
+- HuggingFace cross-encoders
 
 **Mix and match:**
 ```yaml
 embedding: text-embedding-3-large  # Cloud
-generation: qwen3-coder:30b        # Local (Ollama or MLX)
+generation: qwen3-coder:30b        # Local (Ollama/MLX)
 reranking: local cross-encoder     # Local
 ```
 
-Zero API cost is possible. Or cloud-only. Or hybrid. Your choice.
+**Zero API cost is possible.** Or cloud-only. Or hybrid. Your choice.
+
+## What Makes AGRO Different
+
+### 1. Production-Ready Out of the Box
+
+Not a demo. Includes:
+- **Evaluation harness**: Golden question sets with baseline comparison
+- **Regression tracking**: Detect when changes break retrieval
+- **Grafana alerts**: Get notified when quality degrades
+- **Cost tracking**: Know what you're spending
+- **Incremental indexing**: Only re-index changed files
+
+### 2. Accessibility First
+
+GUI for everything. No "just edit the YAML file" gatekeeping. ADA-compliant design for dyslexia and accessibility needs.
+
+### 3. Local-First
+
+Your code never leaves your machine (unless you want cloud models). Use 100% local models for zero API cost and complete privacy.
+
+### 4. Transparent Costs
+
+See exactly what you'll pay **before** clicking "run":
+- Embedding cost: $X.XX
+- Card generation: $X.XX
+- Query cost per 100: $X.XX
+- Monthly estimate: $X.XX
+
+### 5. Self-Improving
+
+The system gets better as you use it. Every click trains the reranker. Auto-promotion when new models beat baseline.
+
+### 6. Developer-Focused
+
+Made by developers, for developers, with actual workflows in mind:
+- CLI chat with memory
+- Code citations with line numbers
+- Confidence scores
+- Repository switching mid-conversation
+- Rich terminal UI with Markdown
 
 ## What's Included
 
-- **MCP Servers**: STDIO, HTTP, SSE, WebSocket implementations
-- **FastAPI backend**: Complete REST API with /answer, /search, /chat
-- **LangGraph pipeline**: Stateful retrieval with Redis checkpointing
-- **Hybrid search**: BM25S + Qdrant vector DB + cross-encoder reranking
-- **Indexer**: AST-aware chunking for 10+ languages
-- **CLI chat**: Interactive terminal chat with conversation memory
-- **Eval harness**: Golden tests with baseline comparison
-- **Reranker training**: Full ML pipeline from feedback to deployment
-- **GUI**: Complete web interface for all features
-- **Grafana**: Pre-configured dashboards and alerts
+- **4 MCP servers**: STDIO, HTTP, SSE, WebSocket
+- **FastAPI backend**: Complete REST API
+- **LangGraph pipeline**: Stateful retrieval with Redis
+- **Hybrid search**: BM25S + Qdrant + cross-encoder
+- **AST-aware indexer**: Respects function boundaries
+- **CLI chat**: Interactive terminal with memory
+- **Eval harness**: Golden tests + baseline comparison
+- **Reranker training**: Full ML pipeline
+- **GUI**: Complete web interface
+- **Grafana**: Pre-configured dashboards + alerts
 - **Docker Compose**: Qdrant, Redis, Prometheus, Grafana
-- **Scripts**: Index management, keyword generation, eval automation
+- **Scripts**: Index management, eval automation
 
 ## Next Steps
 
-Ready to dive in?
+Ready to code without rate limits?
 
 1. **[Installation Guide](getting-started/installation)** - Set up AGRO from scratch
 2. **[Quick Start](getting-started/quickstart)** - Index your first repo in 5 minutes
 3. **[MCP Integration](features/mcp)** - Connect to Claude Code or Codex
-4. **[Learning Reranker](features/learning-reranker)** - Train a custom model on your code
-5. **[API Reference](api/reference)** - Explore all HTTP endpoints
+4. **[RAG System](features/rag)** - Understand the hybrid search architecture
+5. **[API Reference](api/endpoints)** - Explore all HTTP endpoints
 
 ## Philosophy
 
 AGRO is built on these principles:
 
-1. **Accessibility First**: GUI for everything. No "just edit the config file" gatekeeping.
-2. **Local-First**: Your code never leaves your machine (unless you want cloud models).
-3. **Transparent Costs**: Know exactly what you'll pay before you click "run".
-4. **Self-Improving**: The system gets better as you use it.
-5. **Production Ready**: Not a demo. Includes evals, monitoring, regression tracking.
-6. **Developer Focused**: Made by developers, for developers, with actual workflows in mind.
+1. **Accessibility First**: GUI for everything. No gatekeeping.
+2. **Local-First**: Your code stays on your machine.
+3. **Transparent Costs**: Know what you'll pay before running.
+4. **Self-Improving**: Gets better as you use it.
+5. **Production Ready**: Evals, monitoring, regression tracking included.
+6. **Developer Focused**: Real workflows, not demos.
 
 **Token limits shouldn't decide when you can code. AGRO makes sure they don't.**
