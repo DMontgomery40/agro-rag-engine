@@ -261,8 +261,29 @@ _local_embed_model = None
 def _get_embedding(text: str, kind: str = "query") -> list[float]:
     et = (os.getenv("EMBEDDING_TYPE", "openai") or "openai").lower()
     if et == "voyage":
+        import time
+        from server.api_tracker import track_api_call, APIProvider
+
         vo = _lazy_import_voyage()
+        start = time.time()
         out = vo.embed([text], model="voyage-code-3", input_type=kind, output_dimension=512)
+        duration_ms = (time.time() - start) * 1000
+
+        # Voyage pricing: ~$0.00012 per 1k tokens for voyage-code-3
+        # Estimate tokens = len(text) / 4 (rough char-to-token ratio)
+        tokens_est = len(text) // 4
+        cost_usd = (tokens_est / 1000) * 0.00012
+
+        track_api_call(
+            provider=APIProvider.VOYAGE,
+            endpoint="https://api.voyageai.com/v1/embeddings",
+            method="POST",
+            duration_ms=duration_ms,
+            status_code=200,
+            tokens_estimated=tokens_est,
+            cost_usd=cost_usd
+        )
+
         return out.embeddings[0]
     if et == "local":
         global _local_embed_model
@@ -270,8 +291,31 @@ def _get_embedding(text: str, kind: str = "query") -> list[float]:
             from sentence_transformers import SentenceTransformer
             _local_embed_model = SentenceTransformer('BAAI/bge-small-en-v1.5')
         return _local_embed_model.encode([text], normalize_embeddings=True, show_progress_bar=False)[0].tolist()
+    import time
+    from server.api_tracker import track_api_call, APIProvider
+
     client = _lazy_import_openai()
-    resp = client.embeddings.create(input=text, model="text-embedding-3-large")
+    embedding_model = "text-embedding-3-large"
+
+    start = time.time()
+    resp = client.embeddings.create(input=text, model=embedding_model)
+    duration_ms = (time.time() - start) * 1000
+
+    # OpenAI pricing varies by model - use resp.usage if available
+    tokens_used = resp.usage.total_tokens if hasattr(resp, 'usage') else len(text) // 4
+    # text-embedding-3-large is ~$0.00013 per 1k tokens
+    cost_usd = (tokens_used / 1000) * 0.00013
+
+    track_api_call(
+        provider=APIProvider.OPENAI,
+        endpoint="https://api.openai.com/v1/embeddings",
+        method="POST",
+        duration_ms=duration_ms,
+        status_code=200,
+        tokens_estimated=tokens_used,
+        cost_usd=cost_usd
+    )
+
     return resp.data[0].embedding
 
 

@@ -32,6 +32,7 @@ class APIProvider(Enum):
     DISCORD = "discord"
     LANGSMITH = "langsmith"
     NETLIFY = "netlify"
+    LOCAL = "local"
     UNKNOWN = "unknown"
 
 
@@ -245,13 +246,24 @@ def get_provider_from_url(url: str) -> APIProvider:
     """Categorize API provider from URL."""
     url_lower = url.lower()
 
+    # Check for localhost/local first
+    if "localhost" in url_lower or "127.0.0.1" in url_lower:
+        # Check what port to determine service
+        if ":11434" in url_lower or "ollama" in url_lower:
+            return APIProvider.OLLAMA
+        elif ":6333" in url_lower or "qdrant" in url_lower:
+            return APIProvider.QDRANT
+        # Editor/internal services
+        return APIProvider.LOCAL
+
+    # External API providers
     if "cohere" in url_lower or "rerank" in url_lower:
         return APIProvider.COHERE
     elif "openai" in url_lower or "api.openai.com" in url_lower:
         return APIProvider.OPENAI
     elif "voyage" in url_lower or "voyageai" in url_lower:
         return APIProvider.VOYAGE
-    elif "ollama" in url_lower or "localhost:11434" in url_lower:
+    elif "ollama" in url_lower:
         return APIProvider.OLLAMA
     elif "qdrant" in url_lower or ":6333" in url_lower:
         return APIProvider.QDRANT

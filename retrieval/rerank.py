@@ -106,7 +106,30 @@ def rerank_results(query: str, results: List[Dict], top_k: int = 10, trace: Any 
             # Limit reranking to top 50 documents (configurable via env) to reduce token usage
             max_rerank = int(os.getenv('COHERE_RERANK_TOP_N', '50') or '50')
             rerank_top_n = min(len(docs), max_rerank)
+
+            # Instrument Cohere API call
+            import time
+            from server.api_tracker import track_api_call, APIProvider
+
+            start = time.time()
             rr = client.rerank(model=os.getenv('COHERE_RERANK_MODEL', COHERE_MODEL), query=query, documents=docs, top_n=rerank_top_n)
+            duration_ms = (time.time() - start) * 1000
+
+            # Calculate cost - Cohere rerank is ~$0.002 per 1k searches
+            # Each call is 1 search, so cost = $0.000002 per call
+            cost_per_call = 0.000002
+            tokens_est = len(docs) * 100  # Estimate based on doc count
+
+            track_api_call(
+                provider=APIProvider.COHERE,
+                endpoint="https://api.cohere.ai/v1/rerank",
+                method="POST",
+                duration_ms=duration_ms,
+                status_code=200,
+                tokens_estimated=tokens_est,
+                cost_usd=cost_per_call
+            )
+
             scores = [getattr(x, 'relevance_score', 0.0) for x in rr.results]
             max_s = max(scores) if scores else 1.0
             for item in rr.results:

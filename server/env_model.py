@@ -166,10 +166,33 @@ def generate_text(
         except Exception:
             pass
 
+    import time as timer
+    from server.api_tracker import track_api_call, APIProvider
+
     try:
         # OpenAI Responses API (supports temperature)
+        start = timer.time()
         resp = client().responses.create(**kwargs)
+        duration_ms = (timer.time() - start) * 1000
         text = _extract_text(resp)
+
+        # Track API call
+        tokens_used = getattr(getattr(resp, 'usage', None), 'total_tokens', 0) or 0
+        prompt_tokens = getattr(getattr(resp, 'usage', None), 'prompt_tokens', 0) or tokens_used // 2
+        completion_tokens = getattr(getattr(resp, 'usage', None), 'completion_tokens', 0) or tokens_used // 2
+        # gpt-4o-mini pricing: ~$0.15 per 1M input tokens, $0.60 per 1M output tokens
+        cost_usd = (prompt_tokens / 1_000_000) * 0.15 + (completion_tokens / 1_000_000) * 0.60
+
+        track_api_call(
+            provider=APIProvider.OPENAI,
+            endpoint="https://api.openai.com/v1/responses",
+            method="POST",
+            duration_ms=duration_ms,
+            status_code=200,
+            tokens_estimated=tokens_used,
+            cost_usd=cost_usd
+        )
+
         return text, resp
     except Exception:
         try:
@@ -181,8 +204,30 @@ def generate_text(
             ckwargs: Dict[str, Any] = {"model": mdl, "messages": messages, "temperature": temp}
             if response_format and isinstance(response_format, dict):
                 ckwargs["response_format"] = response_format
+
+            start = timer.time()
             cc = client().chat.completions.create(**ckwargs)
+            duration_ms = (timer.time() - start) * 1000
+
             text = (cc.choices[0].message.content if getattr(cc, "choices", []) else "") or ""
+
+            # Track API call
+            tokens_used = getattr(getattr(cc, 'usage', None), 'total_tokens', 0) or 0
+            prompt_tokens = getattr(getattr(cc, 'usage', None), 'prompt_tokens', 0) or tokens_used // 2
+            completion_tokens = getattr(getattr(cc, 'usage', None), 'completion_tokens', 0) or tokens_used // 2
+            # gpt-4o-mini pricing: ~$0.15 per 1M input tokens, $0.60 per 1M output tokens
+            cost_usd = (prompt_tokens / 1_000_000) * 0.15 + (completion_tokens / 1_000_000) * 0.60
+
+            track_api_call(
+                provider=APIProvider.OPENAI,
+                endpoint="https://api.openai.com/v1/chat/completions",
+                method="POST",
+                duration_ms=duration_ms,
+                status_code=200,
+                tokens_estimated=tokens_used,
+                cost_usd=cost_usd
+            )
+
             return text, cc
         except Exception as e:
             raise RuntimeError(f"Generation failed for model={mdl}: {e}")
