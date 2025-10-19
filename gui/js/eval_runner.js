@@ -63,6 +63,15 @@ function showEvalProgress() {
     document.getElementById('eval-comparison').style.display = 'none';
     document.getElementById('eval-status').textContent = 'Initializing...';
     document.getElementById('eval-progress-bar').style.width = '0%';
+
+    // Initialize UXFeedback progress bar
+    if (window.UXFeedback) {
+        window.UXFeedback.progress.show('evaluation', {
+            message: 'Initializing evaluation...',
+            initialPercent: 0,
+            container: '#eval-progress'
+        });
+    }
 }
 
 // Start polling for status
@@ -79,14 +88,42 @@ function startPolling() {
                 document.getElementById('eval-progress-bar').style.width = progress + '%';
                 document.getElementById('eval-status').textContent =
                     `Running... ${status.progress}/${status.total} questions`;
+
+                // Update UXFeedback progress bar
+                if (window.UXFeedback) {
+                    const remaining = status.total - status.progress;
+                    const eta = remaining > 0 ? `~${remaining} questions remaining` : null;
+                    window.UXFeedback.progress.update('evaluation', {
+                        percent: progress,
+                        message: `Evaluating ${status.progress}/${status.total} questions`,
+                        eta: eta
+                    });
+                }
             } else {
                 // Evaluation finished
                 clearInterval(evalPollingInterval);
                 evalPollingInterval = null;
+
+                // Complete UXFeedback progress bar
+                if (window.UXFeedback) {
+                    window.UXFeedback.progress.update('evaluation', {
+                        percent: 100,
+                        message: 'Evaluation complete!'
+                    });
+                    setTimeout(() => {
+                        window.UXFeedback.progress.hide('evaluation');
+                    }, 1500);
+                }
+
                 await loadEvalResults();
             }
         } catch (error) {
             console.error('Failed to poll status:', error);
+
+            // Hide progress bar on error
+            if (window.UXFeedback) {
+                window.UXFeedback.progress.hide('evaluation');
+            }
         }
     }, 1000);
 }
@@ -111,6 +148,11 @@ async function loadEvalResults() {
 
         // Hide progress
         document.getElementById('eval-progress').style.display = 'none';
+
+        // Hide UXFeedback progress bar
+        if (window.UXFeedback) {
+            window.UXFeedback.progress.hide('evaluation');
+        }
     } catch (error) {
         console.error('Failed to load results:', error);
         document.getElementById('eval-status').textContent = 'Error: ' + error.message;
@@ -118,6 +160,11 @@ async function loadEvalResults() {
         const btn = document.getElementById('btn-eval-run');
         btn.disabled = false;
         btn.textContent = 'Run Full Evaluation';
+
+        // Hide UXFeedback progress bar on error
+        if (window.UXFeedback) {
+            window.UXFeedback.progress.hide('evaluation');
+        }
     }
 }
 

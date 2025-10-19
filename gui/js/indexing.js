@@ -268,11 +268,11 @@
     async function pollIndexStatus() {
         // Clear existing timer
         if (_indexStatusTimer) clearTimeout(_indexStatusTimer);
-        
+
         try {
             const response = await fetch(api('/api/index/status'));
             const data = await response.json();
-            
+
             // Update UI with status
             const statusDiv = $('#index-status-display');
             if (statusDiv && data.running) {
@@ -284,18 +284,49 @@
                     }
                 }
                 statusDiv.innerHTML = `<div style="color: var(--accent); padding: 8px;">${progress}</div>`;
-                
+
+                // Emit progress event for UXFeedback system
+                if (window.UXFeedback && data.current_repo) {
+                    const percent = data.progress || 0;
+                    const message = `Indexing ${data.current_repo}`;
+
+                    // Show or update progress bar
+                    if (percent === 0 || !window.UXFeedback.progress.activeProgressBars.has('indexing')) {
+                        window.UXFeedback.progress.show('indexing', {
+                            message: message,
+                            initialPercent: percent,
+                            container: '#index-status-display'
+                        });
+                    } else {
+                        window.UXFeedback.progress.update('indexing', {
+                            percent: percent,
+                            message: message
+                        });
+                    }
+                }
+
                 // Continue polling if still running
                 _indexStatusTimer = setTimeout(pollIndexStatus, 2000);
             } else {
                 if (statusDiv) {
                     statusDiv.innerHTML = '<div style="color: var(--fg-muted); padding: 8px;">Idle</div>';
                 }
+
+                // Hide progress bar when complete
+                if (window.UXFeedback) {
+                    window.UXFeedback.progress.hide('indexing');
+                }
+
                 // Refresh stats after indexing completes
                 refreshIndexStats();
             }
         } catch (e) {
             console.error('[indexing] Failed to poll status:', e);
+
+            // Hide progress bar on error
+            if (window.UXFeedback) {
+                window.UXFeedback.progress.hide('indexing');
+            }
         }
     }
 
