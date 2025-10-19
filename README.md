@@ -17,6 +17,10 @@ Make dev
 # GUI at http://127.0.0.1:8012/
 ```
 
+## 📖 Documentation
+
+**[Full Documentation Site](https://dmontgomery40.github.io/agro-rag-engine/)** - Complete guides for setup, API, MCP integration, and more
+
 ## **Fully-local model support, or any SOTA API Model, mix, match, and set profiles based on task**
 <table>
 <tr>
