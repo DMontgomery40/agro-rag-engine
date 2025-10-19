@@ -27,7 +27,26 @@
                 window.Theme.initThemeFromEnv(d.env || {});
             }
         } catch (e) {
-            console.error('Failed to load config:', e);
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to load configuration', {
+                message: e.message,
+                causes: [
+                    'Backend API server is not running or not responding',
+                    'Configuration file is missing or corrupted',
+                    'Network connectivity issue or DNS resolution failure',
+                    'Invalid JSON in response from configuration endpoint'
+                ],
+                fixes: [
+                    'Verify backend service is running: check Infrastructure tab',
+                    'Check backend logs for configuration loading errors',
+                    'Verify network connectivity and firewall rules',
+                    'Refresh the page and try loading configuration again'
+                ],
+                links: [
+                    ['Fetch API Documentation', 'https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API'],
+                    ['JSON Parsing Guide', 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/parse']
+                ]
+            }) : `Failed to load config: ${e.message}`;
+            console.error('[config.js] Failed to load config:', msg);
         }
     }
 
@@ -342,7 +361,25 @@
                                         }
                                     }
                                 } catch (e) {
-                                    console.warn('Failed to save keyword to server:', e);
+                                    const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to persist keyword to server', {
+                                        message: e.message,
+                                        causes: [
+                                            'Backend API service is not running or responding',
+                                            'Keywords database connection failed',
+                                            'Network connectivity issue or timeout',
+                                            'Invalid or duplicate keyword in the system'
+                                        ],
+                                        fixes: [
+                                            'Verify backend service is running in Infrastructure tab',
+                                            'Check database connectivity and status',
+                                            'Verify network connectivity between frontend and backend',
+                                            'Try adding a different keyword or refresh the page'
+                                        ],
+                                        links: [
+                                            ['Fetch API Documentation', 'https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API']
+                                        ]
+                                    }) : `Failed to save keyword to server: ${e.message}`;
+                                    console.warn('[config.js] Failed to save keyword:', msg);
                                 }
                             }
 
@@ -466,7 +503,27 @@
                 await loadConfig(); // Reload to confirm
             }
         } catch (e) {
-            alert('Error saving config: ' + e.message);
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to save configuration', {
+                message: e.message,
+                causes: [
+                    'Backend configuration API service is unavailable',
+                    'Invalid configuration values submitted in form',
+                    'Backend validation rejected the configuration changes',
+                    'Insufficient permissions to save configuration'
+                ],
+                fixes: [
+                    'Verify all required fields are filled with valid values',
+                    'Check backend logs for validation error details',
+                    'Verify backend service is running in Infrastructure tab',
+                    'Ensure you have proper permissions to modify configuration'
+                ],
+                links: [
+                    ['Fetch API Documentation', 'https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API'],
+                    ['JSON Stringification Guide', 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify']
+                ]
+            }) : `Error saving config: ${e.message}`;
+            alert(msg);
+            console.error('[config.js] Failed to save config:', msg);
         }
     }
 
