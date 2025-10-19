@@ -64,7 +64,25 @@ function saveChatSettings() {
         showToast('Chat settings saved', 'success');
     } catch (e) {
         console.error('Failed to save chat settings:', e);
-        showToast('Failed to save settings: ' + e.message, 'error');
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to save chat settings', {
+            message: e.message,
+            causes: [
+                'Browser localStorage is disabled or unavailable',
+                'Storage quota exceeded (too many chat settings)',
+                'Invalid data type in form input',
+                'DOM element reference changed or missing'
+            ],
+            fixes: [
+                'Enable localStorage in browser settings (Privacy & Security)',
+                'Clear old chat data or reset settings to defaults',
+                'Check form inputs are filled with valid values',
+                'Refresh the page and try saving again'
+            ],
+            links: [
+                ['Web Storage API', 'https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API']
+            ]
+        }) : 'Failed to save settings: ' + e.message;
+        showToast(msg, 'error');
     }
 }
 
@@ -197,7 +215,28 @@ async function sendMessage() {
     } catch (error) {
         console.error('Chat error:', error);
         removeMessage(loadingId);
-        addMessage('assistant', `Error: ${error.message}`, false, true);
+        const errorMsg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to get AI answer', {
+            message: error.message,
+            causes: [
+                'Backend API server is not running or unreachable',
+                'Vector database (Qdrant) connection failed',
+                'No relevant documents found in the knowledge base',
+                'LLM model API service is unavailable',
+                'Network connection interrupted'
+            ],
+            fixes: [
+                'Check Infrastructure tab - verify backend and Qdrant are running',
+                'Verify your repository has been indexed (check Data > Indexing status)',
+                'Try rephrasing your question with simpler terms',
+                'Check system resources (memory, CPU) on Infrastructure tab',
+                'Retry the question - temporary network issues may resolve'
+            ],
+            links: [
+                ['Qdrant Vector Database', 'https://qdrant.tech/documentation/concepts/collections/'],
+                ['System Health Check', '/api/health']
+            ]
+        }) : `Error: ${error.message}`;
+        addMessage('assistant', errorMsg, false, true);
     } finally {
         input.disabled = false;
         sendBtn.disabled = false;
