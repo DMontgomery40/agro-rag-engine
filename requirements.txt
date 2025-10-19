@@ -34,3 +34,5 @@ openai==2.2.0
 fastmcp>=0.3.0
 prometheus-client==0.21.1
 
+websockets>=15.0
+httpx-ws>=0.6

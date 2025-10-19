@@ -4,14 +4,15 @@
   "title": "AGRO Overview",
   "timezone": "browser",
   "schemaVersion": 38,
-  "version": 1,
+  "version": 2,
   "editable": true,
   "style": "dark",
-  "graphTooltip": 0,
+  "graphTooltip": 1,
   "time": {
     "from": "now-6h",
     "to": "now"
   },
+  "refresh": "10s",
   "templating": {
     "list": [
       {
@@ -44,36 +45,6 @@
         "hide": 0,
         "includeAll": true,
         "multi": true
-      },
-      {
-        "name": "route",
-        "type": "query",
-        "label": "Route",
-        "datasource": {
-          "type": "prometheus",
-          "uid": "PBFA97CFB590B2093"
-        },
-        "query": "label_values(agro_requests_total, route)",
-        "refresh": 2,
-        "definition": "label_values(agro_requests_total, route)",
-        "hide": 0,
-        "includeAll": true,
-        "multi": true
-      },
-      {
-        "name": "stage",
-        "type": "query",
-        "label": "Stage",
-        "datasource": {
-          "type": "prometheus",
-          "uid": "PBFA97CFB590B2093"
-        },
-        "query": "label_values(agro_request_duration_seconds_bucket, stage)",
-        "refresh": 2,
-        "definition": "label_values(agro_request_duration_seconds_bucket, stage)",
-        "hide": 0,
-        "includeAll": true,
-        "multi": true
       }
     ]
   },
@@ -81,12 +52,12 @@
     {
       "id": 1,
       "type": "stat",
-      "title": "Requests/sec (ok)",
+      "title": "Request Rate",
       "gridPos": {
         "x": 0,
         "y": 0,
-        "w": 8,
-        "h": 4
+        "w": 6,
+        "h": 5
       },
       "datasource": {
         "type": "prometheus",
@@ -94,7 +65,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(agro_requests_total{success=\"true\",provider=~\"$provider\",model=~\"$model\",route=~\"$route\"}[5m]))",
+          "expr": "sum(rate(agro_requests_total{success=\"true\",provider=~\"$provider\",model=~\"$model\"}[5m]))",
           "refId": "A"
         }
       ],
@@ -107,14 +78,32 @@
           "values": false
         },
         "orientation": "auto",
-        "textMode": "auto",
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto"
+        "textMode": "value_and_name",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "req/s"
+          "unit": "reqps",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.1
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
         },
         "overrides": []
       },
@@ -123,12 +112,12 @@
     {
       "id": 2,
       "type": "stat",
-      "title": "Error/sec",
+      "title": "Error Rate",
       "gridPos": {
-        "x": 8,
+        "x": 6,
         "y": 0,
-        "w": 8,
-        "h": 4
+        "w": 6,
+        "h": 5
       },
       "datasource": {
         "type": "prometheus",
@@ -136,7 +125,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(agro_errors_total[5m]))",
+          "expr": "sum(rate(agro_requests_total{success=\"false\"}[5m])) / sum(rate(agro_requests_total[5m])) * 100",
           "refId": "A"
         }
       ],
@@ -149,14 +138,36 @@
           "values": false
         },
         "orientation": "auto",
-        "textMode": "auto",
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto"
+        "textMode": "value_and_name",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "ops"
+          "unit": "percent",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "orange",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          }
         },
         "overrides": []
       },
@@ -165,12 +176,12 @@
     {
       "id": 3,
       "type": "stat",
-      "title": "Cost/min (USD)",
+      "title": "P95 Latency",
       "gridPos": {
-        "x": 16,
+        "x": 12,
         "y": 0,
-        "w": 8,
-        "h": 4
+        "w": 6,
+        "h": 5
       },
       "datasource": {
         "type": "prometheus",
@@ -178,7 +189,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(agro_cost_usd_total[5m])) * 60",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(agro_request_duration_seconds_bucket{stage=\"request\"}[5m])))",
           "refId": "A"
         }
       ],
@@ -191,14 +202,36 @@
           "values": false
         },
         "orientation": "auto",
-        "textMode": "auto",
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto"
+        "textMode": "value_and_name",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "currencyUSD"
+          "unit": "s",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 2
+              },
+              {
+                "color": "orange",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          }
         },
         "overrides": []
       },
@@ -206,13 +239,13 @@
     },
     {
       "id": 4,
-      "type": "table",
-      "title": "🔵 API Routes - Top by throughput",
+      "type": "stat",
+      "title": "Cost/Hour",
       "gridPos": {
-        "x": 0,
-        "y": 4,
-        "w": 12,
-        "h": 10
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 5
       },
       "datasource": {
         "type": "prometheus",
@@ -220,149 +253,63 @@
       },
       "targets": [
         {
-          "expr": "topk(10, sum by (route) (rate(agro_requests_total{provider=~\"$provider\",model=~\"$model\",route=~\"/api.*\"}[5m])))",
-          "format": "table",
-          "instant": true,
+          "expr": "sum(rate(agro_cost_usd_total{provider=~\"$provider\",model=~\"$model\"}[5m])) * 3600",
           "refId": "A"
         }
       ],
       "options": {
-        "showHeader": true,
-        "sortBy": []
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "req/s",
-          "custom": {
-            "width": 300,
-            "align": "auto",
-            "displayMode": "auto"
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "route"
-            },
-            "properties": [
+          "unit": "currencyUSD",
+          "decimals": 3,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
               {
-                "id": "custom.width",
-                "value": 400
+                "color": "green",
+                "value": null
               },
               {
-                "id": "custom.displayMode",
-                "value": "color-background"
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "orange",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 10
               }
             ]
           }
-        ]
-      },
-      "pluginVersion": "10.0.0"
-    },
-    {
-      "id": 15,
-      "type": "table",
-      "title": "🟡 Infrastructure Routes - Top by throughput",
-      "gridPos": {
-        "x": 12,
-        "y": 4,
-        "w": 12,
-        "h": 10
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "targets": [
-        {
-          "expr": "topk(10, sum by (route) (rate(agro_requests_total{provider=~\"$provider\",model=~\"$model\",route!~\"/api.*\"}[5m])))",
-          "format": "table",
-          "instant": true,
-          "refId": "A"
-        }
-      ],
-      "options": {
-        "showHeader": true,
-        "sortBy": []
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "req/s",
-          "custom": {
-            "width": 300,
-            "align": "auto",
-            "displayMode": "auto"
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "route"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 400
-              },
-              {
-                "id": "custom.displayMode",
-                "value": "color-background"
-              }
-            ]
-          }
-        ]
-      },
-      "pluginVersion": "10.0.0"
-    },
-    {
-      "id": 5,
-      "type": "timeseries",
-      "title": "Errors/sec by type",
-      "gridPos": {
-        "x": 0,
-        "y": 14,
-        "w": 8,
-        "h": 6
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "targets": [
-        {
-          "expr": "sum by (type) (rate(agro_errors_total[5m]))",
-          "refId": "A"
-        }
-      ],
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
         },
         "overrides": []
       },
       "pluginVersion": "10.0.0"
     },
     {
-      "id": 6,
+      "id": 5,
       "type": "timeseries",
-      "title": "Tokens/min by role",
+      "title": "Request Rate & Errors Over Time",
       "gridPos": {
-        "x": 8,
-        "y": 14,
-        "w": 8,
-        "h": 6
+        "x": 0,
+        "y": 5,
+        "w": 12,
+        "h": 8
       },
       "datasource": {
         "type": "prometheus",
@@ -370,23 +317,173 @@
       },
       "targets": [
         {
-          "expr": "sum by (role) (rate(agro_tokens_total[5m])) * 60",
-          "refId": "A"
+          "expr": "sum(rate(agro_requests_total{success=\"true\",provider=~\"$provider\",model=~\"$model\"}[5m]))",
+          "refId": "A",
+          "legendFormat": "Success"
+        },
+        {
+          "expr": "sum(rate(agro_requests_total{success=\"false\",provider=~\"$provider\",model=~\"$model\"}[5m]))",
+          "refId": "B",
+          "legendFormat": "Failed"
         }
       ],
       "options": {
         "legend": {
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "short"
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "barAlignment": 0,
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "gradientMode": "opacity",
+            "spanNulls": false,
+            "showPoints": "never",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Failed"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Success"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "pluginVersion": "10.0.0"
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Latency Percentiles (p50, p95, p99)",
+      "gridPos": {
+        "x": 12,
+        "y": 5,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(agro_request_duration_seconds_bucket{stage=\"request\"}[5m])))",
+          "refId": "A",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(agro_request_duration_seconds_bucket{stage=\"request\"}[5m])))",
+          "refId": "B",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(agro_request_duration_seconds_bucket{stage=\"request\"}[5m])))",
+          "refId": "C",
+          "legendFormat": "p99"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "barAlignment": 0,
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "gradientMode": "opacity",
+            "spanNulls": false,
+            "showPoints": "never",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
         },
         "overrides": []
       },
@@ -395,11 +492,224 @@
     {
       "id": 7,
       "type": "timeseries",
-      "title": "P95 latency by stage (s)",
+      "title": "Token Consumption (prompt vs completion)",
+      "gridPos": {
+        "x": 0,
+        "y": 13,
+        "w": 8,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets": [
+        {
+          "expr": "sum by (role) (rate(agro_tokens_total{provider=~\"$provider\",model=~\"$model\"}[5m])) * 60",
+          "refId": "A",
+          "legendFormat": "{{role}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "barAlignment": 0,
+            "lineWidth": 2,
+            "fillOpacity": 20,
+            "gradientMode": "opacity",
+            "spanNulls": false,
+            "showPoints": "never",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.0.0"
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Cost Over Time by Provider",
+      "gridPos": {
+        "x": 8,
+        "y": 13,
+        "w": 8,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets": [
+        {
+          "expr": "sum by (provider) (rate(agro_cost_usd_total[5m])) * 3600",
+          "refId": "A",
+          "legendFormat": "{{provider}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "barAlignment": 0,
+            "lineWidth": 2,
+            "fillOpacity": 20,
+            "gradientMode": "opacity",
+            "spanNulls": false,
+            "showPoints": "never",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.0.0"
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "API Call Latency by Provider (p95)",
       "gridPos": {
         "x": 16,
-        "y": 14,
+        "y": 13,
         "w": 8,
+        "h": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, provider) (rate(agro_api_call_duration_seconds_bucket[5m])))",
+          "refId": "A",
+          "legendFormat": "{{provider}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "barAlignment": 0,
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "gradientMode": "opacity",
+            "spanNulls": false,
+            "showPoints": "never",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "pluginVersion": "10.0.0"
+    },
+    {
+      "id": 10,
+      "type": "gauge",
+      "title": "Mean Reciprocal Rank (MRR)",
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 6,
         "h": 6
       },
       "datasource": {
@@ -408,45 +718,7 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le, stage) (rate(agro_request_duration_seconds_bucket{stage=~\"$stage\"}[5m])))",
-          "refId": "A"
-        }
-      ],
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "pluginVersion": "10.0.0"
-    },
-    {
-      "id": 8,
-      "type": "stat",
-      "title": "Cost per request (USD)",
-      "gridPos": {
-        "x": 16,
-        "y": 20,
-        "w": 8,
-        "h": 5
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "targets": [
-        {
-          "expr": "(sum(rate(agro_cost_usd_total[5m])))/(sum(rate(agro_requests_total[5m])))",
+          "expr": "agro_rr_mrr",
           "refId": "A"
         }
       ],
@@ -458,92 +730,25 @@
           "fields": "",
           "values": false
         },
-        "orientation": "auto",
-        "textMode": "auto",
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto"
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "currencyUSD"
-        },
-        "overrides": []
-      },
-      "pluginVersion": "10.0.0"
-    },
-    {
-      "id": 9,
-      "type": "bargauge",
-      "title": "Top 5 models by cost (5m)",
-      "gridPos": {
-        "x": 0,
-        "y": 20,
-        "w": 8,
-        "h": 5
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "targets": [
-        {
-          "expr": "topk(5, sum by (model) (rate(agro_cost_usd_total[5m])))",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "currencyUSD"
-        },
-        "overrides": []
-      },
-      "options": {
-        "displayMode": "gradient",
-        "orientation": "horizontal"
-      },
-      "pluginVersion": "10.0.0"
-    },
-    {
-      "id": 10,
-      "type": "gauge",
-      "title": "MRR (avg, 5m)",
-      "gridPos": {
-        "x": 8,
-        "y": 20,
-        "w": 8,
-        "h": 5
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "targets": [
-        {
-          "expr": "avg_over_time(agro_rr_mrr[5m])",
-          "refId": "A"
-        }
-      ],
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "none",
+          "unit": "percentunit",
           "min": 0,
           "max": 1,
+          "decimals": 2,
           "thresholds": {
-            "mode": "percentage",
+            "mode": "absolute",
             "steps": [
               {
                 "color": "red",
                 "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.5
               },
               {
                 "color": "yellow",
@@ -551,7 +756,7 @@
               },
               {
                 "color": "green",
-                "value": 0.9
+                "value": 0.85
               }
             ]
           }
@@ -562,13 +767,13 @@
     },
     {
       "id": 11,
-      "type": "bargauge",
-      "title": "Hits@K (avg, 5m)",
+      "type": "gauge",
+      "title": "Canary Pass Rate",
       "gridPos": {
-        "x": 16,
+        "x": 6,
         "y": 20,
-        "w": 8,
-        "h": 5
+        "w": 6,
+        "h": 6
       },
       "datasource": {
         "type": "prometheus",
@@ -576,31 +781,62 @@
       },
       "targets": [
         {
-          "expr": "avg_over_time(agro_retrieval_hits[5m])",
+          "expr": "sum(rate(agro_canary_pass_total[5m])) / sum(rate(agro_canary_total[5m]))",
           "refId": "A"
         }
       ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true
+      },
       "fieldConfig": {
         "defaults": {
-          "unit": "short"
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.7
+              },
+              {
+                "color": "yellow",
+                "value": 0.85
+              },
+              {
+                "color": "green",
+                "value": 0.95
+              }
+            ]
+          }
         },
         "overrides": []
-      },
-      "options": {
-        "displayMode": "gradient",
-        "orientation": "horizontal"
       },
       "pluginVersion": "10.0.0"
     },
     {
       "id": 12,
-      "type": "timeseries",
-      "title": "Canary pass ratio by model",
+      "type": "stat",
+      "title": "Total Requests (5m)",
       "gridPos": {
-        "x": 0,
-        "y": 25,
-        "w": 8,
-        "h": 5
+        "x": 12,
+        "y": 20,
+        "w": 4,
+        "h": 3
       },
       "datasource": {
         "type": "prometheus",
@@ -608,23 +844,37 @@
       },
       "targets": [
         {
-          "expr": "sum by (model) (rate(agro_canary_pass_total[5m])) / sum by (model) (rate(agro_canary_total[5m]))",
+          "expr": "sum(increase(agro_requests_total{provider=~\"$provider\",model=~\"$model\"}[5m]))",
           "refId": "A"
         }
       ],
       "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
         },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        }
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "short"
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
         },
         "overrides": []
       },
@@ -632,13 +882,13 @@
     },
     {
       "id": 13,
-      "type": "heatmap",
-      "title": "Reranker margin (abs) histogram",
+      "type": "stat",
+      "title": "Total Tokens (5m)",
       "gridPos": {
-        "x": 0,
-        "y": 30,
-        "w": 12,
-        "h": 10
+        "x": 16,
+        "y": 20,
+        "w": 4,
+        "h": 3
       },
       "datasource": {
         "type": "prometheus",
@@ -646,18 +896,37 @@
       },
       "targets": [
         {
-          "expr": "sum by (le) (rate(agro_reranker_margin_abs_bucket[5m]))",
+          "expr": "sum(increase(agro_tokens_total{provider=~\"$provider\",model=~\"$model\"}[5m]))",
           "refId": "A"
         }
       ],
       "options": {
-        "legend": {
-          "show": true
-        }
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "short"
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "purple",
+                "value": null
+              }
+            ]
+          }
         },
         "overrides": []
       },
@@ -665,13 +934,13 @@
     },
     {
       "id": 14,
-      "type": "bargauge",
-      "title": "Reranker winner (count, 5m)",
+      "type": "stat",
+      "title": "Total Cost (5m)",
       "gridPos": {
-        "x": 12,
-        "y": 30,
-        "w": 12,
-        "h": 10
+        "x": 20,
+        "y": 20,
+        "w": 4,
+        "h": 3
       },
       "datasource": {
         "type": "prometheus",
@@ -679,31 +948,111 @@
       },
       "targets": [
         {
-          "expr": "sum by (winner) (rate(agro_reranker_winner_total[5m]))",
+          "expr": "sum(increase(agro_cost_usd_total{provider=~\"$provider\",model=~\"$model\"}[5m]))",
           "refId": "A"
         }
       ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
       "fieldConfig": {
         "defaults": {
-          "unit": "short"
+          "unit": "currencyUSD",
+          "decimals": 4,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
         },
         "overrides": []
       },
+      "pluginVersion": "10.0.0"
+    },
+    {
+      "id": 15,
+      "type": "stat",
+      "title": "Errors (5m)",
+      "gridPos": {
+        "x": 12,
+        "y": 23,
+        "w": 4,
+        "h": 3
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(agro_errors_total[5m]))",
+          "refId": "A"
+        }
+      ],
       "options": {
-        "displayMode": "gradient",
-        "orientation": "horizontal"
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 50
+              }
+            ]
+          }
+        },
+        "overrides": []
       },
       "pluginVersion": "10.0.0"
     },
     {
       "id": 16,
-      "type": "bargauge",
-      "title": "🌐 Outbound API Calls/min by Provider",
+      "type": "stat",
+      "title": "API Calls (5m)",
       "gridPos": {
-        "x": 0,
-        "y": 40,
-        "w": 8,
-        "h": 8
+        "x": 16,
+        "y": 23,
+        "w": 4,
+        "h": 3
       },
       "datasource": {
         "type": "prometheus",
@@ -711,45 +1060,51 @@
       },
       "targets": [
         {
-          "expr": "sum by (provider) (rate(agro_api_calls_total[5m])) * 60",
+          "expr": "sum(increase(agro_api_calls_total[5m]))",
           "refId": "A"
         }
       ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "custom": {
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
-            }
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
           }
         },
         "overrides": []
-      },
-      "options": {
-        "displayMode": "gradient",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "values": false,
-          "fields": "",
-          "calcs": [
-            "lastNotNull"
-          ]
-        }
       },
       "pluginVersion": "10.0.0"
     },
     {
       "id": 17,
-      "type": "timeseries",
-      "title": "💰 API Call Cost/min by Provider (USD)",
+      "type": "stat",
+      "title": "Avg Cost/Request",
       "gridPos": {
-        "x": 8,
-        "y": 40,
-        "w": 8,
-        "h": 8
+        "x": 20,
+        "y": 23,
+        "w": 4,
+        "h": 3
       },
       "datasource": {
         "type": "prometheus",
@@ -757,29 +1112,36 @@
       },
       "targets": [
         {
-          "expr": "sum by (provider) (rate(agro_api_call_cost_usd[5m])) * 60",
+          "expr": "sum(rate(agro_cost_usd_total[5m])) / sum(rate(agro_requests_total[5m]))",
           "refId": "A"
         }
       ],
       "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom"
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
         },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        }
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center"
       },
       "fieldConfig": {
         "defaults": {
           "unit": "currencyUSD",
-          "custom": {
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
-            }
+          "decimals": 5,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
           }
         },
         "overrides": []
@@ -789,12 +1151,12 @@
     {
       "id": 18,
       "type": "timeseries",
-      "title": "🎯 API Call Latency by Provider (p95)",
+      "title": "Pipeline Stage Latency (p95)",
       "gridPos": {
-        "x": 16,
-        "y": 40,
-        "w": 8,
-        "h": 8
+        "x": 0,
+        "y": 26,
+        "w": 12,
+        "h": 7
       },
       "datasource": {
         "type": "prometheus",
@@ -802,29 +1164,55 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le, provider) (rate(agro_api_call_duration_seconds_bucket[5m])))",
-          "refId": "A"
+          "expr": "histogram_quantile(0.95, sum by (le, stage) (rate(agro_request_duration_seconds_bucket[5m])))",
+          "refId": "A",
+          "legendFormat": "{{stage}}"
         }
       ],
       "options": {
         "legend": {
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "fieldConfig": {
         "defaults": {
           "unit": "s",
           "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "barAlignment": 0,
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "gradientMode": "opacity",
+            "spanNulls": false,
+            "showPoints": "never",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "scaleDistribution": {
+              "type": "linear"
+            },
             "hideFrom": {
               "tooltip": false,
               "viz": false,
               "legend": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
             }
+          },
+          "color": {
+            "mode": "palette-classic"
           }
         },
         "overrides": []
@@ -834,12 +1222,12 @@
     {
       "id": 19,
       "type": "timeseries",
-      "title": "📊 API Call Token Consumption/min",
+      "title": "Errors by Type",
       "gridPos": {
-        "x": 0,
-        "y": 48,
+        "x": 12,
+        "y": 26,
         "w": 12,
-        "h": 8
+        "h": 7
       },
       "datasource": {
         "type": "prometheus",
@@ -847,29 +1235,55 @@
       },
       "targets": [
         {
-          "expr": "sum by (provider) (rate(agro_api_call_tokens[5m])) * 60",
-          "refId": "A"
+          "expr": "sum by (type) (rate(agro_errors_total[5m]))",
+          "refId": "A",
+          "legendFormat": "{{type}}"
         }
       ],
       "options": {
         "legend": {
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "unit": "ops",
           "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "barAlignment": 0,
+            "lineWidth": 2,
+            "fillOpacity": 20,
+            "gradientMode": "opacity",
+            "spanNulls": false,
+            "showPoints": "never",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "scaleDistribution": {
+              "type": "linear"
+            },
             "hideFrom": {
               "tooltip": false,
               "viz": false,
               "legend": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
             }
+          },
+          "color": {
+            "mode": "palette-classic"
           }
         },
         "overrides": []
@@ -879,10 +1293,10 @@
     {
       "id": 20,
       "type": "table",
-      "title": "🔴 Top API Errors by Provider",
+      "title": "Top Routes by Request Rate",
       "gridPos": {
-        "x": 12,
-        "y": 48,
+        "x": 0,
+        "y": 33,
         "w": 12,
         "h": 8
       },
@@ -892,7 +1306,7 @@
       },
       "targets": [
         {
-          "expr": "topk(10, sum by (provider, method, status_code) (rate(agro_api_calls_total{status_code!~\"2..\"}[5m])))",
+          "expr": "topk(10, sum by (route) (rate(agro_requests_total{provider=~\"$provider\",model=~\"$model\"}[5m])))",
           "format": "table",
           "instant": true,
           "refId": "A"
@@ -900,11 +1314,91 @@
       ],
       "options": {
         "showHeader": true,
-        "sortBy": []
+        "sortBy": [
+          {
+            "displayName": "Value",
+            "desc": true
+          }
+        ]
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "req/s",
+          "unit": "reqps",
+          "decimals": 3,
+          "custom": {
+            "width": 200,
+            "align": "auto",
+            "displayMode": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "route"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 400
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "gradient-gauge"
+              }
+            ]
+          }
+        ]
+      },
+      "pluginVersion": "10.0.0"
+    },
+    {
+      "id": 21,
+      "type": "table",
+      "title": "Top Models by Cost",
+      "gridPos": {
+        "x": 12,
+        "y": 33,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "targets": [
+        {
+          "expr": "topk(10, sum by (model, provider) (rate(agro_cost_usd_total[5m])))",
+          "format": "table",
+          "instant": true,
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Value",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 6,
           "custom": {
             "width": 150,
             "align": "auto",
@@ -915,24 +1409,28 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "provider"
+              "options": "model"
             },
             "properties": [
               {
                 "id": "custom.width",
-                "value": 100
+                "value": 300
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "status_code"
+              "options": "Value"
             },
             "properties": [
               {
                 "id": "custom.displayMode",
-                "value": "color-background"
+                "value": "gradient-gauge"
               }
             ]
           }

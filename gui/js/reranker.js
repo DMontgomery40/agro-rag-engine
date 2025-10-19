@@ -14,7 +14,9 @@ window.trackFileClick = async function(eventId, docId) {
             body: JSON.stringify({ event_id: eventId, doc_id: docId })
         });
     } catch (error) {
-        console.error('Failed to track click:', error);
+        console.error('[reranker] Failed to track click:', error);
+        // Silent failure - click tracking is non-critical for UX
+        // Check /api/reranker/click endpoint if debugging user feedback loop
     }
 };
 
@@ -106,11 +108,18 @@ async function submitFeedback(eventId, signal, note, feedbackDiv) {
             // Disable buttons after feedback
             feedbackDiv.querySelectorAll('.feedback-btn, .star-btn').forEach(b => b.disabled = true);
         } else {
-            statusSpan.textContent = '✗ Failed to save';
+            statusSpan.innerHTML = `
+                ✗ Failed to save feedback
+                <a href="/docs/RERANKER.md#feedback" target="_blank" rel="noopener" style="color: var(--link); margin-left: 8px; text-decoration: underline;">Troubleshoot</a>
+            `;
             statusSpan.style.color = 'var(--err)';
         }
     } catch (error) {
-        statusSpan.textContent = '✗ Error: ' + error.message;
+        statusSpan.innerHTML = `
+            ✗ Error: ${error.message}
+            <a href="/docs/RERANKER.md#feedback" target="_blank" rel="noopener" style="color: var(--link); margin-left: 8px; text-decoration: underline;">Help</a>
+            <a href="https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch#checking_that_the_fetch_was_successful" target="_blank" rel="noopener" style="color: var(--link); margin-left: 8px; text-decoration: underline;">Fetch API</a>
+        `;
         statusSpan.style.color = 'var(--err)';
     }
 }
@@ -126,7 +135,29 @@ async function mineTriplets() {
         startStatusPolling();
         return data;
     } catch (error) {
-        if (resultDiv) resultDiv.textContent = '✗ ' + error.message;
+        if (resultDiv) {
+            resultDiv.innerHTML = window.ErrorHelpers ? window.ErrorHelpers.createHelpfulError({
+                title: 'Failed to start triplet mining',
+                message: error.message,
+                causes: [
+                    'Backend server is not running (check Infrastructure tab)',
+                    'Insufficient training data (need at least 50 logged queries with feedback)',
+                    'Network connectivity issues',
+                    'Mining process already running'
+                ],
+                fixes: [
+                    'Check server status in Infrastructure > Services',
+                    'Verify query logs exist (need feedback data)',
+                    'Wait for any running mining tasks to complete',
+                    'Check browser console for detailed errors'
+                ],
+                links: [
+                    ['📖 Learning Reranker Docs', '/docs/RERANKER.md#mining'],
+                    ['Triplet Loss Explained', 'https://en.wikipedia.org/wiki/Triplet_loss'],
+                    ['Backend API', '/docs/API.md#reranker-endpoints']
+                ]
+            }) : `✗ ${error.message}`;
+        }
         throw error;
     }
 }
@@ -144,7 +175,32 @@ async function trainReranker(options = {}) {
         startStatusPolling();
         return data;
     } catch (error) {
-        if (resultDiv) resultDiv.textContent = '✗ ' + error.message;
+        if (resultDiv) {
+            resultDiv.innerHTML = window.ErrorHelpers ? window.ErrorHelpers.createHelpfulError({
+                title: 'Failed to start model training',
+                message: error.message,
+                causes: [
+                    'No training triplets available (run "Mine Triplets" first)',
+                    'Insufficient GPU/CPU resources',
+                    'Model files are locked or corrupted',
+                    'Training already in progress',
+                    'Python dependencies missing (sentence-transformers, torch)'
+                ],
+                fixes: [
+                    'Mine triplets first using the "Mine Triplets" button',
+                    'Check system resources (RAM, GPU availability)',
+                    'Verify Python environment has required packages',
+                    'Wait for any running training jobs to complete',
+                    'Check logs for detailed error messages'
+                ],
+                links: [
+                    ['📖 Training Guide', '/docs/RERANKER.md#training'],
+                    ['Cross-Encoder Model Info', '/models/cross-encoder-agro.baseline/README.md'],
+                    ['Sentence-Transformers Docs', 'https://www.sbert.net/docs/cross_encoder/training/usage.html'],
+                    ['PyTorch Installation', 'https://pytorch.org/get-started/locally/']
+                ]
+            }) : `✗ ${error.message}`;
+        }
         throw error;
     }
 }
@@ -158,7 +214,30 @@ async function evaluateReranker() {
         startStatusPolling();
         return data;
     } catch (error) {
-        if (resultDiv) resultDiv.textContent = '✗ ' + error.message;
+        if (resultDiv) {
+            resultDiv.innerHTML = window.ErrorHelpers ? window.ErrorHelpers.createHelpfulError({
+                title: 'Failed to evaluate model',
+                message: error.message,
+                causes: [
+                    'No trained model available (train a model first)',
+                    'Golden questions file missing or invalid (GOLDEN_PATH)',
+                    'Evaluation dataset is empty',
+                    'Backend server not responding'
+                ],
+                fixes: [
+                    'Train a model first using the "Train Model" button',
+                    'Verify golden questions file exists at GOLDEN_PATH setting',
+                    'Check that golden.json has valid query/answer pairs',
+                    'Ensure backend server is running (Infrastructure tab)'
+                ],
+                links: [
+                    ['📖 Evaluation Guide', '/docs/RERANKER.md#evaluation'],
+                    ['Golden Questions Format', '/docs/EVALUATION.md#golden-questions'],
+                    ['MRR & Hit@K Metrics', 'https://en.wikipedia.org/wiki/Mean_reciprocal_rank'],
+                    ['Cross-Encoder Evaluation', 'https://www.sbert.net/docs/cross_encoder/usage/usage.html']
+                ]
+            }) : `✗ ${error.message}`;
+        }
         throw error;
     }
 }
@@ -411,7 +490,27 @@ async function viewLogs() {
             viewer.style.display = 'block';
         }
     } catch (error) {
-        viewer.innerHTML = `<div style="color:var(--err);">Error loading logs: ${error.message}</div>`;
+        viewer.innerHTML = window.ErrorHelpers ? window.ErrorHelpers.createHelpfulError({
+            title: 'Error loading query logs',
+            message: error.message,
+            causes: [
+                'Backend server is not running or not accessible',
+                'Query logging is disabled (AGRO_RERANKER_ENABLED not set)',
+                'Log file is corrupted or inaccessible',
+                'Insufficient permissions to read log files'
+            ],
+            fixes: [
+                'Check that backend server is running (Infrastructure > Services)',
+                'Verify AGRO_RERANKER_ENABLED=1 in environment',
+                'Check file permissions on data/queries/ directory',
+                'Look for errors in server logs'
+            ],
+            links: [
+                ['📖 Logging Setup', '/docs/RERANKER.md#logging'],
+                ['Environment Variables', '/docs/CONFIGURATION.md#reranker-settings'],
+                ['Backend API Reference', '/docs/API.md#reranker-logs']
+            ]
+        }) : `<div style="color:var(--err);">Error loading logs: ${error.message}</div>`;
         viewer.style.display = 'block';
     }
 }
@@ -429,7 +528,26 @@ async function downloadLogs() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     } catch (error) {
-        alert('Failed to download logs: ' + error.message);
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to download query logs', {
+            message: error.message,
+            causes: [
+                'Backend server endpoint /api/reranker/logs/download not accessible',
+                'No query logs available to download',
+                'Browser blocked the download (check popup/download permissions)',
+                'File size too large for browser to handle'
+            ],
+            fixes: [
+                'Check server status in Infrastructure tab',
+                'Verify logs exist by using "View Logs" button first',
+                'Allow downloads in browser settings',
+                'Try downloading a smaller date range if available'
+            ],
+            links: [
+                ['Query Log Format', '/docs/RERANKER.md#log-format'],
+                ['Browser Download Permissions', 'https://support.google.com/chrome/answer/95759']
+            ]
+        }) : `Failed to download logs: ${error.message}`;
+        alert(msg);
     }
 }
 
@@ -437,10 +555,29 @@ async function clearLogs() {
     if (!confirm('Clear all query logs? This will delete training data. Continue?')) return;
     try {
         await fetch('/api/reranker/logs/clear', { method: 'POST' });
-        alert('Logs cleared');
+        alert('✓ Logs cleared successfully. All query history and feedback data has been removed.');
         updateRerankerStats();
     } catch (error) {
-        alert('Failed to clear logs: ' + error.message);
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to clear query logs', {
+            message: error.message,
+            causes: [
+                'Backend server is not responding',
+                'Insufficient permissions to delete log files',
+                'Log files are locked by another process',
+                'API endpoint /api/reranker/logs/clear not available'
+            ],
+            fixes: [
+                'Check server status (Infrastructure > Services)',
+                'Verify file permissions on data/queries/ directory',
+                'Stop any running training/mining processes',
+                'Manually delete files in data/queries/ if necessary'
+            ],
+            links: [
+                ['Log Management', '/docs/RERANKER.md#log-management'],
+                ['File Permissions Guide', 'https://en.wikipedia.org/wiki/File-system_permissions']
+            ]
+        }) : `Failed to clear logs: ${error.message}`;
+        alert(msg);
     }
 }
 
@@ -459,12 +596,24 @@ async function setupNightlyJob() {
         });
         const data = await response.json();
         if (statusDiv) {
-            statusDiv.textContent = data.ok ? `✓ Nightly job scheduled for ${time}` : '✗ ' + (data.error || 'Failed');
-            statusDiv.style.color = data.ok ? 'var(--accent)' : 'var(--err)';
+            if (data.ok) {
+                statusDiv.textContent = `✓ Nightly job scheduled for ${time}`;
+                statusDiv.style.color = 'var(--accent)';
+            } else {
+                statusDiv.innerHTML = `
+                    ✗ ${data.error || 'Failed to schedule job'}
+                    <a href="/docs/RERANKER.md#automation" target="_blank" rel="noopener" style="color: var(--link); margin-left: 8px; text-decoration: underline;">Troubleshoot</a>
+                `;
+                statusDiv.style.color = 'var(--err)';
+            }
         }
     } catch (error) {
         if (statusDiv) {
-            statusDiv.textContent = '✗ ' + error.message;
+            statusDiv.innerHTML = `
+                ✗ ${error.message}
+                <a href="/docs/RERANKER.md#automation" target="_blank" rel="noopener" style="color: var(--link); margin-left: 8px; text-decoration: underline;">Cron Setup Guide</a>
+                <a href="https://crontab.guru/" target="_blank" rel="noopener" style="color: var(--link); margin-left: 8px; text-decoration: underline;">Cron Syntax</a>
+            `;
             statusDiv.style.color = 'var(--err)';
         }
     }
@@ -476,12 +625,23 @@ async function removeNightlyJob() {
         const response = await fetch('/api/reranker/cron/remove', { method: 'POST' });
         const data = await response.json();
         if (statusDiv) {
-            statusDiv.textContent = data.ok ? '✓ Nightly job removed' : '✗ ' + (data.error || 'Failed');
-            statusDiv.style.color = data.ok ? 'var(--accent)' : 'var(--err)';
+            if (data.ok) {
+                statusDiv.textContent = '✓ Nightly job removed';
+                statusDiv.style.color = 'var(--accent)';
+            } else {
+                statusDiv.innerHTML = `
+                    ✗ ${data.error || 'Failed to remove job'}
+                    <a href="/docs/RERANKER.md#automation" target="_blank" rel="noopener" style="color: var(--link); margin-left: 8px; text-decoration: underline;">Troubleshoot</a>
+                `;
+                statusDiv.style.color = 'var(--err)';
+            }
         }
     } catch (error) {
         if (statusDiv) {
-            statusDiv.textContent = '✗ ' + error.message;
+            statusDiv.innerHTML = `
+                ✗ ${error.message}
+                <a href="/docs/RERANKER.md#automation" target="_blank" rel="noopener" style="color: var(--link); margin-left: 8px; text-decoration: underline;">Help</a>
+            `;
             statusDiv.style.color = 'var(--err)';
         }
     }
@@ -494,12 +654,37 @@ async function saveBaseline() {
         const response = await fetch('/api/reranker/baseline/save', { method: 'POST' });
         const data = await response.json();
         if (data.ok) {
-            alert('✓ Baseline saved! Model backed up to .baseline');
+            alert('✓ Baseline saved!\n\nYour current model has been backed up to models/cross-encoder-agro.baseline/\n\nUse this baseline to compare future training runs and prevent regressions.');
         } else {
-            alert('Failed: ' + (data.error || 'Unknown'));
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to save baseline', {
+                message: data.error || 'Unknown error',
+                causes: [
+                    'No trained model exists to save as baseline',
+                    'Insufficient permissions to write to models/ directory',
+                    'Baseline directory already exists and is locked',
+                    'Disk space full'
+                ],
+                fixes: [
+                    'Train a model first before saving a baseline',
+                    'Check file permissions on models/cross-encoder-agro.baseline/',
+                    'Ensure sufficient disk space is available',
+                    'Manually back up model files if necessary'
+                ],
+                links: [
+                    ['Baseline Management', '/docs/RERANKER.md#baselines'],
+                    ['Model Files Location', '/models/cross-encoder-agro.baseline/']
+                ]
+            }) : `Failed: ${data.error || 'Unknown'}`;
+            alert(msg);
         }
     } catch (error) {
-        alert('Error: ' + error.message);
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Error saving baseline', {
+            message: error.message,
+            causes: ['Backend server not responding', 'Network connectivity issues', 'API endpoint unavailable'],
+            fixes: ['Check server status in Infrastructure tab', 'Verify network connection', 'Check browser console for details'],
+            links: [['Backend Health', '/api/health']]
+        }) : `Error: ${error.message}`;
+        alert(msg);
     }
 }
 
@@ -511,37 +696,92 @@ async function compareBaseline() {
             const delta = data.delta || {};
             const mrrDelta = (delta.mrr * 100).toFixed(1);
             const hit1Delta = (delta.hit1 * 100).toFixed(1);
-            
+
             let message = `📊 Comparison vs Baseline:\n\n`;
             message += `MRR: ${delta.mrr > 0 ? '+' : ''}${mrrDelta}%\n`;
             message += `Hit@1: ${delta.hit1 > 0 ? '+' : ''}${hit1Delta}%\n\n`;
-            
+
             // Promotion gating
             if (delta.mrr < -0.02 || delta.hit1 < -0.05) {
-                message += '⚠️ WARNING: Metrics WORSE than baseline!\nConsider rolling back or retraining.';
+                message += '⚠️ WARNING: Metrics WORSE than baseline!\nConsider rolling back or retraining.\n\n';
+                message += 'Learn more:\n• MRR Explanation: https://en.wikipedia.org/wiki/Mean_reciprocal_rank\n• Rollback Guide: /docs/RERANKER.md#rollback';
             } else if (delta.mrr > 0.02 || delta.hit1 > 0.05) {
-                message += '✓ IMPROVEMENT detected!\nSafe to enable in production.';
+                message += '✓ IMPROVEMENT detected!\nSafe to enable in production.\n\n';
+                message += 'Next steps:\n• Save this as new baseline\n• Update AGRO_RERANKER_ENABLED=1 to enable';
             } else {
-                message += '→ Marginal change. Consider more training data.';
+                message += '→ Marginal change. Consider more training data.\n\n';
+                message += 'Tips:\n• Collect more user feedback\n• Add more golden questions\n• Increase training epochs';
             }
-            
+
             alert(message);
         } else {
-            alert('No baseline found or comparison failed');
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Baseline comparison failed', {
+                message: 'No baseline found or comparison failed',
+                causes: [
+                    'No baseline model saved (use "Save Baseline" first)',
+                    'Baseline evaluation data missing or corrupted',
+                    'No current model to compare against baseline'
+                ],
+                fixes: [
+                    'Save a baseline first using "Save Baseline" button',
+                    'Train or load a model to compare',
+                    'Verify both baseline and current model directories exist'
+                ],
+                links: [
+                    ['Baseline Workflow', '/docs/RERANKER.md#baseline-workflow'],
+                    ['Model Directory', '/models/cross-encoder-agro.baseline/']
+                ]
+            }) : 'No baseline found or comparison failed';
+            alert(msg);
         }
     } catch (error) {
-        alert('Error: ' + error.message);
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Error comparing baseline', {
+            message: error.message,
+            causes: ['Backend server not responding', 'Evaluation metrics unavailable', 'Network error'],
+            fixes: ['Check server status', 'Ensure model is trained and evaluated', 'Check browser console'],
+            links: [['Evaluation Guide', '/docs/RERANKER.md#evaluation']]
+        }) : `Error: ${error.message}`;
+        alert(msg);
     }
 }
 
 async function rollbackModel() {
-    if (!confirm('Rollback to previous model? This will copy models/cross-encoder-agro.backup to active.')) return;
+    if (!confirm('Rollback to previous model?\n\nThis will restore models/cross-encoder-agro.baseline/ to the active model.\n\nIMPORTANT: You must restart the server after rollback for changes to take effect.\n\nContinue?')) return;
     try {
         const response = await fetch('/api/reranker/rollback', { method: 'POST' });
         const data = await response.json();
-        alert(data.ok ? '✓ Model rolled back. Restart server to use.' : '✗ ' + (data.error || 'Failed'));
+        if (data.ok) {
+            alert('✓ Model rolled back successfully!\n\nNext steps:\n1. Restart the backend server (Infrastructure tab)\n2. Verify model version with a smoke test\n3. Consider saving a new baseline after verification\n\nThe baseline model is now your active model.');
+        } else {
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Rollback failed', {
+                message: data.error || 'Failed to rollback model',
+                causes: [
+                    'No baseline model exists to rollback to',
+                    'Insufficient permissions to modify model files',
+                    'Model files are locked by running process',
+                    'Baseline model is corrupted or incomplete'
+                ],
+                fixes: [
+                    'Ensure a baseline exists (check models/cross-encoder-agro.baseline/)',
+                    'Stop all training/evaluation processes',
+                    'Check file permissions on models/ directory',
+                    'Manually restore model files if necessary'
+                ],
+                links: [
+                    ['Rollback Guide', '/docs/RERANKER.md#rollback'],
+                    ['Model Management', '/docs/RERANKER.md#model-management']
+                ]
+            }) : `✗ ${data.error || 'Failed'}`;
+            alert(msg);
+        }
     } catch (error) {
-        alert('Error: ' + error.message);
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Error during rollback', {
+            message: error.message,
+            causes: ['Backend server not responding', 'Network connectivity issues', 'API endpoint unavailable'],
+            fixes: ['Check server status', 'Verify network connection', 'Check browser console for details'],
+            links: [['Backend Health', '/api/health']]
+        }) : `Error: ${error.message}`;
+        alert(msg);
     }
 }
 
@@ -578,11 +818,51 @@ async function runSmokeTest() {
                 <div style="margin-top:8px; color:var(--fg-muted);">Full log entry created successfully.</div>
             `;
         } else if (resultDiv) {
-            resultDiv.innerHTML = `<div style="color:var(--err);">✗ Test failed: ${data.error || 'Unknown'}</div>`;
+            resultDiv.innerHTML = window.ErrorHelpers ? window.ErrorHelpers.createHelpfulError({
+                title: 'Smoke test failed',
+                message: data.error || 'Unknown error',
+                causes: [
+                    'Reranker is disabled (AGRO_RERANKER_ENABLED not set)',
+                    'Model files are missing or corrupted',
+                    'Insufficient resources to run reranker',
+                    'Backend API endpoint not accessible'
+                ],
+                fixes: [
+                    'Enable reranker with AGRO_RERANKER_ENABLED=1',
+                    'Train or download a reranker model',
+                    'Check server logs for detailed error messages',
+                    'Verify backend server is running (Infrastructure tab)'
+                ],
+                links: [
+                    ['Reranker Setup', '/docs/RERANKER.md#setup'],
+                    ['Environment Variables', '/docs/CONFIGURATION.md#reranker'],
+                    ['Troubleshooting', '/docs/RERANKER.md#troubleshooting']
+                ]
+            }) : `<div style="color:var(--err);">✗ Test failed: ${data.error || 'Unknown'}</div>`;
         }
     } catch (error) {
         if (resultDiv) {
-            resultDiv.innerHTML = `<div style="color:var(--err);">✗ Error: ${error.message}</div>`;
+            resultDiv.innerHTML = window.ErrorHelpers ? window.ErrorHelpers.createHelpfulError({
+                title: 'Error running smoke test',
+                message: error.message,
+                causes: [
+                    'Backend server is not running or not accessible',
+                    'Network connectivity issues',
+                    'Smoke test endpoint /api/reranker/smoketest unavailable',
+                    'Request timeout (model loading can take time)'
+                ],
+                fixes: [
+                    'Check server status in Infrastructure > Services tab',
+                    'Verify network connection',
+                    'Wait a moment and try again (first test may be slow)',
+                    'Check browser console and server logs for details'
+                ],
+                links: [
+                    ['Backend Health Check', '/api/health'],
+                    ['Reranker API Docs', '/docs/API.md#reranker-smoketest'],
+                    ['Server Logs', '/docs/DEBUGGING.md#server-logs']
+                ]
+            }) : `<div style="color:var(--err);">✗ Error: ${error.message}</div>`;
         }
     }
 }

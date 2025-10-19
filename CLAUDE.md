@@ -7,3 +7,8 @@ All new settings, variables that can be changed, parameters that can we tweaked,
  - do NOT just put gui settings in a random place, if it's obvious where they go, that is okay, if it not crystal clear and logical where it should be, ask the user where it should go 
 
 Do not add features or code that the user didn't ask for, even if you think it's helpful of common sense to do, ASK THE USER FIRST 
+
+just one more thing if the server is up, there is a rag , for this rag engine, very meta i know . USE IT IT WILL SAVE YOU A SHIT TON OF TOKENS AND CONTEXT WINDOW. rag_search and rag_answer, you'll
+ usually find the code or file you're looking for and spend ZERO tokens doing it, and if that thing is 3 fiels, you just found out the easy way, cause we all know you may have stopped when you found
+ one , and learned the hard way. tons of benefit. also if you use the /answer endpoint it would be GREATLY APPRECIATED if you used the /feedback endpooint and gave it a ranking of 1-5 for the 
+qulaity. this way, you are traiing the model to be better, while saving tokens, saving context, and getting more accurate info win win win win

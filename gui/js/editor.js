@@ -45,10 +45,11 @@
         if (canEmbed) {
           wrap.style.display = 'block';
           if (!iframe.src || iframe.src === 'about:blank') {
-            // Prefer same-origin proxy to avoid frame-blocking headers
             // Only load if server confirms ready to avoid race conditions
             if (data.readiness_stage === 'ready') {
-              iframe.src = '/editor/';
+              // Use direct URL for WebSocket support (bypasses proxy)
+              // The proxy can't handle WebSocket upgrades properly
+              iframe.src = data.url || '/editor/';
               iframeLoadAttempts = 0;
             }
           }

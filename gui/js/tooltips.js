@@ -172,18 +172,44 @@
   }
 
   function attachTooltipListeners(icon, bubble, wrap) {
-    function show(){ bubble.classList.add('tooltip-visible'); }
-    function hide(){ bubble.classList.remove('tooltip-visible'); }
+    let hideTimeout = null;
+
+    function show(){
+      clearTimeout(hideTimeout);
+      bubble.classList.add('tooltip-visible');
+    }
+
+    function hide(){
+      // Delay hiding to allow moving mouse to tooltip
+      clearTimeout(hideTimeout);
+      hideTimeout = setTimeout(() => {
+        bubble.classList.remove('tooltip-visible');
+      }, 150);
+    }
+
+    // Show on icon hover/focus
     icon.addEventListener('mouseenter', show);
     icon.addEventListener('mouseleave', hide);
     icon.addEventListener('focus', show);
     icon.addEventListener('blur', hide);
+
+    // Keep tooltip visible when hovering over it
+    bubble.addEventListener('mouseenter', show);
+    bubble.addEventListener('mouseleave', hide);
+
+    // Toggle on click
     icon.addEventListener('click', (e) => {
       e.stopPropagation();
+      clearTimeout(hideTimeout);
       bubble.classList.toggle('tooltip-visible');
     });
+
+    // Hide when clicking outside
     document.addEventListener('click', (evt) => {
-      if (!wrap.contains(evt.target)) bubble.classList.remove('tooltip-visible');
+      if (!wrap.contains(evt.target)) {
+        clearTimeout(hideTimeout);
+        bubble.classList.remove('tooltip-visible');
+      }
     });
   }
 
