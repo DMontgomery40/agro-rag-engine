@@ -31,7 +31,18 @@ function loadChatSettings() {
             return { ...DEFAULT_CHAT_SETTINGS, ...JSON.parse(saved) };
         }
     } catch (e) {
-        console.warn('Failed to load chat settings:', e);
+        console.warn('Failed to load chat settings (using defaults):', e);
+        if (window.ErrorHelpers) {
+            const debugMsg = window.ErrorHelpers.createAlertError('Chat settings load warning', {
+                message: e.message,
+                causes: [
+                    'localStorage might be corrupted with invalid JSON',
+                    'Browser privacy mode limits access to stored data',
+                    'Settings saved in incompatible format'
+                ]
+            });
+            console.debug(debugMsg);
+        }
     }
     return { ...DEFAULT_CHAT_SETTINGS };
 }
@@ -64,7 +75,27 @@ function saveChatSettings() {
         showToast('Chat settings saved', 'success');
     } catch (e) {
         console.error('Failed to save chat settings:', e);
-        showToast('Failed to save settings: ' + e.message, 'error');
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to save chat settings', {
+            message: e.message,
+            causes: [
+                'Browser localStorage is disabled or unavailable',
+                'Storage quota exceeded (too many chat settings)',
+                'Invalid data type in form input (expected number, got string)',
+                'DOM element reference missing or changed'
+            ],
+            fixes: [
+                'Enable localStorage in browser settings (Privacy & Security)',
+                'Clear old chat data: Reset settings button, then save again',
+                'Check form inputs are filled with valid values',
+                'Refresh the page and try saving again'
+            ],
+            links: [
+                ['Web Storage API', 'https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API'],
+                ['LocalStorage Quota', 'https://developer.mozilla.org/en-US/docs/Web/API/Storage/getItem'],
+                ['Chat Settings Guide', '/docs/CHAT_SETTINGS.md']
+            ]
+        }) : 'Failed to save settings: ' + e.message;
+        showToast(msg, 'error');
     }
 }
 
@@ -109,7 +140,18 @@ function applyChatSettings() {
         // Update storage display
         updateStorageDisplay();
     } catch (e) {
-        console.warn('Failed to apply chat settings:', e);
+        console.warn('Failed to apply chat settings (some UI elements unavailable):', e);
+        if (window.ErrorHelpers) {
+            const debugMsg = window.ErrorHelpers.createAlertError('Chat UI settings application failed', {
+                message: e.message,
+                causes: [
+                    'DOM elements for chat settings not yet loaded',
+                    'HTML structure changed or element IDs were renamed',
+                    'Browser blocking DOM modifications'
+                ]
+            });
+            console.debug(debugMsg);
+        }
     }
 }
 
@@ -197,7 +239,30 @@ async function sendMessage() {
     } catch (error) {
         console.error('Chat error:', error);
         removeMessage(loadingId);
-        addMessage('assistant', `Error: ${error.message}`, false, true);
+        const errorMsg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to get AI answer', {
+            message: error.message,
+            causes: [
+                'Backend API server is not running or unreachable',
+                'RAG database (Qdrant) connection failed',
+                'No relevant documents found in the knowledge base',
+                'LLM model (OpenAI/Anthropic) service is unavailable',
+                'Network connection interrupted'
+            ],
+            fixes: [
+                'Check Infrastructure tab - verify backend, Qdrant, and other services are running',
+                'Verify your RAG repository is indexed (check Data > Indexing status)',
+                'Try rephrasing your question with simpler terms',
+                'Check API keys are valid (Settings > API Configuration)',
+                'Retry the question - temporary network issues may be resolved'
+            ],
+            links: [
+                ['API Endpoints Documentation', '/docs/API.md'],
+                ['RAG System Architecture', '/docs/RAG_ARCHITECTURE.md'],
+                ['Troubleshooting Guide', '/docs/TROUBLESHOOTING.md'],
+                ['Status Dashboard', '/api/health']
+            ]
+        }) : `Error: ${error.message}`;
+        addMessage('assistant', errorMsg, false, true);
     } finally {
         input.disabled = false;
         sendBtn.disabled = false;
@@ -496,7 +561,27 @@ function clearChatHistory() {
         showToast('Chat history cleared', 'success');
     } catch (e) {
         console.error('Failed to clear chat history:', e);
-        showToast('Failed to clear history: ' + e.message, 'error');
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to clear chat history', {
+            message: e.message,
+            causes: [
+                'Browser localStorage access is disabled',
+                'Storage quota exceeded before deletion',
+                'Permission denied by browser security policy',
+                'Storage backend is corrupted'
+            ],
+            fixes: [
+                'Check browser privacy settings allow localStorage',
+                'Clear browser cache and temporary data',
+                'Try in a private/incognito window to test',
+                'Reset browser storage permissions for this site'
+            ],
+            links: [
+                ['localStorage API', 'https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage'],
+                ['Browser Storage Permissions', 'https://support.google.com/accounts/answer/61190'],
+                ['Chat History Management', '/docs/CHAT_HISTORY.md']
+            ]
+        }) : 'Failed to clear history: ' + e.message;
+        showToast(msg, 'error');
     }
 }
 
@@ -516,7 +601,28 @@ function exportChatHistory() {
         showToast('Chat history exported', 'success');
     } catch (e) {
         console.error('Failed to export chat history:', e);
-        showToast('Failed to export history: ' + e.message, 'error');
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to export chat history', {
+            message: e.message,
+            causes: [
+                'Browser download functionality is disabled',
+                'localStorage data corrupted or unreadable',
+                'Blob API not supported in this browser',
+                'File system access blocked by security policy'
+            ],
+            fixes: [
+                'Check browser allows downloads (Settings > Privacy)',
+                'Try exporting a smaller subset of history first',
+                'Update to latest browser version',
+                'Try a different browser',
+                'Disable browser extensions that might block downloads'
+            ],
+            links: [
+                ['Blob API Documentation', 'https://developer.mozilla.org/en-US/docs/Web/API/Blob'],
+                ['Browser Download Troubleshooting', 'https://support.google.com/chrome/answer/95759'],
+                ['Export & Backup Guide', '/docs/EXPORT_BACKUP.md']
+            ]
+        }) : 'Failed to export history: ' + e.message;
+        showToast(msg, 'error');
     }
 }
 

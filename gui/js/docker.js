@@ -641,10 +641,30 @@
                 throw new Error(data.error || 'Failed to start infrastructure');
             }
         } catch (e) {
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to start infrastructure', {
+                message: e.message,
+                causes: [
+                    'Docker daemon not running',
+                    'Insufficient system resources (memory, disk space)',
+                    'Port conflicts with existing services',
+                    'Network configuration issues'
+                ],
+                fixes: [
+                    'Verify Docker is running: `docker ps`',
+                    'Check system resources: `df -h` for disk, `free -h` for memory',
+                    'Check for port conflicts: `lsof -i :6333` (Qdrant), `lsof -i :6379` (Redis)',
+                    'Review Docker compose logs: `docker compose logs -f`'
+                ],
+                links: [
+                    ['Docker Getting Started', 'https://docs.docker.com/get-started/'],
+                    ['Docker Compose Documentation', 'https://docs.docker.com/compose/'],
+                    ['Infrastructure Setup Guide', '/docs/INFRASTRUCTURE.md']
+                ]
+            }) : `Failed to start infrastructure: ${e.message}`;
             if (window.showStatus) {
-                window.showStatus(`Failed to start infrastructure: ${e.message}`, 'error');
+                window.showStatus(msg, 'error');
             } else {
-                alert(`Error: ${e.message}`);
+                alert(msg);
             }
         } finally {
             if (btn) btn.disabled = false;
@@ -675,10 +695,30 @@
                 throw new Error(data.error || 'Failed to stop infrastructure');
             }
         } catch (e) {
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to stop infrastructure', {
+                message: e.message,
+                causes: [
+                    'Docker daemon not running',
+                    'Container stuck in stopping state',
+                    'Network connectivity issues',
+                    'Insufficient permissions'
+                ],
+                fixes: [
+                    'Verify Docker is running: `docker ps`',
+                    'Force stop stuck containers: `docker compose kill`',
+                    'Check network connectivity to Docker daemon',
+                    'Ensure you have Docker permissions: `docker info`'
+                ],
+                links: [
+                    ['Docker Compose Stop Command', 'https://docs.docker.com/engine/reference/commandline/compose_stop/'],
+                    ['Container Lifecycle States', 'https://docs.docker.com/engine/reference/api/docker_remote_api_v1.24/'],
+                    ['Troubleshooting Docker', 'https://docs.docker.com/config/daemon/troubleshoot/']
+                ]
+            }) : `Failed to stop infrastructure: ${e.message}`;
             if (window.showStatus) {
-                window.showStatus(`Failed to stop infrastructure: ${e.message}`, 'error');
+                window.showStatus(msg, 'error');
             } else {
-                alert(`Error: ${e.message}`);
+                alert(msg);
             }
         } finally {
             if (btn) btn.disabled = false;
@@ -721,9 +761,57 @@
                 try {
                     const r = await fetch(api('/api/docker/redis/ping'));
                     const d = await r.json();
-                    alert(d.success ? '✓ Redis PONG!' : '✗ Redis not responding');
+                    if (d.success) {
+                        if (window.showStatus) {
+                            window.showStatus('✓ Redis is responding to PONG (connection healthy)', 'success');
+                        } else {
+                            alert('✓ Redis PONG! Connection is healthy.');
+                        }
+                    } else {
+                        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Redis not responding to PONG', {
+                            message: d.error || 'Redis health check failed',
+                            causes: [
+                                'Redis service crashed or became unresponsive',
+                                'Redis port (6379) is blocked',
+                                'Redis memory limit exceeded',
+                                'Network connectivity issues to Redis'
+                            ],
+                            fixes: [
+                                'Restart Redis: `docker compose restart redis`',
+                                'Check Redis logs: `docker compose logs redis`',
+                                'Verify Redis is listening: `docker exec redis-service redis-cli ping`',
+                                'Check available system memory and restart if needed'
+                            ],
+                            links: [
+                                ['Redis Documentation', 'https://redis.io/docs/'],
+                                ['Redis Troubleshooting', 'https://redis.io/docs/management/debugging/'],
+                                ['Docker Redis Image', 'https://hub.docker.com/_/redis/']
+                            ]
+                        }) : `Redis not responding: ${d.error || 'Unknown error'}`;
+                        alert(msg);
+                    }
                 } catch (e) {
-                    alert('✗ Failed to ping Redis');
+                    const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to ping Redis', {
+                        message: e.message,
+                        causes: [
+                            'Backend API server not responding',
+                            'Redis service not running in Docker',
+                            'Network connection to backend failed',
+                            'Redis health check endpoint misconfigured'
+                        ],
+                        fixes: [
+                            'Verify backend server is running: check the main status indicator',
+                            'Check if Redis container is running: `docker compose ps`',
+                            'Restart the entire infrastructure: use the "Start Infrastructure" button',
+                            'Check network connectivity: `ping 127.0.0.1`'
+                        ],
+                        links: [
+                            ['Backend Health Check', '/api/health'],
+                            ['Docker Service Status', 'http://127.0.0.1:6333/dashboard'],
+                            ['Redis CLI Guide', 'https://redis.io/docs/ui/cli/']
+                        ]
+                    }) : `Failed to ping Redis: ${e.message}`;
+                    alert(msg);
                 }
             });
         }
