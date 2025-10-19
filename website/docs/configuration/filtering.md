@@ -790,6 +790,5 @@ REPO=agro python -m eval.eval_loop
 ## Next Steps
 
 - **[Performance Tuning](performance.md)** - Optimize retrieval speed and quality
-- **[Indexing](../getting-started/indexing.md)** - Run indexing with new filters
-- **[Evaluation](../features/evaluation.md)** - Measure filtering impact
+- **[Learning Reranker](../features/learning-reranker.md)** - Improve search quality with feedback
 - **[Troubleshooting](../operations/troubleshooting.md)** - Debug retrieval issues

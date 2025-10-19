@@ -600,7 +600,7 @@ Local Hydration (load full code for top K)
   ↓
 LangGraph Confidence Gating
   ├─ High confidence (≥0.62) → Generate answer
-  ├─ Low confidence (<0.55) → Rewrite query and retry
+  ├─ Low confidence (\<0.5lt;0.55) → Rewrite query and retry
   └─ Still low after 3 retries → Fallback message
   ↓
 LLM Generation (with citations)
@@ -614,112 +614,108 @@ Answer + Documents + Confidence Score
 
 ---
 
-## Key Design Decisions
+### Key Design Decisions
 
-### 1. Why Hybrid Search (BM25 + Vectors)?
+#### 1. Hybrid Search (BM25 + Vectors)
 
-**Problem:** Pure vector search misses exact matches. Pure BM25 misses semantic similarity.
+- **The Problem**: Pure vector search ignores literal matches (config.yaml ≠ “config”), while BM25 can’t catch phrasing or synonyms.
+- **The Approach**: Fuse BM25 + vectors via Reciprocal Rank Fusion (RRF) — no score normalization pain, just precision gains.
+- **Proof**:
 
-**Solution:** RRF combines both without score normalization headaches.
+| Mode           | Top-1 | MRR  |
+|----------------|:-----:|:----:|
+| Hybrid (RRF)   |  82%  | 0.88 |
+| Dense only     |  68%  | 0.74 |
+| BM25 only      |  61%  | 0.69 |
 
-**Evidence:**
-- Top-1 accuracy: 82% (hybrid) vs 68% (dense only) vs 61% (BM25 only)
-- MRR: 0.88 (hybrid) vs 0.74 (dense) vs 0.69 (BM25)
+Hybrid wins everywhere. That’s why it’s the default.
 
----
+#### 2. Lazy Hydration (Load Code After Rerank)
 
-### 2. Why Lazy Hydration (Load Code After Reranking)?
+- **The Problem**: Keeping every code chunk inline in Qdrant explodes storage (≈ 10× more memory).
+- **The Solution**: Store metadata only, then hydrate the top‑K from `chunks.jsonl` after reranking.
+- **Trade‑off**: Adds ~50 ms of I/O, saves gigabytes of RAM.
 
-**Problem:** Storing full code in Qdrant payloads uses 10x more memory.
+#### 3. AST‑Aware Chunking
 
-**Solution:** Store metadata only. Load code from `chunks.jsonl` for top-K after reranking.
+- **The Problem**: Line-based splits cut functions in half, destroying context.
+- **The Solution**: Parse with tree‑sitter, chunk by function/class, and attach relevant imports.
+- **Result**: Semantically complete chunks → higher retrieval quality, fewer hallucinations.
 
-**Trade-off:** Extra I/O latency (~50ms) vs 10x memory savings.
+#### 4. Self‑Learning Reranker
 
----
+- **The Problem**: Pretrained rerankers (e.g., MS MARCO) don’t understand your repo.
+- **The Solution**: Train a cross‑encoder on query logs and golden questions.
+- **Impact**: MRR jumps from 0.72 → 0.88 on the AGRO codebase. It improves the more you use it.
 
-### 3. Why AST-Aware Chunking?
+#### 5. Redis‑Backed LangGraph Checkpoints
 
-**Problem:** Naive line-based chunking splits functions mid-way, losing context.
+- **The Problem**: Stateless pipelines forget context; multi‑turn reasoning is lost.
+- **The Solution**: Redis stores LangGraph checkpoints for conversation memory and resumable chains.
+- **Trade‑off**: Adds one service you likely already run for caching.
 
-**Solution:** Use tree-sitter to extract functions/classes. Add imports to each chunk.
+#### 6. Confidence Gating
 
-**Result:** Better retrieval because chunks are semantically complete.
+- **The Problem**: LLMs hallucinate when retrieval quality dips.
+- **The Solution**: Gate answers on rerank‑based confidence; rewrite query or return a safe fallback when low.
+- **Result**: Zero hallucinated answers across the golden test suite.
 
----
-
-### 4. Why Self-Learning Reranker?
-
-**Problem:** Generic rerankers (MS MARCO) aren't optimized for YOUR codebase.
-
-**Solution:** Train a custom cross-encoder on your query logs + golden questions.
-
-**Evidence:** MRR improves from 0.72 (baseline) to 0.88 (custom) on AGRO codebase.
-
----
-
-### 5. Why Redis for LangGraph Checkpoints?
-
-**Problem:** Stateless chat loses conversation history.
-
-**Solution:** Redis-backed checkpoints enable multi-turn conversation with memory.
-
-**Trade-off:** Requires Redis (but already used for caching).
-
----
-
-### 6. Why Confidence Gating?
-
-**Problem:** LLMs hallucinate when retrieval quality is poor.
-
-**Solution:** Check rerank scores. If too low, rewrite query or return fallback.
-
-**Result:** Zero hallucinated answers on golden test suite.
-
----
-
-## Storage Layout
+### Storage Layout
 
 ```
 agro-rag-engine/
 ├── data/
 │   ├── {repo}/
-│   │   ├── chunks.jsonl              # Full code chunks (source of truth)
-│   │   ├── cards.jsonl               # Semantic card summaries
-│   │   ├── bm25_index/               # BM25S sparse index
-│   │   ├── bm25_cards/               # Card BM25 index
-│   │   ├── queries.jsonl             # Query logs (for reranker training)
-│   │   └── golden.json               # Golden test questions
-│   ├── qdrant/                       # Qdrant vector storage (Docker volume)
-│   ├── redis/                        # Redis persistence (optional)
-│   └── exclude_globs.txt             # Indexing exclusions
+│   │   ├── chunks.jsonl        # Source-of-truth code chunks
+│   │   ├── cards.jsonl         # Semantic summaries
+│   │   ├── bm25_index/         # Sparse index
+│   │   ├── bm25_cards/         # Card-level index
+│   │   ├── queries.jsonl       # Query logs (for reranker training)
+│   │   └── golden.json         # Golden test suite
+│   ├── qdrant/                 # Vector store (Docker volume)
+│   ├── redis/                  # Redis persistence (optional)
+│   └── exclude_globs.txt       # Files skipped during indexing
+│
 ├── models/
-│   └── cross-encoder-agro/           # Custom reranker model
+│   └── cross-encoder-agro/     # Custom reranker checkpoint
 │       ├── config.json
 │       ├── model.safetensors
 │       └── tokenizer/
+│
 ├── gui/
-│   ├── index.html                    # GUI entry point
-│   ├── js/                           # Vanilla JS modules
-│   └── profiles/                     # Saved performance profiles
+│   ├── index.html              # Web GUI entry
+│   ├── js/                     # Front-end modules
+│   └── profiles/               # Saved tuning profiles
+│
 ├── server/
-│   ├── app.py                        # FastAPI endpoints
-│   └── langgraph_app.py              # LangGraph pipeline
+│   ├── app.py                  # FastAPI endpoints
+│   └── langgraph_app.py        # LangGraph pipeline logic
+│
 ├── retrieval/
-│   ├── hybrid_search.py              # Multi-stage retrieval
-│   ├── ast_chunker.py                # AST-aware chunking
-│   └── rerank.py                     # Cross-encoder reranking
+│   ├── hybrid_search.py        # BM25 + Dense fusion
+│   ├── ast_chunker.py          # Tree-sitter chunker
+│   └── rerank.py               # Cross-encoder reranker
+│
 ├── mcp/
-│   ├── stdio_server.py               # MCP STDIO transport
-│   └── http_server.py                # MCP HTTP transport
+│   ├── stdio_server.py         # MCP STDIO transport
+│   └── http_server.py          # MCP HTTP transport
+│
 └── infra/
-    ├── docker-compose.yml            # Infrastructure services
-    ├── prometheus.yml                # Prometheus config
-    ├── grafana/provisioning/         # Pre-configured dashboards
-    └── prometheus-alert-rules.yml    # Alerting rules
+    ├── docker-compose.yml      # Infra stack (Qdrant + Redis + Prom + Grafana)
+    ├── prometheus.yml          # Prometheus config
+    ├── grafana/provisioning/   # Prebuilt dashboards
+    └── prometheus-alert-rules.yml
 ```
 
----
+### Infrastructure Containers
+
+- qdrant (qdrant/qdrant:v1.15.5) — ports 6333, 6334
+- rag-redis (redis/redis-stack:7.2.0-v10) — port 6379
+- agro-alertmanager (prom/alertmanager:latest) — port 9093
+- agro-prometheus (prom/prometheus:latest) — port 9090
+- agro-loki (grafana/loki:latest) — port 3100
+- agro-promtail (grafana/promtail:latest) — ships logs to Loki
+- agro-grafana (grafana/grafana:latest) — port 3000
 
 ## Next Steps
 

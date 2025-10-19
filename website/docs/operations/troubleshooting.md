@@ -311,7 +311,7 @@ VOYAGE_API_KEY=...
 
 ### Slow Indexing
 
-**Symptom:** Indexing takes >1 hour for <10k files.
+**Symptom:** Indexing takes `\>1 hourgt;1 hour` for `\<10klt;10k` files.
 
 **Diagnosis:**
 ```bash
@@ -545,7 +545,7 @@ curl 'http://127.0.0.1:8012/api/chat' \
   -d '{"question": "your question", "repo": "agro"}' \
   | python3 -m json.tool | grep confidence
 
-# Low confidence (<0.5) should trigger fallback
+# Low confidence (\<0.5lt;0.5) should trigger fallback
 ```
 
 **Solutions:**

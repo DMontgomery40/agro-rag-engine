@@ -357,7 +357,7 @@ grafana:
 1. **Recent Queries** - Last 100 queries with metadata
 2. **Error Logs** - All errors with stack traces
 3. **Slow Queries** - Queries >1s latency
-4. **Low Confidence Queries** - Confidence <0.5 (potential hallucination)
+4. **Low Confidence Queries** - Confidence \<0.5lt;0.5 (potential hallucination)
 
 **Navigate:** Grafana → Explore → Select Loki data source
 

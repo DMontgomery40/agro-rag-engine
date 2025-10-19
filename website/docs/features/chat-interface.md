@@ -32,7 +32,7 @@ python -m cli.chat_cli
 - **Color coding**:
   - Green for high confidence answers (>0.7)
   - Yellow for medium confidence (0.4-0.7)
-  - Red for low confidence (<0.4)
+  - Red for low confidence (\<0.4lt;0.4)
 - **Citation display**: Shows top 3 sources with rerank scores
 
 ### Multi-Repository Support
@@ -260,7 +260,7 @@ Both interfaces work with the same index and Redis checkpoints.
 
 2. **Check citations**: Review the source files shown for context
    - High scores (>0.8) indicate strong relevance
-   - Multiple low scores (<0.5) might mean the index needs updating
+   - Multiple low scores (\<0.5lt;0.5) might mean the index needs updating
 
 3. **Switch repos freely**: Use `/repo` to compare implementations across codebases
 
@@ -273,7 +273,7 @@ Both interfaces work with the same index and Redis checkpoints.
 5. **Monitor confidence scores**:
    - Green (>0.7): High confidence, trust the answer
    - Yellow (0.4-0.7): Medium confidence, verify citations
-   - Red (<0.4): Low confidence, question may be too broad or index incomplete
+   - Red (\<0.4lt;0.4): Low confidence, question may be too broad or index incomplete
 
 ## Advanced Usage
 

@@ -298,7 +298,7 @@ sudo systemctl reload nginx
 
 ### Vertical Scaling (Single Machine)
 
-**For <10k chunks:**
+**For `\<10klt;10k` chunks:**
 - 2 CPU cores, 4GB RAM
 - Local BM25 + OpenAI embeddings
 

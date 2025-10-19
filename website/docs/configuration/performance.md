@@ -10,7 +10,7 @@ AGRO dramatically reduces token consumption compared to using AI assistants with
 
 **Bottom line**: RAG saves 91% tokens. That means 11x more queries before hitting your rate limits.
 
-![Evals Performance Chart](/img/evals.png)
+![Performance Metrics](/img/screenshots/grafana-metrics.png)
 
 ## Real-World Comparison
 
