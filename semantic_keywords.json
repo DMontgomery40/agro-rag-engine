@@ -118,19 +118,6 @@
       ]
     },
     {
-      "term": "debugpy",
-      "score": 109.84,
-      "files": 245,
-      "mentions": 245,
-      "in_directories": true,
-      "domain_boost": false,
-      "sample_files": [
-        ".editor_data/code-server-data/extensions/ms-python.debugpy-2025.14.1-linux-arm64/bundled/libs/debugpy/_vendored/pydevd/pydevd_attach_to_process/add_code_to_python_process.py",
-        ".editor_data/code-server-data/extensions/ms-python.debugpy-2025.14.1-linux-arm64/bundled/libs/packaging/_musllinux.py",
-        ".editor_data/code-server-data/extensions/ms-python.debugpy-2025.14.1-linux-arm64/bundled/libs/debugpy/_vendored/pydevd/pydevd_attach_to_process/winappdbg/system.py"
-      ]
-    },
-    {
       "term": "jedilsp",
       "score": 106.28,
       "files": 241,

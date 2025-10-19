@@ -363,12 +363,45 @@
       "pluginVersion": "10.0.0"
     },
     {
+      "id": 201,
+      "type": "alertlist",
+      "title": "🔴 ACTIVE ALERTS (Firing Now)",
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 24,
+        "h": 6
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "options": {
+        "showOptions": "current",
+        "maxItems": 20,
+        "sortOrder": 1,
+        "dashboardAlerts": false,
+        "alertName": "",
+        "dashboardTitle": "",
+        "folderId": 0,
+        "stateFilter": {
+          "firing": true,
+          "pending": true,
+          "noData": false,
+          "normal": false,
+          "error": true
+        },
+        "alertInstanceLabelFilter": ""
+      },
+      "pluginVersion": "10.0.0"
+    },
+    {
       "id": 50,
       "type": "table",
       "title": "Alert History (Last 24 Hours)",
       "gridPos": {
         "x": 0,
-        "y": 5,
+        "y": 11,
         "w": 24,
         "h": 8
       },
@@ -1735,14 +1768,15 @@
         "sortOrder": "Descending",
         "dedupStrategy": "none",
         "enableLogDetails": true,
-        "prettifyLogMessage": false
+        "prettifyLogMessage": false,
+        "showLogContextToggle": true
       },
       "pluginVersion": "10.0.0"
     },
     {
       "id": 101,
       "type": "logs",
-      "title": "System/Infrastructure Logs (searchable - use Ctrl+F)",
+      "title": "System/Infrastructure Logs (click log for full details)",
       "gridPos": {
         "x": 8,
         "y": 49,
@@ -1767,14 +1801,15 @@
         "sortOrder": "Descending",
         "dedupStrategy": "none",
         "enableLogDetails": true,
-        "prettifyLogMessage": false
+        "prettifyLogMessage": false,
+        "showLogContextToggle": true
       },
       "pluginVersion": "10.0.0"
     },
     {
       "id": 102,
       "type": "logs",
-      "title": "Error Logs (searchable - use Ctrl+F)",
+      "title": "Error Logs (color-coded by severity)",
       "gridPos": {
         "x": 16,
         "y": 49,
@@ -1787,7 +1822,7 @@
       },
       "targets": [
         {
-          "expr": "{compose_service=~\".+\"} |~ `(ERROR|CRITICAL|Exception|Traceback|500|40[0-9])`",
+          "expr": "{compose_service=~\".+\"} |~ `(ERROR|CRITICAL|Exception|Traceback|500|40[0-9])` | logfmt | line_format \"{{.level}} {{.msg}}\"",
           "refId": "A"
         }
       ],
@@ -1800,6 +1835,100 @@
         "dedupStrategy": "none",
         "enableLogDetails": true,
         "prettifyLogMessage": false
+      },
+      "fieldConfig": {
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*CRITICAL.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*ERROR.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*WARNING.*|.*WARN.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*Exception.*|.*Traceback.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*500.*|.*50[0-9].*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*40[0-9].*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          }
+        ]
       },
       "pluginVersion": "10.0.0"
     }

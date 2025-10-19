@@ -393,6 +393,10 @@ def chat(req: ChatRequest, request: Request) -> Dict[str, Any]:
             except Exception:
                 raise e
 
+        # Determine provider and model for headers (outside try block so always defined)
+        model_used = req.model or os.getenv('GEN_MODEL', 'gpt-4o-mini')
+        provider_used = "openai" if "gpt" in model_used.lower() else "unknown"
+
         # Log the query and retrieval
         try:
             latency_ms = int((time.time() - start_time) * 1000)
@@ -407,10 +411,6 @@ def chat(req: ChatRequest, request: Request) -> Dict[str, Any]:
                 })
             # Estimate cost
             cost_usd = _estimate_query_cost(req.question, res["generation"], len(docs))
-
-            # Record metrics
-            model_used = req.model or os.getenv('GEN_MODEL', 'gpt-4o-mini')
-            provider_used = "openai" if "gpt" in model_used.lower() else "unknown"
             prompt_tokens = len(req.question.split()) * 2  # rough estimate
             completion_tokens = len(res["generation"].split()) * 2
             record_tokens("prompt", provider_used, model_used, prompt_tokens)
@@ -445,7 +445,9 @@ def chat(req: ChatRequest, request: Request) -> Dict[str, Any]:
         except Exception:
             pass
 
-        return {
+        # Build response with headers
+        from fastapi.responses import JSONResponse
+        response = JSONResponse(content={
             "answer": res["generation"],
             "confidence": res.get("confidence", 0.0),
             "event_id": event_id,
@@ -457,7 +459,13 @@ def chat(req: ChatRequest, request: Request) -> Dict[str, Any]:
                 "final_k": req.final_k,
                 "confidence_threshold": req.confidence
             }
-        }
+        })
+
+        # Add provider/model headers for metrics tracking
+        response.headers["X-Provider"] = provider_used
+        response.headers["X-Model"] = model_used
+
+        return response
 
     finally:
         # Restore original env
