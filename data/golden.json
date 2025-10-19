@@ -75,8 +75,8 @@
       "gui/app.js",
       "gui/js/navigation.js",
       "gui/js/chat.js",
-      "gui/js/dashboard.js",
-      "gui/css/styles.css"
+      "gui/css/tokens.css",
+      "gui/css/micro-interactions.css"
     ]
   },
   {
@@ -183,7 +183,7 @@
       "server/tracing.py",
       "server/app.py",
       "server/langgraph_app.py",
-      "gui/js/traces.js"
+      "gui/js/trace.js"
     ]
   },
   {
@@ -191,9 +191,9 @@
     "repo": "agro",
     "expect_paths": [
       "scripts/generate_smart_keywords.py",
-      "data/discriminative_keywords.json",
-      "data/semantic_keywords.json",
-      "data/llm_keywords.json",
+      "discriminative_keywords.json",
+      "semantic_keywords.json",
+      "llm_keywords.json",
       "retrieval/hybrid_search.py"
     ]
   },
@@ -225,8 +225,9 @@
     "repo": "agro",
     "expect_paths": [
       "infra/grafana/provisioning/dashboards/agro_overview.json",
-      "infra/grafana/provisioning/dashboards/dashboard.yml",
-      "infra/grafana/provisioning/datasources/datasource.yml",
+      "infra/grafana/provisioning/dashboards/dashboards.yml",
+      "infra/grafana/provisioning/datasources/prometheus.yml",
+      "infra/grafana/provisioning/datasources/loki.yml",
       "docker-compose.yml",
       "gui/js/grafana.js"
     ]
@@ -279,7 +280,8 @@
     "repo": "agro",
     "expect_paths": [
       "gui/js/theme.js",
-      "gui/css/styles.css",
+      "gui/css/tokens.css",
+      "gui/css/micro-interactions.css",
       "gui/index.html",
       "gui/app.js"
     ]
@@ -301,7 +303,7 @@
       "server/index_stats.py",
       "indexer/index_stats.py",
       "server/app.py",
-      "gui/js/index_display.js"
+      "gui/js/index-display.js"
     ]
   },
   {
@@ -345,7 +347,8 @@
     "q": "Where are the cost calculation utilities for token usage?",
     "repo": "agro",
     "expect_paths": [
-      "gui/js/cost.js",
+      "gui/js/cost_logic.js",
+      "gui/js/storage-calculator.js",
       "gui/prices.json",
       "server/metrics.py",
       "gui/index.html"
@@ -402,7 +405,7 @@
     "q": "How does the file selection and upload work in the GUI?",
     "repo": "agro",
     "expect_paths": [
-      "gui/js/dropzone.js",
+      "gui/js/secrets.js",
       "gui/index.html",
       "server/app.py"
     ]
@@ -431,7 +434,7 @@
     "q": "Where is the infrastructure management in the GUI?",
     "repo": "agro",
     "expect_paths": [
-      "gui/js/infrastructure.js",
+      "gui/js/docker.js",
       "docker-compose.yml",
       "scripts/up.sh",
       "scripts/status.sh"
@@ -461,7 +464,8 @@
     "q": "How does the profiles system work for saving configurations?",
     "repo": "agro",
     "expect_paths": [
-      "gui/js/profiles.js",
+      "gui/js/profile_logic.js",
+      "gui/js/index_profiles.js",
       "gui/profiles/",
       "server/app.py",
       "gui/index.html"
@@ -504,6 +508,22 @@
       "server/telemetry.py",
       "data/logs/queries.jsonl",
       "server/app.py"
+    ]
+  },
+  {
+    "q": "Where are helpful error message utilities defined?",
+    "repo": "agro",
+    "expect_paths": [
+      "gui/js/error-helpers.js",
+      "gui/index.html"
+    ]
+  },
+  {
+    "q": "Where are GUI tooltips implemented?",
+    "repo": "agro",
+    "expect_paths": [
+      "gui/js/tooltips.js",
+      "gui/index.html"
     ]
   }
 ]

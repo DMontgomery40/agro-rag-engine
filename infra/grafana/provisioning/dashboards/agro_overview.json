@@ -4,7 +4,7 @@
   "title": "AGRO Overview",
   "timezone": "browser",
   "schemaVersion": 38,
-  "version": 2,
+  "version": 3,
   "editable": true,
   "style": "dark",
   "graphTooltip": 1,
@@ -16,6 +16,46 @@
   "templating": {
     "list": [
       {
+        "name": "interval",
+        "type": "custom",
+        "label": "Time Range",
+        "query": "5m,1h,6h,24h,7d",
+        "options": [
+          {
+            "text": "5 minutes",
+            "value": "5m",
+            "selected": false
+          },
+          {
+            "text": "1 hour",
+            "value": "1h",
+            "selected": false
+          },
+          {
+            "text": "6 hours",
+            "value": "6h",
+            "selected": false
+          },
+          {
+            "text": "24 hours",
+            "value": "24h",
+            "selected": true
+          },
+          {
+            "text": "7 days",
+            "value": "7d",
+            "selected": false
+          }
+        ],
+        "current": {
+          "text": "24 hours",
+          "value": "24h"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "multi": false
+      },
+      {
         "name": "provider",
         "type": "query",
         "label": "Provider",
@@ -23,10 +63,10 @@
           "type": "prometheus",
           "uid": "PBFA97CFB590B2093"
         },
-        "query": "label_values(agro_requests_total, provider)",
+        "query": "label_values(agro_tokens_total, provider)",
         "refresh": 2,
         "sort": 1,
-        "definition": "label_values(agro_requests_total, provider)",
+        "definition": "label_values(agro_tokens_total, provider)",
         "hide": 0,
         "includeAll": true,
         "multi": true
@@ -39,12 +79,33 @@
           "type": "prometheus",
           "uid": "PBFA97CFB590B2093"
         },
-        "query": "label_values(agro_requests_total{provider=~\"$provider\"}, model)",
+        "query": "label_values(agro_tokens_total{provider=~\"$provider\"}, model)",
         "refresh": 2,
-        "definition": "label_values(agro_requests_total{provider=~\"$provider\"}, model)",
+        "definition": "label_values(agro_tokens_total{provider=~\"$provider\"}, model)",
         "hide": 0,
         "includeAll": true,
         "multi": true
+      },
+      {
+        "name": "api_filter",
+        "type": "textbox",
+        "label": "API Filter",
+        "query": "/api/",
+        "hide": 0
+      },
+      {
+        "name": "system_filter",
+        "type": "textbox",
+        "label": "System Filter",
+        "query": "(docker|qdrant|redis|prometheus)",
+        "hide": 0
+      },
+      {
+        "name": "error_filter",
+        "type": "textbox",
+        "label": "Error Filter",
+        "query": "ERROR",
+        "hide": 0
       }
     ]
   },
@@ -65,7 +126,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(agro_requests_total{success=\"true\",provider=~\"$provider\",model=~\"$model\"}[5m]))",
+          "expr": "sum(rate(agro_requests_total{success=\"true\"}[$interval])) * 3600",
           "refId": "A"
         }
       ],
@@ -78,14 +139,14 @@
           "values": false
         },
         "orientation": "auto",
-        "textMode": "value_and_name",
+        "textMode": "value",
         "colorMode": "background",
         "graphMode": "area",
         "justifyMode": "center"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "reqps",
+          "unit": "reqph",
           "decimals": 2,
           "thresholds": {
             "mode": "absolute",
@@ -96,11 +157,11 @@
               },
               {
                 "color": "yellow",
-                "value": 0.1
+                "value": 100
               },
               {
                 "color": "green",
-                "value": 1
+                "value": 1000
               }
             ]
           }
@@ -125,7 +186,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(agro_requests_total{success=\"false\"}[5m])) / sum(rate(agro_requests_total[5m])) * 100",
+          "expr": "sum(rate(agro_requests_total{success=\"false\"}[$interval])) / sum(rate(agro_requests_total[$interval])) * 100",
           "refId": "A"
         }
       ],
@@ -138,7 +199,7 @@
           "values": false
         },
         "orientation": "auto",
-        "textMode": "value_and_name",
+        "textMode": "value",
         "colorMode": "background",
         "graphMode": "area",
         "justifyMode": "center"
@@ -189,7 +250,7 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(agro_request_duration_seconds_bucket{stage=\"request\"}[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(agro_request_duration_seconds_bucket{stage=\"request\"}[$interval])))",
           "refId": "A"
         }
       ],
@@ -202,7 +263,7 @@
           "values": false
         },
         "orientation": "auto",
-        "textMode": "value_and_name",
+        "textMode": "value",
         "colorMode": "background",
         "graphMode": "area",
         "justifyMode": "center"
@@ -240,7 +301,7 @@
     {
       "id": 4,
       "type": "stat",
-      "title": "Cost/Hour",
+      "title": "Cost/Hour (projected)",
       "gridPos": {
         "x": 18,
         "y": 0,
@@ -253,7 +314,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(agro_cost_usd_total{provider=~\"$provider\",model=~\"$model\"}[5m])) * 3600",
+          "expr": "sum(rate(agro_cost_usd_total[$interval])) * 3600",
           "refId": "A"
         }
       ],
@@ -266,7 +327,7 @@
           "values": false
         },
         "orientation": "auto",
-        "textMode": "value_and_name",
+        "textMode": "value",
         "colorMode": "background",
         "graphMode": "area",
         "justifyMode": "center"
@@ -302,12 +363,220 @@
       "pluginVersion": "10.0.0"
     },
     {
+      "id": 50,
+      "type": "table",
+      "title": "Alert History (Last 24 Hours)",
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 24,
+        "h": 8
+      },
+      "datasource": {
+        "type": "infinity",
+        "uid": "infinity"
+      },
+      "targets": [
+        {
+          "type": "json",
+          "url": "http://host.docker.internal:8012/webhooks/alertmanager/status",
+          "method": "GET",
+          "refId": "A",
+          "format": "table",
+          "root_selector": "recent_alerts",
+          "columns": [
+            {
+              "selector": "timestamp",
+              "text": "Time",
+              "type": "timestamp"
+            },
+            {
+              "selector": "alert.labels.alertname",
+              "text": "Alert",
+              "type": "string"
+            },
+            {
+              "selector": "alert.labels.severity",
+              "text": "Severity",
+              "type": "string"
+            },
+            {
+              "selector": "alert.status",
+              "text": "Status",
+              "type": "string"
+            },
+            {
+              "selector": "alert.annotations.summary",
+              "text": "Message",
+              "type": "string"
+            }
+          ]
+        }
+      ],
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Time",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Time",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "displayMode": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Severity"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "critical": {
+                        "color": "red",
+                        "index": 0
+                      }
+                    }
+                  },
+                  {
+                    "type": "value",
+                    "options": {
+                      "warning": {
+                        "color": "orange",
+                        "index": 1
+                      }
+                    }
+                  },
+                  {
+                    "type": "value",
+                    "options": {
+                      "info": {
+                        "color": "blue",
+                        "index": 2
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "firing": {
+                        "color": "red",
+                        "index": 0
+                      }
+                    }
+                  },
+                  {
+                    "type": "value",
+                    "options": {
+                      "resolved": {
+                        "color": "green",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 180
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Alert"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Message"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 600
+              }
+            ]
+          }
+        ]
+      },
+      "pluginVersion": "10.0.0"
+    },
+    {
       "id": 5,
       "type": "timeseries",
       "title": "Request Rate & Errors Over Time",
       "gridPos": {
         "x": 0,
-        "y": 5,
+        "y": 13,
         "w": 12,
         "h": 8
       },
@@ -317,12 +586,12 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(agro_requests_total{success=\"true\",provider=~\"$provider\",model=~\"$model\"}[5m]))",
+          "expr": "sum(rate(agro_requests_total{success=\"true\"}[$interval]))",
           "refId": "A",
           "legendFormat": "Success"
         },
         {
-          "expr": "sum(rate(agro_requests_total{success=\"false\",provider=~\"$provider\",model=~\"$model\"}[5m]))",
+          "expr": "sum(rate(agro_requests_total{success=\"false\"}[$interval]))",
           "refId": "B",
           "legendFormat": "Failed"
         }
@@ -414,7 +683,7 @@
       "title": "Latency Percentiles (p50, p95, p99)",
       "gridPos": {
         "x": 12,
-        "y": 5,
+        "y": 13,
         "w": 12,
         "h": 8
       },
@@ -424,17 +693,17 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum by (le) (rate(agro_request_duration_seconds_bucket{stage=\"request\"}[5m])))",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(agro_request_duration_seconds_bucket{stage=\"request\"}[$interval])))",
           "refId": "A",
           "legendFormat": "p50"
         },
         {
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(agro_request_duration_seconds_bucket{stage=\"request\"}[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(agro_request_duration_seconds_bucket{stage=\"request\"}[$interval])))",
           "refId": "B",
           "legendFormat": "p95"
         },
         {
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(agro_request_duration_seconds_bucket{stage=\"request\"}[5m])))",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(agro_request_duration_seconds_bucket{stage=\"request\"}[$interval])))",
           "refId": "C",
           "legendFormat": "p99"
         }
@@ -495,7 +764,7 @@
       "title": "Token Consumption (prompt vs completion)",
       "gridPos": {
         "x": 0,
-        "y": 13,
+        "y": 21,
         "w": 8,
         "h": 7
       },
@@ -505,7 +774,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (role) (rate(agro_tokens_total{provider=~\"$provider\",model=~\"$model\"}[5m])) * 60",
+          "expr": "sum by (role) (rate(agro_tokens_total{provider=~\"$provider\",model=~\"$model\"}[$interval])) * 60",
           "refId": "A",
           "legendFormat": "{{role}}"
         }
@@ -566,7 +835,7 @@
       "title": "Cost Over Time by Provider",
       "gridPos": {
         "x": 8,
-        "y": 13,
+        "y": 21,
         "w": 8,
         "h": 7
       },
@@ -576,7 +845,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (provider) (rate(agro_cost_usd_total[5m])) * 3600",
+          "expr": "sum by (provider) (rate(agro_cost_usd_total[$interval])) * 3600",
           "refId": "A",
           "legendFormat": "{{provider}}"
         }
@@ -637,7 +906,7 @@
       "title": "API Call Latency by Provider (p95)",
       "gridPos": {
         "x": 16,
-        "y": 13,
+        "y": 21,
         "w": 8,
         "h": 7
       },
@@ -647,7 +916,7 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le, provider) (rate(agro_api_call_duration_seconds_bucket[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le, provider) (rate(agro_api_call_duration_seconds_bucket[$interval])))",
           "refId": "A",
           "legendFormat": "{{provider}}"
         }
@@ -708,7 +977,7 @@
       "title": "Mean Reciprocal Rank (MRR)",
       "gridPos": {
         "x": 0,
-        "y": 20,
+        "y": 28,
         "w": 6,
         "h": 6
       },
@@ -771,7 +1040,7 @@
       "title": "Canary Pass Rate",
       "gridPos": {
         "x": 6,
-        "y": 20,
+        "y": 28,
         "w": 6,
         "h": 6
       },
@@ -781,7 +1050,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(agro_canary_pass_total[5m])) / sum(rate(agro_canary_total[5m]))",
+          "expr": "sum(rate(agro_canary_pass_total[$interval])) / sum(rate(agro_canary_total[$interval]))",
           "refId": "A"
         }
       ],
@@ -831,10 +1100,10 @@
     {
       "id": 12,
       "type": "stat",
-      "title": "Total Requests (5m)",
+      "title": "Total Requests",
       "gridPos": {
         "x": 12,
-        "y": 20,
+        "y": 28,
         "w": 4,
         "h": 3
       },
@@ -844,7 +1113,7 @@
       },
       "targets": [
         {
-          "expr": "sum(increase(agro_requests_total{provider=~\"$provider\",model=~\"$model\"}[5m]))",
+          "expr": "sum(increase(agro_requests_total[$interval]))",
           "refId": "A"
         }
       ],
@@ -857,7 +1126,7 @@
           "values": false
         },
         "orientation": "auto",
-        "textMode": "value_and_name",
+        "textMode": "value",
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "center"
@@ -883,10 +1152,10 @@
     {
       "id": 13,
       "type": "stat",
-      "title": "Total Tokens (5m)",
+      "title": "Total Tokens",
       "gridPos": {
         "x": 16,
-        "y": 20,
+        "y": 28,
         "w": 4,
         "h": 3
       },
@@ -896,7 +1165,7 @@
       },
       "targets": [
         {
-          "expr": "sum(increase(agro_tokens_total{provider=~\"$provider\",model=~\"$model\"}[5m]))",
+          "expr": "sum(increase(agro_tokens_total{provider=~\"$provider\",model=~\"$model\"}[$interval]))",
           "refId": "A"
         }
       ],
@@ -909,7 +1178,7 @@
           "values": false
         },
         "orientation": "auto",
-        "textMode": "value_and_name",
+        "textMode": "value",
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "center"
@@ -935,10 +1204,10 @@
     {
       "id": 14,
       "type": "stat",
-      "title": "Total Cost (5m)",
+      "title": "Total Cost",
       "gridPos": {
         "x": 20,
-        "y": 20,
+        "y": 28,
         "w": 4,
         "h": 3
       },
@@ -948,7 +1217,7 @@
       },
       "targets": [
         {
-          "expr": "sum(increase(agro_cost_usd_total{provider=~\"$provider\",model=~\"$model\"}[5m]))",
+          "expr": "sum(increase(agro_cost_usd_total{provider=~\"$provider\",model=~\"$model\"}[$interval]))",
           "refId": "A"
         }
       ],
@@ -961,7 +1230,7 @@
           "values": false
         },
         "orientation": "auto",
-        "textMode": "value_and_name",
+        "textMode": "value",
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "center"
@@ -987,10 +1256,10 @@
     {
       "id": 15,
       "type": "stat",
-      "title": "Errors (5m)",
+      "title": "Errors",
       "gridPos": {
         "x": 12,
-        "y": 23,
+        "y": 31,
         "w": 4,
         "h": 3
       },
@@ -1000,7 +1269,7 @@
       },
       "targets": [
         {
-          "expr": "sum(increase(agro_errors_total[5m]))",
+          "expr": "sum(increase(agro_errors_total[$interval]))",
           "refId": "A"
         }
       ],
@@ -1013,7 +1282,7 @@
           "values": false
         },
         "orientation": "auto",
-        "textMode": "value_and_name",
+        "textMode": "value",
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "center"
@@ -1047,10 +1316,10 @@
     {
       "id": 16,
       "type": "stat",
-      "title": "API Calls (5m)",
+      "title": "API Calls",
       "gridPos": {
         "x": 16,
-        "y": 23,
+        "y": 31,
         "w": 4,
         "h": 3
       },
@@ -1060,7 +1329,7 @@
       },
       "targets": [
         {
-          "expr": "sum(increase(agro_api_calls_total[5m]))",
+          "expr": "sum(increase(agro_api_calls_total[$interval]))",
           "refId": "A"
         }
       ],
@@ -1073,7 +1342,7 @@
           "values": false
         },
         "orientation": "auto",
-        "textMode": "value_and_name",
+        "textMode": "value",
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "center"
@@ -1102,7 +1371,7 @@
       "title": "Avg Cost/Request",
       "gridPos": {
         "x": 20,
-        "y": 23,
+        "y": 31,
         "w": 4,
         "h": 3
       },
@@ -1112,7 +1381,7 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(agro_cost_usd_total[5m])) / sum(rate(agro_requests_total[5m]))",
+          "expr": "sum(rate(agro_cost_usd_total[$interval])) / sum(rate(agro_requests_total[$interval]))",
           "refId": "A"
         }
       ],
@@ -1125,7 +1394,7 @@
           "values": false
         },
         "orientation": "auto",
-        "textMode": "value_and_name",
+        "textMode": "value",
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "center"
@@ -1154,7 +1423,7 @@
       "title": "Pipeline Stage Latency (p95)",
       "gridPos": {
         "x": 0,
-        "y": 26,
+        "y": 34,
         "w": 12,
         "h": 7
       },
@@ -1164,7 +1433,7 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le, stage) (rate(agro_request_duration_seconds_bucket[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le, stage) (rate(agro_request_duration_seconds_bucket[$interval])))",
           "refId": "A",
           "legendFormat": "{{stage}}"
         }
@@ -1225,7 +1494,7 @@
       "title": "Errors by Type",
       "gridPos": {
         "x": 12,
-        "y": 26,
+        "y": 34,
         "w": 12,
         "h": 7
       },
@@ -1235,7 +1504,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (type) (rate(agro_errors_total[5m]))",
+          "expr": "sum by (type) (rate(agro_errors_total[$interval]))",
           "refId": "A",
           "legendFormat": "{{type}}"
         }
@@ -1296,7 +1565,7 @@
       "title": "Top Routes by Request Rate",
       "gridPos": {
         "x": 0,
-        "y": 33,
+        "y": 41,
         "w": 12,
         "h": 8
       },
@@ -1306,7 +1575,7 @@
       },
       "targets": [
         {
-          "expr": "topk(10, sum by (route) (rate(agro_requests_total{provider=~\"$provider\",model=~\"$model\"}[5m])))",
+          "expr": "topk(10, sum by (route) (rate(agro_requests_total[$interval])))",
           "format": "table",
           "instant": true,
           "refId": "A"
@@ -1370,7 +1639,7 @@
       "title": "Top Models by Cost",
       "gridPos": {
         "x": 12,
-        "y": 33,
+        "y": 41,
         "w": 12,
         "h": 8
       },
@@ -1380,7 +1649,7 @@
       },
       "targets": [
         {
-          "expr": "topk(10, sum by (model, provider) (rate(agro_cost_usd_total[5m])))",
+          "expr": "topk(10, sum by (model, provider) (rate(agro_cost_usd_total[$interval])))",
           "format": "table",
           "instant": true,
           "refId": "A"
@@ -1435,6 +1704,102 @@
             ]
           }
         ]
+      },
+      "pluginVersion": "10.0.0"
+    },
+    {
+      "id": 100,
+      "type": "logs",
+      "title": "API Request Logs",
+      "gridPos": {
+        "x": 0,
+        "y": 49,
+        "w": 8,
+        "h": 12
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "targets": [
+        {
+          "expr": "{compose_service=~\".+\"} |~ `$api_filter` != `/log-stream`",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "showCommonLabels": true,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false
+      },
+      "pluginVersion": "10.0.0"
+    },
+    {
+      "id": 101,
+      "type": "logs",
+      "title": "System/Infrastructure Logs (searchable - use Ctrl+F)",
+      "gridPos": {
+        "x": 8,
+        "y": 49,
+        "w": 8,
+        "h": 12
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "targets": [
+        {
+          "expr": "{compose_service=~\".+\"} |~ `$system_filter` != `/api/`",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "showCommonLabels": true,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false
+      },
+      "pluginVersion": "10.0.0"
+    },
+    {
+      "id": 102,
+      "type": "logs",
+      "title": "Error Logs (searchable - use Ctrl+F)",
+      "gridPos": {
+        "x": 16,
+        "y": 49,
+        "w": 8,
+        "h": 12
+      },
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "targets": [
+        {
+          "expr": "{compose_service=~\".+\"} |~ `(ERROR|CRITICAL|Exception|Traceback|500|40[0-9])`",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "showCommonLabels": true,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false
       },
       "pluginVersion": "10.0.0"
     }
