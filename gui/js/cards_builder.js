@@ -21,7 +21,28 @@
         sel.appendChild(opt);
       });
       sel.value = (config.env && config.env.REPO) || config.default_repo || 'agro';
-    } catch(e){ console.error('[cards_builder] Failed to load repos:', e); }
+    } catch(e){
+      const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to load repositories', {
+        message: e.message,
+        causes: [
+          'Backend configuration API service is unavailable',
+          'Invalid JSON response from configuration endpoint',
+          'Network connectivity issue or timeout',
+          'Repository configuration file is missing or corrupted'
+        ],
+        fixes: [
+          'Verify backend service is running in Infrastructure tab',
+          'Check backend logs for configuration loading errors',
+          'Verify network connectivity and check firewall rules',
+          'Refresh the page and try loading repositories again'
+        ],
+        links: [
+          ['Fetch API Documentation', 'https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API'],
+          ['JSON Parsing Guide', 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/parse']
+        ]
+      }) : `Failed to load repos: ${e.message}`;
+      console.error('[cards_builder] Failed to load repos:', msg);
+    }
   }
 
   function showProgress(){
@@ -192,7 +213,26 @@
         }, 1000);
       }
     }catch(e){
-      if (window.showStatus) window.showStatus('Failed to start cards build: '+e.message, 'error');
+      const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to start cards build', {
+        message: e.message,
+        causes: [
+          'Cards build API service is unavailable or not responding',
+          'Job system (Celery/Redis) is not running or experiencing issues',
+          'Invalid repository configuration or path is inaccessible',
+          'Insufficient system resources (memory, disk space, CPU)'
+        ],
+        fixes: [
+          'Verify backend service and job queue are running in Infrastructure tab',
+          'Check that selected repository path exists and is accessible',
+          'Verify Redis and Celery services are operational',
+          'Check available system resources (memory, disk space)'
+        ],
+        links: [
+          ['Fetch API Documentation', 'https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API'],
+          ['EventSource API Documentation', 'https://developer.mozilla.org/en-US/docs/Web/API/EventSource']
+        ]
+      }) : `Failed to start cards build: ${e.message}`;
+      if (window.showStatus) window.showStatus(msg, 'error');
       hideProgress();
     }
   }
@@ -205,7 +245,25 @@
       hideProgress();
       if (window.showStatus) window.showStatus('Cards build cancelled', 'warn');
     } catch (e) {
-      if (window.showStatus) window.showStatus('Cancel failed: '+e.message, 'error');
+      const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to cancel cards build', {
+        message: e.message,
+        causes: [
+          'Backend API service not responding during cancellation',
+          'Job ID is no longer valid or has already completed',
+          'Job system (Celery) is experiencing issues',
+          'Network connectivity problem during cancel request'
+        ],
+        fixes: [
+          'Verify backend service is running and responsive',
+          'Wait a moment for the current job to finish naturally',
+          'Check Infrastructure tab to verify Celery/Redis are running',
+          'Try refreshing the page to sync job status'
+        ],
+        links: [
+          ['Fetch API Documentation', 'https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API']
+        ]
+      }) : `Cancel failed: ${e.message}`;
+      if (window.showStatus) window.showStatus(msg, 'error');
     }
   }
 
@@ -215,7 +273,27 @@
       const d = await r.json();
       alert(d.content || 'No logs available');
     } catch(e){
-      alert('Unable to load logs: ' + e.message);
+      const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to load build logs', {
+        message: e.message,
+        causes: [
+          'Log service API is not responding',
+          'Build logs have not been generated yet',
+          'Logs file is missing, corrupted, or not accessible',
+          'Network connectivity issue retrieving logs'
+        ],
+        fixes: [
+          'Ensure a cards build has been run previously',
+          'Verify backend service is running in Infrastructure tab',
+          'Check that log directory exists and permissions are correct',
+          'Refresh the page and try loading logs again'
+        ],
+        links: [
+          ['Fetch API Documentation', 'https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API'],
+          ['JSON Parsing Guide', 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/parse']
+        ]
+      }) : `Unable to load logs: ${e.message}`;
+      alert(msg);
+      console.error('[cards_builder] Failed to load logs:', msg);
     }
   }
 
