@@ -188,7 +188,6 @@
             flex-direction: column;
             border-right: 1px solid var(--line);
             overflow: visible;
-            position: relative;
         }
 
         .resize-handle {
@@ -1088,7 +1087,6 @@
 
             /* Layout: full single column */
             .layout {
-                grid-template-columns: 1fr;
                 height: auto;
                 min-height: calc(100vh - 80px);
             }
@@ -1099,7 +1097,6 @@
 
             /* Sidepanel: stacked below */
             .sidepanel {
-                grid-column: 1 / 2;
                 border-top: 1px solid var(--line);
                 max-height: 60vh;
             }
@@ -2313,8 +2310,8 @@
             </div>
 
             <!-- NEW TAB STRUCTURE - Phase 3 Migration -->
-            <!-- Scrollable tab content wrapper -->
-            <div style="flex: 1; overflow-y: auto; min-height: 0; padding-bottom: 80px;">
+            <!-- Scrollable wrapper for all tab content -->
+            <div style="flex: 1; overflow-y: auto; overflow-x: hidden;">
             <!-- Tab: Get Started (NEW - will contain onboarding content) -->
             <div id="tab-start" class="tab-content">
             <div class="ob-container">
@@ -2850,12 +2847,15 @@
                             <button id="btn-cards-refresh" style="flex: 1; background: var(--bg-elev2); color: var(--ok); border: 1px solid var(--ok);">
                                 <span style="margin-right: 4px;">↻</span> Refresh
                             </button>
+                            <button id="btn-cards-view-all" style="flex: 1; background: var(--bg-elev2); color: var(--link); border: 1px solid var(--link);">
+                                <span style="margin-right: 4px;">📋</span> View All
+                            </button>
                         </div>
 
                         <!-- Cards Viewer -->
-                        <div id="cards-viewer-container" style="background: var(--card-bg); border: 1px solid var(--line); border-radius: 6px; padding: 16px; max-height: 400px; overflow-y: auto;">
+                        <div id="cards-viewer-container" style="background: var(--card-bg); border: 1px solid var(--line); border-radius: 6px; padding: 16px; min-height: 300px; max-height: 600px; overflow-y: auto;">
                             <div id="cards-last-build" class="mono" style="font-size: 11px; color: var(--fg-muted); margin-bottom: 8px; display:none;"></div>
-                            <div id="cards-viewer" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap:12px;"></div>
+                            <div id="cards-viewer" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:16px; width:100%;"></div>
                         </div>
                         <p class="small" style="color: var(--fg-muted); margin-top:8px;">Click a card to navigate to its source location.</p>
                     </div>
@@ -3450,7 +3450,18 @@
                             </div>
                             <div class="input-group">
                                 <label>Local/HF Model (RERANKER_MODEL)</label>
-                                <input type="text" name="RERANKER_MODEL" placeholder="BAAI/bge-reranker-v2-m3">
+                                <input type="text" name="RERANKER_MODEL" placeholder="cross-encoder/ms-marco-MiniLM-L-12-v2">
+                            </div>
+                        </div>
+                        <div class="input-row" style="margin-top:8px;">
+                            <div class="input-group full-width" style="background: var(--card-bg); border:1px solid var(--line); border-radius:6px; padding:10px;">
+                                <div style="font-size:11px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Current Reranker (Server)</div>
+                                <div class="mono" id="reranker-info-panel" style="font-size:12px; line-height:1.6;">
+                                    <div>Enabled: <span id="reranker-info-enabled">—</span></div>
+                                    <div>Model Path: <span id="reranker-info-path">—</span></div>
+                                    <div>Device: <span id="reranker-info-device">—</span></div>
+                                    <div>Alpha: <span id="reranker-info-alpha">—</span> • TopN: <span id="reranker-info-topn">—</span> • Batch: <span id="reranker-info-batch">—</span> • MaxLen: <span id="reranker-info-maxlen">—</span></div>
+                                </div>
                             </div>
                         </div>
                         <div class="input-row">
@@ -3544,7 +3555,7 @@
                             <div id="reranker-status" style="font-size: 14px; font-family: 'SF Mono', monospace; color: var(--fg-muted);">Ready</div>
                         </div>
 
-                        <!-- Live Terminal Output -->
+                        <!-- Live Terminal Container -->
                         <div id="reranker-terminal-container"></div>
                     </div>
 
@@ -3560,12 +3571,43 @@
                                 </select>
                             </div>
                             <div class="input-group">
-                                <label>Model Path</label>
-                                <input type="text" name="AGRO_RERANKER_MODEL_PATH" placeholder="models/cross-encoder-agro" value="models/cross-encoder-agro">
+                                <label>Model Path (AGRO_RERANKER_MODEL_PATH)</label>
+                                <input type="text" name="AGRO_RERANKER_MODEL_PATH" placeholder="cross-encoder/ms-marco-MiniLM-L-12-v2" value="models/cross-encoder-agro">
                             </div>
                             <div class="input-group">
                                 <label>Telemetry Log Path</label>
                                 <input type="text" name="AGRO_LOG_PATH" placeholder="data/logs/queries.jsonl" value="data/logs/queries.jsonl">
+                            </div>
+                        </div>
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>Triplets Output (AGRO_TRIPLETS_PATH)</label>
+                                <input type="text" name="AGRO_TRIPLETS_PATH" placeholder="data/training/triplets.jsonl" value="data/training/triplets.jsonl">
+                            </div>
+                            <div class="input-group">
+                                <label>Mine Mode (AGRO_RERANKER_MINE_MODE)</label>
+                                <select name="AGRO_RERANKER_MINE_MODE">
+                                    <option value="append">append</option>
+                                    <option value="replace">replace</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Reset Before Mine (AGRO_RERANKER_MINE_RESET)</label>
+                                <select name="AGRO_RERANKER_MINE_RESET">
+                                    <option value="0">No</option>
+                                    <option value="1">Yes</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="input-row" style="margin-top:8px;">
+                            <div class="input-group full-width" style="background: var(--card-bg); border:1px solid var(--line); border-radius:6px; padding:10px;">
+                                <div style="font-size:11px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Current Reranker (Server)</div>
+                                <div class="mono" id="reranker-info-panel" style="font-size:12px; line-height:1.6;">
+                                    <div>Enabled: <span id="reranker-info-enabled">—</span></div>
+                                    <div>Model Path: <span id="reranker-info-path">—</span></div>
+                                    <div>Device: <span id="reranker-info-device">—</span></div>
+                                    <div>Alpha: <span id="reranker-info-alpha">—</span> • TopN: <span id="reranker-info-topn">—</span> • Batch: <span id="reranker-info-batch">—</span> • MaxLen: <span id="reranker-info-maxlen">—</span></div>
+                                </div>
                             </div>
                         </div>
                         <div class="input-row">
@@ -3692,7 +3734,7 @@
                         <h3>⚠️ No-Hit Queries</h3>
                         <p class="small">Queries that returned no relevant results. Consider reindexing or adding these terms to your corpus.</p>
                         <div id="reranker-nohits-list" style="background: var(--card-bg); border: 1px solid var(--line); border-radius: 6px; padding: 12px; max-height: 200px; overflow-y: auto; font-family: 'SF Mono', monospace; font-size: 11px;">
-                            <div style="color: var(--fg-muted); text-align: center; padding: 20px;">No no-hit queries tracked yet.</div>
+                            <div style="color: var(--fg-muted); text-align: center; padding: 20px;">Loading no-hit queries...</div>
                         </div>
                     </div>
                 </div>
@@ -4071,6 +4113,40 @@
 
                         <!-- Comparison Results -->
                         <div id="eval-comparison" style="margin-top: 16px; display: none;"></div>
+
+                        <!-- Evaluation Run History -->
+                        <div style="margin-top: 24px; background: var(--card-bg); border: 1px solid var(--line); border-radius: 8px; padding: 20px;">
+                            <h4 style="margin: 0 0 8px 0; color: var(--fg); display: flex; align-items: center; gap: 8px;">
+                                <span style="color: var(--accent-green);">●</span>
+                                Evaluation Run History
+                            </h4>
+                            <p class="small" style="color: var(--fg-muted); margin: 0 0 16px 0;">Compare BM25-only baseline vs trained cross-encoder performance across runs.</p>
+
+                            <div style="overflow-x: auto;">
+                                <table id="eval-history-table" style="width: 100%; font-size: 12px; border-collapse: collapse; background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px;">
+                                    <thead>
+                                        <tr style="background: var(--bg-elev2); border-bottom: 2px solid var(--line);">
+                                            <th style="padding: 10px; text-align: left; color: var(--fg-muted); font-weight: 600;">Timestamp</th>
+                                            <th style="padding: 10px; text-align: left; color: var(--fg-muted); font-weight: 600;">Configuration</th>
+                                            <th style="padding: 10px; text-align: center; color: var(--fg-muted); font-weight: 600;">Top-1</th>
+                                            <th style="padding: 10px; text-align: center; color: var(--fg-muted); font-weight: 600;">Top-5</th>
+                                            <th style="padding: 10px; text-align: center; color: var(--fg-muted); font-weight: 600;">Time (s)</th>
+                                            <th style="padding: 10px; text-align: center; color: var(--fg-muted); font-weight: 600;">Δ Top-5</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="eval-history-tbody">
+                                        <tr>
+                                            <td colspan="6" style="padding: 20px; text-align: center; color: var(--fg-muted);">No evaluation history yet. Run evaluations to see comparisons.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div style="margin-top: 12px; display: flex; gap: 8px;">
+                                <button id="btn-eval-history-refresh" style="flex: 1; background: var(--bg-elev2); color: var(--link); border: 1px solid var(--link); padding: 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">Refresh History</button>
+                                <button id="btn-eval-history-clear" style="flex: 1; background: var(--bg-elev2); color: var(--warn); border: 1px solid var(--warn); padding: 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">Clear History</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -5493,11 +5569,10 @@
 
             </div> <!-- End scrollable wrapper -->
 
-            <!-- Apply button - absolute positioned at bottom -->
-            <div class="action-buttons" style="padding: 12px 24px; background: var(--bg); border-top: 1px solid var(--line); position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;">
+            <!-- Apply All Changes button - Fixed footer outside scrollable area -->
+            <div class="action-buttons" style="background: var(--bg); padding: 12px 24px; border-top: 1px solid var(--accent); flex-shrink: 0;">
                 <button id="save-btn">Apply All Changes</button>
             </div>
-        </div>
         </div> <!-- End of .content -->
 
         <!-- Right Sidepanel -->
@@ -5568,27 +5643,27 @@
                 </div>
                 <div class="input-row" style="margin-bottom: 12px;">
                     <div class="input-group">
-                        <label>Input Tokens / Request</label>
-                        <input type="number" id="cost-in" value="500" placeholder="Avg input tokens per request">
+                        <label>Tokens In</label>
+                        <input type="number" id="cost-in" value="500">
                     </div>
                     <div class="input-group">
-                        <label>Output Tokens / Request</label>
-                        <input type="number" id="cost-out" value="800" placeholder="Avg output tokens per request">
+                        <label>Tokens Out</label>
+                        <input type="number" id="cost-out" value="800">
                     </div>
                 </div>
                 <div class="input-row" style="margin-bottom: 12px;">
                     <div class="input-group">
-                        <label>Embedding Tokens / Day</label>
-                        <input type="number" id="cost-embeds" value="0" placeholder="Total daily embedding tokens (0 = disabled)">
+                        <label>Embeds</label>
+                        <input type="number" id="cost-embeds" value="0">
                     </div>
                     <div class="input-group">
-                        <label>Reranks / Day</label>
-                        <input type="number" id="cost-rerank" value="0" placeholder="Total daily reranking operations">
+                        <label>Reranks</label>
+                        <input type="number" id="cost-rerank" value="0">
                     </div>
                 </div>
                 <div class="input-group" style="margin-bottom: 12px;">
-                    <label>API Requests / Day</label>
-                    <input type="number" id="cost-rpd" value="100" placeholder="Total daily API requests">
+                    <label>Requests / Day</label>
+                    <input type="number" id="cost-rpd" value="100">
                 </div>
                 <button class="small-button" id="btn-estimate">Calculate Cost</button>
                 <button class="small-button" id="btn-add-cost-model" style="margin-left:8px;">Add Model</button>
@@ -5752,12 +5827,13 @@
     <script type="module" src="/gui/js/cost_logic.js"></script>
     <script src="/gui/js/golden_questions.js"></script>
     <script src="/gui/js/eval_runner.js"></script>
+    <script src="/gui/js/eval_history.js"></script>
     <script src="/gui/js/chat.js"></script>
 
     <!-- Error handling utilities (must load before modules that use it) -->
     <script src="/gui/js/error-helpers.js"></script>
 
-    <!-- Live terminal for reranker operations (must load before reranker.js) -->
+    <!-- Live Terminal Component -->
     <script src="/gui/js/live-terminal.js"></script>
 
     <script src="/gui/js/reranker.js"></script>
