@@ -253,8 +253,15 @@ def answer(
     except Exception:
         tr = None
     state = {"question": q, "documents": [], "generation":"", "iteration":0, "confidence":0.0, "repo": (repo.strip() if repo else None)}
-    res = g.invoke(state, CFG)
-    
+    try:
+        res = g.invoke(state, CFG)
+    except Exception as e:
+        # Return error response with proper JSON instead of HTML
+        import traceback
+        error_msg = str(e)
+        print(f"[ERROR] Graph invocation failed: {error_msg}\n{traceback.format_exc()}")
+        return {"answer": f"Error processing your question: {error_msg}", "event_id": None}
+
     # Log the query and retrieval
     try:
         latency_ms = int((time.time() - start_time) * 1000)
