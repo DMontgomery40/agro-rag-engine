@@ -8,8 +8,8 @@ test('sidepanel should be beside content on desktop viewport', async ({ page }) 
   // Set desktop viewport
   await page.setViewportSize({ width: 1400, height: 900 });
 
-  await page.goto('http://127.0.0.1:8012');
-  await page.waitForLoadState('networkidle');
+  await page.goto('http://127.0.0.1:8012', { waitUntil: 'networkidle' });
+  await page.reload({ waitUntil: 'networkidle' }); // Force reload to get latest HTML
 
   // Get positions of content and sidepanel
   const contentBox = await page.locator('.content').boundingBox();
@@ -17,6 +17,38 @@ test('sidepanel should be beside content on desktop viewport', async ({ page }) 
 
   expect(contentBox).toBeTruthy();
   expect(sidepanelBox).toBeTruthy();
+
+  console.log('Content box:', contentBox);
+  console.log('Sidepanel box:', sidepanelBox);
+
+  // Get computed style of .layout
+  const layoutStyle = await page.locator('.layout').evaluate(el => {
+    const computed = window.getComputedStyle(el);
+    return {
+      display: computed.display,
+      gridTemplateColumns: computed.gridTemplateColumns,
+      width: computed.width
+    };
+  });
+  console.log('Layout computed style:', layoutStyle);
+
+  // Check sidepanel computed style
+  const sidepanelStyle = await page.locator('.sidepanel').evaluate(el => {
+    const computed = window.getComputedStyle(el);
+    return {
+      gridColumn: computed.gridColumn,
+      gridColumnStart: computed.gridColumnStart,
+      gridColumnEnd: computed.gridColumnEnd,
+      width: computed.width
+    };
+  });
+  console.log('Sidepanel computed style:', sidepanelStyle);
+
+  // Check CSS variable
+  const sidepanelWidth = await page.evaluate(() => {
+    return getComputedStyle(document.documentElement).getPropertyValue('--sidepanel-width');
+  });
+  console.log('--sidepanel-width CSS variable:', sidepanelWidth);
 
   // On desktop, sidepanel should be to the RIGHT of content (higher x position)
   // Not below it (same x, higher y)
