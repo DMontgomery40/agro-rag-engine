@@ -178,10 +178,29 @@
                 throw new Error(data.error || 'Failed to start indexing');
             }
         } catch (e) {
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to start indexing', {
+                message: e.message,
+                causes: [
+                    'Backend indexing service not running',
+                    'Repository path is invalid or inaccessible',
+                    'Permission denied for repository directory',
+                    'Vector database (Qdrant) connection failed'
+                ],
+                fixes: [
+                    'Check Infrastructure tab - verify backend service is running',
+                    'Verify repository path exists in Settings > Repositories',
+                    'Check file permissions on repository directory',
+                    'Verify Qdrant is running in Infrastructure tab',
+                    'Check available disk space for indexes'
+                ],
+                links: [
+                    ['Qdrant Vector Database', 'https://qdrant.tech/documentation/concepts/collections/']
+                ]
+            }) : `Failed to start indexing: ${e.message}`;
             if (window.showStatus) {
-                window.showStatus(`Failed to start indexing: ${e.message}`, 'error');
+                window.showStatus(msg, 'error');
             } else {
-                alert(`Error: ${e.message}`);
+                alert(msg);
             }
         } finally {
             // Re-enable buttons
@@ -214,10 +233,28 @@
                 throw new Error(data.error || 'Failed to stop indexing');
             }
         } catch (e) {
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to stop indexing', {
+                message: e.message,
+                causes: [
+                    'Backend indexing service not responding',
+                    'Indexing process already completed',
+                    'Process ID (PID) mismatch or expired',
+                    'Network connection to backend failed'
+                ],
+                fixes: [
+                    'Wait a moment and try again',
+                    'Check if indexing already finished in status panel',
+                    'Restart backend service via Infrastructure tab',
+                    'Refresh the page and check indexing status'
+                ],
+                links: [
+                    ['Qdrant Vector Database', 'https://qdrant.tech/documentation/concepts/collections/']
+                ]
+            }) : `Failed to stop indexing: ${e.message}`;
             if (window.showStatus) {
-                window.showStatus(`Failed to stop indexing: ${e.message}`, 'error');
+                window.showStatus(msg, 'error');
             } else {
-                alert(`Error: ${e.message}`);
+                alert(msg);
             }
         } finally {
             if (btnStop) btnStop.disabled = false;
