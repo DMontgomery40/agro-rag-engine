@@ -2310,6 +2310,8 @@
             </div>
 
             <!-- NEW TAB STRUCTURE - Phase 3 Migration -->
+            <!-- Scrollable wrapper for all tab content -->
+            <div style="flex: 1; overflow-y: auto; overflow-x: hidden;">
             <!-- Tab: Get Started (NEW - will contain onboarding content) -->
             <div id="tab-start" class="tab-content">
             <div class="ob-container">
@@ -5565,11 +5567,12 @@
 
             <!-- Tab: Developer Tools - Integrations -->
 
+            </div> <!-- End scrollable wrapper -->
 
-            <div class="action-buttons" style="padding: 16px 24px; border-top: 1px solid var(--line); margin-top: 24px;">
+            <!-- Apply All Changes button - Fixed footer outside scrollable area -->
+            <div class="action-buttons" style="background: var(--bg); padding: 12px 24px; border-top: 1px solid var(--accent); flex-shrink: 0;">
                 <button id="save-btn">Apply All Changes</button>
             </div>
-        </div>
         </div> <!-- End of .content -->
 
         <!-- Right Sidepanel -->
