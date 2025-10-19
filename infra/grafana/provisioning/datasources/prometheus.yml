@@ -9,3 +9,11 @@ datasources:
     editable: true
     jsonData:
       timeInterval: 5s
+  - name: Infinity
+    type: yesoreyeram-infinity-datasource
+    access: proxy
+    uid: infinity
+    isDefault: false
+    editable: true
+    jsonData:
+      tlsSkipVerify: true

@@ -2971,11 +2971,25 @@
                                     <span class="tooltip-wrap">
                                         <span class="help-icon">?</span>
                                         <div class="tooltip-bubble">
-                                            <span class="tt-title">Multi-Query Expansion</span>
-                                            Number of query variations to generate for better recall. Each variant searches independently, results are merged and reranked. Higher = better recall but more API calls. Default: 2. Range: 1-6.
+                                            <span class="tt-title">Query Expansion via LLM Rewriting - Improved Recall</span>
+                                            Number of query variations to automatically generate using the LLM. Each variation searches independently via hybrid search, results are merged and reranked together. Higher = better chance of finding relevant code but increases latency and API costs.
+                                            <br><br>
+                                            <strong>Example:</strong> Query "how do we handle payments?" might expand to:
+                                            <br>- "payment processing implementation"
+                                            <br>- "stripe integration"
+                                            <br>- "checkout flow"
+                                            <br><br>
+                                            <strong>Tuning:</strong> 1-2 for speed, 3-4 for balanced, 5-6 for thorough but expensive searches.
+                                            <br>Default: 2. Range: 1-6.
+                                            <div class="tt-links">
+                                                <a href="https://arxiv.org/abs/2305.14283" target="_blank" rel="noopener">Multi-Query RAG Paper</a>
+                                                <a href="https://python.langchain.com/docs/how_to/MultiQueryRetriever/" target="_blank" rel="noopener">LangChain Implementation</a>
+                                                <a href="/docs/RETRIEVAL.md#multi-query" target="_blank" rel="noopener">Multi-Query Tuning Guide</a>
+                                            </div>
                                             <div class="tt-badges">
                                                 <span class="tt-badge info">Better Recall</span>
                                                 <span class="tt-badge warn">Higher Cost</span>
+                                                <span class="tt-badge warn">Higher Latency</span>
                                             </div>
                                         </div>
                                     </span>
@@ -3004,8 +3018,18 @@
                                     <span class="tooltip-wrap">
                                         <span class="help-icon">?</span>
                                         <div class="tooltip-bubble">
-                                            <span class="tt-title">Semantic Synonym Expansion</span>
-                                            Expands queries with semantic synonyms to improve retrieval. Example: "auth" → "auth authentication oauth jwt bearer". Defined in data/semantic_synonyms.json. Default: ON.
+                                            <span class="tt-title">Query Expansion via Synonym Replacement - Domain Terminology</span>
+                                            Expands user queries with hand-curated semantic synonyms to handle domain-specific terminology and abbreviations. Example: "auth" expands to "auth authentication oauth jwt bearer token login".
+                                            <br><br>
+                                            <strong>Purpose:</strong> Handles acronyms and domain synonyms that LLM rewriting might miss. E.g., "JWT" might not rewrite to "json web token".
+                                            <br><strong>Configuration:</strong> Edit data/semantic_synonyms.json to add domain-specific synonym mappings for your codebase.
+                                            <br><strong>Note:</strong> Different from Multi-Query Rewrites - this uses pre-defined synonyms, not LLM-generated variations.
+                                            <br>Default: ON (enabled).
+                                            <div class="tt-links">
+                                                <a href="/files/data/semantic_synonyms.json" target="_blank" rel="noopener">Synonym Config File</a>
+                                                <a href="/docs/RETRIEVAL.md#synonyms" target="_blank" rel="noopener">Synonym Setup Guide</a>
+                                                <a href="/docs/DOMAIN_CUSTOMIZATION.md" target="_blank" rel="noopener">Domain Terminology</a>
+                                            </div>
                                             <div class="tt-badges">
                                                 <span class="tt-badge info">Better Recall</span>
                                                 <span class="tt-badge">No Re-index</span>
@@ -3145,10 +3169,20 @@
                                     <span class="tooltip-wrap">
                                         <span class="help-icon">?</span>
                                         <div class="tooltip-bubble">
-                                            <span class="tt-title">Reciprocal Rank Fusion (RRF)</span>
-                                            Controls how RRF weights sparse (BM25) vs dense (vector) results. Lower values = stronger fusion effect. Formula: score += 1/(K + rank). Default: 60. Range: 10-100.
+                                            <span class="tt-title">Reciprocal Rank Fusion (RRF) - Hybrid Search Weighting</span>
+                                            Controls how hybrid search combines BM25 (keyword) and vector (semantic) results using the RRF algorithm. Formula: score += 1/(K + rank). Lower K = BM25 and vector have more equal weight. Higher K = only top results matter equally.
+                                            <br><br>
+                                            <strong>Examples:</strong> K=30 (favor top results, aggressive fusion), K=60 (balanced, recommended), K=100 (flatten ranking, lenient fusion)
+                                            <br><strong>Tuning:</strong> Lower if keywords and semantics compete; higher if you want diversity.
+                                            <br>Default: 60. Range: 10-100.
+                                            <div class="tt-links">
+                                                <a href="https://en.wikipedia.org/wiki/Reciprocal_rank_fusion" target="_blank" rel="noopener">RRF Algorithm</a>
+                                                <a href="https://www.pinecone.io/learn/hybrid-search-intro/" target="_blank" rel="noopener">Hybrid Search Explained</a>
+                                                <a href="/docs/RETRIEVAL.md#rrf-fusion" target="_blank" rel="noopener">RRF Tuning Guide</a>
+                                            </div>
                                             <div class="tt-badges">
                                                 <span class="tt-badge info">Affects Fusion</span>
+                                                <span class="tt-badge">No Re-index</span>
                                             </div>
                                         </div>
                                     </span>
@@ -3161,10 +3195,21 @@
                                     <span class="tooltip-wrap">
                                         <span class="help-icon">?</span>
                                         <div class="tooltip-bubble">
-                                            <span class="tt-title">Card Matching Bonus</span>
-                                            Score boost applied to chunks matched via card-based retrieval. Cards are high-level summaries used for "where is X done?" queries. Default: 0.08. Range: 0.0-0.2.
+                                            <span class="tt-title">Card Semantic Summary Bonus - Intent-Based Retrieval</span>
+                                            Score boost applied to chunks when matching against AI-generated code card summaries (not raw code). Cards are semantic summaries of code modules/features created by ENRICH_CODE_CHUNKS. Enables "where is auth handled?" to find auth modules even if code contains different keywords.
+                                            <br><br>
+                                            <strong>Use Case:</strong> Improving conceptual queries by matching against high-level summaries. Raises the score when a card matches, prioritizing that chunk.
+                                            <br><strong>Tuning:</strong> Increase (0.12-0.15) if cards are finding relevant code; decrease (0.04-0.06) if cards cause noise.
+                                            <br>Default: 0.08. Range: 0.0-0.2.
+                                            <div class="tt-links">
+                                                <a href="/docs/CARDS.md" target="_blank" rel="noopener">Cards Feature</a>
+                                                <a href="/files/indexer/build_cards.py" target="_blank" rel="noopener">Cards Builder Source</a>
+                                                <a href="/docs/RETRIEVAL.md#card-scoring" target="_blank" rel="noopener">Card Scoring Logic</a>
+                                            </div>
                                             <div class="tt-badges">
                                                 <span class="tt-badge info">Improves Intent</span>
+                                                <span class="tt-badge">Requires ENRICH_CODE_CHUNKS</span>
+                                                <span class="tt-badge">No Re-index</span>
                                             </div>
                                         </div>
                                     </span>
@@ -3180,10 +3225,19 @@
                                     <span class="tooltip-wrap">
                                         <span class="help-icon">?</span>
                                         <div class="tooltip-bubble">
-                                            <span class="tt-title">Filename Exact Match Multiplier</span>
-                                            Multiplier applied when query terms match the filename exactly. For example, query "auth.py" matching file "auth.py". Boosts precision for file-specific queries. Default: 1.5. Range: 1.0-3.0.
+                                            <span class="tt-title">Filename Exact Match Score Multiplier - File-Specific Queries</span>
+                                            Score multiplier (not additive) applied when query terms match the filename EXACTLY. Example: query "auth.py" matching file "auth.py" gets multiplied by 1.5x.
+                                            <br><br>
+                                            <strong>Purpose:</strong> Users often ask "find file X.py" - this boost rewards exact filename matches, improving precision for file-specific questions.
+                                            <br><strong>Tuning:</strong> Increase (2.0+) to strongly prefer exact filename matches; decrease (1.2) if boost causes over-matching.
+                                            <br>Default: 1.5. Range: 1.0-3.0.
+                                            <div class="tt-links">
+                                                <a href="/docs/RETRIEVAL.md#path-scoring" target="_blank" rel="noopener">Path Scoring Rules</a>
+                                                <a href="/docs/RETRIEVAL.md#tuning-multipliers" target="_blank" rel="noopener">Tuning Score Multipliers</a>
+                                            </div>
                                             <div class="tt-badges">
                                                 <span class="tt-badge info">Precision Boost</span>
+                                                <span class="tt-badge">No Re-index</span>
                                             </div>
                                         </div>
                                     </span>
@@ -3196,10 +3250,20 @@
                                     <span class="tooltip-wrap">
                                         <span class="help-icon">?</span>
                                         <div class="tooltip-bubble">
-                                            <span class="tt-title">Path Component Match Multiplier</span>
-                                            Multiplier applied when query terms match any part of the file path (directory names, partial filename). For example, query "auth" matching "src/auth/oauth.py". Default: 1.2. Range: 1.0-2.0.
+                                            <span class="tt-title">Path Component Partial Match Score Multiplier - Directory Path Bonus</span>
+                                            Score multiplier applied when query terms match ANY component of the file path (directories or partial filename). Example: query "auth" matching "src/auth/oauth.py" or "routes/authentication.ts" gets multiplied by 1.2x.
+                                            <br><br>
+                                            <strong>Purpose:</strong> Improves recall by rewarding hits in relevant directories. Users ask "where is auth handled?" and this finds files in "auth/" or "authentication/" dirs.
+                                            <br><strong>Tuning:</strong> Increase (1.5+) for stronger directory matching; decrease (1.05) if path matches create noise.
+                                            <br><strong>Difference from Exact:</strong> Partial matches ANY path component (dir name, filename prefix); Exact requires full filename match.
+                                            <br>Default: 1.2. Range: 1.0-2.0.
+                                            <div class="tt-links">
+                                                <a href="/docs/RETRIEVAL.md#path-scoring" target="_blank" rel="noopener">Path Scoring Rules</a>
+                                                <a href="/docs/RETRIEVAL.md#precision-vs-recall" target="_blank" rel="noopener">Precision vs Recall Tuning</a>
+                                            </div>
                                             <div class="tt-badges">
                                                 <span class="tt-badge info">Recall Boost</span>
+                                                <span class="tt-badge">No Re-index</span>
                                             </div>
                                         </div>
                                     </span>

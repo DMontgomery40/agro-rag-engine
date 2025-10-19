@@ -616,3 +616,4 @@
 
     console.log('[Navigation] Module loaded - use window.Navigation for navigation API');
 })();
+
