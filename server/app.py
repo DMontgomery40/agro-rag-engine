@@ -666,6 +666,9 @@ def api_env_reload() -> Dict[str, Any]:
     try:
         from dotenv import load_dotenv as _ld
         _ld(override=False)
+        # Also clear repos.json cache
+        from common.config_loader import clear_cache
+        clear_cache()
     except Exception:
         pass
     return {"ok": True}
@@ -1861,9 +1864,10 @@ def cards_build_logs() -> Dict[str, Any]:
 # ---------------- Embedded Editor ----------------
 @app.get("/health/editor")
 def editor_health() -> Dict[str, Any]:
-    """Check embedded editor health"""
+    """Check embedded editor health with full readiness verification"""
     try:
         import requests
+        import time
 
         status_path = Path(__file__).parent.parent / "out" / "editor" / "status.json"
 
@@ -1876,32 +1880,81 @@ def editor_health() -> Dict[str, Any]:
         if not status.get("enabled", False):
             return {"ok": False, "reason": status.get("reason", "disabled"), "enabled": False}
 
-        # Probe the editor URL
+        # Probe the editor URL with multiple readiness checks
         url = status.get("url", "")
+        if not url:
+            return {"ok": False, "error": "No URL in status", "enabled": True}
+
         try:
-            resp = requests.get(url, timeout=3, allow_redirects=True)
-            # Treat 2xx/3xx as healthy — code servers often redirect
-            if 200 <= resp.status_code < 400:
-                return {
-                    "ok": True,
-                    "enabled": True,
-                    "port": status.get("port"),
-                    "url": url,
-                    "started_at": status.get("started_at")
-                }
-            else:
+            # Check 1: Basic HTTP connectivity (homepage redirect is OK)
+            resp = requests.get(url, timeout=3, allow_redirects=False, verify=False)
+            if resp.status_code not in [200, 301, 302, 307, 308]:
                 return {
                     "ok": False,
                     "error": f"HTTP {resp.status_code}",
                     "enabled": True,
-                    "url": url
+                    "url": url,
+                    "readiness_stage": "http_connection"
                 }
+
+            # Check 2: Try GET to verify service readiness after redirect
+            # VS Code Server redirects to /?folder=/workspace, which returns 405 for HEAD
+            resp = requests.get(url, timeout=3, allow_redirects=True, verify=False)
+            if not (200 <= resp.status_code < 400):
+                return {
+                    "ok": False,
+                    "error": f"Service not ready (HTTP {resp.status_code})",
+                    "enabled": True,
+                    "url": url,
+                    "readiness_stage": "service_probe"
+                }
+
+            # Check 3: Small delay to allow for startup race conditions
+            # If we get here, server is responding but might still be initializing
+            started_at = status.get("started_at")
+            if started_at:
+                try:
+                    import datetime
+                    start_time = datetime.datetime.fromisoformat(started_at)
+                    uptime = (datetime.datetime.now() - start_time).total_seconds()
+                    # If service started less than 2 seconds ago, it may still be initializing
+                    if uptime < 2:
+                        return {
+                            "ok": False,
+                            "error": "Service still initializing",
+                            "enabled": True,
+                            "url": url,
+                            "readiness_stage": "startup_delay",
+                            "uptime_seconds": round(uptime, 2)
+                        }
+                except Exception:
+                    pass
+
+            # All checks passed
+            return {
+                "ok": True,
+                "enabled": True,
+                "port": status.get("port"),
+                "url": url,
+                "started_at": status.get("started_at"),
+                "readiness_stage": "ready"
+            }
+
+        except requests.Timeout:
+            return {
+                "ok": False,
+                "error": "Service timeout (still starting?)",
+                "enabled": True,
+                "url": url,
+                "readiness_stage": "timeout"
+            }
         except requests.RequestException as e:
             return {
                 "ok": False,
                 "error": f"Connection failed: {str(e)}",
                 "enabled": True,
-                "url": url
+                "url": url,
+                "readiness_stage": "connection_failed"
             }
     except Exception as e:
         return {"ok": False, "error": str(e), "enabled": False}
@@ -1938,6 +1991,120 @@ def editor_restart() -> Dict[str, Any]:
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
+# -------- Onboarding State Management --------
+def _get_onboarding_state_path() -> Path:
+    """Get path to onboarding state file"""
+    state_dir = Path(__file__).parent.parent / "out" / "onboarding"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    return state_dir / "state.json"
+
+def _read_onboarding_state() -> Dict[str, Any]:
+    """Read current onboarding state from server"""
+    try:
+        path = _get_onboarding_state_path()
+        if path.exists():
+            return json.loads(path.read_text())
+    except Exception as e:
+        print(f"[Onboarding] Failed to read state: {e}")
+    return {"completed": False, "completed_at": None}
+
+def _write_onboarding_state(state: Dict[str, Any]) -> bool:
+    """Persist onboarding state to server"""
+    try:
+        path = _get_onboarding_state_path()
+        path.write_text(json.dumps(state, indent=2))
+        return True
+    except Exception as e:
+        print(f"[Onboarding] Failed to write state: {e}")
+        return False
+
+@app.get("/api/onboarding/state")
+def get_onboarding_state() -> Dict[str, Any]:
+    """Get current onboarding completion state"""
+    state = _read_onboarding_state()
+    return {
+        "ok": True,
+        "completed": state.get("completed", False),
+        "completed_at": state.get("completed_at"),
+        "step": state.get("step", 1)
+    }
+
+@app.post("/api/onboarding/complete")
+def mark_onboarding_complete() -> Dict[str, Any]:
+    """Mark onboarding as completed"""
+    from datetime import datetime
+    state = _read_onboarding_state()
+    state["completed"] = True
+    state["completed_at"] = datetime.now().isoformat()
+    state["step"] = 5
+    if _write_onboarding_state(state):
+        return {"ok": True, "message": "Onboarding marked as complete"}
+    else:
+        return {"ok": False, "error": "Failed to persist state"}
+
+@app.post("/api/onboarding/reset")
+def reset_onboarding() -> Dict[str, Any]:
+    """Reset onboarding (for manual retrigger)"""
+    state = {"completed": False, "completed_at": None, "step": 1}
+    if _write_onboarding_state(state):
+        return {"ok": True, "message": "Onboarding reset"}
+    else:
+        return {"ok": False, "error": "Failed to persist state"}
+
+# -------- Editor Settings Persistence --------
+def _get_editor_settings_path() -> Path:
+    """Get path to editor settings file"""
+    settings_dir = Path(__file__).parent.parent / "out" / "editor"
+    settings_dir.mkdir(parents=True, exist_ok=True)
+    return settings_dir / "settings.json"
+
+def _read_editor_settings() -> Dict[str, Any]:
+    """Read editor settings from server"""
+    try:
+        path = _get_editor_settings_path()
+        if path.exists():
+            return json.loads(path.read_text())
+    except Exception as e:
+        print(f"[Editor Settings] Failed to read settings: {e}")
+    return {"port": 4440, "enabled": True}
+
+def _write_editor_settings(settings: Dict[str, Any]) -> bool:
+    """Persist editor settings to server"""
+    try:
+        path = _get_editor_settings_path()
+        path.write_text(json.dumps(settings, indent=2))
+        return True
+    except Exception as e:
+        print(f"[Editor Settings] Failed to write settings: {e}")
+        return False
+
+@app.get("/api/editor/settings")
+def get_editor_settings() -> Dict[str, Any]:
+    """Get editor settings"""
+    settings = _read_editor_settings()
+    return {
+        "ok": True,
+        "port": settings.get("port", 4440),
+        "enabled": settings.get("enabled", True),
+        "host": settings.get("host", "127.0.0.1")
+    }
+
+@app.post("/api/editor/settings")
+def update_editor_settings(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Update and persist editor settings"""
+    settings = _read_editor_settings()
+    if "port" in payload:
+        settings["port"] = int(payload["port"])
+    if "enabled" in payload:
+        settings["enabled"] = bool(payload["enabled"])
+    if "host" in payload:
+        settings["host"] = str(payload["host"])
+
+    if _write_editor_settings(settings):
+        return {"ok": True, "message": "Settings saved"}
+    else:
+        return {"ok": False, "error": "Failed to persist settings"}
+
 # -------- Embedded Editor Reverse Proxy (HTTP only) --------
 async def _editor_status() -> Dict[str, Any]:
     try:
@@ -1966,13 +2133,70 @@ def editor_root() -> Response:
     # normalize to trailing slash for relative asset links
     return RedirectResponse(url="/editor/")
 
+@app.websocket("/editor/{path:path}")
+async def editor_websocket_proxy(websocket: WebSocket, path: str):
+    """WebSocket proxy for VS Code server."""
+    import websockets
+    import asyncio
+
+    status = await _editor_status()
+    base = str(status.get("url") or "").rstrip("/")
+    if not base:
+        await websocket.close(code=1011, reason="No editor URL configured")
+        return
+
+    # Convert http:// to ws://
+    ws_base = base.replace("http://", "ws://").replace("https://", "wss://")
+    target = f"{ws_base}/{path}"
+
+    # Add query parameters
+    if websocket.query_params:
+        query = "&".join(f"{k}={v}" for k, v in websocket.query_params.items())
+        target = f"{target}?{query}"
+
+    await websocket.accept()
+
+    try:
+        # Connect to upstream WebSocket
+        async with websockets.connect(target) as upstream:
+            # Bidirectional proxy
+            async def forward_client_to_upstream():
+                try:
+                    while True:
+                        data = await websocket.receive()
+                        if "text" in data:
+                            await upstream.send(data["text"])
+                        elif "bytes" in data:
+                            await upstream.send(data["bytes"])
+                except Exception:
+                    pass
+
+            async def forward_upstream_to_client():
+                try:
+                    async for message in upstream:
+                        if isinstance(message, str):
+                            await websocket.send_text(message)
+                        else:
+                            await websocket.send_bytes(message)
+                except Exception:
+                    pass
+
+            # Run both directions concurrently
+            await asyncio.gather(
+                forward_client_to_upstream(),
+                forward_upstream_to_client()
+            )
+    except Exception as e:
+        print(f"[WebSocket Proxy] Error: {e}")
+    finally:
+        await websocket.close()
+
 @app.api_route("/editor/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])
 async def editor_proxy(path: str, request: Request):
     """Same-origin reverse proxy for the embedded editor.
 
     This improves iframe reliability by stripping frame-blocking headers.
-    (WebSocket proxying is not included here; the editor still works for
-     most interactions. "Open in Window" uses the direct URL.)
+    WebSocket connections are handled by the separate WebSocket route above.
     """
     status = await _editor_status()
     if not status.get("enabled"):

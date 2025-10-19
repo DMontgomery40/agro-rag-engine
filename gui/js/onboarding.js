@@ -45,6 +45,8 @@
 
   function nextOnboard(){
     if (onboardingState.step === onboardingState.maxStep){
+      // Save completion state to server before navigating away
+      saveOnboardingCompletion();
       // Navigate to start tab using new Navigation API
       if (window.Navigation && window.Navigation.navigateTo) {
         window.Navigation.navigateTo('start');
@@ -162,8 +164,40 @@
     finally{ if(btn){btn.disabled=false;btn.textContent='Ask';btn.style.opacity='1';} }
   }
 
+  async function checkOnboardingCompletion(){
+    try {
+      const resp = await fetch(api('/api/onboarding/state'));
+      const data = await resp.json();
+      if (data.ok && data.completed) {
+        console.log('[onboarding.js] Onboarding already completed, skipping wizard');
+        // Navigate away from onboarding
+        if (window.Navigation && window.Navigation.navigateTo) {
+          window.Navigation.navigateTo('start');
+        } else if (window.Tabs && window.Tabs.switchTab) {
+          window.Tabs.switchTab('start');
+        }
+        return true;
+      }
+    } catch (e) {
+      console.warn('[onboarding.js] Failed to check onboarding state:', e);
+    }
+    return false;
+  }
+
+  async function saveOnboardingCompletion(){
+    try {
+      const resp = await fetch(api('/api/onboarding/complete'), { method: 'POST' });
+      const data = await resp.json();
+      if (data.ok) {
+        console.log('[onboarding.js] Onboarding completion saved to server');
+      }
+    } catch (e) {
+      console.error('[onboarding.js] Failed to save onboarding completion:', e);
+    }
+  }
+
   function initOnboarding(){
-    try{ const savedStep = localStorage.getItem('onboarding_step'); const savedState = localStorage.getItem('onboarding_state'); if(savedStep){ const step=parseInt(savedStep,10); if(step>=1 && step<=onboardingState.maxStep){ onboardingState.step = step; } } if(savedState){ const parsed=JSON.parse(savedState); Object.assign(onboardingState, parsed); } }catch{}
+    try{ const savedStep = localStorage.getItem('onboarding_step'); if(savedStep){ const step=parseInt(savedStep,10); if(step>=1 && step<=onboardingState.maxStep){ onboardingState.step = step; } } }catch{}
     $$('.ob-card').forEach(card=>{ card.addEventListener('click', ()=>{ const choice = card.getAttribute('data-choice'); onboardingState.projectDraft.sourceType = choice; nextOnboard(); }); });
     $$('.ob-mode-tab').forEach(tab=>{ tab.addEventListener('click', ()=>{ const mode = tab.getAttribute('data-mode'); onboardingState.projectDraft.sourceType = mode; $$('.ob-mode-tab').forEach(t=>t.classList.remove('active')); tab.classList.add('active'); $$('.ob-mode-content').forEach(c=>c.classList.remove('active')); const tgt=$(`#onboard-${mode}-mode`); if(tgt) tgt.classList.add('active'); }); });
     const folderBtn=$('#onboard-folder-btn'), folderPicker=$('#onboard-folder-picker'), folderDisplay=$('#onboard-folder-display'), folderPath=$('#onboard-folder-path');
@@ -183,6 +217,6 @@
 
   function ensureOnboardingInit(){ if (!onboardingState._initialized){ initOnboarding(); onboardingState._initialized = true; } }
 
-  window.Onboarding = { ensureOnboardingInit, initOnboarding };
+  window.Onboarding = { ensureOnboardingInit, initOnboarding, checkOnboardingCompletion, saveOnboardingCompletion };
 })();
 

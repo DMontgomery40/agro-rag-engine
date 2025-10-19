@@ -222,7 +222,16 @@
     function navigateTo(tabId, subtabId = null) {
         const resolvedTab = resolveTabId(tabId);
         const previousTab = navState.currentTab;
-        
+
+        // Call unmount on previous view
+        if (previousTab && previousTab !== resolvedTab && window.NavigationViews && window.NavigationViews[previousTab]) {
+            const previousView = window.NavigationViews[previousTab];
+            if (previousView.unmount) {
+                console.log(`[Navigation] Unmounting view: ${previousTab}`);
+                previousView.unmount();
+            }
+        }
+
         // Update state
         navState.currentTab = resolvedTab;
         navState.currentSubtab = subtabId;
@@ -238,14 +247,14 @@
         // Emit events for compatibility
         if (events) {
             // New event
-            events.emit('nav:tab-change', { 
-                tabId: resolvedTab, 
+            events.emit('nav:tab-change', {
+                tabId: resolvedTab,
                 previousTab,
-                subtabId 
+                subtabId
             });
 
             // Old event for compatibility
-            events.emit('tab-switched', { 
+            events.emit('tab-switched', {
                 tab: resolvedTab,
                 from: previousTab
             });
@@ -269,6 +278,15 @@
             }
         } catch (e) {
             // Ignore localStorage errors
+        }
+
+        // Call mount on new view
+        if (window.NavigationViews && window.NavigationViews[resolvedTab]) {
+            const currentView = window.NavigationViews[resolvedTab];
+            if (currentView.mount) {
+                console.log(`[Navigation] Mounting view: ${resolvedTab}`);
+                currentView.mount();
+            }
         }
 
         console.log(`[Navigation] Navigated to: ${resolvedTab}${subtabId ? '/' + subtabId : ''}`);

@@ -41,44 +41,58 @@ from .synonym_expander import expand_query_with_synonyms, get_synonym_variants
 
 
 def _classify_query(q: str) -> str:
+    """Classify query intent for AGRO RAG engine."""
     ql = (q or '').lower()
-    if any(k in ql for k in ['ui', 'react', 'component', 'tsx', 'page', 'frontend', 'render', 'css']):
-        return 'ui'
-    if any(k in ql for k in ['notification', 'pushover', 'apprise', 'hubspot', 'provider', 'integration', 'adapter', 'webhook']):
-        return 'integration'
-    if any(k in ql for k in ['diagnostic', 'health', 'event log', 'phi', 'mask', 'hipaa', 'middleware', 'auth', 'token', 'oauth', 'hmac']):
-        return 'server'
-    if any(k in ql for k in ['sdk', 'client library', 'python sdk', 'node sdk']):
-        return 'sdk'
-    if any(k in ql for k in ['infra', 'asterisk', 'sip', 't.38', 'ami', 'freeswitch', 'egress', 'cloudflared']):
+    
+    # GUI/Frontend queries
+    if any(k in ql for k in ['gui', 'ui', 'dashboard', 'button', 'component', 'frontend', 'css', 'html', 'interface']):
+        return 'gui'
+    
+    # Retrieval/Search queries
+    if any(k in ql for k in ['search', 'retrieval', 'bm25', 'vector', 'qdrant', 'embedding', 'rerank', 'hybrid']):
+        return 'retrieval'
+    
+    # Indexing queries
+    if any(k in ql for k in ['index', 'indexer', 'chunking', 'ast', 'parse', 'chunk']):
+        return 'indexer'
+    
+    # Evaluation/Testing queries
+    if any(k in ql for k in ['eval', 'test', 'golden', 'evaluation', 'metric', 'performance']):
+        return 'eval'
+    
+    # Infrastructure/Docker queries  
+    if any(k in ql for k in ['docker', 'compose', 'infra', 'prometheus', 'grafana', 'redis']):
         return 'infra'
+    
+    # Default to server (FastAPI, LangGraph, etc.)
     return 'server'
 
 
+_LAYER_BONUSES_CACHE = None
+
 def _project_layer_bonus(layer: str, intent: str) -> float:
+    """Load layer bonuses from repos.json (configurable via GUI)."""
+    global _LAYER_BONUSES_CACHE
+    
+    # Load bonuses from repos.json
+    if _LAYER_BONUSES_CACHE is None:
+        try:
+            from common.config_loader import layer_bonuses
+            _LAYER_BONUSES_CACHE = layer_bonuses(REPO)
+        except Exception:
+            # Fallback to project-accurate defaults if config loading fails
+            _LAYER_BONUSES_CACHE = {
+                'gui':       {'gui': 0.15, 'server': 0.05},
+                'retrieval': {'retrieval': 0.15, 'server': 0.05},
+                'indexer':   {'indexer': 0.15, 'retrieval': 0.08, 'common': 0.05},
+                'eval':      {'eval': 0.15, 'tests': 0.10, 'retrieval': 0.05},
+                'infra':     {'infra': 0.15, 'scripts': 0.08},
+                'server':    {'server': 0.15, 'retrieval': 0.05, 'common': 0.05},
+            }
+    
     layer_lower = (layer or '').lower()
     intent_lower = (intent or 'server').lower()
-    table = {
-        'server': {'kernel': 0.10, 'plugin': 0.04, 'ui': 0.00, 'docs': 0.00, 'tests': 0.00, 'infra': 0.02},
-        'integration': {'integration': 0.12, 'kernel': 0.04, 'ui': 0.00, 'docs': 0.00, 'tests': 0.00, 'infra': 0.00},
-        'ui': {'ui': 0.12, 'docs': 0.06, 'kernel': 0.02, 'plugin': 0.02, 'tests': 0.00, 'infra': 0.00},
-        'sdk': {'kernel': 0.04, 'docs': 0.02},
-        'infra': {'infra': 0.12, 'kernel': 0.04}
-    }
-    return table.get(intent_lower, {}).get(layer_lower, 0.0)
-
-
-def _project_layer_bonus(layer: str, intent: str) -> float:  # override for other repo profile
-    layer_lower = (layer or '').lower()
-    intent_lower = (intent or 'server').lower()
-    table = {
-        'server': {'server': 0.10, 'integration': 0.06, 'fax': 0.30, 'admin console': 0.10, 'sdk': 0.00, 'infra': 0.00, 'docs': 0.02},
-        'integration': {'provider': 0.12, 'traits': 0.10, 'server': 0.06, 'ui': 0.00, 'sdk': 0.00, 'infra': 0.02, 'docs': 0.00},
-        'ui': {'ui': 0.12, 'docs': 0.06, 'server': 0.02, 'hipaa': 0.20},
-        'sdk': {'sdk': 0.12, 'server': 0.04, 'docs': 0.02},
-        'infra': {'infra': 0.12, 'server': 0.04, 'provider': 0.04}
-    }
-    return table.get(intent_lower, {}).get(layer_lower, 0.0)
+    return _LAYER_BONUSES_CACHE.get(intent_lower, {}).get(layer_lower, 0.0)
 
 
 def _provider_plugin_hint(fp: str, code: str) -> float:
@@ -107,11 +121,17 @@ def _load_discriminative_keywords(repo: str) -> List[str]:
         return _DISCRIMINATIVE_KEYWORDS
     
     try:
-        from path_config import data_dir
-        # Try repo-specific first
-        kw_file = data_dir() / f"discriminative_keywords_{repo}.json"
-        if not kw_file.exists():
-            kw_file = data_dir() / "discriminative_keywords.json"
+        # Try root directory first (where generate_smart_keywords.py saves them)
+        from pathlib import Path
+        root_file = Path(__file__).parent.parent / "discriminative_keywords.json"
+        if root_file.exists():
+            kw_file = root_file
+        else:
+            # Fallback to data directory
+            from path_config import data_dir
+            kw_file = data_dir() / f"discriminative_keywords_{repo}.json"
+            if not kw_file.exists():
+                kw_file = data_dir() / "discriminative_keywords.json"
         
         if kw_file.exists():
             data = json.loads(kw_file.read_text())
@@ -138,23 +158,16 @@ def _load_discriminative_keywords(repo: str) -> List[str]:
     return _DISCRIMINATIVE_KEYWORDS
 
 def _feature_bonus(query: str, fp: str, code: str) -> float:
-    """Apply discriminative keyword boosting."""
+    """Apply feature-based boosting."""
     ql = (query or '').lower()
     fp = (fp or '').lower()
     code = (code or '').lower()
     bumps = 0.0
     
-    # Load discriminative keywords
-    keywords = _load_discriminative_keywords(REPO)
-    
-    # Check if query contains discriminative keywords
-    query_keywords = [k for k in keywords if k.lower() in ql]
-    
-    # Boost if code/filepath contains query's discriminative keywords
-    for kw in query_keywords:
-        kw_lower = kw.lower()
-        if kw_lower in code or kw_lower in fp:
-            bumps += 0.08  # Boost per matching discriminative keyword
+    # DISABLED: Discriminative keywords are boosting wrong files (test infrastructure)
+    # TODO: Re-generate discriminative keywords excluding test/config terms
+    # keywords = _load_discriminative_keywords(REPO)
+    # ... discriminative keyword boosting ...
     
     # Legacy hardcoded boosts (keep for backward compat)
     if any(k in ql for k in ['diagnostic', 'health', 'event log', 'phi', 'hipaa']):
@@ -504,36 +517,39 @@ def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final
     except Exception:
         pass
 
+    # DEBUG: What does RRF return?
+    print(f"  [DEBUG] After RRF, top 5:")
+    for i, d in enumerate(docs[:5], 1):
+        print(f"    {i}. {d['file_path'].split('/')[-1]} ({d.get('language')})")
+    
     # Detect implementation queries BEFORE reranking
     q_lower = query.lower()
     wants_code = any(k in q_lower for k in ['implementation', 'where is', 'how does', 'function', 'class', 'method', 'api', 'code'])
     
-    # If query wants code, ensure code files are prioritized in rerank candidates
-    if wants_code:
-        # Split into code vs non-code
-        code_docs = [d for d in docs if d.get('language', '').lower() in ('python', 'javascript', 'typescript', 'go', 'rust', 'java', 'cpp', 'c', 'php', 'ruby')]
-        other_docs = [d for d in docs if d not in code_docs]
-        # Take top code files + fill rest with others, but ensure we send more candidates to reranker
-        docs = code_docs[:min(50, len(code_docs))] + other_docs[:max(25, final_k)]
+    # DISABLED: This reordering is causing problems - code files in wrong order
+    # if wants_code:
+    #     code_docs = [d for d in docs if d.get('language', '').lower() in ('python', 'javascript', 'typescript', 'go', 'rust', 'java', 'cpp', 'c', 'php', 'ruby')]
+    #     other_docs = [d for d in docs if d not in code_docs]
+    #     docs = code_docs[:min(50, len(code_docs))] + other_docs[:max(25, final_k)]
     
     # SPAN: Cross-Encoder Reranking
     # Skip local reranking if Cohere will be used in search_routed_multi()
     rerank_backend = (os.getenv('RERANK_BACKEND', 'local') or 'local').lower()
     skip_local_rerank = (rerank_backend == 'cohere')  # Cohere will rerank later
     
-    if skip_local_rerank:
-        # Just return docs without reranking - Cohere will do it in search_routed_multi()
-        docs = docs[:final_k]
-    elif _tracer:
-        with _tracer.start_as_current_span("agro.cross_encoder_rerank", attributes={
-            "candidates_count": len(docs),
-            "top_k": final_k
-        }) as span:
+    if not skip_local_rerank:
+        # Apply local cross-encoder reranking
+        if _tracer:
+            with _tracer.start_as_current_span("agro.cross_encoder_rerank", attributes={
+                "candidates_count": len(docs),
+                "top_k": final_k
+            }) as span:
+                docs = ce_rerank(query, docs, top_k=final_k, trace=trace)
+                span.set_attribute("reranked_count", len(docs))
+        else:
             docs = ce_rerank(query, docs, top_k=final_k, trace=trace)
-            span.set_attribute("reranked_count", len(docs))
-    else:
-        docs = ce_rerank(query, docs, top_k=final_k, trace=trace)
 
+    # Apply all scoring bonuses (CRITICAL: Must happen regardless of reranker backend)
     intent = _classify_query(query)
     
     for d in docs:
@@ -563,7 +579,11 @@ def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final
         score += _origin_bonus(d.get('origin', ''), os.getenv('VENDOR_MODE', VENDOR_MODE))
         score += _feature_bonus(query, fp, d.get('code', '') or '')
         d['rerank_score'] = score
+    
+    # Re-sort after applying all bonuses
     docs.sort(key=lambda x: x.get('rerank_score', 0.0), reverse=True)
+    
+    # NOW return top-k (bonuses have been applied)
     return docs[:final_k]
 
 
