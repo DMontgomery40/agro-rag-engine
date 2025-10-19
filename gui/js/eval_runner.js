@@ -30,7 +30,27 @@ async function runEvaluation() {
         }
     } catch (error) {
         console.error('Failed to start evaluation:', error);
-        alert('Failed to start evaluation: ' + error.message);
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to start evaluation', {
+            message: error.message,
+            causes: [
+                'No test dataset available to evaluate',
+                'Backend evaluation service not running',
+                'Insufficient API quota (LLM provider)',
+                'RAG database or indexes are missing',
+                'LLM model not configured properly'
+            ],
+            fixes: [
+                'Create a test dataset in Data > Test Sets first',
+                'Check Infrastructure tab - verify backend is running',
+                'Verify API credentials and quota in Settings',
+                'Run Data > Indexing to build vector indexes',
+                'Configure LLM model in Settings > API Configuration'
+            ],
+            links: [
+                ['Qdrant Vector Database', 'https://qdrant.tech/documentation/concepts/collections/']
+            ]
+        }) : ('Failed to start evaluation: ' + error.message);
+        alert(msg);
         btn.disabled = false;
         btn.textContent = 'Run Full Evaluation';
     }
@@ -210,7 +230,25 @@ async function saveBaseline() {
         }
     } catch (error) {
         console.error('Failed to save baseline:', error);
-        alert('Failed to save baseline: ' + error.message);
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to save baseline', {
+            message: error.message,
+            causes: [
+                'Backend API service not responding',
+                'Baseline storage database not initialized',
+                'Insufficient permissions to save',
+                'Disk space or storage quota exceeded'
+            ],
+            fixes: [
+                'Check Infrastructure tab - verify backend is running',
+                'Check available disk space',
+                'Verify user account has baseline save permissions',
+                'Try again in a few moments'
+            ],
+            links: [
+                ['Qdrant Vector Database', 'https://qdrant.tech/documentation/concepts/collections/']
+            ]
+        }) : ('Failed to save baseline: ' + error.message);
+        alert(msg);
     }
 }
 
