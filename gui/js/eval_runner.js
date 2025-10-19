@@ -30,7 +30,29 @@ async function runEvaluation() {
         }
     } catch (error) {
         console.error('Failed to start evaluation:', error);
-        alert('Failed to start evaluation: ' + error.message);
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to start evaluation', {
+            message: error.message,
+            causes: [
+                'No test dataset available to evaluate',
+                'Backend evaluation service not running',
+                'Insufficient API quota (OpenAI/Anthropic)',
+                'RAG database or indexes are missing',
+                'LLM model not configured properly'
+            ],
+            fixes: [
+                'Create a test dataset in Data > Test Sets first',
+                'Check Infrastructure tab - verify backend is running',
+                'Verify API credentials and quota in Settings',
+                'Run Data > Indexing to build vector indexes',
+                'Configure LLM model in Settings > API Configuration'
+            ],
+            links: [
+                ['Evaluation Setup Guide', '/docs/EVALUATION.md'],
+                ['Test Data Management', '/docs/TEST_DATA.md'],
+                ['Troubleshooting Evaluations', '/docs/EVAL_TROUBLESHOOTING.md']
+            ]
+        }) : 'Failed to start evaluation: ' + error.message;
+        alert(msg);
         btn.disabled = false;
         btn.textContent = 'Run Full Evaluation';
     }
@@ -193,7 +215,24 @@ function renderQuestionResult(r, isFailure) {
 // Save baseline
 async function saveBaseline() {
     if (!evalResults) {
-        alert('No evaluation results to save');
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('No evaluation results to save', {
+            message: 'You must run an evaluation first',
+            causes: [
+                'No evaluation has been run yet',
+                'Previous evaluation results were cleared',
+                'Browser page was refreshed'
+            ],
+            fixes: [
+                'Click "Run Full Evaluation" button to run tests',
+                'Wait for evaluation to complete',
+                'Review the results before saving'
+            ],
+            links: [
+                ['Evaluation Workflow', '/docs/EVALUATION.md#workflow'],
+                ['Baseline Management', '/docs/BASELINE.md']
+            ]
+        }) : 'No evaluation results to save';
+        alert(msg);
         return;
     }
 
@@ -210,14 +249,50 @@ async function saveBaseline() {
         }
     } catch (error) {
         console.error('Failed to save baseline:', error);
-        alert('Failed to save baseline: ' + error.message);
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to save baseline', {
+            message: error.message,
+            causes: [
+                'Backend baseline storage service not responding',
+                'Insufficient permissions to save baseline',
+                'Network connection error',
+                'Disk space or storage quota exceeded'
+            ],
+            fixes: [
+                'Check Infrastructure tab to verify services',
+                'Verify user account has baseline save permissions',
+                'Check your network connection',
+                'Free up disk space and try again'
+            ],
+            links: [
+                ['Baseline Save API', '/docs/API.md#baseline-save'],
+                ['Storage Configuration', '/docs/STORAGE.md']
+            ]
+        }) : 'Failed to save baseline: ' + error.message;
+        alert(msg);
     }
 }
 
 // Compare with baseline
 async function compareWithBaseline() {
     if (!evalResults) {
-        alert('No current evaluation results');
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('No current evaluation results', {
+            message: 'Cannot compare without recent evaluation results',
+            causes: [
+                'No evaluation has been run in this session',
+                'Browser page was refreshed (results lost)',
+                'Previous evaluation was cleared'
+            ],
+            fixes: [
+                'Run a fresh evaluation: click "Run Full Evaluation" button',
+                'Wait for it to complete, then compare',
+                'Check Data > Test Sets has test cases available'
+            ],
+            links: [
+                ['Baseline Comparison Guide', '/docs/BASELINE_COMPARISON.md'],
+                ['Evaluation Results', '/docs/EVALUATION.md#results']
+            ]
+        }) : 'No current evaluation results';
+        alert(msg);
         return;
     }
 
@@ -232,7 +307,27 @@ async function compareWithBaseline() {
         renderComparison(data);
     } catch (error) {
         console.error('Failed to compare:', error);
-        alert(error.message);
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to compare with baseline', {
+            message: error.message,
+            causes: [
+                'No baseline has been saved yet',
+                'Backend comparison service not responding',
+                'Baseline data corrupted or unavailable',
+                'Permission denied to read baseline'
+            ],
+            fixes: [
+                'Save current results as baseline first: "Save Baseline" button',
+                'Verify Infrastructure tab shows all services running',
+                'Try re-running the evaluation',
+                'Check user permissions in Settings'
+            ],
+            links: [
+                ['Baseline Setup', '/docs/BASELINE.md#setup'],
+                ['Comparison API', '/docs/API.md#baseline-compare'],
+                ['Troubleshooting', '/docs/EVAL_TROUBLESHOOTING.md#no-baseline']
+            ]
+        }) : error.message;
+        alert(msg);
     }
 }
 
@@ -331,20 +426,60 @@ function renderComparison(data) {
 // Export results
 function exportEvalResults() {
     if (!evalResults) {
-        alert('No results to export');
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('No results to export', {
+            message: 'Evaluation results are not available',
+            causes: [
+                'No evaluation has been run in this session',
+                'Browser page was refreshed',
+                'Results were cleared'
+            ],
+            fixes: [
+                'Run an evaluation: click "Run Full Evaluation"',
+                'Wait for evaluation to complete',
+                'Review results, then export'
+            ],
+            links: [
+                ['Export Results', '/docs/EVALUATION.md#export'],
+                ['Results Format', '/docs/EVAL_RESULTS_FORMAT.md']
+            ]
+        }) : 'No results to export';
+        alert(msg);
         return;
     }
 
-    const dataStr = JSON.stringify(evalResults, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    const timestamp = new Date().toLocaleString().replace(/[\/\s:,]/g, '-').replace(/--+/g, '-');
-    a.download = `eval_results_${timestamp}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast('Results exported', 'success');
+    try {
+        const dataStr = JSON.stringify(evalResults, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const timestamp = new Date().toLocaleString().replace(/[\/\s:,]/g, '-').replace(/--+/g, '-');
+        a.download = `eval_results_${timestamp}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('Results exported', 'success');
+    } catch (e) {
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to export results', {
+            message: e.message,
+            causes: [
+                'Browser download functionality disabled',
+                'Insufficient disk space',
+                'File name contains invalid characters',
+                'Blob API not supported'
+            ],
+            fixes: [
+                'Check browser download settings',
+                'Free up disk space',
+                'Try a different browser',
+                'Disable download-blocking extensions'
+            ],
+            links: [
+                ['Browser Download Troubleshooting', 'https://support.google.com/chrome/answer/95759'],
+                ['Blob API Documentation', 'https://developer.mozilla.org/en-US/docs/Web/API/Blob']
+            ]
+        }) : 'Failed to export results: ' + e.message;
+        showToast(msg, 'error');
+    }
 }
 
 // Helper functions

@@ -145,10 +145,27 @@
         const repo = repoSelect ? repoSelect.value : null;
         
         if (!repo) {
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Please select a repository to index', {
+                message: 'No repository was selected from the dropdown',
+                causes: [
+                    'No repositories have been configured yet',
+                    'Dropdown selection was not made',
+                    'Repositories list failed to load'
+                ],
+                fixes: [
+                    'Click the Repository dropdown above the Index button',
+                    'Select a repository from the list',
+                    'If list is empty, add repositories in Settings > Repositories first'
+                ],
+                links: [
+                    ['Repository Configuration', '/docs/REPOSITORIES.md'],
+                    ['Indexing Guide', '/docs/INDEXING.md#setup']
+                ]
+            }) : 'Please select a repository to index';
             if (window.showStatus) {
-                window.showStatus('Please select a repository to index', 'error');
+                window.showStatus(msg, 'error');
             } else {
-                alert('Please select a repository to index');
+                alert(msg);
             }
             return;
         }
@@ -178,10 +195,31 @@
                 throw new Error(data.error || 'Failed to start indexing');
             }
         } catch (e) {
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to start indexing', {
+                message: e.message,
+                causes: [
+                    'Backend indexing service not running',
+                    'Repository path is invalid or inaccessible',
+                    'Permission denied for repository directory',
+                    'Vector database (Qdrant) connection failed'
+                ],
+                fixes: [
+                    'Check Infrastructure tab - verify backend service is running',
+                    'Verify repository path exists: Settings > Repositories',
+                    'Check file permissions on repository directory',
+                    'Verify Qdrant is running in Infrastructure tab',
+                    'Check available disk space for indexes'
+                ],
+                links: [
+                    ['Indexing Documentation', '/docs/INDEXING.md'],
+                    ['Troubleshooting Indexing', '/docs/INDEXING_TROUBLESHOOTING.md'],
+                    ['Repository Setup', '/docs/REPOSITORIES.md#access']
+                ]
+            }) : `Failed to start indexing: ${e.message}`;
             if (window.showStatus) {
-                window.showStatus(`Failed to start indexing: ${e.message}`, 'error');
+                window.showStatus(msg, 'error');
             } else {
-                alert(`Error: ${e.message}`);
+                alert(msg);
             }
         } finally {
             // Re-enable buttons
@@ -214,10 +252,30 @@
                 throw new Error(data.error || 'Failed to stop indexing');
             }
         } catch (e) {
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to stop indexing', {
+                message: e.message,
+                causes: [
+                    'Backend indexing service not responding',
+                    'Indexing process already completed',
+                    'Process ID (PID) mismatch or expired',
+                    'Network connection to backend failed'
+                ],
+                fixes: [
+                    'Wait a moment and try again',
+                    'Check if indexing already finished: Monitor > Indexing Status',
+                    'Restart backend service: Infrastructure > Restart Backend',
+                    'Refresh the page and check indexing status'
+                ],
+                links: [
+                    ['Indexing Process Management', '/docs/INDEXING.md#control'],
+                    ['Process Monitoring', '/docs/MONITORING.md#processes'],
+                    ['Troubleshooting', '/docs/INDEXING_TROUBLESHOOTING.md']
+                ]
+            }) : `Failed to stop indexing: ${e.message}`;
             if (window.showStatus) {
-                window.showStatus(`Failed to stop indexing: ${e.message}`, 'error');
+                window.showStatus(msg, 'error');
             } else {
-                alert(`Error: ${e.message}`);
+                alert(msg);
             }
         } finally {
             if (btnStop) btnStop.disabled = false;
