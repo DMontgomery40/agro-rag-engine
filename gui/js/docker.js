@@ -47,7 +47,28 @@
 
             display.innerHTML = html;
         } catch (e) {
-            display.innerHTML = '<div style="color: var(--err); padding: 16px;">Failed to check Docker status</div>';
+            const errorHtml = window.ErrorHelpers ? window.ErrorHelpers.createHelpfulError({
+                title: 'Failed to check Docker status',
+                message: e.message,
+                causes: [
+                    'Backend server is not running',
+                    'Docker daemon is not installed or not running',
+                    'Backend lacks permissions to access Docker socket',
+                    'Docker API endpoint misconfigured'
+                ],
+                fixes: [
+                    'Start the backend server (check Infrastructure > Services)',
+                    'Verify Docker is installed: run "docker --version" in terminal',
+                    'Ensure Docker daemon is running: "docker ps" should work',
+                    'Check backend logs for Docker connection errors'
+                ],
+                links: [
+                    ['Install Docker', 'https://docs.docker.com/get-docker/'],
+                    ['Docker Daemon Setup', 'https://docs.docker.com/config/daemon/'],
+                    ['Backend Health', '/api/health']
+                ]
+            }) : '<div style="color: var(--err); padding: 16px;">Failed to check Docker status: ' + e.message + '</div>';
+            display.innerHTML = errorHtml;
             console.error('[docker] Status check failed:', e);
         }
     }
@@ -153,7 +174,28 @@
 
             grid.innerHTML = html;
         } catch (e) {
-            grid.innerHTML = '<div style="color: var(--err); padding: 16px;">Failed to list containers</div>';
+            const errorHtml = window.ErrorHelpers ? window.ErrorHelpers.createHelpfulError({
+                title: 'Failed to list Docker containers',
+                message: e.message,
+                causes: [
+                    'Backend server is not responding',
+                    'Docker daemon connection lost',
+                    'Invalid Docker API response format',
+                    'Insufficient permissions to list containers'
+                ],
+                fixes: [
+                    'Check backend server status: Infrastructure > Services',
+                    'Verify Docker is running: "docker ps" in terminal',
+                    'Refresh this page to retry',
+                    'Check user permissions: may need sudo or docker group'
+                ],
+                links: [
+                    ['Docker Container Commands', 'https://docs.docker.com/engine/reference/commandline/ps/'],
+                    ['Docker Permissions', 'https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user'],
+                    ['Backend Logs', '/docs/DEBUGGING.md#backend-logs']
+                ]
+            }) : '<div style="color: var(--err); padding: 16px;">Failed to list containers: ' + e.message + '</div>';
+            grid.innerHTML = errorHtml;
             console.error('[docker] Container list failed:', e);
         }
     }
@@ -166,12 +208,32 @@
             const r = await fetch(api(`/api/docker/container/${containerId}/pause`), { method: 'POST' });
             const d = await r.json();
             if (d.success) {
-                if (window.showStatus) window.showStatus('Container paused', 'success');
+                if (window.showStatus) window.showStatus('✓ Container paused', 'success');
                 await listContainers();
             } else throw new Error(d.error);
         } catch (e) {
-            if (window.showStatus) window.showStatus(`Failed to pause: ${e.message}`, 'error');
-            else alert(`Error: ${e.message}`);
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to pause container', {
+                message: e.message,
+                causes: [
+                    'Backend server not responding to pause request',
+                    'Container does not support pause operation',
+                    'Docker daemon connection lost',
+                    'Container already paused'
+                ],
+                fixes: [
+                    'Verify server is running (check Infrastructure > Services)',
+                    'Confirm container is in running state before pausing',
+                    'Try pausing again after waiting a moment',
+                    'Check Docker logs for permission issues'
+                ],
+                links: [
+                    ['Docker Pause Command', 'https://docs.docker.com/engine/reference/commandline/pause/'],
+                    ['Container States', 'https://docs.docker.com/engine/reference/api/docker_remote_api_v1.24/#pause-a-container'],
+                    ['Server Health', '/api/health']
+                ]
+            }) : `Failed to pause container: ${e.message}`;
+            if (window.showStatus) window.showStatus(msg, 'error');
+            else alert(msg);
         }
     }
 
@@ -180,12 +242,32 @@
             const r = await fetch(api(`/api/docker/container/${containerId}/unpause`), { method: 'POST' });
             const d = await r.json();
             if (d.success) {
-                if (window.showStatus) window.showStatus('Container unpaused', 'success');
+                if (window.showStatus) window.showStatus('✓ Container resumed', 'success');
                 await listContainers();
             } else throw new Error(d.error);
         } catch (e) {
-            if (window.showStatus) window.showStatus(`Failed to unpause: ${e.message}`, 'error');
-            else alert(`Error: ${e.message}`);
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to resume container', {
+                message: e.message,
+                causes: [
+                    'Backend server not responding to unpause request',
+                    'Container is not in paused state',
+                    'Docker daemon connection lost',
+                    'Container was removed while paused'
+                ],
+                fixes: [
+                    'Verify server is running (check Infrastructure > Services)',
+                    'Confirm container is in paused state before resuming',
+                    'Refresh container list to see current state',
+                    'Try again after checking Docker daemon status'
+                ],
+                links: [
+                    ['Docker Unpause Command', 'https://docs.docker.com/engine/reference/commandline/unpause/'],
+                    ['Container Lifecycle', 'https://docs.docker.com/engine/reference/api/docker_remote_api_v1.24/#unpause-a-container'],
+                    ['Troubleshooting', '/docs/INFRASTRUCTURE.md#container-management']
+                ]
+            }) : `Failed to resume container: ${e.message}`;
+            if (window.showStatus) window.showStatus(msg, 'error');
+            else alert(msg);
         }
     }
 
@@ -194,12 +276,32 @@
             const r = await fetch(api(`/api/docker/container/${containerId}/stop`), { method: 'POST' });
             const d = await r.json();
             if (d.success) {
-                if (window.showStatus) window.showStatus('Container stopped', 'success');
+                if (window.showStatus) window.showStatus('✓ Container stopped', 'success');
                 await listContainers();
             } else throw new Error(d.error);
         } catch (e) {
-            if (window.showStatus) window.showStatus(`Failed to stop: ${e.message}`, 'error');
-            else alert(`Error: ${e.message}`);
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to stop container', {
+                message: e.message,
+                causes: [
+                    'Backend API endpoint not accessible',
+                    'Container is already stopped',
+                    'Docker daemon is not responding',
+                    'Insufficient permissions to stop container'
+                ],
+                fixes: [
+                    'Check that backend server is running (Infrastructure > Services)',
+                    'Verify the container is currently running',
+                    'Wait 10 seconds and retry (Docker needs time)',
+                    'Check Docker permission settings'
+                ],
+                links: [
+                    ['Docker Stop Reference', 'https://docs.docker.com/engine/reference/commandline/stop/'],
+                    ['Container Management', 'https://docs.docker.com/engine/containers/'],
+                    ['API Documentation', '/docs/API.md#docker-endpoints']
+                ]
+            }) : `Failed to stop container: ${e.message}`;
+            if (window.showStatus) window.showStatus(msg, 'error');
+            else alert(msg);
         }
     }
 
@@ -208,27 +310,67 @@
             const r = await fetch(api(`/api/docker/container/${containerId}/start`), { method: 'POST' });
             const d = await r.json();
             if (d.success) {
-                if (window.showStatus) window.showStatus('Container started', 'success');
+                if (window.showStatus) window.showStatus('✓ Container started', 'success');
                 await listContainers();
             } else throw new Error(d.error);
         } catch (e) {
-            if (window.showStatus) window.showStatus(`Failed to start: ${e.message}`, 'error');
-            else alert(`Error: ${e.message}`);
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to start container', {
+                message: e.message,
+                causes: [
+                    'Backend server is not running or not accessible',
+                    'Container is already running',
+                    'Required Docker image is missing or corrupted',
+                    'Port binding conflict (another service using the port)'
+                ],
+                fixes: [
+                    'Check server status: Infrastructure > Services tab',
+                    'Verify container is not already running',
+                    'Check available disk space for container startup',
+                    'Check for port conflicts with other services (e.g., Qdrant, Redis)'
+                ],
+                links: [
+                    ['Docker Start Reference', 'https://docs.docker.com/engine/reference/commandline/start/'],
+                    ['Port Binding Issues', 'https://docs.docker.com/config/containers/container-networking/'],
+                    ['Troubleshooting Guide', '/docs/INFRASTRUCTURE.md#service-startup']
+                ]
+            }) : `Failed to start container: ${e.message}`;
+            if (window.showStatus) window.showStatus(msg, 'error');
+            else alert(msg);
         }
     }
 
     async function removeContainer(containerId) {
-        if (!confirm('Are you sure you want to remove this container?')) return;
+        if (!confirm('WARNING: This will permanently delete the container. Are you sure?')) return;
         try {
             const r = await fetch(api(`/api/docker/container/${containerId}/remove`), { method: 'POST' });
             const d = await r.json();
             if (d.success) {
-                if (window.showStatus) window.showStatus('Container removed', 'success');
+                if (window.showStatus) window.showStatus('✓ Container removed', 'success');
                 await listContainers();
             } else throw new Error(d.error);
         } catch (e) {
-            if (window.showStatus) window.showStatus(`Failed to remove: ${e.message}`, 'error');
-            else alert(`Error: ${e.message}`);
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to remove container', {
+                message: e.message,
+                causes: [
+                    'Container is still running (must stop before removing)',
+                    'Backend API not accessible',
+                    'Insufficient permissions to remove container',
+                    'Container has mounted volumes that need cleanup'
+                ],
+                fixes: [
+                    'Stop the container first, then try removing again',
+                    'Verify backend server is running (Infrastructure > Services)',
+                    'Check Docker permissions for your user',
+                    'Remove mounted volumes separately if needed'
+                ],
+                links: [
+                    ['Docker Remove Reference', 'https://docs.docker.com/engine/reference/commandline/rm/'],
+                    ['Container Volumes', 'https://docs.docker.com/storage/volumes/'],
+                    ['Cleanup Guide', '/docs/MAINTENANCE.md#container-cleanup']
+                ]
+            }) : `Failed to remove container: ${e.message}`;
+            if (window.showStatus) window.showStatus(msg, 'error');
+            else alert(msg);
         }
     }
 
@@ -350,7 +492,28 @@
                 throw new Error(d.error);
             }
         } catch (e) {
-            contentDiv.innerHTML = `<span style="color: var(--err);">Failed to load logs: ${escapeHtml(e.message)}</span>`;
+            const errorMsg = window.ErrorHelpers ? window.ErrorHelpers.createHelpfulError({
+                title: 'Failed to load container logs',
+                message: e.message,
+                causes: [
+                    'Backend logs endpoint is not accessible',
+                    'Container has no log output yet',
+                    'Docker daemon connection lost while fetching logs',
+                    'Log file is corrupted or inaccessible'
+                ],
+                fixes: [
+                    'Verify backend server is running (Infrastructure > Services)',
+                    'Wait a moment for the container to produce output',
+                    'Refresh the page and try again',
+                    'Check Docker permissions for log access'
+                ],
+                links: [
+                    ['Docker Logs Reference', 'https://docs.docker.com/engine/reference/commandline/logs/'],
+                    ['Container Logging', 'https://docs.docker.com/config/containers/logging/'],
+                    ['API Health', '/api/health']
+                ]
+            }) : `<span style="color: var(--err);">Failed to load logs: ${escapeHtml(e.message)}</span>`;
+            contentDiv.innerHTML = errorMsg;
         }
     }
 
@@ -379,8 +542,28 @@
                 throw new Error(d.error);
             }
         } catch (e) {
-            if (window.showStatus) window.showStatus(`Failed to download logs: ${e.message}`, 'error');
-            else alert(`Error: ${e.message}`);
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to download container logs', {
+                message: e.message,
+                causes: [
+                    'Backend logs endpoint returned an error',
+                    'Browser blocked the file download',
+                    'Container has no recent logs to download',
+                    'Network connection interrupted during download'
+                ],
+                fixes: [
+                    'Check server status: Infrastructure > Services',
+                    'Allow downloads in browser settings',
+                    'Refresh this page and try again',
+                    'Check that container has been running and has log output'
+                ],
+                links: [
+                    ['Docker Logs API', 'https://docs.docker.com/engine/api/v1.24/#get-container-logs'],
+                    ['Browser Download Help', 'https://support.google.com/chrome/answer/95759'],
+                    ['Docker Log Drivers', 'https://docs.docker.com/config/containers/logging/']
+                ]
+            }) : `Failed to download logs: ${e.message}`;
+            if (window.showStatus) window.showStatus(msg, 'error');
+            else alert(msg);
         }
     }
 
