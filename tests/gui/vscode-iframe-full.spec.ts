@@ -51,7 +51,8 @@ test.describe('VS Code Iframe - Full Integration', () => {
     const iframeSrc = await iframe.getAttribute('src');
     console.log('Iframe src:', iframeSrc);
     expect(iframeSrc).toBeTruthy();
-    expect(iframeSrc).toContain('/editor/');
+    // Now uses direct URL for WebSocket support
+    expect(iframeSrc).toMatch(/127\.0\.0\.1:\d+|\/editor\//);
 
     // Wait for iframe to load
     await page.waitForTimeout(5000);

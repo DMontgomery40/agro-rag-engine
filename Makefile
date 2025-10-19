@@ -27,6 +27,11 @@ api:
 dev:
 	bash scripts/dev_up.sh
 
+# Headless dev: reuse infra+server without opening browser (for Playwright)
+.PHONY: dev-headless
+dev-headless:
+	OPEN_BROWSER=0 bash scripts/dev_up.sh
+
 # Alias for dev (convenience)
 makedev: dev
 

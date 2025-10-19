@@ -27,6 +27,10 @@ export default defineConfig({
             use: { ...devices['Desktop Chrome'] },
         }
     ],
-    // Reuse already running server; do not launch a new one here.
-    // Ensure the API is up at http://localhost:8012 before running.
+    webServer: {
+        command: 'cd .. && make dev-headless',
+        url: 'http://localhost:8012/health',
+        reuseExistingServer: !process.env.CI,
+        timeout: 120 * 1000,
+    }
 });

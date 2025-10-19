@@ -10,7 +10,7 @@ try:
 except Exception as e:
     print(f"⚠️ LangTrace init failed: {e}")
 
-from fastapi import FastAPI, Query, HTTPException, Request, UploadFile, File, Form
+from fastapi import FastAPI, Query, HTTPException, Request, UploadFile, File, Form, WebSocket
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
 from fastapi.staticfiles import StaticFiles
@@ -2133,71 +2133,73 @@ def editor_root() -> Response:
     # normalize to trailing slash for relative asset links
     return RedirectResponse(url="/editor/")
 
-@app.websocket("/editor/{path:path}")
-async def editor_websocket_proxy(websocket: WebSocket, path: str):
-    """WebSocket proxy for VS Code server."""
-    import websockets
-    import asyncio
-
-    status = await _editor_status()
-    base = str(status.get("url") or "").rstrip("/")
-    if not base:
-        await websocket.close(code=1011, reason="No editor URL configured")
-        return
-
-    # Convert http:// to ws://
-    ws_base = base.replace("http://", "ws://").replace("https://", "wss://")
-    target = f"{ws_base}/{path}"
-
-    # Add query parameters
-    if websocket.query_params:
-        query = "&".join(f"{k}={v}" for k, v in websocket.query_params.items())
-        target = f"{target}?{query}"
-
-    await websocket.accept()
-
-    try:
-        # Connect to upstream WebSocket
-        async with websockets.connect(target) as upstream:
-            # Bidirectional proxy
-            async def forward_client_to_upstream():
-                try:
-                    while True:
-                        data = await websocket.receive()
-                        if "text" in data:
-                            await upstream.send(data["text"])
-                        elif "bytes" in data:
-                            await upstream.send(data["bytes"])
-                except Exception:
-                    pass
-
-            async def forward_upstream_to_client():
-                try:
-                    async for message in upstream:
-                        if isinstance(message, str):
-                            await websocket.send_text(message)
-                        else:
-                            await websocket.send_bytes(message)
-                except Exception:
-                    pass
-
-            # Run both directions concurrently
-            await asyncio.gather(
-                forward_client_to_upstream(),
-                forward_upstream_to_client()
-            )
-    except Exception as e:
-        print(f"[WebSocket Proxy] Error: {e}")
-    finally:
-        await websocket.close()
-
 @app.api_route("/editor/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])
 async def editor_proxy(path: str, request: Request):
     """Same-origin reverse proxy for the embedded editor.
 
     This improves iframe reliability by stripping frame-blocking headers.
-    WebSocket connections are handled by the separate WebSocket route above.
+    WebSocket connections go directly to the upstream server (VS Code handles them).
     """
+    # Check if this is a WebSocket upgrade request
+    connection_header = request.headers.get("connection", "").lower()
+    upgrade_header = request.headers.get("upgrade", "").lower()
+
+    if "upgrade" in connection_header and upgrade_header == "websocket":
+        # WebSocket proxy using httpx-ws and Starlette WebSocket
+        from starlette.websockets import WebSocketDisconnect
+        import httpx_ws
+        import httpx
+
+        status = await _editor_status()
+        base = str(status.get("url") or "").rstrip("/")
+        if not base:
+            return JSONResponse({"ok": False, "error": "No editor URL"}, status_code=503)
+
+        qs = ("?" + request.url.query) if request.url.query else ""
+        target = f"{base}/{path}{qs}"
+
+        # Create WebSocket from ASGI scope
+        websocket = WebSocket(request.scope, request.receive, request._send)
+        await websocket.accept()
+
+        try:
+            # Connect to upstream WebSocket
+            async with httpx.AsyncClient() as client:
+                async with httpx_ws.aconnect_ws(target, client) as upstream_ws:
+                    # Bidirectional proxy
+                    import asyncio
+
+                    async def client_to_upstream():
+                        try:
+                            while True:
+                                message = await websocket.receive()
+                                if "text" in message:
+                                    await upstream_ws.send_text(message["text"])
+                                elif "bytes" in message:
+                                    await upstream_ws.send_bytes(message["bytes"])
+                        except (WebSocketDisconnect, Exception):
+                            pass
+
+                    async def upstream_to_client():
+                        try:
+                            async for message in upstream_ws:
+                                if isinstance(message, httpx_ws.WSMessage):
+                                    if message.type == httpx_ws.WSMessageType.TEXT:
+                                        await websocket.send_text(message.data)
+                                    elif message.type == httpx_ws.WSMessageType.BINARY:
+                                        await websocket.send_bytes(message.data)
+                        except (WebSocketDisconnect, Exception):
+                            pass
+
+                    await asyncio.gather(client_to_upstream(), upstream_to_client())
+        except Exception as e:
+            print(f"[WebSocket Proxy] Error: {e}")
+        finally:
+            await websocket.close()
+
+        return Response(status_code=101)
+
+    # Regular HTTP request handling
     status = await _editor_status()
     if not status.get("enabled"):
         return JSONResponse({"ok": False, "error": "Editor disabled"}, status_code=503)
