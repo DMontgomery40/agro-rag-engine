@@ -641,10 +641,29 @@
                 throw new Error(data.error || 'Failed to start infrastructure');
             }
         } catch (e) {
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to start infrastructure', {
+                message: e.message,
+                causes: [
+                    'Docker daemon not running',
+                    'Insufficient system resources (memory, disk space)',
+                    'Port conflicts with existing services',
+                    'Network configuration issues'
+                ],
+                fixes: [
+                    'Verify Docker is running: `docker ps`',
+                    'Check system resources: `df -h` for disk, `free -h` for memory',
+                    'Check for port conflicts: `lsof -i :6333` (Qdrant), `lsof -i :6379` (Redis)',
+                    'Review Docker compose logs: `docker compose logs -f`'
+                ],
+                links: [
+                    ['Docker Getting Started', 'https://docs.docker.com/get-started/'],
+                    ['Docker Compose Documentation', 'https://docs.docker.com/compose/']
+                ]
+            }) : `Failed to start infrastructure: ${e.message}`;
             if (window.showStatus) {
-                window.showStatus(`Failed to start infrastructure: ${e.message}`, 'error');
+                window.showStatus(msg, 'error');
             } else {
-                alert(`Error: ${e.message}`);
+                alert(msg);
             }
         } finally {
             if (btn) btn.disabled = false;
