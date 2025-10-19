@@ -141,9 +141,11 @@
         const repoSelect = $('#index-repo-select');
         const btnStart = $('#btn-index-start');
         const btnDashStart = $('#dash-index-start');
-        
+        const skipDenseSelect = $('#index-skip-dense');
+        const enrichSelect = $('#index-enrich-chunks');
+
         const repo = repoSelect ? repoSelect.value : null;
-        
+
         if (!repo) {
             if (window.showStatus) {
                 window.showStatus('Please select a repository to index', 'error');
@@ -158,10 +160,18 @@
         if (btnDashStart) btnDashStart.disabled = true;
 
         try {
+            // Gather indexing options
+            const skipDense = skipDenseSelect ? skipDenseSelect.value === '1' : false;
+            const enrich = enrichSelect ? enrichSelect.value === '1' : false;
+
             const response = await fetch(api('/api/index/start'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ repo })
+                body: JSON.stringify({
+                    repo,
+                    skip_dense: skipDense,
+                    enrich: enrich
+                })
             });
             
             const data = await response.json();

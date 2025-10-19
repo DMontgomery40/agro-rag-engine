@@ -1522,11 +1522,13 @@ _INDEX_STATUS: List[str] = []
 _INDEX_METADATA: Dict[str, Any] = {}
 
 @app.post("/api/index/start")
-def index_start() -> Dict[str, Any]:
+def index_start(payload: Dict[str, Any] = None) -> Dict[str, Any]:
     """Start indexing with real subprocess execution."""
     global _INDEX_STATUS, _INDEX_METADATA
     import subprocess
     import threading
+
+    payload = payload or {}
 
     _INDEX_STATUS = ["Indexing started..."]
     _INDEX_METADATA = {}
@@ -1537,13 +1539,26 @@ def index_start() -> Dict[str, Any]:
             repo = os.getenv("REPO", "agro")
             _INDEX_STATUS.append(f"Indexing repository: {repo}")
 
+            # Prepare environment
+            env = {**os.environ, "REPO": repo}
+
+            # Handle enriching parameter
+            if payload.get("enrich"):
+                env["ENRICH_CODE_CHUNKS"] = "true"
+                _INDEX_STATUS.append("Enriching chunks with summaries and keywords...")
+
+            # Handle skip_dense parameter
+            if payload.get("skip_dense"):
+                env["SKIP_DENSE"] = "1"
+                _INDEX_STATUS.append("Skipping dense embeddings (BM25 only)...")
+
             # Run the actual indexer
             result = subprocess.run(
                 ["python", "-m", "indexer.index_repo"],
                 capture_output=True,
                 text=True,
                 cwd=repo_root(),
-                env={**os.environ, "REPO": repo}
+                env=env
             )
 
             if result.returncode == 0:

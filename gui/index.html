@@ -3839,6 +3839,14 @@
                                     <option value="1">Yes (BM25 only, faster)</option>
                                 </select>
                             </div>
+                            <div class="input-group">
+                                <label>Enrich Code Chunks</label>
+                                <select id="index-enrich-chunks" style="background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); padding: 8px; border-radius: 4px;">
+                                    <option value="0">No (faster indexing)</option>
+                                    <option value="1">Yes (adds summaries + keywords)</option>
+                                </select>
+                                <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Generate AI summaries and extract keywords for each code chunk. Improves semantic search but slower.</p>
+                            </div>
                         </div>
 
                         <div class="input-row" style="display: flex; gap: 8px;">
