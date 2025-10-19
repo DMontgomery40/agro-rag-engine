@@ -14,3 +14,16 @@ just one more thing if the server is up, there is a rag , for this rag engine, v
  usually find the code or file you're looking for and spend ZERO tokens doing it, and if that thing is 3 fiels, you just found out the easy way, cause we all know you may have stopped when you found
  one , and learned the hard way. tons of benefit. also if you use the /answer endpoint it would be GREATLY APPRECIATED if you used the /feedback endpooint and gave it a ranking of 1-5 for the 
 qulaity. this way, you are traiing the model to be better, while saving tokens, saving context, and getting more accurate info win win win win
+
+
+---
+
+BRANCH WORKFLOW POLICY (MANDATORY)
+
+- main is the default branch name. Never push directly to `main`.
+- Work happens on `development`; pre-release hardening happens on `staging`.
+- Always print the working directory at session start: `pwd`.
+- Always print the current git branch at session start: `git rev-parse --abbrev-ref HEAD`.
+- Stay on your current branch unless explicitly instructed to switch.
+- Open PRs from `development` → `staging`, and from `staging` → `main` only.
+- Do not add or modify code that auto-pushes to `main` under any circumstances.
