@@ -2236,7 +2236,7 @@ async def editor_proxy(path: str, request: Request):
 
 @app.get("/api/cards")
 def cards_list() -> Dict[str, Any]:
-    """Return cards index information"""
+    """Return cards index information (paginated - first 10 for UI)"""
     try:
         from common.config_loader import out_dir
         repo = os.getenv('REPO', 'agro').strip()
@@ -2266,6 +2266,70 @@ def cards_list() -> Dict[str, Any]:
         return {"count": count, "cards": cards, "path": str(cards_path), "last_build": last_build}
     except Exception as e:
         return {"count": 0, "cards": [], "error": str(e)}
+
+@app.get("/api/cards/all")
+def cards_all() -> Dict[str, Any]:
+    """Return ALL cards (for raw data view)"""
+    try:
+        from common.config_loader import out_dir
+        repo = os.getenv('REPO', 'agro').strip()
+        base = _Path(out_dir(repo))
+        cards_path = base / "cards.jsonl"
+
+        cards = []
+        if cards_path.exists():
+            with cards_path.open('r', encoding='utf-8') as f:
+                for line in f:
+                    if not line.strip():
+                        continue
+                    try:
+                        cards.append(json.loads(line))
+                    except Exception:
+                        pass
+        return {"count": len(cards), "cards": cards, "path": str(cards_path)}
+    except Exception as e:
+        return {"count": 0, "cards": [], "error": str(e)}
+
+@app.get("/api/cards/raw-text")
+def cards_raw_text() -> str:
+    """Return all cards as formatted text (for terminal view)"""
+    try:
+        from common.config_loader import out_dir
+        repo = os.getenv('REPO', 'agro').strip()
+        base = _Path(out_dir(repo))
+        cards_path = base / "cards.jsonl"
+
+        lines = []
+        count = 0
+        if cards_path.exists():
+            with cards_path.open('r', encoding='utf-8') as f:
+                for line_num, line in enumerate(f, 1):
+                    if not line.strip():
+                        continue
+                    try:
+                        card = json.loads(line)
+                        count += 1
+                        # Format each card nicely
+                        symbol = (card.get('symbols', [None])[0] or card.get('file_path', 'Unknown')).split('/')[-1]
+                        lines.append(f"\n{'='*80}")
+                        lines.append(f"[Card #{count}] {symbol}")
+                        lines.append(f"{'='*80}")
+                        lines.append(f"File: {card.get('file_path', 'N/A')}")
+                        if card.get('start_line'):
+                            lines.append(f"Line: {card.get('start_line', 'N/A')}")
+                        lines.append(f"\nPurpose:\n{card.get('purpose', 'N/A')}")
+                        if card.get('technical_details'):
+                            lines.append(f"\nTechnical Details:\n{card.get('technical_details', '')}")
+                        if card.get('domain_concepts'):
+                            lines.append(f"\nDomain Concepts: {', '.join(card.get('domain_concepts', []))}")
+                    except Exception as e:
+                        lines.append(f"\n[ERROR parsing card at line {line_num}]: {str(e)}")
+        lines.append(f"\n{'='*80}")
+        lines.append(f"Total: {count} cards loaded from {cards_path}")
+        lines.append(f"{'='*80}\n")
+        return '\n'.join(lines)
+    except Exception as e:
+        return f"Error loading cards: {str(e)}"
 
 # ---------------- Autotune ----------------
 @app.get("/api/autotune/status")

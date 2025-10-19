@@ -101,11 +101,77 @@
     }
   }
 
+  async function viewAllCards(){
+    try {
+      console.log('[cards.js] Fetching all cards for raw view...');
+      const resp = await fetch(api('/api/cards/raw-text'));
+      const rawText = await resp.text();
+
+      // Create a modal/terminal view
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.8); display: flex; align-items: center;
+        justify-content: center; z-index: 9999; padding: 20px;
+      `;
+
+      const container = document.createElement('div');
+      container.style.cssText = `
+        background: var(--code-bg); border: 1px solid var(--line);
+        border-radius: 8px; width: 100%; max-width: 90%;
+        max-height: 85vh; display: flex; flex-direction: column;
+        font-family: 'SF Mono', monospace; font-size: 12px;
+        color: var(--fg);
+      `;
+
+      // Header
+      const header = document.createElement('div');
+      header.style.cssText = `
+        padding: 12px 16px; border-bottom: 1px solid var(--line);
+        display: flex; justify-content: space-between; align-items: center;
+        background: var(--bg-elev2);
+      `;
+      header.innerHTML = `
+        <strong style="color: var(--accent);">📋 All Cards Raw Data</strong>
+        <button style="padding: 4px 8px; background: var(--accent); color: var(--code-bg); border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600;">Close</button>
+      `;
+
+      // Content
+      const content = document.createElement('div');
+      content.style.cssText = `
+        flex: 1; overflow-y: auto; padding: 16px;
+        white-space: pre-wrap; word-wrap: break-word; word-break: break-word;
+        line-height: 1.5;
+      `;
+      content.textContent = rawText;
+
+      // Close handler
+      const closeBtn = header.querySelector('button');
+      const closeModal = () => modal.remove();
+      closeBtn.addEventListener('click', closeModal);
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+      });
+
+      container.appendChild(header);
+      container.appendChild(content);
+      modal.appendChild(container);
+      document.body.appendChild(modal);
+
+      console.log('[cards.js] Raw data modal opened');
+    } catch(error) {
+      console.error('[cards.js] Error viewing all cards:', error);
+      alert('Error loading raw cards data: ' + error.message);
+    }
+  }
+
   function bind(){
     const btnRefresh = document.getElementById('btn-cards-refresh');
     const btnBuild = document.getElementById('btn-cards-build');
+    const btnViewAll = document.getElementById('btn-cards-view-all');
     if (btnRefresh && !btnRefresh.dataset.bound){ btnRefresh.dataset.bound='1'; btnRefresh.addEventListener('click', refresh); }
     if (btnBuild && !btnBuild.dataset.bound){ btnBuild.dataset.bound='1'; btnBuild.addEventListener('click', build); }
+    if (btnViewAll && !btnViewAll.dataset.bound){ btnViewAll.dataset.bound='1'; btnViewAll.addEventListener('click', viewAllCards); }
   }
 
   // Initialization function for data quality view
