@@ -161,8 +161,10 @@
 
         try {
             // Gather indexing options
-            const skipDense = skipDenseSelect ? skipDenseSelect.value === '1' : false;
-            const enrich = enrichSelect ? enrichSelect.value === '1' : false;
+            const skipDense = skipDenseSelect && skipDenseSelect.value === '1' ? true : false;
+            const enrich = enrichSelect && enrichSelect.value === '1' ? true : false;
+
+            console.log('[indexing] Options:', { skipDense, enrich });
 
             const response = await fetch(api('/api/index/start'), {
                 method: 'POST',

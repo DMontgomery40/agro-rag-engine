@@ -188,6 +188,7 @@
             flex-direction: column;
             border-right: 1px solid var(--line);
             overflow: visible;
+            position: relative;
         }
 
         .resize-handle {
@@ -1087,6 +1088,7 @@
 
             /* Layout: full single column */
             .layout {
+                grid-template-columns: 1fr;
                 height: auto;
                 min-height: calc(100vh - 80px);
             }
@@ -1097,6 +1099,7 @@
 
             /* Sidepanel: stacked below */
             .sidepanel {
+                grid-column: 1 / 2;
                 border-top: 1px solid var(--line);
                 max-height: 60vh;
             }
@@ -2311,7 +2314,7 @@
 
             <!-- NEW TAB STRUCTURE - Phase 3 Migration -->
             <!-- Scrollable tab content wrapper -->
-            <div style="flex: 1; overflow-y: auto; min-height: 0;">
+            <div style="flex: 1; overflow-y: auto; min-height: 0; padding-bottom: 80px;">
             <!-- Tab: Get Started (NEW - will contain onboarding content) -->
             <div id="tab-start" class="tab-content">
             <div class="ob-container">
@@ -3792,6 +3795,14 @@
                                     <option value="0">No (full index)</option>
                                     <option value="1">Yes (BM25 only, faster)</option>
                                 </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Enrich Code Chunks</label>
+                                <select id="index-enrich-chunks" style="background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); padding: 8px; border-radius: 4px;">
+                                    <option value="0">No (faster indexing)</option>
+                                    <option value="1">Yes (adds summaries + keywords)</option>
+                                </select>
+                                <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Generate AI summaries and extract keywords for each code chunk. Improves semantic search but slower.</p>
                             </div>
                         </div>
 
@@ -5479,8 +5490,8 @@
 
             </div> <!-- End scrollable wrapper -->
 
-            <!-- Apply button - fixed footer -->
-            <div class="action-buttons" style="padding: 12px 24px; background: var(--bg); border-top: 1px solid var(--line); flex-shrink: 0;">
+            <!-- Apply button - absolute positioned at bottom -->
+            <div class="action-buttons" style="padding: 12px 24px; background: var(--bg); border-top: 1px solid var(--line); position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;">
                 <button id="save-btn">Apply All Changes</button>
             </div>
         </div>
