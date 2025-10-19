@@ -52,7 +52,25 @@
             state.alertThresholds = data;
             populateAlertThresholds(data);
         } catch (e) {
-            console.error('Failed to load alert thresholds:', e);
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to load alert thresholds', {
+                message: e.message,
+                causes: [
+                    'Monitoring service backend not running or responding',
+                    'Alert thresholds database not initialized',
+                    'Network connectivity issue between frontend and backend',
+                    'Backend API permissions or authentication failure'
+                ],
+                fixes: [
+                    'Verify monitoring service is running in Infrastructure tab',
+                    'Check backend logs for database connection issues',
+                    'Refresh the page and try loading thresholds again',
+                    'Verify your authentication token is valid'
+                ],
+                links: [
+                    ['Prometheus Alerting Documentation', 'https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/']
+                ]
+            }) : `Failed to load alert thresholds: ${e.message}`;
+            console.error('[alerts.js] Failed to load alert thresholds:', msg);
         }
     }
 
@@ -133,11 +151,29 @@
                 container.innerHTML = html;
             }
         } catch (e) {
-            console.error('Failed to load alert status:', e);
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to load alert status', {
+                message: e.message,
+                causes: [
+                    'AlertManager service not running or not responding',
+                    'Webhook service connection failure',
+                    'Network timeout or connectivity issue',
+                    'Invalid or expired authentication credentials'
+                ],
+                fixes: [
+                    'Check Infrastructure tab - verify AlertManager is running',
+                    'Review webhook service logs for errors',
+                    'Verify network connectivity and check firewall rules',
+                    'Refresh the page and retry loading alert status'
+                ],
+                links: [
+                    ['Grafana Alerting Documentation', 'https://grafana.com/docs/grafana/latest/alerting/']
+                ]
+            }) : `Failed to load alert status: ${e.message}`;
             const container = $('#alert-status-container');
             if (container) {
                 container.innerHTML = '<p style="color: var(--err); font-size: 13px;">❌ Error loading alert status</p>';
             }
+            console.error('[alerts.js] Failed to load alert status:', msg);
         }
     }
 
@@ -198,11 +234,29 @@
                 container.innerHTML = html;
             }
         } catch (e) {
-            console.error('Failed to load alert history:', e);
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to load alert history', {
+                message: e.message,
+                causes: [
+                    'Alert history database unavailable or corrupted',
+                    'AlertManager API endpoint not responding',
+                    'Network connection timeout or DNS failure',
+                    'Insufficient permissions to access alert history'
+                ],
+                fixes: [
+                    'Verify AlertManager is running and accessible',
+                    'Check database connectivity in Infrastructure tab',
+                    'Clear browser cache and refresh the page',
+                    'Check your API credentials and permissions'
+                ],
+                links: [
+                    ['Grafana Alerting Documentation', 'https://grafana.com/docs/grafana/latest/alerting/']
+                ]
+            }) : `Failed to load alert history: ${e.message}`;
             const container = $('#alert-history-container');
             if (container) {
                 container.innerHTML = '<p style="color: var(--err); font-size: 12px;">Error loading alert history</p>';
             }
+            console.error('[alerts.js] Failed to load alert history:', msg);
         }
     }
 
@@ -266,11 +320,29 @@
                 }
             }
         } catch (e) {
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to save alert thresholds', {
+                message: e.message,
+                causes: [
+                    'Monitoring API service is down or unreachable',
+                    'Invalid threshold values submitted in form',
+                    'Backend validation rejected the threshold configuration',
+                    'Database write permissions denied or storage limit exceeded'
+                ],
+                fixes: [
+                    'Verify all threshold values are valid numbers and positive',
+                    'Check that threshold values are within acceptable ranges',
+                    'Verify monitoring service is running in Infrastructure tab',
+                    'Check backend logs for validation errors or storage issues'
+                ],
+                links: [
+                    ['Prometheus Alerting Documentation', 'https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/']
+                ]
+            }) : `Failed to save alert thresholds: ${e.message}`;
             if (statusDiv) {
                 statusDiv.textContent = `❌ Error: ${e.message}`;
                 statusDiv.style.color = 'var(--err)';
             }
-            console.error('Failed to save alert thresholds:', e);
+            console.error('[alerts.js] Failed to save alert thresholds:', msg);
         } finally {
             if (saveBtn) saveBtn.disabled = false;
             // Clear status message after 5 seconds
@@ -388,11 +460,30 @@
                 }
             }
         } catch (e) {
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to save webhook configuration', {
+                message: e.message,
+                causes: [
+                    'Slack or Discord webhook URL is invalid or expired',
+                    'Network connectivity issue connecting to Slack/Discord',
+                    'Monitoring backend API is not responding',
+                    'Invalid JSON in webhook configuration or authentication failed'
+                ],
+                fixes: [
+                    'Verify Slack webhook URL is correct: https://api.slack.com/messaging/webhooks',
+                    'Verify Discord webhook URL is correct: https://discord.com/developers/docs/resources/webhook',
+                    'Test webhook URLs in terminal: curl -X POST <webhook-url> -d "test message"',
+                    'Check backend logs for configuration validation errors'
+                ],
+                links: [
+                    ['Slack Webhooks Documentation', 'https://api.slack.com/messaging/webhooks'],
+                    ['Discord Webhooks Documentation', 'https://discord.com/developers/docs/resources/webhook']
+                ]
+            }) : `Failed to save webhook config: ${e.message}`;
             if (statusDiv) {
                 statusDiv.textContent = `❌ Error: ${e.message}`;
                 statusDiv.style.color = 'var(--err)';
             }
-            console.error('Failed to save webhook config:', e);
+            console.error('[alerts.js] Failed to save webhook config:', msg);
         } finally {
             if (saveBtn) saveBtn.disabled = false;
             // Clear status message after 5 seconds
