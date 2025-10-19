@@ -5554,27 +5554,27 @@
                 </div>
                 <div class="input-row" style="margin-bottom: 12px;">
                     <div class="input-group">
-                        <label>Tokens In</label>
-                        <input type="number" id="cost-in" value="500">
+                        <label>Input Tokens / Request</label>
+                        <input type="number" id="cost-in" value="500" placeholder="Avg input tokens per request">
                     </div>
                     <div class="input-group">
-                        <label>Tokens Out</label>
-                        <input type="number" id="cost-out" value="800">
+                        <label>Output Tokens / Request</label>
+                        <input type="number" id="cost-out" value="800" placeholder="Avg output tokens per request">
                     </div>
                 </div>
                 <div class="input-row" style="margin-bottom: 12px;">
                     <div class="input-group">
-                        <label>Embeds</label>
-                        <input type="number" id="cost-embeds" value="0">
+                        <label>Embedding Tokens / Day</label>
+                        <input type="number" id="cost-embeds" value="0" placeholder="Total daily embedding tokens (0 = disabled)">
                     </div>
                     <div class="input-group">
-                        <label>Reranks</label>
-                        <input type="number" id="cost-rerank" value="0">
+                        <label>Reranks / Day</label>
+                        <input type="number" id="cost-rerank" value="0" placeholder="Total daily reranking operations">
                     </div>
                 </div>
                 <div class="input-group" style="margin-bottom: 12px;">
-                    <label>Requests / Day</label>
-                    <input type="number" id="cost-rpd" value="100">
+                    <label>API Requests / Day</label>
+                    <input type="number" id="cost-rpd" value="100" placeholder="Total daily API requests">
                 </div>
                 <button class="small-button" id="btn-estimate">Calculate Cost</button>
                 <button class="small-button" id="btn-add-cost-model" style="margin-left:8px;">Add Model</button>
