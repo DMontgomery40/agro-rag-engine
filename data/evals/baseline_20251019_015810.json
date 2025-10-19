@@ -1,0 +1,580 @@
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. reranker.py (python)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[1/52] repo=agro q=Where is the hybrid search implementation that combines BM25 and vector search?
+  top1=['/Users/davidmontgomery/agro-rag-engine/server/reranker.py']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. reranker.py (python)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[2/52] repo=agro q=How does the indexing pipeline work? Where is the main indexer?
+  top1=['/Users/davidmontgomery/agro-rag-engine/server/reranker.py']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[3/52] repo=agro q=Where is the FastAPI server and main API routes defined?
+  top1=['/Users/davidmontgomery/agro-rag-engine/tests/visual/visual.spec.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[4/52] repo=agro q=Where is the LangGraph conversational RAG pipeline implemented?
+  top1=['/Users/davidmontgomery/agro-rag-engine/tests/visual/visual.spec.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[5/52] repo=agro q=How does the cross-encoder reranker work?
+  top1=['/Users/davidmontgomery/agro-rag-engine/playwright.gui.config.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. tests.js (javascript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[6/52] repo=agro q=Where is the MCP (Model Context Protocol) server for stdio transport?
+  top1=['/Users/davidmontgomery/agro-rag-engine/.editor_data/code-server-data/extensions/dsznajder.es7-react-js-snippets-4.4.3-universal/lib/sourceSnippets/tests.js']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. test_dashboard.py (python)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[7/52] repo=agro q=Where is the GUI main HTML and JavaScript?
+  top1=['/Users/davidmontgomery/agro-rag-engine/playwright.gui.config.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[8/52] repo=agro q=How does the navigation system work in the GUI?
+  top1=['/Users/davidmontgomery/agro-rag-engine/playwright.gui.config.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. langgraph_app.py (python)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[9/52] repo=agro q=Where is the chat interface implementation?
+  top1=['/Users/davidmontgomery/agro-rag-engine/server/langgraph_app.py']
+  top5 hit=True
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[10/52] repo=agro q=Where is the AST-aware code chunking implemented?
+  top1=['/Users/davidmontgomery/agro-rag-engine/tests/visual/visual.spec.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[11/52] repo=agro q=How does the embedding cache work to avoid recomputation?
+  top1=['/Users/davidmontgomery/agro-rag-engine/tools/playwright.config.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. test_dashboard.py (python)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[12/52] repo=agro q=Where is the semantic card building logic?
+  top1=['/Users/davidmontgomery/agro-rag-engine/tests/test_dashboard.py']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[13/52] repo=agro q=Where is the repository configuration loaded from repos.json?
+  top1=['/Users/davidmontgomery/agro-rag-engine/tests/visual/visual.spec.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[14/52] repo=agro q=How are file filtering and exclusion rules defined?
+  top1=['/Users/davidmontgomery/agro-rag-engine/playwright.gui.config.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. test_dashboard.py (python)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[15/52] repo=agro q=Where is the metadata enrichment for code chunks?
+  top1=['/Users/davidmontgomery/agro-rag-engine/tests/test_dashboard.py']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. test_dashboard.py (python)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[16/52] repo=agro q=Where is the Qdrant vector database integration?
+  top1=['/Users/davidmontgomery/agro-rag-engine/tests/test_dashboard.py']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[17/52] repo=agro q=How does multi-query expansion work?
+  top1=['/Users/davidmontgomery/agro-rag-engine/playwright.gui.config.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[18/52] repo=agro q=Where is the tracing system for debugging RAG pipelines?
+  top1=['/Users/davidmontgomery/agro-rag-engine/tests/visual/visual.spec.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. langgraph_app.py (python)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[19/52] repo=agro q=Where are the keyword generation scripts?
+  top1=['/Users/davidmontgomery/agro-rag-engine/server/langgraph_app.py']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[20/52] repo=agro q=How does the reranker training with triplets work?
+  top1=['/Users/davidmontgomery/agro-rag-engine/playwright.gui.config.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. test_dashboard.py (python)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[21/52] repo=agro q=Where is the Docker Compose and infrastructure setup?
+  top1=['/Users/davidmontgomery/agro-rag-engine/tests/test_dashboard.py']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. langgraph_app.py (python)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[22/52] repo=agro q=Where is the Grafana dashboard configuration?
+  top1=['/Users/davidmontgomery/agro-rag-engine/server/langgraph_app.py']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. langgraph_app.py (python)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[23/52] repo=agro q=Where is the Prometheus metrics configuration?
+  top1=['/Users/davidmontgomery/agro-rag-engine/server/langgraph_app.py']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[24/52] repo=agro q=How does the CLI chat tool work?
+  top1=['/Users/davidmontgomery/agro-rag-engine/tools/playwright.config.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. reranker.py (python)
+    5. langgraph_app.py (python)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[25/52] repo=agro q=Where are the Playwright end-to-end tests?
+  top1=['/Users/davidmontgomery/agro-rag-engine/tests/playwright.gui.config.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[26/52] repo=agro q=Where is the evaluation harness for testing RAG quality?
+  top1=['/Users/davidmontgomery/agro-rag-engine/tests/visual/visual.spec.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[27/52] repo=agro q=How does the theme system work in the GUI?
+  top1=['/Users/davidmontgomery/agro-rag-engine/playwright.gui.config.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. langgraph_app.py (python)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[28/52] repo=agro q=Where is the configuration management in the GUI?
+  top1=['/Users/davidmontgomery/agro-rag-engine/server/langgraph_app.py']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. langgraph_app.py (python)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[29/52] repo=agro q=Where is the index statistics computation?
+  top1=['/Users/davidmontgomery/agro-rag-engine/server/langgraph_app.py']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[30/52] repo=agro q=How does the confidence gating work in LangGraph?
+  top1=['/Users/davidmontgomery/agro-rag-engine/playwright.gui.config.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[31/52] repo=agro q=Where are the API endpoint handlers for RAG queries?
+  top1=['/Users/davidmontgomery/agro-rag-engine/playwright.gui.config.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. tests.js (javascript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[32/52] repo=agro q=How does the query rewriting work when confidence is low?
+  top1=['/Users/davidmontgomery/agro-rag-engine/.editor_data/code-server-data/extensions/dsznajder.es7-react-js-snippets-4.4.3-universal/lib/sourceSnippets/tests.js']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. test_dashboard.py (python)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[33/52] repo=agro q=Where is the synonym expansion for semantic search?
+  top1=['/Users/davidmontgomery/agro-rag-engine/tests/test_dashboard.py']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[34/52] repo=agro q=Where are the cost calculation utilities for token usage?
+  top1=['/Users/davidmontgomery/agro-rag-engine/playwright.gui.config.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[35/52] repo=agro q=How does the dashboard tab render system status?
+  top1=['/Users/davidmontgomery/agro-rag-engine/playwright.gui.config.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. test_dashboard.py (python)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[36/52] repo=agro q=Where is the telemetry logging for queries and feedback?
+  top1=['/Users/davidmontgomery/agro-rag-engine/tests/test_dashboard.py']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[37/52] repo=agro q=How does the MCP HTTP server work?
+  top1=['/Users/davidmontgomery/agro-rag-engine/playwright.gui.config.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[38/52] repo=agro q=Where is the Node.js MCP server implementation?
+  top1=['/Users/davidmontgomery/agro-rag-engine/tests/visual/visual.spec.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. langgraph_app.py (python)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[39/52] repo=agro q=Where are the common path utilities?
+  top1=['/Users/davidmontgomery/agro-rag-engine/server/langgraph_app.py']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[40/52] repo=agro q=How does the file selection and upload work in the GUI?
+  top1=['/Users/davidmontgomery/agro-rag-engine/playwright.gui.config.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. test_dashboard.py (python)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[41/52] repo=agro q=Where is the golden questions test runner?
+  top1=['/Users/davidmontgomery/agro-rag-engine/tests/test_dashboard.py']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[42/52] repo=agro q=How does the auto-profile wizard work?
+  top1=['/Users/davidmontgomery/agro-rag-engine/playwright.gui.config.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. langgraph_app.py (python)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[43/52] repo=agro q=Where is the infrastructure management in the GUI?
+  top1=['/Users/davidmontgomery/agro-rag-engine/server/langgraph_app.py']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[44/52] repo=agro q=How does the reranker UI component work?
+  top1=['/Users/davidmontgomery/agro-rag-engine/playwright.gui.config.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. langgraph_app.py (python)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[45/52] repo=agro q=Where are the alert configuration and management?
+  top1=['/Users/davidmontgomery/agro-rag-engine/server/langgraph_app.py']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[46/52] repo=agro q=How does the profiles system work for saving configurations?
+  top1=['/Users/davidmontgomery/agro-rag-engine/playwright.gui.config.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[47/52] repo=agro q=Where is the VS Code integration for embedded editor?
+  top1=['/Users/davidmontgomery/agro-rag-engine/tests/visual/visual.spec.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[48/52] repo=agro q=How does the Makefile orchestrate development tasks?
+  top1=['/Users/davidmontgomery/agro-rag-engine/playwright.gui.config.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. langgraph_app.py (python)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[49/52] repo=agro q=Where are the Python requirements defined?
+  top1=['/Users/davidmontgomery/agro-rag-engine/server/langgraph_app.py']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[50/52] repo=agro q=How does the feedback collection system work?
+  top1=['/Users/davidmontgomery/agro-rag-engine/playwright.gui.config.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. visual.spec.ts (typescript)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[51/52] repo=agro q=Where are helpful error message utilities defined?
+  top1=['/Users/davidmontgomery/agro-rag-engine/playwright.gui.config.ts']
+  top5 hit=False
+  [DEBUG] After RRF, top 5:
+    1. playwright.config.ts (typescript)
+    2. playwright.gui.config.ts (typescript)
+    3. playwright.gui.config.ts (typescript)
+    4. playwright.config.ts (typescript)
+    5. langgraph_app.py (python)
+🔧 Reranker backend: none
+🔧 Reranker backend: none
+[52/52] repo=agro q=Where are GUI tooltips implemented?
+  top1=['/Users/davidmontgomery/agro-rag-engine/playwright.gui.config.ts']
+  top5 hit=False
+{
+  "total": 52,
+  "top1": 1,
+  "topk": 1,
+  "final_k": 5,
+  "use_multi": true,
+  "secs": 212.75
+}

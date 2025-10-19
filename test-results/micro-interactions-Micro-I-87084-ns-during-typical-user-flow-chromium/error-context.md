@@ -1,0 +1,358 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - heading "AGRO Another Good RAG Option" [level=1] [ref=e3]:
+      - generic [ref=e4]: AGRO
+      - generic [ref=e5]: Another Good RAG Option
+    - generic [ref=e6]:
+      - searchbox "Search settings (Ctrl+K)" [ref=e7]
+      - combobox "Theme Mode" [ref=e8]:
+        - option "Auto"
+        - option "Dark" [selected]
+        - option "Light"
+      - button "Health" [ref=e9] [cursor=pointer]
+      - generic [ref=e10]: OK @ 10/19/2025, 1:49:16 AM
+  - generic [ref=e11]:
+    - generic [ref=e13]:
+      - generic [ref=e14]:
+        - button "🚀 Get Started" [ref=e15] [cursor=pointer]
+        - button "📊 Dashboard" [ref=e16] [cursor=pointer]
+        - button "💬 Chat" [ref=e17] [cursor=pointer]
+        - button "📝 VS Code ✨" [ref=e18] [cursor=pointer]
+        - button "📈 Grafana ✨" [ref=e19] [cursor=pointer]
+        - button "🧠 RAG" [active] [ref=e20] [cursor=pointer]
+        - button "💾 Profiles" [ref=e21] [cursor=pointer]
+        - button "🔧 Infrastructure" [ref=e22] [cursor=pointer]
+        - button "⚙️ Admin" [ref=e23] [cursor=pointer]
+      - generic [ref=e24]:
+        - button "Data Quality" [ref=e25] [cursor=pointer]
+        - button "Retrieval" [ref=e26] [cursor=pointer]
+        - button "External Rerankers" [ref=e27] [cursor=pointer]
+        - button "Learning Ranker" [ref=e28] [cursor=pointer]
+        - button "Indexing" [ref=e29] [cursor=pointer]
+        - button "Evaluate" [ref=e30] [cursor=pointer]
+      - generic [ref=e32]:
+        - generic [ref=e33]:
+          - heading "Repository Configuration" [level=3] [ref=e34]
+          - generic [ref=e36]:
+            - 'heading "Repo: agro" [level=4] [ref=e37]'
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - text: Path
+                - 'generic "Help: repo_path_agro" [ref=e41]': "?"
+              - textbox [ref=e42]: /Users/davidmontgomery/agro-rag-engine
+            - generic [ref=e43]:
+              - generic [ref=e44]:
+                - text: Keywords (comma-separated)
+                - 'generic "Help: repo_keywords_agro" [ref=e46]': "?"
+              - combobox "search or type to add" [ref=e47]: models,python,openai,final_k,float,local,search,hybrid_search,redis,tokens
+            - generic [ref=e48]:
+              - generic [ref=e49]:
+                - text: Path Boosts (comma-separated)
+                - 'generic "Help: repo_pathboosts_agro" [ref=e51]': "?"
+              - textbox [ref=e52]: /gui,/server,/indexer,/retrieval,/scripts,/gui/js
+            - generic [ref=e53]:
+              - generic [ref=e54]:
+                - text: Layer Bonuses (JSON)
+                - 'generic "Help: repo_layerbonuses_agro" [ref=e56]': "?"
+              - textbox [ref=e57]: "{ \"gui\": { \"gui\": 0.15, \"server\": 0.05 }, \"retrieval\": { \"retrieval\": 0.15, \"server\": 0.05 }, \"indexer\": { \"indexer\": 0.15, \"retrieval\": 0.08, \"common\": 0.05 }, \"eval\": { \"eval\": 0.15, \"tests\": 0.1, \"retrieval\": 0.05 }, \"infra\": { \"infra\": 0.15, \"scripts\": 0.08 }, \"server\": { \"server\": 0.15, \"retrieval\": 0.05, \"common\": 0.05 } }"
+            - generic [ref=e58]:
+              - generic [ref=e59]: Keyword Manager
+              - generic [ref=e60]:
+                - generic [ref=e61]:
+                  - generic [ref=e62]:
+                    - textbox "filter..." [ref=e63]
+                    - combobox [ref=e64]:
+                      - option "All" [selected]
+                      - option "Discriminative"
+                      - option "Semantic"
+                      - option "LLM"
+                      - option "Repo"
+                    - button "+" [ref=e65] [cursor=pointer]
+                  - listbox [ref=e66]:
+                    - option "single" [ref=e67]
+                    - option "run" [ref=e68]
+                    - option "gui" [ref=e69]
+                    - option "pathlib" [ref=e70]
+                    - option "path" [ref=e71]
+                    - option "root" [ref=e72]
+                    - option "repo" [ref=e73]
+                    - option "content" [ref=e74]
+                    - option "exists" [ref=e75]
+                    - option "chat" [ref=e76]
+                    - option "size" [ref=e77]
+                    - option "active" [ref=e78]
+                    - option "access" [ref=e79]
+                    - option "loaded" [ref=e80]
+                    - option "contents" [ref=e81]
+                    - option "button" [ref=e82]
+                    - option "all" [ref=e83]
+                    - option "after" [ref=e84]
+                    - option "rag" [ref=e85]
+                    - option "tabs" [ref=e86]
+                    - option "diagnostics" [ref=e87]
+                    - option "offset" [ref=e88]
+                    - option "found" [ref=e89]
+                    - option "cannot" [ref=e90]
+                    - option "not" [ref=e91]
+                    - option "text" [ref=e92]
+                    - option "rule" [ref=e93]
+                    - option "locale" [ref=e94]
+                    - option "yes" [ref=e95]
+                    - option "length" [ref=e96]
+                    - option "total" [ref=e97]
+                    - option "paste" [ref=e98]
+                    - option "vscode" [ref=e99]
+                    - option "methods" [ref=e100]
+                    - option "grafana" [ref=e101]
+                    - option "dashboard" [ref=e102]
+                    - option "display" [ref=e103]
+                    - option "visible" [ref=e104]
+                    - option "tab" [ref=e105]
+                    - option "admin" [ref=e106]
+                    - option "buttons" [ref=e107]
+                    - option "height" [ref=e108]
+                    - option "profiles" [ref=e109]
+                    - option "infrastructure" [ref=e110]
+                    - option "selector" [ref=e111]
+                    - option "retrieval" [ref=e112]
+                    - option "core" [ref=e113]
+                    - option "cmd" [ref=e114]
+                    - option "read" [ref=e115]
+                    - option "typing" [ref=e116]
+                    - option "linux" [ref=e117]
+                    - option "arm" [ref=e118]
+                    - option "files" [ref=e119]
+                    - option "lib" [ref=e120]
+                    - option "the" [ref=e121]
+                    - option "name" [ref=e122]
+                    - option "this" [ref=e123]
+                    - option "error" [ref=e124]
+                    - option "jedilsp" [ref=e125]
+                    - option "black" [ref=e126]
+                    - option "formatter" [ref=e127]
+                    - option "vendored" [ref=e128]
+                    - option "pydevd" [ref=e129]
+                    - option "exception" [ref=e130]
+                    - option "file" [ref=e131]
+                    - option "license" [ref=e132]
+                    - option "see" [ref=e133]
+                    - option "version" [ref=e134]
+                    - option "from" [ref=e135]
+                    - option "make" [ref=e136]
+                    - option "check" [ref=e137]
+                    - option "any" [ref=e138]
+                    - option "copyright" [ref=e139]
+                    - option "optional" [ref=e140]
+                    - option "main" [ref=e141]
+                    - option "cattrs" [ref=e142]
+                    - option "bundle" [ref=e143]
+                    - option "ruff" [ref=e144]
+                    - option "charliermarsh" [ref=e145]
+                    - option "note" [ref=e146]
+                    - option "returns" [ref=e147]
+                    - option "future" [ref=e148]
+                    - option "value" [ref=e149]
+                    - option "rerank" [ref=e150]
+                    - option "pydev" [ref=e151]
+                    - option "info" [ref=e152]
+                    - option "process" [ref=e153]
+                    - option "collections" [ref=e154]
+                    - option "union" [ref=e155]
+                    - option "licensed" [ref=e156]
+                    - option "jedi" [ref=e157]
+                    - option "semantic" [ref=e158]
+                    - option "json" [ref=e159]
+                    - option "line" [ref=e160]
+                    - option "parse" [ref=e161]
+                    - option "thread" [ref=e162]
+                    - option "use" [ref=e163]
+                    - option "tuple" [ref=e164]
+                    - option "start" [ref=e165]
+                    - option "api" [ref=e166]
+                    - option "callable" [ref=e167]
+                    - option "with" [ref=e168]
+                    - option "retrieval augmented generation" [ref=e169]
+                    - option "hybrid search implementation" [ref=e170]
+                    - option "vector database integration" [ref=e171]
+                    - option "semantic code analysis" [ref=e172]
+                    - option "multi query expansion" [ref=e173]
+                    - option "cross encoder reranking" [ref=e174]
+                    - option "embedding cache optimization" [ref=e175]
+                    - option "ast aware chunking" [ref=e176]
+                    - option "evaluation harness framework" [ref=e177]
+                    - option "model context protocol" [ref=e178]
+                    - option "langgraph pipeline design" [ref=e179]
+                    - option "bm25 sparse retrieval" [ref=e180]
+                    - option "dense vector search" [ref=e181]
+                    - option "confidence gating system" [ref=e182]
+                    - option "traceability integration" [ref=e183]
+                    - option "cost optimization profiles" [ref=e184]
+                    - option "local model deployment" [ref=e185]
+                    - option "keyword generation algorithms" [ref=e186]
+                    - option "cards semantic summarization" [ref=e187]
+                    - option "multi repository routing" [ref=e188]
+                - generic [ref=e189]:
+                  - button ">>" [ref=e190] [cursor=pointer]
+                  - button "<<" [ref=e191] [cursor=pointer]
+                - generic [ref=e192]:
+                  - generic [ref=e193]: Repo Keywords
+                  - listbox [ref=e194]:
+                    - option "models" [ref=e195]
+                    - option "python" [ref=e196]
+                    - option "openai" [ref=e197]
+                    - option "final_k" [ref=e198]
+                    - option "float" [ref=e199]
+                    - option "local" [ref=e200]
+                    - option "search" [ref=e201]
+                    - option "hybrid_search" [ref=e202]
+                    - option "redis" [ref=e203]
+                    - option "tokens" [ref=e204]
+        - generic [ref=e205]:
+          - heading "● Code Cards Builder & Viewer ?" [level=3] [ref=e206]:
+            - generic [ref=e207]: ●
+            - text: Code Cards Builder & Viewer
+            - generic [ref=e209]: "?"
+          - generic [ref=e211]:
+            - generic [ref=e212]: Repository to Build Cards For
+            - combobox [ref=e213]:
+              - option "agro" [selected]
+          - generic [ref=e215]:
+            - generic [ref=e216]: Exclude Directories (comma-separated)
+            - textbox "e.g., node_modules, vendor, dist" [ref=e217]
+            - paragraph [ref=e218]: Directories to skip when building cards
+          - generic [ref=e220]:
+            - generic [ref=e221]: Exclude Patterns (comma-separated)
+            - textbox "e.g., .test.js, .spec.ts, .min.js" [ref=e222]
+            - paragraph [ref=e223]: File patterns to skip
+          - generic [ref=e225]:
+            - generic [ref=e226]: Exclude Keywords (comma-separated)
+            - textbox "e.g., deprecated, legacy, TODO" [ref=e227]
+            - paragraph [ref=e228]: Skip chunks containing these keywords
+          - generic [ref=e229]:
+            - generic [ref=e230]:
+              - generic [ref=e231]:
+                - text: Cards Max
+                - 'generic "Help: CARDS_MAX" [ref=e233]': "?"
+              - spinbutton [ref=e234]: "1000"
+              - paragraph [ref=e235]: Limit chunks (0 = all)
+            - generic [ref=e236]:
+              - generic [ref=e237]:
+                - checkbox "Enrich with AI" [checked] [ref=e238] [cursor=pointer]
+                - text: Enrich with AI
+              - paragraph [ref=e239]: Use LLM for rich semantic cards
+          - generic [ref=e240]:
+            - button "⚡ Build Cards" [ref=e241] [cursor=pointer]
+            - button "↻ Refresh" [ref=e242] [cursor=pointer]
+          - paragraph [ref=e244]: Click a card to navigate to its source location.
+        - generic [ref=e245]:
+          - heading "● Semantic Synonyms ?" [level=3] [ref=e246]:
+            - generic [ref=e247]: ●
+            - text: Semantic Synonyms
+            - generic [ref=e249]: "?"
+          - paragraph [ref=e250]:
+            - text: Semantic synonyms are configured in
+            - code [ref=e251]: data/semantic_synonyms.json
+            - text: . Enable/disable via the Retrieval tab settings (USE_SEMANTIC_SYNONYMS).
+    - generic [ref=e252]:
+      - button "Reset Width" [ref=e254]
+      - generic [ref=e255]:
+        - heading "▸ Live Cost Calculator LIVE" [level=4] [ref=e256]:
+          - text: ▸ Live Cost Calculator
+          - generic [ref=e257]: LIVE
+        - generic [ref=e259]:
+          - generic [ref=e260]: Inference Provider
+          - combobox [ref=e261]:
+            - option "openai" [selected]
+            - option "anthropic"
+            - option "google"
+            - option "mistral"
+            - option "cohere"
+            - option "local"
+        - generic [ref=e262]:
+          - generic [ref=e263]: Inference Model
+          - combobox [ref=e264]: gpt-4o-mini
+        - generic [ref=e265]:
+          - generic [ref=e266]:
+            - generic [ref=e267]: Embeddings Provider
+            - combobox [ref=e268]:
+              - option "Use current"
+              - option "OpenAI" [selected]
+              - option "Voyage"
+              - option "MXBAI"
+              - option "Local"
+          - generic [ref=e269]:
+            - generic [ref=e270]: Embedding Model
+            - combobox "text-embedding-3-small" [ref=e271]
+        - generic [ref=e272]:
+          - generic [ref=e273]:
+            - generic [ref=e274]: Reranker
+            - combobox [ref=e275]:
+              - option "Use current"
+              - option "Cohere" [selected]
+              - option "Hugging Face"
+              - option "Local"
+              - option "None"
+          - generic [ref=e276]:
+            - generic [ref=e277]: Rerank Model
+            - textbox "rerank-english-v3.0" [ref=e278]
+        - generic [ref=e279]:
+          - generic [ref=e280]:
+            - generic [ref=e281]: Tokens In
+            - spinbutton [ref=e282]: "500"
+          - generic [ref=e283]:
+            - generic [ref=e284]: Tokens Out
+            - spinbutton [ref=e285]: "800"
+        - generic [ref=e286]:
+          - generic [ref=e287]:
+            - generic [ref=e288]: Embeds
+            - spinbutton [ref=e289]: "0"
+          - generic [ref=e290]:
+            - generic [ref=e291]: Reranks
+            - spinbutton [ref=e292]: "0"
+        - generic [ref=e293]:
+          - generic [ref=e294]: Requests / Day
+          - spinbutton [ref=e295]: "100"
+        - button "Calculate Cost" [ref=e296] [cursor=pointer]
+        - button "Add Model" [ref=e297] [cursor=pointer]
+        - generic [ref=e298]:
+          - generic [ref=e299]:
+            - generic [ref=e300]: Daily
+            - generic [ref=e301]: —
+          - generic [ref=e302]:
+            - generic [ref=e303]: Monthly
+            - generic [ref=e304]: —
+      - generic [ref=e305]:
+        - heading "▸ Profiles" [level=4] [ref=e306]
+        - generic [ref=e307]:
+          - generic [ref=e308]: Save Current As
+          - textbox "my-config" [ref=e309]
+        - button "Save Profile" [ref=e310] [cursor=pointer]
+        - generic [ref=e311]:
+          - generic [ref=e312]: Saved Profiles
+          - list [ref=e313]:
+            - listitem [ref=e314] [cursor=pointer]: defaults
+            - listitem [ref=e315] [cursor=pointer]: min_local
+            - listitem [ref=e316] [cursor=pointer]: onboard-wizard-test-project
+            - listitem [ref=e317] [cursor=pointer]: pw-test
+      - generic [ref=e318]:
+        - heading "▸ Auto‑Tune" [level=4] [ref=e319]
+        - generic [ref=e321]:
+          - checkbox "Enable Auto‑Tune" [ref=e322] [cursor=pointer]
+          - text: Enable Auto‑Tune
+        - generic [ref=e324]: "Current Mode: —"
+        - generic [ref=e325]:
+          - generic [ref=e326]: Last Indexed
+          - generic [ref=e327]: 10/18/2025, 10:19:24 PM
+        - button "Refresh Status" [ref=e328] [cursor=pointer]
+      - generic [ref=e329]:
+        - heading "▸ Secrets Ingest" [level=4] [ref=e330]
+        - generic [ref=e331] [cursor=pointer]:
+          - text: Drop .env / .txt / .md
+          - text: or click to upload
+        - generic [ref=e333] [cursor=pointer]:
+          - checkbox "Persist to defaults.json" [ref=e334]
+          - generic [ref=e335]: Persist to defaults.json
+```

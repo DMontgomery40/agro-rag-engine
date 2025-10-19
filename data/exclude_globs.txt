@@ -65,17 +65,18 @@
 **/*.gz
 **/*.7z
 
-# Test files and data - DISABLED for SOTA RAG (tests contain valuable context)
-# **/test/**
-# **/tests/**
-# **/*.spec.ts
-# **/*.test.ts
-# **/*.spec.js
-# **/*.test.js
-# **/fixtures/**
-# **/mocks/**
-# **/__mocks__/**
-# **/test-data/**
+# Test files and data (exclude to reduce noise in retrieval evals)
+**/test/**
+**/tests/**
+**/*.spec.ts
+**/*.test.ts
+**/*.spec.js
+**/*.test.js
+**/fixtures/**
+**/mocks/**
+**/__mocks__/**
+**/test-data/**
+**/playwright*.ts
 
 # Generated/vendor code
 **/*.d.ts
