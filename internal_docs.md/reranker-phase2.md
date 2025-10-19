@@ -53,7 +53,7 @@ def get_reranker() -> CrossEncoder:
       - AGRO_RERANKER_MAXLEN (default 512)
     """
     global _RERANKER, _RERANKER_PATH, _RERANKER_MTIME, _LAST_CHECK
-    path = os.getenv("AGRO_RERANKER_MODEL_PATH", "cross-encoder/ms-marco-MiniLM-L-6-v2")
+    path = os.getenv("AGRO_RERANKER_MODEL_PATH", "cross-encoder/ms-marco-MiniLM-L-12-v2")
     need_reload = False
 
     if _RERANKER is None or path != _RERANKER_PATH:
@@ -330,7 +330,7 @@ PY
 cd "$REPO" && \
 . .venv/bin/activate && \
 python scripts/mine_triplets.py && \
-python scripts/train_reranker.py --epochs 2 --batch 16 --base cross-encoder/ms-marco-MiniLM-L-6-v2 --out models/cross-encoder-agro && \
+python scripts/train_reranker.py --epochs 2 --batch 16 --base cross-encoder/ms-marco-MiniLM-L-12-v2 --out models/cross-encoder-agro && \
 python scripts/eval_reranker.py --model models/cross-encoder-agro && \
 python scripts/promote_reranker.py --candidate models/cross-encoder-agro --current models/cross-encoder-current --triplets data/training/triplets.jsonl --delta 0.02 --min 30
 
@@ -424,7 +424,7 @@ def get_reranker() -> CrossEncoder:
       AGRO_RERANKER_MAXLEN (default 512)
     """
     global _RERANKER, _RERANKER_PATH, _RERANKER_MTIME, _LAST_CHECK
-    path = os.getenv("AGRO_RERANKER_MODEL_PATH", "cross-encoder/ms-marco-MiniLM-L-6-v2")
+    path = os.getenv("AGRO_RERANKER_MODEL_PATH", "cross-encoder/ms-marco-MiniLM-L-12-v2")
     need_reload = False
 
     if _RERANKER is None or path != _RERANKER_PATH:
@@ -491,7 +491,7 @@ def get_reranker_info() -> Dict[str, Any]:
     Returns current reranker config/state without mutating env.
     """
     global _RERANKER, _RERANKER_PATH, _RERANKER_MTIME, _LAST_CHECK
-    path = os.getenv("AGRO_RERANKER_MODEL_PATH", "cross-encoder/ms-marco-MiniLM-L-6-v2")
+    path = os.getenv("AGRO_RERANKER_MODEL_PATH", "cross-encoder/ms-marco-MiniLM-L-12-v2")
     try:
         resolved = str(Path(path).resolve())
     except Exception:

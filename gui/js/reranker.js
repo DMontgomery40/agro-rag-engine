@@ -449,7 +449,39 @@ async function updateRerankerStats() {
             costAvg.textContent = '$' + (data.avg_per_query || 0).toFixed(6);
         }
     } catch {}
-    
+
+    // Load server reranker info (model, device, params)
+    try {
+        const infoResp = await fetch('/api/reranker/info');
+        if (infoResp.ok) {
+            const info = await infoResp.json();
+            const on = !!info.enabled;
+            const enabledEl = document.getElementById('reranker-info-enabled');
+            const pathEl = document.getElementById('reranker-info-path');
+            const devEl = document.getElementById('reranker-info-device');
+            const alphaEl = document.getElementById('reranker-info-alpha');
+            const topnEl = document.getElementById('reranker-info-topn');
+            const batchEl = document.getElementById('reranker-info-batch');
+            const maxlenEl = document.getElementById('reranker-info-maxlen');
+            if (enabledEl) {
+                enabledEl.textContent = on ? 'ON' : 'OFF';
+                enabledEl.style.color = on ? 'var(--accent)' : 'var(--err)';
+            }
+            if (pathEl) pathEl.textContent = info.resolved_path || info.path || '—';
+            if (devEl) devEl.textContent = info.device || 'cpu';
+            if (alphaEl) alphaEl.textContent = String(info.alpha ?? '—');
+            if (topnEl) topnEl.textContent = String(info.topn ?? '—');
+            if (batchEl) batchEl.textContent = String(info.batch ?? '—');
+            if (maxlenEl) maxlenEl.textContent = String(info.maxlen ?? '—');
+        } else {
+            const panel = document.getElementById('reranker-info-panel');
+            if (panel) panel.innerHTML = '<div style="color:var(--err);">Failed to read /api/reranker/info</div>';
+        }
+    } catch (e) {
+        const panel = document.getElementById('reranker-info-panel');
+        if (panel) panel.innerHTML = `<div style=\"color:var(--err);\">Error: ${e.message}</div>`;
+    }
+
     // Load no-hit queries
     try {
         const nohitsResp = await fetch('/api/reranker/nohits');

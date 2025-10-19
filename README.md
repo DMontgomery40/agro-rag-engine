@@ -1,8 +1,8 @@
 ![AGRO Banner](assets/agro-banner.svg)
-# AGRO is a local‑first RAG engine for codebases.
+# AGRO is a local‑first RAG Engine Workspace for codebases.
 
 
-#### It provides a rich GUI (also a decent TUI), easy setup with an Onboarding Wizard, a built-in Self-Learning Transformer model (it's literally always getting better and faster), Evals w/ Regression Analysis, Multi-Query, Hybrid-Search, Local Hydration, Traceability (Langsmith and OpenAI Agents SDK), Grafana Telemetry, Multiple Transports, Chat Interface, and Modular-everything.
+#### It provides a rich GUI (also a decent TUI), easy setup with an Onboarding Wizard, a built-in Self-Learning Transformer model (it's literally always getting better and faster), Evals w/ Regression Analysis, Multi-Query, Hybrid-Search, Local Hydration, Traceability (Langsmith and OpenAI Agents SDK), Embedded-Grafana dash w/ alerts, Multiple Transports, Chat Interface, and Modular-everything.
 And it even has a VSCode instance embedded in the GUI (you don't have to turn it on just wanted to see if I could do it ; )
 
 ### (Really) Quick Start

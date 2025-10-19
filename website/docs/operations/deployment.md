@@ -96,7 +96,7 @@ EMBEDDING_TYPE=local
 EMBEDDING_MODEL_LOCAL=BAAI/bge-small-en-v1.5
 GENERATION_MODEL=ollama:qwen3-coder:30b
 RERANK_BACKEND=local
-RERANK_MODEL_LOCAL=cross-encoder/ms-marco-MiniLM-L-6-v2
+RERANK_MODEL_LOCAL=cross-encoder/ms-marco-MiniLM-L-12-v2
 
 # No API keys needed
 # OPENAI_API_KEY not set

@@ -3445,7 +3445,18 @@
                             </div>
                             <div class="input-group">
                                 <label>Local/HF Model (RERANKER_MODEL)</label>
-                                <input type="text" name="RERANKER_MODEL" placeholder="BAAI/bge-reranker-v2-m3">
+                                <input type="text" name="RERANKER_MODEL" placeholder="cross-encoder/ms-marco-MiniLM-L-12-v2">
+                            </div>
+                        </div>
+                        <div class="input-row" style="margin-top:8px;">
+                            <div class="input-group full-width" style="background: var(--card-bg); border:1px solid var(--line); border-radius:6px; padding:10px;">
+                                <div style="font-size:11px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Current Reranker (Server)</div>
+                                <div class="mono" id="reranker-info-panel" style="font-size:12px; line-height:1.6;">
+                                    <div>Enabled: <span id="reranker-info-enabled">—</span></div>
+                                    <div>Model Path: <span id="reranker-info-path">—</span></div>
+                                    <div>Device: <span id="reranker-info-device">—</span></div>
+                                    <div>Alpha: <span id="reranker-info-alpha">—</span> • TopN: <span id="reranker-info-topn">—</span> • Batch: <span id="reranker-info-batch">—</span> • MaxLen: <span id="reranker-info-maxlen">—</span></div>
+                                </div>
                             </div>
                         </div>
                         <div class="input-row">
@@ -3552,12 +3563,23 @@
                                 </select>
                             </div>
                             <div class="input-group">
-                                <label>Model Path</label>
-                                <input type="text" name="AGRO_RERANKER_MODEL_PATH" placeholder="models/cross-encoder-agro" value="models/cross-encoder-agro">
+                                <label>Model Path (AGRO_RERANKER_MODEL_PATH)</label>
+                                <input type="text" name="AGRO_RERANKER_MODEL_PATH" placeholder="cross-encoder/ms-marco-MiniLM-L-12-v2" value="models/cross-encoder-agro">
                             </div>
                             <div class="input-group">
                                 <label>Telemetry Log Path</label>
                                 <input type="text" name="AGRO_LOG_PATH" placeholder="data/logs/queries.jsonl" value="data/logs/queries.jsonl">
+                            </div>
+                        </div>
+                        <div class="input-row" style="margin-top:8px;">
+                            <div class="input-group full-width" style="background: var(--card-bg); border:1px solid var(--line); border-radius:6px; padding:10px;">
+                                <div style="font-size:11px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Current Reranker (Server)</div>
+                                <div class="mono" id="reranker-info-panel" style="font-size:12px; line-height:1.6;">
+                                    <div>Enabled: <span id="reranker-info-enabled">—</span></div>
+                                    <div>Model Path: <span id="reranker-info-path">—</span></div>
+                                    <div>Device: <span id="reranker-info-device">—</span></div>
+                                    <div>Alpha: <span id="reranker-info-alpha">—</span> • TopN: <span id="reranker-info-topn">—</span> • Batch: <span id="reranker-info-batch">—</span> • MaxLen: <span id="reranker-info-maxlen">—</span></div>
+                                </div>
                             </div>
                         </div>
                         <div class="input-row">

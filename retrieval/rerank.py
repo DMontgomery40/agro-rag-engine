@@ -14,7 +14,9 @@ except Exception:
 _HF_PIPE = None
 _RERANKER = None
 
-DEFAULT_MODEL = os.getenv('RERANKER_MODEL', 'BAAI/bge-reranker-v2-m3')
+# Default local/HF cross-encoder model for reranking
+# Upgraded to MiniLM-L-12-v2 per request
+DEFAULT_MODEL = os.getenv('RERANKER_MODEL', 'cross-encoder/ms-marco-MiniLM-L-12-v2')
 # Note: Backend/model can change at runtime via GUI. Read env at call-time in rerank_results.
 COHERE_MODEL = os.getenv('COHERE_RERANK_MODEL', 'rerank-3.5')
 
