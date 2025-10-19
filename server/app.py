@@ -2705,7 +2705,8 @@ _RERANKER_STATUS: Dict[str, Any] = {
     "task": "",
     "progress": 0,
     "message": "",
-    "result": None
+    "result": None,
+    "live_output": []  # List of output lines for streaming to UI
 }
 
 @app.post("/api/reranker/mine")
@@ -2720,26 +2721,41 @@ def reranker_mine() -> Dict[str, Any]:
     
     def run_mine():
         global _RERANKER_STATUS
-        _RERANKER_STATUS = {"running": True, "task": "mining", "progress": 0, "message": "Mining triplets...", "result": None}
+        _RERANKER_STATUS = {"running": True, "task": "mining", "progress": 0, "message": "Mining triplets...", "result": None, "live_output": []}
         try:
-            result = subprocess.run(
+            proc = subprocess.Popen(
                 [sys.executable, "scripts/mine_triplets.py"],
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
                 text=True,
                 cwd=repo_root(),
-                timeout=300
+                bufsize=1
             )
-            if result.returncode == 0:
-                # Parse output for count
-                output = result.stdout
-                _RERANKER_STATUS["message"] = output.strip() if output else "Mining complete"
+
+            output_lines = []
+            for line in proc.stdout:
+                line = line.rstrip()
+                output_lines.append(line)
+                _RERANKER_STATUS["live_output"].append(line)
+
+                # Keep only last 1000 lines
+                if len(_RERANKER_STATUS["live_output"]) > 1000:
+                    _RERANKER_STATUS["live_output"] = _RERANKER_STATUS["live_output"][-1000:]
+
+            proc.wait(timeout=300)
+            output = '\n'.join(output_lines)
+
+            if proc.returncode == 0:
+                msg = output.strip() if output else "Mining complete"
+                _RERANKER_STATUS["message"] = msg
                 _RERANKER_STATUS["result"] = {"ok": True, "output": output}
             else:
-                _RERANKER_STATUS["message"] = f"Mining failed: {result.stderr[:200]}"
-                _RERANKER_STATUS["result"] = {"ok": False, "error": result.stderr}
+                _RERANKER_STATUS["message"] = f"Mining failed (exit code {proc.returncode})"
+                _RERANKER_STATUS["result"] = {"ok": False, "error": output}
         except Exception as e:
             _RERANKER_STATUS["message"] = f"Error: {str(e)}"
             _RERANKER_STATUS["result"] = {"ok": False, "error": str(e)}
+            _RERANKER_STATUS["live_output"].append(f"ERROR: {str(e)}")
         finally:
             _RERANKER_STATUS["running"] = False
             _RERANKER_STATUS["progress"] = 100
@@ -2763,22 +2779,29 @@ def reranker_train(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
     
     def run_train():
         global _RERANKER_STATUS
-        _RERANKER_STATUS = {"running": True, "task": "training", "progress": 0, "message": f"Training model ({epochs} epochs)...", "result": None}
+        _RERANKER_STATUS = {"running": True, "task": "training", "progress": 0, "message": f"Training model ({epochs} epochs)...", "result": None, "live_output": []}
         try:
             # Stream output to capture epoch progress
             import subprocess
             proc = subprocess.Popen(
                 [sys.executable, "scripts/train_reranker.py", "--epochs", str(epochs), "--batch", str(batch_size)],
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stderr=subprocess.STDOUT,  # Merge stderr to stdout
                 text=True,
                 cwd=repo_root(),
                 bufsize=1
             )
-            
+
             output_lines = []
             for line in proc.stdout:
+                line = line.rstrip()
                 output_lines.append(line)
+                _RERANKER_STATUS["live_output"].append(line)  # Add to live output buffer
+
+                # Keep only last 1000 lines to prevent memory issues
+                if len(_RERANKER_STATUS["live_output"]) > 1000:
+                    _RERANKER_STATUS["live_output"] = _RERANKER_STATUS["live_output"][-1000:]
+
                 # Update status with epoch progress
                 if "[EPOCH" in line:
                     _RERANKER_STATUS["message"] = line.strip()
@@ -2788,20 +2811,20 @@ def reranker_train(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
                     if match:
                         current, total = int(match.group(1)), int(match.group(2))
                         _RERANKER_STATUS["progress"] = int((current / total) * 100)
-            
+
             proc.wait(timeout=3600)
-            output = ''.join(output_lines)
-            
+            output = '\n'.join(output_lines)
+
             if proc.returncode == 0:
                 _RERANKER_STATUS["message"] = "Training complete!"
                 _RERANKER_STATUS["result"] = {"ok": True, "output": output}
             else:
-                stderr = proc.stderr.read() if proc.stderr else ""
-                _RERANKER_STATUS["message"] = f"Training failed: {stderr[:200]}"
-                _RERANKER_STATUS["result"] = {"ok": False, "error": stderr}
+                _RERANKER_STATUS["message"] = f"Training failed (exit code {proc.returncode})"
+                _RERANKER_STATUS["result"] = {"ok": False, "error": output}
         except Exception as e:
             _RERANKER_STATUS["message"] = f"Error: {str(e)}"
             _RERANKER_STATUS["result"] = {"ok": False, "error": str(e)}
+            _RERANKER_STATUS["live_output"].append(f"ERROR: {str(e)}")
         finally:
             _RERANKER_STATUS["running"] = False
             _RERANKER_STATUS["progress"] = 100

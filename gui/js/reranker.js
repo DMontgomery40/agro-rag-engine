@@ -1,6 +1,22 @@
 // gui/js/reranker.js - Learning Reranker UI Module
 // Handles feedback collection, triplet mining, training, evaluation, and all reranker features
 
+// ============ LIVE TERMINAL ============
+let _rerankerTerminal = null;
+let _lastOutputLineCount = 0;
+
+function initRerankerTerminal() {
+    if (!window.LiveTerminal) {
+        console.warn('[reranker] LiveTerminal not loaded yet, will initialize later');
+        return;
+    }
+
+    if (!_rerankerTerminal) {
+        _rerankerTerminal = new window.LiveTerminal('reranker-terminal-container');
+        console.log('[reranker] Live terminal initialized');
+    }
+}
+
 // ============ FEEDBACK SYSTEM ============
 
 // Track file link clicks
@@ -258,16 +274,53 @@ let statusPollInterval = null;
 
 function startStatusPolling() {
     if (statusPollInterval) return;
-    
+
+    // Initialize terminal if not already done
+    initRerankerTerminal();
+
+    // Show and configure terminal
+    if (_rerankerTerminal) {
+        _rerankerTerminal.show();
+        _rerankerTerminal.clear();
+        _lastOutputLineCount = 0;
+    }
+
     statusPollInterval = setInterval(async () => {
         const status = await getRerankerStatus();
         updateRerankerStatusUI(status);
-        
+
+        // Update terminal with new output lines
+        if (_rerankerTerminal && status.live_output && Array.isArray(status.live_output)) {
+            const newLines = status.live_output.slice(_lastOutputLineCount);
+            if (newLines.length > 0) {
+                _rerankerTerminal.appendLines(newLines);
+                _lastOutputLineCount = status.live_output.length;
+            }
+        }
+
+        // Update progress bar
+        if (_rerankerTerminal && status.running && status.progress > 0) {
+            const taskName = {
+                'mining': 'Mining Triplets',
+                'training': 'Training Model',
+                'evaluating': 'Evaluating Model'
+            }[status.task] || status.task;
+
+            _rerankerTerminal.updateProgress(status.progress, taskName);
+            _rerankerTerminal.setTitle(`${taskName} - Live Output`);
+        }
+
         // Stop polling when task completes
         if (!status.running && statusPollInterval) {
             clearInterval(statusPollInterval);
             statusPollInterval = null;
-            
+
+            // Hide progress bar
+            if (_rerankerTerminal) {
+                _rerankerTerminal.hideProgress();
+                _rerankerTerminal.setTitle('Live Output - Complete');
+            }
+
             // Update results display
             if (status.result) {
                 updateTaskResults(status);
@@ -288,7 +341,8 @@ function updateRerankerStatusUI(status) {
             statusEl.textContent = status.message || 'Task complete';
             statusEl.style.color = 'var(--accent)';
         } else {
-            statusEl.textContent = status.result.error || 'Task failed';
+            // Include message fallback so users see server-side details
+            statusEl.textContent = status.result.error || status.message || 'Task failed';
             statusEl.style.color = 'var(--err)';
         }
     } else {
@@ -1001,6 +1055,11 @@ function initRerankerUI() {
     // Smoke test button
     const smokeTestBtn = document.getElementById('reranker-smoke-test');
     if (smokeTestBtn) smokeTestBtn.addEventListener('click', runSmokeTest);
+
+    // Initialize terminal (lazy init, will be created when first needed)
+    setTimeout(() => {
+        initRerankerTerminal();
+    }, 500);
 
     // Load initial stats
     setTimeout(updateRerankerStats, 100);

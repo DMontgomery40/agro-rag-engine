@@ -3549,6 +3549,9 @@
                             <div style="font-size: 12px; color: var(--fg-muted); margin-bottom: 4px;">Current Task:</div>
                             <div id="reranker-status" style="font-size: 14px; font-family: 'SF Mono', monospace; color: var(--fg-muted);">Ready</div>
                         </div>
+
+                        <!-- Live Terminal Container -->
+                        <div id="reranker-terminal-container"></div>
                     </div>
 
                     <!-- Settings -->
@@ -3569,6 +3572,26 @@
                             <div class="input-group">
                                 <label>Telemetry Log Path</label>
                                 <input type="text" name="AGRO_LOG_PATH" placeholder="data/logs/queries.jsonl" value="data/logs/queries.jsonl">
+                            </div>
+                        </div>
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>Triplets Output (AGRO_TRIPLETS_PATH)</label>
+                                <input type="text" name="AGRO_TRIPLETS_PATH" placeholder="data/training/triplets.jsonl" value="data/training/triplets.jsonl">
+                            </div>
+                            <div class="input-group">
+                                <label>Mine Mode (AGRO_RERANKER_MINE_MODE)</label>
+                                <select name="AGRO_RERANKER_MINE_MODE">
+                                    <option value="append">append</option>
+                                    <option value="replace">replace</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Reset Before Mine (AGRO_RERANKER_MINE_RESET)</label>
+                                <select name="AGRO_RERANKER_MINE_RESET">
+                                    <option value="0">No</option>
+                                    <option value="1">Yes</option>
+                                </select>
                             </div>
                         </div>
                         <div class="input-row" style="margin-top:8px;">
@@ -5795,6 +5818,9 @@
 
     <!-- Error handling utilities (must load before modules that use it) -->
     <script src="/gui/js/error-helpers.js"></script>
+
+    <!-- Live Terminal Component -->
+    <script src="/gui/js/live-terminal.js"></script>
 
     <script src="/gui/js/reranker.js"></script>
     <script src="/gui/js/trace.js"></script>
