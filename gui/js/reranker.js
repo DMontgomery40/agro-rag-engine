@@ -37,7 +37,7 @@ window.trackFileClick = async function(eventId, docId) {
 };
 
 // Add feedback buttons to a chat message (thumbs + stars + note)
-function addFeedbackButtons(messageElement, eventId) {
+window.addFeedbackButtons = function addFeedbackButtons(messageElement, eventId) {
     if (!eventId) return;
     
     const feedbackDiv = document.createElement('div');
@@ -101,7 +101,7 @@ function addFeedbackButtons(messageElement, eventId) {
             }
         });
     }
-}
+};
 
 async function submitFeedback(eventId, signal, note, feedbackDiv) {
     const statusSpan = feedbackDiv.querySelector('.feedback-status');
