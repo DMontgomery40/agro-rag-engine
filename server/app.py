@@ -1558,7 +1558,7 @@ def index_start() -> Dict[str, Any]:
     thread = threading.Thread(target=run_index, daemon=True)
     thread.start()
 
-    return {"ok": True, "message": "Indexing started in background"}
+    return {"ok": True, "success": True, "message": "Indexing started in background"}
 
 @app.get("/api/index/stats")
 def index_stats() -> Dict[str, Any]:
