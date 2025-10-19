@@ -18,7 +18,7 @@ qulaity. this way, you are traiing the model to be better, while saving tokens, 
 
 ---
 
-BRANCH WORKFLOW POLICY (MANDATORY)
+## Branch Workflow Policy (Mandatory)
 
 - main is the default branch name. Never push directly to `main`.
 - Work happens on `development`; pre-release hardening happens on `staging`.

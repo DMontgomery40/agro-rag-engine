@@ -36,7 +36,7 @@ def main():
     ap = argparse.ArgumentParser(description="Train cross-encoder reranker")
     ap.add_argument("--triplets", default="data/training/triplets.jsonl",
                     help="Path to triplets JSONL file")
-    ap.add_argument("--base", default="cross-encoder/ms-marco-MiniLM-L-6-v2",
+    ap.add_argument("--base", default="cross-encoder/ms-marco-MiniLM-L-12-v2",
                     help="Base model to fine-tune")
     ap.add_argument("--out", default="models/cross-encoder-agro",
                     help="Output directory for trained model")
@@ -130,4 +130,3 @@ def main():
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

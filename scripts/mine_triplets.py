@@ -5,12 +5,25 @@ Reads data/logs/queries.jsonl and extracts positive/negative examples
 for reranker training based on clicks, feedback, and ground truth.
 """
 import json
+import os
 import sys
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Set
 
-LOG = Path("data/logs/queries.jsonl")
-OUT = Path("data/training/triplets.jsonl")
+# Resolve repo root (parent of this scripts/ directory)
+BASE = Path(__file__).resolve().parents[1]
+
+# Respect AGRO_LOG_PATH if provided (absolute or relative to repo root)
+_log_env = os.getenv("AGRO_LOG_PATH", "data/logs/queries.jsonl")
+LOG = Path(_log_env)
+if not LOG.is_absolute():
+    LOG = BASE / LOG
+
+# Output always under repo root (unless overridden via env)
+_out_env = os.getenv("AGRO_TRIPLETS_PATH", "data/training/triplets.jsonl")
+OUT = Path(_out_env)
+if not OUT.is_absolute():
+    OUT = BASE / OUT
 
 def iter_events():
     """Yield all events from the query log."""
@@ -26,12 +39,38 @@ def iter_events():
             except Exception:
                 continue
 
+def _already_mined_event_ids(path: Path) -> Set[str]:
+    seen: Set[str] = set()
+    if not path.exists():
+        return seen
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            for line in f:
+                try:
+                    obj = json.loads(line)
+                    eid = str(obj.get("source_event_id", ""))
+                    if eid:
+                        seen.add(eid)
+                except Exception:
+                    continue
+    except Exception:
+        pass
+    return seen
+
 def main():
     n_in, n_out = 0, 0
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    
-    # APPEND mode to not overwrite golden triplets
-    with OUT.open("a", encoding="utf-8") as out:
+
+    # Mode: append (default) or replace if AGRO_RERANKER_MINE_MODE=replace or AGRO_RERANKER_MINE_RESET=1
+    mode = os.getenv("AGRO_RERANKER_MINE_MODE", "append").lower()
+    reset = str(os.getenv("AGRO_RERANKER_MINE_RESET", "0")).strip().lower() in {"1","true","on","yes"}
+    file_mode = "w" if (mode == "replace" or reset) else "a"
+
+    # Build de-dup set of already mined event IDs
+    seen_eids = set() if file_mode == "w" else _already_mined_event_ids(OUT)
+
+    # Open output
+    with OUT.open(file_mode, encoding="utf-8") as out:
         # First pass: collect feedback by event_id
         thumbs = {}
         clicks = {}
@@ -61,11 +100,14 @@ def main():
             retrieval = evt.get("retrieval") or []
             if not retrieval:
                 continue
+            ev_id = evt.get("event_id")
+            # Skip if we already mined this event in a previous run
+            if ev_id and ev_id in seen_eids:
+                continue
 
             # Positive selection priority:
             # 1) Explicit click signal matched by doc_id
             pos = None
-            ev_id = evt.get("event_id")
             if ev_id and ev_id in clicks:
                 # try to match first clicked doc_id with retrieval list
                 wanted = set(clicks[ev_id])
@@ -109,11 +151,14 @@ def main():
                 "source_event_id": evt.get("event_id", "")
             }
             out.write(json.dumps(item, ensure_ascii=False) + "\n")
+            if ev_id:
+                seen_eids.add(ev_id)
             n_out += 1
-    
+
     print(f"mined {n_out} triplets from {n_in} query events")
+    print(f"log_path={LOG}")
+    print(f"out_path={OUT}")
     return 0
 
 if __name__ == "__main__":
     sys.exit(main())
-
