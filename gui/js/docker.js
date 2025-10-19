@@ -694,10 +694,29 @@
                 throw new Error(data.error || 'Failed to stop infrastructure');
             }
         } catch (e) {
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to stop infrastructure', {
+                message: e.message,
+                causes: [
+                    'Docker daemon not running',
+                    'Container stuck in stopping state',
+                    'Network connectivity issues',
+                    'Insufficient permissions'
+                ],
+                fixes: [
+                    'Verify Docker is running: `docker ps`',
+                    'Force stop stuck containers: `docker compose kill`',
+                    'Check network connectivity to Docker daemon',
+                    'Ensure you have Docker permissions: `docker info`'
+                ],
+                links: [
+                    ['Docker Compose Stop Command', 'https://docs.docker.com/engine/reference/commandline/compose_stop/'],
+                    ['Redis Documentation', 'https://redis.io/docs/']
+                ]
+            }) : `Failed to stop infrastructure: ${e.message}`;
             if (window.showStatus) {
-                window.showStatus(`Failed to stop infrastructure: ${e.message}`, 'error');
+                window.showStatus(msg, 'error');
             } else {
-                alert(`Error: ${e.message}`);
+                alert(msg);
             }
         } finally {
             if (btn) btn.disabled = false;
