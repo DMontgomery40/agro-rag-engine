@@ -8,7 +8,7 @@ All new settings, variables that can be changed, parameters that can we tweaked,
 
 Do not add features or code that the user didn't ask for, even if you think it's helpful of common sense to do, ASK THE USER FIRST 
 
-***All agent-created .md files must go in agent docs, please don't clutter root unnessarily***
+***All agent-created .md files must go in /agent_docs/, please don't clutter root unnessarily***
 
 just one more thing if the server is up, there is a rag , for this rag engine, very meta i know . USE IT IT WILL SAVE YOU A SHIT TON OF TOKENS AND CONTEXT WINDOW. rag_search and rag_answer, you'll
  usually find the code or file you're looking for and spend ZERO tokens doing it, and if that thing is 3 fiels, you just found out the easy way, cause we all know you may have stopped when you found
