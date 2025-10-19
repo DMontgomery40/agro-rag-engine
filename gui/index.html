@@ -3684,7 +3684,7 @@
                         <h3>⚠️ No-Hit Queries</h3>
                         <p class="small">Queries that returned no relevant results. Consider reindexing or adding these terms to your corpus.</p>
                         <div id="reranker-nohits-list" style="background: var(--card-bg); border: 1px solid var(--line); border-radius: 6px; padding: 12px; max-height: 200px; overflow-y: auto; font-family: 'SF Mono', monospace; font-size: 11px;">
-                            <div style="color: var(--fg-muted); text-align: center; padding: 20px;">No no-hit queries tracked yet.</div>
+                            <div style="color: var(--fg-muted); text-align: center; padding: 20px;">Loading no-hit queries...</div>
                         </div>
                     </div>
                 </div>
@@ -4055,6 +4055,40 @@
 
                         <!-- Comparison Results -->
                         <div id="eval-comparison" style="margin-top: 16px; display: none;"></div>
+
+                        <!-- Evaluation Run History -->
+                        <div style="margin-top: 24px; background: var(--card-bg); border: 1px solid var(--line); border-radius: 8px; padding: 20px;">
+                            <h4 style="margin: 0 0 8px 0; color: var(--fg); display: flex; align-items: center; gap: 8px;">
+                                <span style="color: var(--accent-green);">●</span>
+                                Evaluation Run History
+                            </h4>
+                            <p class="small" style="color: var(--fg-muted); margin: 0 0 16px 0;">Compare BM25-only baseline vs trained cross-encoder performance across runs.</p>
+
+                            <div style="overflow-x: auto;">
+                                <table id="eval-history-table" style="width: 100%; font-size: 12px; border-collapse: collapse; background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px;">
+                                    <thead>
+                                        <tr style="background: var(--bg-elev2); border-bottom: 2px solid var(--line);">
+                                            <th style="padding: 10px; text-align: left; color: var(--fg-muted); font-weight: 600;">Timestamp</th>
+                                            <th style="padding: 10px; text-align: left; color: var(--fg-muted); font-weight: 600;">Configuration</th>
+                                            <th style="padding: 10px; text-align: center; color: var(--fg-muted); font-weight: 600;">Top-1</th>
+                                            <th style="padding: 10px; text-align: center; color: var(--fg-muted); font-weight: 600;">Top-5</th>
+                                            <th style="padding: 10px; text-align: center; color: var(--fg-muted); font-weight: 600;">Time (s)</th>
+                                            <th style="padding: 10px; text-align: center; color: var(--fg-muted); font-weight: 600;">Δ Top-5</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="eval-history-tbody">
+                                        <tr>
+                                            <td colspan="6" style="padding: 20px; text-align: center; color: var(--fg-muted);">No evaluation history yet. Run evaluations to see comparisons.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div style="margin-top: 12px; display: flex; gap: 8px;">
+                                <button id="btn-eval-history-refresh" style="flex: 1; background: var(--bg-elev2); color: var(--link); border: 1px solid var(--link); padding: 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">Refresh History</button>
+                                <button id="btn-eval-history-clear" style="flex: 1; background: var(--bg-elev2); color: var(--warn); border: 1px solid var(--warn); padding: 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">Clear History</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -5734,6 +5768,7 @@
     <script type="module" src="/gui/js/cost_logic.js"></script>
     <script src="/gui/js/golden_questions.js"></script>
     <script src="/gui/js/eval_runner.js"></script>
+    <script src="/gui/js/eval_history.js"></script>
     <script src="/gui/js/chat.js"></script>
 
     <!-- Error handling utilities (must load before modules that use it) -->

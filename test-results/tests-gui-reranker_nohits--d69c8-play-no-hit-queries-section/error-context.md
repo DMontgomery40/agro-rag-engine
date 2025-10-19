@@ -13,7 +13,7 @@
         - option "Dark" [selected]
         - option "Light"
       - button "Health" [ref=e9] [cursor=pointer]
-      - generic [ref=e10]: OK @ 10/19/2025, 1:28:41 AM
+      - generic [ref=e10]: OK @ 10/19/2025, 5:13:32 AM
   - generic [ref=e11]:
     - generic [ref=e13]:
       - generic [ref=e14]:
@@ -40,7 +40,7 @@
                 - generic [ref=e38]: agro (1 repos)
               - generic [ref=e39]:
                 - generic [ref=e40]: Cards
-                - generic [ref=e41]: 0 cards
+                - generic [ref=e41]: 20 cards
               - generic [ref=e42]:
                 - generic [ref=e43]: MCP
                 - generic [ref=e44]: py-http:0.0.0.0:8013/mcp (stopped) | node-http:127.0.0.1:8012/mcp | py-stdio:available
@@ -72,7 +72,7 @@
                 - generic [ref=e82]:
                   - generic [ref=e83]: agro
                   - generic [ref=e84]: "Branch: unknown"
-                - generic [ref=e85]: 10/18/2025, 10:19:24 PM
+                - generic [ref=e85]: 10/19/2025, 4:34:22 AM
               - generic [ref=e86]:
                 - generic [ref=e87]:
                   - img [ref=e88]
@@ -94,10 +94,10 @@
                 - generic [ref=e105]:
                   - generic [ref=e106]:
                     - generic [ref=e107]: Total Tokens
-                    - generic [ref=e108]: 701,250
+                    - generic [ref=e108]: 690,000
                   - generic [ref=e109]:
                     - generic [ref=e110]: Embedding Cost
-                    - generic [ref=e111]: $0.0912
+                    - generic [ref=e111]: $0.0897
               - generic [ref=e112]:
                 - generic [ref=e113]:
                   - img [ref=e114]
@@ -105,22 +105,22 @@
                 - generic [ref=e116]:
                   - generic [ref=e117]:
                     - generic [ref=e118]: Chunks JSON
-                    - generic [ref=e119]: 1.825 MiB
+                    - generic [ref=e119]: 1.843 MiB
                   - generic [ref=e120]:
                     - generic [ref=e121]: Raw Embeddings
-                    - generic [ref=e122]: 1.826 MiB
+                    - generic [ref=e122]: 1.797 MiB
                   - generic [ref=e123]:
                     - generic [ref=e124]: Qdrant (w/overhead)
-                    - generic [ref=e125]: 2.739 MiB
+                    - generic [ref=e125]: 2.695 MiB
                   - generic [ref=e126]:
                     - generic [ref=e127]: BM25 Index
-                    - generic [ref=e128]: 3.553 MiB
+                    - generic [ref=e128]: 3.903 MiB
                   - generic [ref=e129]:
                     - generic [ref=e130]: Cards/Summary
-                    - generic [ref=e131]: 0 B
+                    - generic [ref=e131]: 22.646 KiB
                   - generic [ref=e132]:
                     - generic [ref=e133]: Reranker Cache
-                    - generic [ref=e134]: 935 KiB
+                    - generic [ref=e134]: 920 KiB
                   - generic [ref=e135]:
                     - generic [ref=e136]: Redis Cache
                     - generic [ref=e137]: 400 MiB
@@ -131,7 +131,7 @@
                 - generic "▸ Index Profiles (3)" [ref=e142] [cursor=pointer]
               - generic [ref=e143]:
                 - generic [ref=e144]: Total Index Storage
-                - generic [ref=e145]: 409.031 MiB
+                - generic [ref=e145]: 409.362 MiB
         - generic [ref=e148]:
           - heading "● Auto-Profile" [level=3] [ref=e149]:
             - generic [ref=e150]: ●
@@ -336,7 +336,7 @@
         - generic [ref=e362]: "Current Mode: —"
         - generic [ref=e363]:
           - generic [ref=e364]: Last Indexed
-          - generic [ref=e365]: 10/18/2025, 10:19:24 PM
+          - generic [ref=e365]: 10/19/2025, 4:34:22 AM
         - button "Refresh Status" [ref=e366] [cursor=pointer]
       - generic [ref=e367]:
         - heading "▸ Secrets Ingest" [level=4] [ref=e368]

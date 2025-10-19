@@ -1,0 +1,167 @@
+/**
+ * AGRO Documentation Theme
+ * Dark-first design matching AGRO GUI aesthetic
+ */
+
+:root {
+  --ifm-color-primary: #00ff88;
+  --ifm-color-primary-dark: #00e67a;
+  --ifm-color-primary-darker: #00d972;
+  --ifm-color-primary-darkest: #00b35e;
+  --ifm-color-primary-light: #1aff96;
+  --ifm-color-primary-lighter: #2dff9f;
+  --ifm-color-primary-lightest: #66ffb8;
+
+  --ifm-code-font-size: 90%;
+  --ifm-font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --ifm-font-family-monospace: 'SF Mono', Monaco, Inconsolata, monospace;
+
+  --docusaurus-highlighted-code-line-bg: rgba(0, 255, 136, 0.1);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #00ff88;
+  --ifm-color-primary-dark: #00e67a;
+  --ifm-color-primary-darker: #00d972;
+  --ifm-color-primary-darkest: #00b35e;
+  --ifm-color-primary-light: #1aff96;
+  --ifm-color-primary-lighter: #2dff9f;
+  --ifm-color-primary-lightest: #66ffb8;
+
+  --ifm-background-color: #0a0a0a;
+  --ifm-background-surface-color: #111111;
+  --ifm-navbar-background-color: #0a0a0a;
+  --ifm-footer-background-color: #0a0a0a;
+
+  --ifm-color-emphasis-0: #2a2a2a;
+  --ifm-color-emphasis-100: #333333;
+  --ifm-color-emphasis-200: #444444;
+  --ifm-color-emphasis-300: #666666;
+  --ifm-color-emphasis-600: #888888;
+  --ifm-color-emphasis-800: #aaaaaa;
+
+  --docusaurus-highlighted-code-line-bg: rgba(0, 255, 136, 0.15);
+}
+
+/* Typography improvements for dyslexia-friendliness */
+body {
+  font-feature-settings: "kern" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* Code blocks with AGRO aesthetic */
+pre {
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+}
+
+code {
+  background-color: #1a1a1a;
+  border: 1px solid #333333;
+  border-radius: 4px;
+  padding: 0.1em 0.3em;
+}
+
+/* Improved link styling */
+a {
+  transition: all 0.2s ease;
+}
+
+a:hover {
+  text-decoration: none;
+  opacity: 0.85;
+}
+
+/* Sidebar improvements */
+.theme-doc-sidebar-container {
+  border-right: 1px solid #2a2a2a;
+}
+
+/* Better focus states for accessibility */
+:focus-visible {
+  outline: 2px solid var(--ifm-color-primary);
+  outline-offset: 2px;
+}
+
+/* Navbar brand styling */
+.navbar__brand {
+  font-weight: 300;
+  font-size: 1.5rem;
+}
+
+/* Badge/admonition customization */
+.admonition {
+  border-radius: 8px;
+  border-left: 4px solid var(--ifm-color-primary);
+}
+
+/* Table improvements */
+table {
+  border-collapse: collapse;
+}
+
+th {
+  background-color: #1a1a1a;
+  border-bottom: 2px solid var(--ifm-color-primary);
+}
+
+td {
+  border-bottom: 1px solid #2a2a2a;
+}
+
+/* Custom badge styling (for "NEW", "BETA", etc.) */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  background-color: var(--ifm-color-primary);
+  color: #000;
+  border-radius: 4px;
+  margin-left: 0.5rem;
+}
+
+.badge--success {
+  background-color: #00ff88;
+  color: #000;
+}
+
+.badge--warning {
+  background-color: #ffaa00;
+  color: #000;
+}
+
+.badge--danger {
+  background-color: #ff4444;
+  color: #fff;
+}
+
+/* Search bar improvements */
+.navbar__search-input {
+  background-color: #1a1a1a;
+  border: 1px solid #333333;
+  border-radius: 4px;
+}
+
+.navbar__search-input:focus {
+  border-color: var(--ifm-color-primary);
+}
+
+/* Footer styling */
+.footer {
+  border-top: 1px solid #2a2a2a;
+}
+
+/* Responsive improvements */
+@media screen and (max-width: 996px) {
+  .navbar__brand {
+    font-size: 1.2rem;
+  }
+}

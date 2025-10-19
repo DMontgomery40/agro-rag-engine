@@ -1,0 +1,34 @@
+YOU MUST VERIFY ALL YOUR WORK WITH PLAYWRIGHT (IF GUI) OR SMOKE TEST THAT YOU PUT IN /tests (NOT root) before you can come back to the user with a result.  This is non-negotiable 
+
+You must verify the server is up, docker is running, and qdrant is accessible, before doing any RAG performance related tests
+
+All new settings, variables that can be changed, parameters that can we tweaked, or api endpoints that can return information MUST BE ADDED TO THE GUI **THIS IS AN ACCESSIBILITY ISSUE as the user is extremely dyslexic, violating this rule could be a violation of the Americans with Disabilites Act**
+ 
+ - do NOT just put gui settings in a random place, if it's obvious where they go, that is okay, if it not crystal clear and logical where it should be, ask the user where it should go 
+
+Do not add features or code that the user didn't ask for, even if you think it's helpful of common sense to do, ASK THE USER FIRST 
+
+***All agent-created .md files must go in /agent_docs/, please don't clutter root unnessarily***
+
+just one more thing if the server is up, there is a rag , for this rag engine, very meta i know . USE IT IT WILL SAVE YOU A SHIT TON OF TOKENS AND CONTEXT WINDOW. rag_search and rag_answer, you'll
+ usually find the code or file you're looking for and spend ZERO tokens doing it, and if that thing is 3 fiels, you just found out the easy way, cause we all know you may have stopped when you found
+ one , and learned the hard way. tons of benefit. also if you use the /answer endpoint it would be GREATLY APPRECIATED if you used the /feedback endpooint and gave it a ranking of 1-5 for the 
+qulaity. this way, you are traiing the model to be better, while saving tokens, saving context, and getting more accurate info win win win win    
+
+# Cursor Workspace Rules
+
+# Branch Workflow Policy
+- main is the default branch name. Never push directly to `main`.
+- Use `development` for active work; use `staging` for pre-release hardening.
+- Always start sessions by printing the working directory and branch:
+  - `pwd`
+  - `git rev-parse --abbrev-ref HEAD`
+- Remain on your current branch unless explicitly instructed to switch.
+- Open PRs: `development`  `staging`, then `staging`  `main`.
+- Do not add any automation that pushes to `main`.
+
+# Non-negotiable Verification
+- If a GUI is affected, validate with Playwright tests under `tests/`.
+- Otherwise, provide smoke tests under `tests/`.
+- Do not report completion without running the applicable tests.
+

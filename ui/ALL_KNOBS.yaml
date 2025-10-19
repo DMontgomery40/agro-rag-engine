@@ -91,6 +91,10 @@ categories:
       default: openai
       allowed: [openai, local, voyage, mxbai]
       description: Embedding provider selection
+      notes:
+        - WARNING - Dense embeddings degrade performance on small focused repos
+        - For AGRO (6.8K chunks), BM25-only achieves 86.5% top-5 vs 80.8% with dense
+        - Recommend SKIP_DENSE=1 for repos under 10K chunks
     - key: VOYAGE_API_KEY
       type: string
       default: null
@@ -101,39 +105,49 @@ categories:
       description: Output dimension for voyage-code-3 embeddings
     - key: EMBEDDING_DIM
       type: integer
-      default: 512
-      description: Dimension for MXBAI embeddings (truncation/renorm)
+      default: 3072
+      description: Dimension for embeddings (3072 for text-embedding-3-large, 512 for MXBAI)
     - key: SKIP_DENSE
       type: flag
-      default: "0"
-      description: Skip dense embeddings + Qdrant upsert during indexing
+      default: "1"
+      description: Skip dense embeddings + Qdrant upsert during indexing (recommended for small repos)
+      notes:
+        - Set to 1 for optimal AGRO performance (BM25-only outperforms hybrid)
+        - Dense vectors add latency without accuracy gain on focused vocabularies
     - key: ENRICH_CODE_CHUNKS
       type: flag
       default: false
-      description: Add per-chunk summaries/keywords before embeddings
+      description: Add per-chunk summaries/keywords before embeddings (experimental)
 
   reranking:
     - key: RERANK_BACKEND
       type: enum
       default: local
-      allowed: [local, cohere, hf, none, off, disabled]
-      description: Cross-encoder backend choice
+      allowed: [local, cohere, none, off, disabled]
+      description: Cross-encoder backend choice (local=trained model, cohere=API, none=disabled)
+      notes:
+        - local uses models/cross-encoder-agro trained on golden triplets
+        - For AGRO's small corpus, trained local CE outperforms Cohere (+5.8% over BM25-only)
+        - Dense embeddings degrade performance on small repos - BM25+CE optimal
     - key: RERANKER_MODEL
       type: string
-      default: BAAI/bge-reranker-v2-m3
-      description: Local cross-encoder model (rerankers lib)
+      default: models/cross-encoder-agro
+      description: Local cross-encoder model path (trained on golden triplets)
+      notes:
+        - Train via scripts/train_reranker.py after mining triplets with scripts/mine_from_golden.py
+        - Current model trained on 43 triplets from golden.json (68% dev accuracy)
     - key: COHERE_API_KEY
       type: string
       default: null
       description: Key for Cohere reranking
     - key: COHERE_RERANK_MODEL
       type: string
-      default: rerank-3.5
-      description: Cohere reranker model
+      default: rerank-english-v3.0
+      description: Cohere reranker model (note - rerank-3.5 degrades AGRO performance vs local CE)
     - key: TRANSFORMERS_TRUST_REMOTE_CODE
       type: flag
       default: "1"
-      description: Allow HF pipeline trust_remote_code (Jina reranker path)
+      description: Allow HF pipeline trust_remote_code (required for some rerankers)
     - const: RERANK_INPUT_SNIPPET_CHARS
       value: {cohere: 700, local: 600}
       description: Code context characters sent to reranker per doc
@@ -183,8 +197,8 @@ categories:
       value: 0.06
       description: Bonus for files with provider/integration hints (heuristic)
     - const: FEATURE_HINT_BONUS
-      value: 0.06
-      description: Bonus applied when query mentions diagnostics/PHI and path matches
+      value: 0.0
+      description: Feature bonus disabled (legacy phi/hipaa garbage removed)
     - const: CARDS_TOPK
       value: "min(TOPK_SPARSE, 30)"
       description: Card-based retrieval budget for boosts
@@ -265,9 +279,14 @@ categories:
       description: File extensions considered for indexing
     - file: data/exclude_globs.txt
       description: Glob patterns excluded from indexing
+      notes:
+        - CRITICAL - Test files MUST be excluded (tests/**, *.spec.ts, *.test.*)
+        - CRITICAL - Editor data MUST be excluded (.editor_data/**, .code-server/**)
+        - Failing to exclude tests causes catastrophic index pollution (1.9% baseline)
+        - After enabling test exclusions, performance jumped from 1.9% to 86.5% top-5
     - const: PRUNE_DIRS
-      value: ['.git','.worktrees','.venv','venv','env','.venv_ci','node_modules','vendor','dist','build','.next','.turbo','.svelte-kit','coverage','site','_site','__pycache__','.pytest_cache','.mypy_cache','.cache']
-      description: Directory names pruned during walk
+      value: ['.git','.worktrees','.venv','venv','env','.venv_ci','node_modules','vendor','dist','build','.next','.turbo','.svelte-kit','coverage','site','_site','__pycache__','.pytest_cache','.mypy_cache','.cache','.editor_data','.code-server','.vscode-server','.openvscode-server','tests','test']
+      description: Directory names pruned during walk (includes editor/test exclusions)
     - const: VALID_EXTS
       value: ['.py','.ts','.tsx','.js','.jsx','.go','.rs','.java','.c','.cpp','.md','.mdx','.yaml','.yml','.toml','.json']
       description: Allowed extensions (filtering)
@@ -298,6 +317,13 @@ categories:
       type: integer
       default: 0
       description: Limit number of chunks summarized into cards (0=all)
+    - file: discriminative_keywords.json
+      description: AGRO-specific discriminative keywords for card building
+      notes:
+        - Contains 40 hand-curated terms specific to AGRO architecture
+        - Used by cards builder to identify important semantic concepts
+        - Update this file when adding new domain-specific terms
+        - Current terms include - hybrid, bm25, qdrant, rerank, langgraph, fastapi, etc.
 
   http_api:
     - const: /answer
@@ -328,20 +354,31 @@ categories:
   evaluation:
     - key: GOLDEN_PATH
       type: path
-      default: golden.json
-      description: Golden questions file for evals
+      default: data/golden.json
+      description: Golden questions file for evals (52 questions currently)
+      notes:
+        - Update golden.json when adding new test queries
+        - Mine triplets with scripts/mine_from_golden.py after changes
+        - Retrain cross-encoder with scripts/train_reranker.py for continuous improvement
     - key: EVAL_MULTI
       type: flag
       default: "1"
-      description: Whether to use multi-query in eval
+      description: Whether to use multi-query expansion in eval (recommended)
     - key: EVAL_FINAL_K
       type: integer
       default: 5
-      description: Final top-K during eval
+      description: Final top-K during eval (5 is standard for top-5 accuracy metrics)
     - key: BASELINE_PATH
       type: path
-      default: eval_baseline.json
+      default: data/evals/eval_baseline.json
       description: Where eval baselines are saved/compared
+    - file: data/evals/
+      description: Evaluation run history directory
+      notes:
+        - baseline_after_excludes.json - BM25-only clean baseline (86.5% top-5)
+        - bm25_with_trained_ce.json - BM25+trained CE (92.3% top-5) BEST
+        - baseline_dense_rerank.json - BM25+Dense+Cohere (82.7% top-5) WORSE
+        - GUI eval history panel displays run comparisons with deltas
 
   misc:
     - key: AGRO_EDITION
@@ -373,7 +410,16 @@ categories:
       default: qwen3-coder:30b
       description: Ollama model for metadata_enricher when ENRICH_BACKEND=ollama
 
+performance_notes:
+  - CRITICAL_FINDING - For small focused repos (under 10K chunks), BM25-only outperforms hybrid
+  - AGRO results (6.8K chunks) - BM25-only 86.5% vs BM25+Dense 80.8% top-5 accuracy
+  - Trained cross-encoder on golden triplets provides +5.8% lift (92.3% final top-5)
+  - Test file pollution causes catastrophic failure (1.9% baseline) - MUST exclude tests
+  - Dense embeddings add latency without accuracy gain when vocabulary is distinct
+  - Optimal config for AGRO - SKIP_DENSE=1, RERANK_BACKEND=local, test exclusions enabled
+
 notes:
-  - This file captures both env-driven and code-defined constants that influence behavior.
-  - Some constants may require code support to hot-reload at runtime; mark such fields read-only in GUI until wired.
-  - For repo-specific boosts (path/layer), prefer repos.json to keep tuning declarative.
+  - This file captures both env-driven and code-defined constants that influence behavior
+  - Some constants may require code support to hot-reload at runtime; mark such fields read-only in GUI until wired
+  - For repo-specific boosts (path/layer), prefer repos.json to keep tuning declarative
+  - Updated Oct 19, 2025 with findings from 92.3% top-5 accuracy optimization session

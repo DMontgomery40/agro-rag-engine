@@ -455,15 +455,24 @@ async function updateRerankerStats() {
         const nohitsResp = await fetch('/api/reranker/nohits');
         const data = await nohitsResp.json();
         const nohitsList = document.getElementById('reranker-nohits-list');
-        if (nohitsList && data.queries && data.queries.length > 0) {
-            nohitsList.innerHTML = data.queries.map(q => 
-                `<div style="padding:6px; border-bottom:1px solid var(--line);">
-                    <div style="color: var(--fg);">${q.query}</div>
-                    <div style="font-size:10px; color:var(--fg-muted);">${q.ts}</div>
-                </div>`
-            ).join('');
+        if (nohitsList) {
+            if (data.queries && data.queries.length > 0) {
+                nohitsList.innerHTML = data.queries.map(q =>
+                    `<div style="padding:6px; border-bottom:1px solid var(--line);">
+                        <div style="color: var(--fg);">${q.query}</div>
+                        <div style="font-size:10px; color:var(--fg-muted);">${q.ts}</div>
+                    </div>`
+                ).join('');
+            } else {
+                nohitsList.innerHTML = '<div style="color: var(--fg-muted); text-align: center; padding: 20px;">No no-hit queries tracked yet.</div>';
+            }
         }
-    } catch {}
+    } catch (error) {
+        const nohitsList = document.getElementById('reranker-nohits-list');
+        if (nohitsList) {
+            nohitsList.innerHTML = '<div style="color: var(--err); text-align: center; padding: 20px;">Failed to load no-hit queries</div>';
+        }
+    }
 }
 
 // ============ LOG VIEWER ============
