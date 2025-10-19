@@ -122,37 +122,31 @@ def should_index_file(path: str) -> bool:
     return True
 
 
-# --- Repo-aware layer tagging ---
+"""Repo-aware layer tagging for AGRO.
+
+Maps files to one of the engine's actual layers:
+  gui, server, retrieval, indexer, eval, scripts, common, infra
+Defaults to 'server' when no match.
+"""
 def detect_layer(fp: str) -> str:
     f = (fp or '').lower()
-    if REPO == 'project':
-        if '/core/admin_ui/' in f or '/site/' in f or '/docs-site/' in f:
-            return 'ui'
-        if '/plugins/' in f or '/core/plugins/' in f or 'notification' in f or 'pushover' in f or 'apprise' in f:
-            return 'plugin'
-        if '/core/api/' in f or '/core/' in f or '/server' in f:
-            return 'kernel'
-        if '/docs/' in f or '/internal_docs/' in f:
-            return 'docs'
-        if '/tests/' in f or '/test_' in f:
-            return 'tests'
-        if '/infra/' in f or '/deploy/' in f or '/scripts/' in f:
-            return 'infra'
-        return 'kernel'
-    else:
-        if '/admin_ui/' in f or '/site/' in f or '/docs-site/' in f:
-            return 'ui'
-        if 'provider' in f or 'providers' in f or 'integration' in f or 'webhook' in f or 'adapter' in f:
-            return 'integration'
-        if '/api/' in f or '/backends/' in f or '/server' in f:
-            return 'server'
-        if '/sdks/' in f or '/python_mcp/' in f or '/node_mcp/' in f or '/plugin-dev-kit/' in f:
-            return 'sdk'
-        if '/docs/' in f or '/internal_docs/' in f:
-            return 'docs'
-        if '/asterisk/' in f or '/config/' in f or '/infra/' in f:
-            return 'infra'
+    if '/gui/' in f or '/public/' in f:
+        return 'gui'
+    if '/server/' in f:
         return 'server'
+    if '/retrieval/' in f:
+        return 'retrieval'
+    if '/indexer/' in f:
+        return 'indexer'
+    if '/eval/' in f or '/tests/' in f:
+        return 'eval'
+    if '/scripts/' in f:
+        return 'scripts'
+    if '/common/' in f:
+        return 'common'
+    if '/infra/' in f:
+        return 'infra'
+    return 'server'
 
 VENDOR_MARKERS = (
     "/vendor/","/third_party/","/external/","/deps/","/node_modules/",

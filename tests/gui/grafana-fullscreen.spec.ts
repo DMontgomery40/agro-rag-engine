@@ -23,10 +23,13 @@ test('Grafana iframe fills the screen', async ({ page }) => {
   });
 
   // Verify iframe takes up most of the available height
-  // Accounting for topbar (~56px) and tab bar (~65px) = ~121px total
+  // Accounting for topbar (~56px), tab bar (~65px), and subtab bar (~40px) = ~161px total
   if (iframeBox && viewportSize) {
-    const expectedMinHeight = viewportSize.height - 150; // Allow some margin
+    const expectedMinHeight = viewportSize.height - 180; // Allow margin for UI chrome
+    const fillPercentage = (iframeBox.height / viewportSize.height) * 100;
     console.log(`Iframe height: ${iframeBox.height}, Expected min: ${expectedMinHeight}`);
+    console.log(`Fill percentage: ${fillPercentage.toFixed(1)}%`);
     expect(iframeBox.height).toBeGreaterThan(expectedMinHeight);
+    expect(fillPercentage).toBeGreaterThan(70); // Should fill at least 70% of viewport
   }
 });

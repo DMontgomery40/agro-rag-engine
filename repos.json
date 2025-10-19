@@ -25,7 +25,14 @@
         "/scripts",
         "/gui/js"
       ],
-      "layer_bonuses": {}
+      "layer_bonuses": {
+        "gui": {"gui": 0.15, "server": 0.05},
+        "retrieval": {"retrieval": 0.15, "server": 0.05},
+        "indexer": {"indexer": 0.15, "retrieval": 0.08, "common": 0.05},
+        "eval": {"eval": 0.15, "tests": 0.10, "retrieval": 0.05},
+        "infra": {"infra": 0.15, "scripts": 0.08},
+        "server": {"server": 0.15, "retrieval": 0.05, "common": 0.05}
+      }
     }
   ]
 }

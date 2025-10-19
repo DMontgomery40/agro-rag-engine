@@ -7,6 +7,11 @@ from typing import Any, Dict, List, Optional
 
 _CACHE: Dict[str, Any] = {}
 
+def clear_cache():
+    """Clear cached config - forces reload from disk."""
+    global _CACHE
+    _CACHE.clear()
+
 
 def _repos_file_path() -> Path:
     env_path = os.getenv("REPOS_FILE")

@@ -4,6 +4,9 @@
 
   const api = (window.CoreUtils && window.CoreUtils.api) ? window.CoreUtils.api : (p=>p);
   let editorHealthInterval = null;
+  let lastHealthResponse = null;
+  let iframeLoadAttempts = 0;
+  const MAX_IFRAME_LOAD_ATTEMPTS = 3;
 
   function _env(name, dflt){
     try { return (window.CoreUtils?.state?.config?.env?.[name]) ?? dflt; } catch { return dflt; }
@@ -21,6 +24,8 @@
     try {
       const resp = await fetch(api('/health/editor'));
       const data = await resp.json();
+      lastHealthResponse = data;
+
       const badge = document.getElementById('editor-health-badge');
       const badgeText = document.getElementById('editor-health-text');
       const banner = document.getElementById('editor-status-banner');
@@ -39,9 +44,13 @@
         banner.style.display = 'none';
         if (canEmbed) {
           wrap.style.display = 'block';
-          if (!iframe.src) {
+          if (!iframe.src || iframe.src === 'about:blank') {
             // Prefer same-origin proxy to avoid frame-blocking headers
-            iframe.src = '/editor/';
+            // Only load if server confirms ready to avoid race conditions
+            if (data.readiness_stage === 'ready') {
+              iframe.src = '/editor/';
+              iframeLoadAttempts = 0;
+            }
           }
         } else {
           wrap.style.display = 'none';
@@ -53,15 +62,32 @@
         badge.style.color = 'var(--fg)';
         badgeText.textContent = isDisabled ? '○ Disabled' : '● Error';
         banner.style.display = 'block';
-        const reason = data.reason || data.error || 'Unknown error';
+
+        // Provide more detailed status messages based on readiness stage
+        let reason = data.reason || data.error || 'Unknown error';
+        if (data.readiness_stage === 'startup_delay') {
+          reason = `Service initializing (${data.uptime_seconds}s uptime)...`;
+        } else if (data.readiness_stage === 'timeout') {
+          reason = 'Service timeout - may still be starting up';
+        } else if (data.readiness_stage === 'connection_failed') {
+          reason = 'Cannot connect to service';
+        }
+
         bannerMsg.textContent = isDisabled
           ? `Editor is disabled. Enable it in the Misc tab and restart.`
-          : `Error: ${reason}. Check logs or try restarting.`;
+          : `${reason}. ${isDisabled ? '' : 'Retrying...'}`;
         wrap.style.display = 'none';
         iframe.src = '';
       }
     } catch (error) {
       console.error('[Editor] Failed to check health:', error);
+      const badge = document.getElementById('editor-health-badge');
+      const badgeText = document.getElementById('editor-health-text');
+      if (badge && badgeText) {
+        badge.style.background = 'var(--err)';
+        badge.style.color = 'var(--fg)';
+        badgeText.textContent = '● Error';
+      }
     }
   }
 

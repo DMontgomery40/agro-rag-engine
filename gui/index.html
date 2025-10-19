@@ -375,6 +375,13 @@
             min-height: 0;
         }
 
+        /* Fullscreen subtab variant (e.g., for Grafana dashboard) */
+        .section-subtab.fullscreen.active {
+            padding: 0;
+            gap: 0;
+            height: 100%;
+        }
+
         .subtab-btn {
             background: transparent;
             color: var(--fg-muted);
@@ -2235,11 +2242,12 @@
         <button data-tab="start">🚀 Get Started</button>
         <button class="active" data-tab="dashboard">📊 Dashboard</button>
         <button data-tab="chat">💬 Chat</button>
-        <button data-tab="config">⚙️ Configuration</button>
-        <button data-tab="data">🗄️ Data & Indexing</button>
-        <button data-tab="devtools">🛠️ Developer Tools</button>
-        <button data-tab="analytics">📈 Analytics</button>
-        <button data-tab="settings">⚙️ Settings</button>
+        <button data-tab="vscode">📝 VS Code</button>
+        <button data-tab="grafana">📈 Grafana</button>
+        <button data-tab="rag">🧠 RAG</button>
+        <button data-tab="profiles">💾 Profiles</button>
+        <button data-tab="infrastructure">🔧 Infrastructure</button>
+        <button data-tab="admin">⚙️ Admin</button>
     </nav>
 
     <div class="layout">
@@ -2633,7 +2641,7 @@
 
             <!-- Tab: Grafana (NEW - promoted from metrics) -->
             <div id="tab-grafana" class="tab-content" style="padding: 0;">
-                <div id="tab-grafana-config" class="section-subtab">
+                <div id="tab-grafana-config" class="section-subtab" style="padding: 24px;">
                     <div class="settings-section">
                         <h3 id="grafana-config-anchor">Grafana Metrics Dashboard</h3>
                         <p class="small">Configure and embed your live Grafana dashboard powered by Prometheus.</p>
@@ -2706,7 +2714,7 @@
 
                     </div>
                 </div>
-                <div id="tab-grafana-dashboard" class="section-subtab active" style="display: flex; flex-direction: column; padding: 0; gap: 0; height: 100%;">
+                <div id="tab-grafana-dashboard" class="section-subtab fullscreen active">
                     <div id="grafana-embed" style="flex: 1; display: flex; overflow: hidden; background: var(--card-bg); min-height: 0;">
                         <iframe id="grafana-iframe" style="width:100%; height:100%; border:0; background: var(--bg); display: block;"></iframe>
                     </div>
@@ -4571,7 +4579,7 @@
                             <p class="small">Start OpenVSCode Server container on up.sh</p>
                         </div>
                         <div class="input-group">
-                            <label><input type="checkbox" name="EDITOR_EMBED_ENABLED" value="1"> Enable Editor Embed (iframe)</label>
+                            <label><input type="checkbox" name="EDITOR_EMBED_ENABLED" value="1" checked> Enable Editor Embed (iframe)</label>
                             <p class="small">Show the editor inline in the GUI (hides automatically in CI)</p>
                         </div>
                     </div>
@@ -5646,6 +5654,7 @@
     <script src="/gui/js/simple_index.js"></script>
     <script src="/gui/js/docker.js"></script>
     <script src="/gui/js/langsmith.js"></script>
+    <script src="/gui/js/editor-settings.js"></script>
     <script src="/gui/js/onboarding.js"></script>
 
     <!-- Existing modules -->
