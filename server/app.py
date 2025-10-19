@@ -2852,17 +2852,31 @@ def reranker_evaluate() -> Dict[str, Any]:
     
     def run_eval():
         global _RERANKER_STATUS
-        _RERANKER_STATUS = {"running": True, "task": "evaluating", "progress": 0, "message": "Evaluating model...", "result": None}
+        _RERANKER_STATUS = {"running": True, "task": "evaluating", "progress": 0, "message": "Evaluating model...", "result": None, "live_output": []}
         try:
-            result = subprocess.run(
+            proc = subprocess.Popen(
                 [sys.executable, "scripts/eval_reranker.py"],
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
                 text=True,
                 cwd=repo_root(),
-                timeout=300
+                bufsize=1
             )
-            if result.returncode == 0:
-                output = result.stdout
+
+            output_lines = []
+            for line in proc.stdout:
+                line = line.rstrip()
+                output_lines.append(line)
+                _RERANKER_STATUS["live_output"].append(line)
+
+                # Keep only last 1000 lines
+                if len(_RERANKER_STATUS["live_output"]) > 1000:
+                    _RERANKER_STATUS["live_output"] = _RERANKER_STATUS["live_output"][-1000:]
+
+            proc.wait(timeout=300)
+            output = '\n'.join(output_lines)
+
+            if proc.returncode == 0:
                 _RERANKER_STATUS["message"] = "Evaluation complete!"
                 _RERANKER_STATUS["result"] = {"ok": True, "output": output}
 
@@ -2915,11 +2929,12 @@ def reranker_evaluate() -> Dict[str, Any]:
                 except Exception:
                     pass  # Don't fail if persistence fails
             else:
-                _RERANKER_STATUS["message"] = f"Evaluation failed: {result.stderr[:200]}"
-                _RERANKER_STATUS["result"] = {"ok": False, "error": result.stderr}
+                _RERANKER_STATUS["message"] = f"Evaluation failed (exit code {proc.returncode})"
+                _RERANKER_STATUS["result"] = {"ok": False, "error": output}
         except Exception as e:
             _RERANKER_STATUS["message"] = f"Error: {str(e)}"
             _RERANKER_STATUS["result"] = {"ok": False, "error": str(e)}
+            _RERANKER_STATUS["live_output"].append(f"ERROR: {str(e)}")
         finally:
             _RERANKER_STATUS["running"] = False
             _RERANKER_STATUS["progress"] = 100
