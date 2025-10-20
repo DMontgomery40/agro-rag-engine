@@ -36,7 +36,6 @@ MANIFEST
 # Environments
 .env
 .env.*
-!env.example
 .envrc
 env/
 .venv/
@@ -61,6 +60,7 @@ out.noindex-*/
 .dist/
 .cache
 *.egg-info/
+*.jsonl
 
 # Runtime data (generated, not committed)
 data/qdrant/
