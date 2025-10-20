@@ -99,10 +99,47 @@
       if (data.url) {
         window.open(data.url, '_blank');
       } else {
-        alert('Editor URL not available');
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Editor URL Not Available', {
+          message: 'Cannot open editor - no URL available',
+          causes: [
+            'Embedded editor service is not running',
+            'Backend health check for editor returned no URL',
+            'Editor service failed to start or is disabled'
+          ],
+          fixes: [
+            'Check Admin tab > Embedded Editor to enable the editor',
+            'Verify backend service is running in Infrastructure tab',
+            'Restart the editor service if it appears stuck'
+          ],
+          links: [
+            ['Embedded Editor Setup', '/docs/EDITOR.md'],
+            ['Infrastructure Tab', '/docs/INFRASTRUCTURE.md'],
+            ['Backend Health', '/api/health']
+          ]
+        }) : 'Editor URL not available';
+        alert(msg);
       }
     } catch (error) {
       console.error('[Editor] Failed to open editor window:', error);
+      const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to Open Editor', {
+        message: error.message,
+        causes: [
+          'Backend service is not running or not responding',
+          'Editor health check endpoint is not implemented',
+          'Network connectivity issue to backend'
+        ],
+        fixes: [
+          'Check Infrastructure tab to verify backend is running',
+          'Verify port 8012 is accessible',
+          'Review backend logs for errors'
+        ],
+        links: [
+          ['Backend Setup', '/docs/SETUP.md#backend'],
+          ['Infrastructure Tab', '/docs/INFRASTRUCTURE.md'],
+          ['Troubleshooting', '/docs/TROUBLESHOOTING.md#backend']
+        ]
+      }) : ('Failed to open editor: ' + error.message);
+      alert(msg);
     }
   }
 
@@ -119,10 +156,44 @@
           setTimeout(() => { btn.innerHTML = orig; }, 2000);
         }
       } else {
-        alert('Editor URL not available');
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Editor URL Not Available', {
+          message: 'Cannot copy editor URL - not available',
+          causes: [
+            'Embedded editor service is not running',
+            'Backend health check returned no URL',
+            'Editor service is disabled in settings'
+          ],
+          fixes: [
+            'Check Admin tab > Embedded Editor to enable editor',
+            'Verify backend is running: check Infrastructure tab',
+            'Restart editor service if it appears stuck'
+          ],
+          links: [
+            ['Editor Setup', '/docs/EDITOR.md'],
+            ['Infrastructure', '/docs/INFRASTRUCTURE.md']
+          ]
+        }) : 'Editor URL not available';
+        alert(msg);
       }
     } catch (error) {
       console.error('[Editor] Failed to copy URL:', error);
+      const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to Copy Editor URL', {
+        message: error.message,
+        causes: [
+          'Browser clipboard access is blocked',
+          'Backend editor health check failed',
+          'Network connectivity issue'
+        ],
+        fixes: [
+          'Verify browser allows clipboard access in Settings',
+          'Check Infrastructure tab for backend status',
+          'Try copying the URL manually from settings'
+        ],
+        links: [
+          ['Browser Clipboard API', 'https://developer.mozilla.org/en-US/docs/Web/API/Clipboard_API']
+        ]
+      }) : ('Failed to copy URL: ' + error.message);
+      alert(msg);
     }
   }
 
@@ -143,11 +214,48 @@
         }, 3000);
       } else {
         console.error('[Editor] Restart failed:', data.error || data.stderr);
-        alert('Restart failed: ' + (data.error || 'Unknown error'));
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Editor Restart Failed', {
+          message: data.error || data.stderr || 'Unknown error',
+          causes: [
+            'Editor service process is not running or already stopped',
+            'Backend lacks permissions to restart the service',
+            'Editor is in crashed state and won\'t restart',
+            'Port conflict preventing editor from binding'
+          ],
+          fixes: [
+            'Check Infrastructure tab to see if editor service is running',
+            'Manually stop and restart the editor service',
+            'Check for port conflicts: lsof -i :3000 (or editor\'s port)',
+            'Review backend logs for restart errors'
+          ],
+          links: [
+            ['Editor Troubleshooting', '/docs/EDITOR.md#troubleshooting'],
+            ['Port Management', 'https://en.wikipedia.org/wiki/Port_(computer_networking)'],
+            ['Infrastructure', '/docs/INFRASTRUCTURE.md']
+          ]
+        }) : ('Restart failed: ' + (data.error || 'Unknown error'));
+        alert(msg);
       }
     } catch (error) {
       console.error('[Editor] Failed to restart editor:', error);
-      alert('Restart failed: ' + error.message);
+      const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Editor Restart Failed', {
+        message: error.message,
+        causes: [
+          'Backend editor restart API is not responding',
+          'Network connection to backend was lost',
+          'Backend service crashed during restart'
+        ],
+        fixes: [
+          'Check Infrastructure tab to verify backend is running',
+          'Verify network connectivity to backend',
+          'Review backend logs for errors'
+        ],
+        links: [
+          ['Backend Health', '/api/health'],
+          ['Infrastructure Tab', '/docs/INFRASTRUCTURE.md']
+        ]
+      }) : ('Restart failed: ' + error.message);
+      alert(msg);
     } finally {
       const btn = document.getElementById('btn-editor-restart');
       if (btn) {

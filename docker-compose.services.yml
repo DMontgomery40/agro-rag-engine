@@ -16,6 +16,11 @@ services:
       - OAUTH_TOKEN=${OAUTH_TOKEN:-}
     ports:
       - "8012:8012"
+    volumes:
+      - ./out:/app/out
+      - ./data:/app/data
+      - ./gui:/app/gui
+      - ./server:/app/server
     profiles: ["api"]
 
   mcp-http:

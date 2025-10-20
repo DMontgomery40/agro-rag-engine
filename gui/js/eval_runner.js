@@ -392,7 +392,25 @@ function renderQuestionResult(r, isFailure) {
 // Save baseline
 async function saveBaseline() {
     if (!evalResults) {
-        alert('No evaluation results to save');
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('No Evaluation Results', {
+            message: 'Cannot save baseline - no evaluation results available',
+            causes: [
+                'No evaluation has been run yet in this session',
+                'Evaluation results were cleared or lost',
+                'Previous evaluation failed and did not produce results'
+            ],
+            fixes: [
+                'Run a full evaluation first using "Run Full Evaluation" button',
+                'Wait for current evaluation to complete before saving baseline',
+                'Check Evaluation tab for error messages from previous runs'
+            ],
+            links: [
+                ['Baseline Evaluation Setup', '/docs/EVALUATION.md#baseline'],
+                ['Running Evaluations', '/docs/EVALUATION.md#running-evaluations'],
+                ['Troubleshooting', '/docs/TROUBLESHOOTING.md#evaluation']
+            ]
+        }) : 'No evaluation results to save';
+        alert(msg);
         return;
     }
 
@@ -434,7 +452,24 @@ async function saveBaseline() {
 // Compare with baseline
 async function compareWithBaseline() {
     if (!evalResults) {
-        alert('No current evaluation results');
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('No Current Results', {
+            message: 'Cannot compare - no current evaluation results available',
+            causes: [
+                'No evaluation has been run in this session',
+                'Evaluation results were lost or cleared',
+                'Page was refreshed before comparison was performed'
+            ],
+            fixes: [
+                'Run a full evaluation first before comparing',
+                'Check that evaluation completed successfully',
+                'Review Evaluation tab for any errors from previous runs'
+            ],
+            links: [
+                ['Comparison Guide', '/docs/EVALUATION.md#comparison'],
+                ['Running Evaluations', '/docs/EVALUATION.md#running-evaluations']
+            ]
+        }) : 'No current evaluation results';
+        alert(msg);
         return;
     }
 
@@ -443,7 +478,26 @@ async function compareWithBaseline() {
         const data = await response.json();
 
         if (!data.ok) {
-            throw new Error(data.message || 'No baseline found');
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Baseline Comparison Failed', {
+                message: data.message || 'No baseline found for comparison',
+                causes: [
+                    'No baseline exists yet - run evaluation and save as baseline first',
+                    'Backend baseline comparison API is not responding',
+                    'Baseline file is corrupted or missing'
+                ],
+                fixes: [
+                    'Save a baseline first using "Save as Baseline" button',
+                    'Check Infrastructure tab to ensure backend is running',
+                    'Re-run evaluation to generate fresh results',
+                    'Check backend logs for baseline file access errors'
+                ],
+                links: [
+                    ['Creating Baselines', '/docs/EVALUATION.md#creating-baseline'],
+                    ['Backend Health', '/api/health'],
+                    ['Troubleshooting', '/docs/TROUBLESHOOTING.md#baseline']
+                ]
+            }) : (data.message || 'Comparison failed');
+            throw new Error(msg);
         }
 
         renderComparison(data);
@@ -548,7 +602,24 @@ function renderComparison(data) {
 // Export results
 function exportEvalResults() {
     if (!evalResults) {
-        alert('No results to export');
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('No Results to Export', {
+            message: 'Cannot export - no evaluation results available',
+            causes: [
+                'No evaluation has been run yet',
+                'Evaluation results were cleared from memory',
+                'Previous evaluation failed without producing results'
+            ],
+            fixes: [
+                'Run a full evaluation first to generate results',
+                'Wait for current evaluation to complete before exporting',
+                'Check Evaluation tab for any error messages'
+            ],
+            links: [
+                ['Exporting Results', '/docs/EVALUATION.md#export'],
+                ['Running Evaluations', '/docs/EVALUATION.md#running-evaluations']
+            ]
+        }) : 'No results to export';
+        alert(msg);
         return;
     }
 

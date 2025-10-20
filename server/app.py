@@ -79,6 +79,17 @@ ROOT = repo_root()
 GUI_DIR = gui_dir()
 DOCS_DIR = docs_dir()
 
+# Middleware to prevent caching of GUI assets - ensures users always get latest
+@app.middleware("http")
+async def set_cache_headers(request: Request, call_next):
+    response = await call_next(request)
+    # Disable caching for all GUI assets to ensure fresh content
+    if request.url.path.startswith("/gui/") or request.url.path == "/gui":
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
 # Serve static GUI assets
 if GUI_DIR.exists():
     app.mount("/gui", StaticFiles(directory=str(GUI_DIR), html=True), name="gui")
@@ -92,7 +103,12 @@ app.mount("/files", StaticFiles(directory=str(files_root()), html=True), name="f
 def serve_index():
     idx = GUI_DIR / "index.html"
     if idx.exists():
-        return FileResponse(str(idx))
+        response = FileResponse(str(idx))
+        # Disable caching for HTML to ensure users always get latest version
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
     return {"ok": True, "message": "GUI assets not found; use /health, /search, /answer"}
 
 @app.get("/health")

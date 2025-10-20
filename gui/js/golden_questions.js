@@ -218,7 +218,27 @@ async function testQuestion(index) {
         resultsDiv.innerHTML = html;
     } catch (error) {
         console.error('Test failed:', error);
-        resultsDiv.innerHTML = `<div style="color: var(--err); font-size: 12px;">Error: ${error.message}</div>`;
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Question Test Failed', {
+            message: error.message,
+            causes: [
+                'Backend golden question test API is not responding',
+                'No indexed data available to test question against',
+                'Qdrant vector database connection failed',
+                'Network timeout while testing question'
+            ],
+            fixes: [
+                'Verify backend and Qdrant are running: check Infrastructure tab',
+                'Ensure repository has been indexed before testing',
+                'Retry testing after checking network connectivity',
+                'Review backend logs for test execution errors'
+            ],
+            links: [
+                ['Testing Individual Questions', '/docs/EVALUATION.md#testing-individual-questions'],
+                ['Indexing Guide', '/docs/INDEXING.md'],
+                ['Backend Health', '/api/health']
+            ]
+        }) : `Error: ${error.message}`;
+        resultsDiv.innerHTML = `<div style="color: var(--err); font-size: 12px; padding: 8px; background: var(--err-bg); border-radius: 3px;">${msg}</div>`;
     }
 }
 
@@ -261,7 +281,23 @@ async function saveEditQuestion(index) {
     const pathsStr = document.getElementById(`edit-paths-${index}`).value.trim();
 
     if (!q) {
-        alert('Question cannot be empty');
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Question Cannot Be Empty', {
+            message: 'Question text field is empty after editing',
+            causes: [
+                'Question text was cleared during edit',
+                'JavaScript validation ran before user finished editing',
+                'Browser autofill cleared the field unexpectedly'
+            ],
+            fixes: [
+                'Re-enter the question text before saving',
+                'Cancel edit and try again if field is behaving unexpectedly',
+                'Disable browser autofill if it keeps clearing fields'
+            ],
+            links: [
+                ['Question Format Guide', '/docs/EVALUATION.md#question-format']
+            ]
+        }) : 'Question cannot be empty';
+        alert(msg);
         return;
     }
 
@@ -283,7 +319,27 @@ async function saveEditQuestion(index) {
         }
     } catch (error) {
         console.error('Failed to update question:', error);
-        alert('Failed to update: ' + error.message);
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to Update Question', {
+            message: error.message,
+            causes: [
+                'Backend golden questions update API is not responding',
+                'Updated question data is invalid or missing required fields',
+                'Question ID no longer exists in database',
+                'Network connection interrupted during update'
+            ],
+            fixes: [
+                'Verify backend is running: check Infrastructure tab',
+                'Ensure all required fields are filled before saving',
+                'Refresh the page to reload current questions',
+                'Try updating again after checking network connectivity'
+            ],
+            links: [
+                ['Golden Questions API', '/docs/API.md#golden-questions'],
+                ['Troubleshooting', '/docs/TROUBLESHOOTING.md#evaluation'],
+                ['Backend Health', '/api/health']
+            ]
+        }) : ('Failed to update: ' + error.message);
+        alert(msg);
     }
 }
 
@@ -305,7 +361,27 @@ async function deleteQuestion(index) {
         }
     } catch (error) {
         console.error('Failed to delete question:', error);
-        alert('Failed to delete: ' + error.message);
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to Delete Question', {
+            message: error.message,
+            causes: [
+                'Backend golden questions delete API is not responding',
+                'Question was already deleted by another process',
+                'Database lock preventing deletion',
+                'Network timeout during delete operation'
+            ],
+            fixes: [
+                'Verify backend service is running: check Infrastructure tab',
+                'Refresh the page to see current state of questions',
+                'Try deleting again after waiting a moment',
+                'Check backend logs for specific deletion errors'
+            ],
+            links: [
+                ['Question Management', '/docs/EVALUATION.md#managing-questions'],
+                ['Troubleshooting', '/docs/TROUBLESHOOTING.md#database'],
+                ['Backend Health', '/api/health']
+            ]
+        }) : ('Failed to delete: ' + error.message);
+        alert(msg);
     }
 }
 
