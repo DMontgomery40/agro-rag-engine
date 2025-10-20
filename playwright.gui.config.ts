@@ -28,9 +28,9 @@ export default defineConfig({
         }
     ],
     webServer: {
-        command: 'make dev-headless',
+        command: "bash -lc 'docker compose -f infra/docker-compose.yml up -d api && until curl -sf http://127.0.0.1:8012/health; do sleep 1; done'",
         url: 'http://localhost:8012/health',
-        reuseExistingServer: !process.env.CI,
-        timeout: 120 * 1000,
+        reuseExistingServer: true,
+        timeout: 180 * 1000,
     }
 });

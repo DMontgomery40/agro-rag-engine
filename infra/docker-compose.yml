@@ -1,4 +1,20 @@
 services:
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: agro-api
+    restart: unless-stopped
+    ports:
+      - "8012:8012"
+    env_file:
+      - ../.env
+    volumes:
+      - ..:/app
+      - ../out:/app/out
+      - ../data/logs:/app/data/logs
+    # Intentionally do NOT depend_on qdrant/redis — API works with BM25 only
+    # networks inherit default; infra services below are optional
   qdrant:
     image: qdrant/qdrant:v1.15.5
     container_name: qdrant

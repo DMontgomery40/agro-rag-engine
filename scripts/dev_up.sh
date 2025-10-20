@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# One-shot developer launcher:
-# - Starts infra (Qdrant + Redis) and MCP via scripts/up.sh
-# - Ensures venv and launches uvicorn server.app:app
-# - Waits for /health and opens the GUI in a browser
+# One-shot developer launcher (Docker-first):
+# - Optionally starts infra (Qdrant/Redis/Prom/Grafana) via scripts/up.sh when DEV_WITH_INFRA=1
+# - Starts API as a Docker Compose service (infra/docker-compose.yml: api)
+# - Waits for /health and optionally opens the GUI
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
@@ -19,52 +19,48 @@ if [ -f "$ROOT_DIR/.env" ]; then
   set +a
 fi
 
-# 1) Infra + MCP
-log "Bringing up infra and MCP ..."
-bash "$ROOT_DIR/scripts/up.sh"
-
-# 2) Ensure venv (if missing) and dependencies
-if [ ! -f "$ROOT_DIR/.venv/bin/uvicorn" ]; then
-  log "Venv or uvicorn missing — running setup.sh"
-  bash "$ROOT_DIR/scripts/setup.sh"
+# 1) Optional infra stack
+if [[ "${DEV_WITH_INFRA:-0}" == "1" ]]; then
+  log "DEV_WITH_INFRA=1 → bringing up infra stack ..."
+  bash "$ROOT_DIR/scripts/up.sh"
+else
+  log "Skipping infra stack (set DEV_WITH_INFRA=1 to enable)"
 fi
 
-# 3) Activate venv
-. "$ROOT_DIR/.venv/bin/activate"
-
-# 4) Host/port (allow overrides via env or .env)
+# 2) Host/port (allow overrides via env or .env)
 HOST="${UVICORN_HOST:-${HOST:-127.0.0.1}}"
 PORT="${UVICORN_PORT:-${PORT:-8012}}"
 OPEN_BROWSER="${OPEN_BROWSER:-1}"
 
-# 5) Start uvicorn if not already running
-if pgrep -f "uvicorn .*server\.app:app" >/dev/null; then
-  log "Uvicorn already running."
-else
-  log "Starting uvicorn on $HOST:$PORT ..."
-  nohup uvicorn server.app:app --host "$HOST" --port "$PORT" \
-    > /tmp/uvicorn_server.log 2>&1 &
-  sleep 1
+# 3) Ensure Docker is running
+if ! docker info >/dev/null 2>&1; then
+  log "Docker daemon not reachable. Start Docker Desktop/Colima."
+  exit 1
 fi
 
-# 6) Wait for health
+# 4) Start API container (compose)
+log "Starting API container via docker compose ..."
+(
+  cd "$ROOT_DIR/infra"
+  docker compose up -d api
+)
+
+# 5) Wait for health
 URL="http://$HOST:$PORT/health"
-for i in $(seq 1 40); do
+for i in $(seq 1 60); do
   if curl -fsS "$URL" >/dev/null 2>&1; then
     log "API healthy at $URL"
     break
   fi
-  sleep 0.25
+  sleep 0.5
 done
 
-# 7) Open browser to GUI (best-effort)
+# 6) Open browser to GUI (best-effort)
 if [ "$OPEN_BROWSER" = "1" ]; then
   GUI_URL="http://$HOST:$PORT/"
   if command -v open >/dev/null 2>&1; then
-    # macOS
     open "$GUI_URL" || true
   elif command -v xdg-open >/dev/null 2>&1; then
-    # Linux
     xdg-open "$GUI_URL" || true
   else
     log "Please open: $GUI_URL"
@@ -74,4 +70,4 @@ else
   log "GUI: http://$HOST:$PORT/"
 fi
 
-log "Done. Logs: /tmp/mcp_server.log (MCP), /tmp/uvicorn_server.log (API)"
+log "Done. View API logs: docker compose -f infra/docker-compose.yml logs -f api"

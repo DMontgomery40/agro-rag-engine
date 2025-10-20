@@ -66,7 +66,9 @@ fi
 echo "[setup] Installing dependencies (this may take a moment)"
 if [ -f requirements-rag.txt ]; then "$VENV_PY" -m pip install --disable-pip-version-check -r requirements-rag.txt; fi
 if [ -f requirements.txt ]; then "$VENV_PY" -m pip install --disable-pip-version-check -r requirements.txt; fi
-"$VENV_PY" -c "import fastapi,qdrant_client,bm25s,langgraph;print('deps ok')" >/dev/null 2>&1 || true
+# Install Gunicorn for production API serving
+"$VENV_PY" -m pip install --disable-pip-version-check gunicorn
+"$VENV_PY" -c "import fastapi,qdrant_client,bm25s,langgraph,gunicorn;print('deps ok')" >/dev/null 2>&1 || true
 
 echo "[setup] Launching interactive quick setup"
 args=("$ROOT_DIR/scripts/quick_setup.py")

@@ -27,6 +27,7 @@ torch==2.8.0
 # Service
 fastapi==0.118.0
 uvicorn==0.37.0
+gunicorn==23.0.0
 redis==6.4.0
 pydantic==2.11.10
 openai==2.2.0

@@ -442,7 +442,8 @@ def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final
         coll = os.getenv('COLLECTION_NAME', f'code_chunks_{repo}')
         try:
             e = _get_embedding(expanded_query, kind="query")
-        except Exception:
+        except Exception as ex:
+            print(f"[hybrid_search] WARNING: Failed to get embedding for query: {ex}")
             e = []
         try:
             backend = (os.getenv('VECTOR_BACKEND','qdrant') or 'qdrant').lower()
@@ -458,7 +459,9 @@ def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final
                 )
                 points = getattr(dres, 'points', dres)
                 dense_pairs = [(str(p.id), dict(p.payload)) for p in points]
-        except Exception:
+        except Exception as ex:
+            print(f"[hybrid_search] ERROR: Vector search (Qdrant) failed: {ex}")
+            print(f"[hybrid_search] Qdrant URL: {QDRANT_URL}, Collection: {coll}")
             dense_pairs = []
 
     # SPAN: BM25 Sparse Retrieval
@@ -524,8 +527,10 @@ def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final
                 chunk_id = cards_map['by_idx'].get(int(card_idx))
                 if chunk_id:
                     card_chunk_ids.add(str(chunk_id))
-        except Exception:
-            pass
+        except Exception as ex:
+            # Card retrieval is optional - log and continue
+            import sys
+            print(f"[hybrid_search] DEBUG: Card retrieval failed (optional feature): {ex}", file=sys.stderr)
 
     # SPAN: RRF Fusion
     dense_ids = [pid for pid, _ in dense_pairs]
@@ -572,8 +577,10 @@ def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final
                 'k_dense': int(topk_dense),
                 'candidates': cands[:max(final_k, 50)],
             })
-    except Exception:
-        pass
+    except Exception as ex:
+        # Tracing is optional - log and continue
+        import sys
+        print(f"[hybrid_search] DEBUG: Tracing failed (optional feature): {ex}", file=sys.stderr)
 
     # DEBUG: What does RRF return? (removed for production - enable via DEBUG env var)
     # print(f"  [DEBUG] After RRF, top 5:")

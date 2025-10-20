@@ -177,8 +177,16 @@ async function loadEvalResults() {
         const response = await fetch('/api/eval/results');
         const data = await response.json();
 
+        // Handle both error response formats
         if (data.error) {
             throw new Error(data.error);
+        }
+        if (data.ok === false && data.message) {
+            throw new Error(data.message);
+        }
+        if (!data.top1_accuracy && data.top1_accuracy !== 0) {
+            // Results object should have numeric accuracy metrics
+            throw new Error('Invalid evaluation results: missing metrics');
         }
 
         evalResults = data;

@@ -2712,6 +2712,41 @@ _EVAL_STATUS: Dict[str, Any] = {
     "results": None
 }
 
+def _validate_eval_preflight(golden_path: str) -> tuple[bool, str]:
+    """Validate prerequisites before running evaluation.
+
+    Returns: (is_valid, error_message)
+    """
+    import json
+    from pathlib import Path
+
+    # Check golden.json exists and is valid JSON
+    gp = Path(golden_path)
+    if not gp.exists():
+        return False, f"Golden questions file not found: {golden_path}"
+
+    try:
+        with open(gp) as f:
+            golden = json.load(f)
+        if not isinstance(golden, list) or len(golden) == 0:
+            return False, f"Golden questions file is empty or not a valid list: {golden_path}"
+    except json.JSONDecodeError as e:
+        return False, f"Golden questions file has invalid JSON: {e}"
+    except Exception as e:
+        return False, f"Failed to read golden questions file: {e}"
+
+    # Check Qdrant connectivity
+    try:
+        from qdrant_client import QdrantClient
+        qdrant_url = os.getenv('QDRANT_URL', 'http://localhost:6333')
+        qc = QdrantClient(url=qdrant_url)
+        # Try to list collections to verify connectivity
+        qc.get_collections()
+    except Exception as e:
+        return False, f"Qdrant is not accessible at {os.getenv('QDRANT_URL', 'http://localhost:6333')}: {e}"
+
+    return True, ""
+
 @app.post("/api/eval/run")
 def eval_run(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
     """Run full evaluation suite in background."""
@@ -2720,6 +2755,12 @@ def eval_run(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
 
     if _EVAL_STATUS["running"]:
         return {"ok": False, "error": "Evaluation already running"}
+
+    # Pre-flight validation
+    golden_path = os.getenv("GOLDEN_PATH", "data/golden.json")
+    is_valid, error_msg = _validate_eval_preflight(golden_path)
+    if not is_valid:
+        return {"ok": False, "error": error_msg}
 
     use_multi = payload.get("use_multi", os.getenv("EVAL_MULTI", "1") == "1")
     final_k = int(payload.get("final_k") or os.getenv("EVAL_FINAL_K", "5"))

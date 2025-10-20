@@ -19,9 +19,9 @@ setup:
 index:
 	. .venv/bin/activate && REPO=$(REPO) python index_repo.py
 
-# Start API locally (requires venv)
+# Start API locally with Gunicorn (production-ready)
 api:
-	. .venv/bin/activate && uvicorn server.app:app --host 127.0.0.1 --port 8012
+	bash scripts/api_up.sh
 
 # Start everything (infra + MCP + API + open browser)
 dev:
@@ -31,6 +31,11 @@ dev:
 .PHONY: dev-headless
 dev-headless:
 	OPEN_BROWSER=0 bash scripts/dev_up.sh
+
+# Docker-first indexing (does not require venv)
+.PHONY: index-docker
+index-docker:
+	docker compose -f infra/docker-compose.yml exec -T api bash -lc "REPO=$${REPO:-agro} OUT_DIR_BASE=/app/out python index_repo.py"
 
 # Alias for dev (convenience)
 makedev: dev
