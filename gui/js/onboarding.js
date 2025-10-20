@@ -60,10 +60,19 @@
       const mode = onboardingState.projectDraft.sourceType;
       if (mode === 'folder'){
         const path = $('#onboard-folder-path');
-        if (path && !path.value.trim()){ alert('Please select a folder or enter a path'); return; }
+        if (path && !path.value.trim()){
+          const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Repository Path Required', { message: 'No folder path was entered', causes: ['Repository path field is empty', 'User clicked Next without selecting/entering path', 'Browser file picker was cancelled'], fixes: ['Click "Browse" to select a repository folder', 'Manually enter a valid absolute path to the repo', 'Ensure path exists and is accessible'], links: [['Onboarding Guide', '/docs/ONBOARDING.md'], ['File Paths', 'https://en.wikipedia.org/wiki/Path_(computing)']] }) : 'Please select a folder or enter a path';
+          alert(msg);
+          return;
+        }
         onboardingState.projectDraft.folderPath = path ? path.value.trim() : '';
       } else if (mode === 'github'){
-        const url = $('#onboard-github-url'); if (url && !url.value.trim()){ alert('Please enter a GitHub repository URL'); return; }
+        const url = $('#onboard-github-url');
+        if (url && !url.value.trim()){
+          const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('GitHub URL Required', { message: 'No GitHub URL was entered', causes: ['GitHub URL field is empty', 'User clicked Next without entering URL', 'Form validation ran before input was complete'], fixes: ['Enter a valid GitHub repository URL (e.g., https://github.com/user/repo)', 'Ensure format is https://github.com/[owner]/[repo]', 'Check network access to GitHub.com'], links: [['GitHub URL Format', 'https://docs.github.com/en/repositories/creating-and-managing-repositories/about-repositories']] }) : 'Please enter a GitHub repository URL';
+          alert(msg);
+          return;
+        }
         onboardingState.projectDraft.githubUrl = url ? url.value.trim() : '';
         const branch = $('#onboard-github-branch'); const token = $('#onboard-github-token');
         onboardingState.projectDraft.githubBranch = branch && branch.value.trim() ? branch.value.trim() : 'main';

@@ -759,9 +759,54 @@
                 try {
                     const r = await fetch(api('/api/docker/redis/ping'));
                     const d = await r.json();
-                    alert(d.success ? '✓ Redis PONG!' : '✗ Redis not responding');
+                    if (d.success) {
+                        if (window.UXFeedback && window.UXFeedback.toast) {
+                            window.UXFeedback.toast('✓ Redis PONG!', 'success');
+                        } else {
+                            alert('✓ Redis PONG!');
+                        }
+                    } else {
+                        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Redis Not Responding', {
+                            message: 'Redis connection test failed',
+                            causes: [
+                                'Redis container is not running or crashed',
+                                'Redis port 6379 is blocked by firewall',
+                                'Backend cannot connect to Redis service',
+                                'Redis is running but not accepting connections'
+                            ],
+                            fixes: [
+                                'Start Redis container: use Infrastructure tab "Start All" button',
+                                'Check Redis container status: docker ps | grep redis',
+                                'Verify port 6379 is accessible: telnet localhost 6379',
+                                'Review backend logs for Redis connection errors'
+                            ],
+                            links: [
+                                ['Redis Documentation', 'https://redis.io/docs/getting-started/'],
+                                ['Docker Redis', 'https://hub.docker.com/_/redis'],
+                                ['Troubleshooting', '/docs/TROUBLESHOOTING.md#redis']
+                            ]
+                        }) : '✗ Redis not responding';
+                        alert(msg);
+                    }
                 } catch (e) {
-                    alert('✗ Failed to ping Redis');
+                    const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Redis Ping Failed', {
+                        message: e.message,
+                        causes: [
+                            'Backend service is not running',
+                            'Network connection to backend failed',
+                            'Redis API endpoint is not implemented'
+                        ],
+                        fixes: [
+                            'Check Infrastructure tab to verify backend is running',
+                            'Verify network connectivity to localhost:8012',
+                            'Review backend logs for errors'
+                        ],
+                        links: [
+                            ['Backend Health', '/api/health'],
+                            ['Infrastructure Tab', '/docs/INFRASTRUCTURE.md']
+                        ]
+                    }) : '✗ Failed to ping Redis: ' + e.message;
+                    alert(msg);
                 }
             });
         }
