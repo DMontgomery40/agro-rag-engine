@@ -11,7 +11,25 @@ async function runRealIndex() {
     const btn = $('simple-index-btn');
     
     if (!repo) {
-        alert('Select a repo first');
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Repository Required', {
+            message: 'No repository was selected',
+            causes: [
+                'No repository is selected from the dropdown menu',
+                'Repository list failed to load from backend',
+                'Configuration file is missing repository definitions'
+            ],
+            fixes: [
+                'Select a repository from the dropdown menu above the Index button',
+                'Check Settings > Repositories to verify repos are configured',
+                'Refresh the page to reload the repository list'
+            ],
+            links: [
+                ['Repository Configuration', '/docs/CONFIGURATION.md#repositories'],
+                ['Indexing Guide', '/docs/INDEXING.md#getting-started'],
+                ['Backend Health', '/api/health']
+            ]
+        }) : 'Select a repo first';
+        alert(msg);
         return;
     }
     

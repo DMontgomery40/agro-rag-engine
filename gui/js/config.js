@@ -493,13 +493,35 @@
             });
 
             if (!r.ok) {
-                alert('Save failed');
+                const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Configuration Save Failed', {
+                    message: r.status + ' ' + r.statusText,
+                    causes: [
+                        'Backend configuration API service is unavailable or crashed',
+                        'Invalid configuration values submitted failed validation',
+                        'Network connection interrupted during save request'
+                    ],
+                    fixes: [
+                        'Check Infrastructure tab to verify backend service is running',
+                        'Review form inputs for invalid values (check browser console)',
+                        'Verify network connectivity and retry saving'
+                    ],
+                    links: [
+                        ['HTTP Status Reference', 'https://developer.mozilla.org/en-US/docs/Web/HTTP/Status'],
+                        ['Configuration Guide', '/docs/CONFIGURATION.md'],
+                        ['Backend Health', '/api/health']
+                    ]
+                }) : `Save failed: HTTP ${r.status}`;
+                alert(msg);
                 return;
             }
 
             const result = await r.json();
             if (result.status === 'success') {
-                alert('Configuration updated successfully!');
+                if (window.UXFeedback && window.UXFeedback.toast) {
+                    window.UXFeedback.toast('Configuration updated successfully', 'success');
+                } else {
+                    showToast('Configuration updated successfully', 'success');
+                }
                 await loadConfig(); // Reload to confirm
             }
         } catch (e) {

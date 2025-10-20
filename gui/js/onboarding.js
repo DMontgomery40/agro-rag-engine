@@ -143,7 +143,7 @@
     const { speed, quality, cloud } = onboardingState.settings;
     const profile = { name: name.trim(), sources: onboardingState.projectDraft, settings: { MQ_REWRITES: speed, LANGGRAPH_FINAL_K: 10 + (speed*5), RERANK_BACKEND: quality===1?'none':(quality===2?'local':'cohere'), GEN_MODEL: quality===1?'local':'gpt-4o-mini', EMBEDDING_TYPE: cloud===1?'local':'openai' }, golden: onboardingState.questions.map(q=>q.text) };
     try{ const res = await fetch(api('/api/profiles/save'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(profile) }); if (!res.ok) throw new Error('Failed to save project'); alert('Project saved successfully!'); await fetch(api('/api/profiles/apply'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ profile_name: name.trim() }) }); }
-    catch(err){ console.error('Save project error:', err); alert('Error saving project: ' + err.message); }
+    catch(err){ console.error('Save project error:', err); const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to Save Project', { message: err.message, causes: ['Backend profiles API endpoint is not responding', 'Invalid project configuration data submitted', 'Disk space exhausted on backend server', 'Insufficient permissions to write profile files'], fixes: ['Verify backend service is running: check Infrastructure tab', 'Ensure all project fields are filled correctly', 'Check available disk space on the server', 'Review backend logs for specific error details'], links: [['Profiles Setup', '/docs/PROFILES.md'], ['Backend Health', '/api/health']] }) : 'Error saving project: ' + err.message; alert(msg); }
   }
 
   async function runTinyEval(){

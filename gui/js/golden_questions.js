@@ -92,7 +92,24 @@ async function addGoldenQuestion() {
     const pathsStr = document.getElementById('golden-new-paths').value.trim();
 
     if (!q) {
-        alert('Please enter a question');
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Question Required', {
+            message: 'No question text was entered',
+            causes: [
+                'Question text field is empty',
+                'Text was not entered before clicking Add',
+                'Form was submitted with auto-cleared fields'
+            ],
+            fixes: [
+                'Enter a meaningful test question in the text field',
+                'Click "Add" only after typing the complete question',
+                'Ensure question field shows visible text before submitting'
+            ],
+            links: [
+                ['Golden Questions Setup', '/docs/EVALUATION.md#golden-questions'],
+                ['Question Format Guide', '/docs/EVALUATION.md#question-format']
+            ]
+        }) : 'Please enter a question';
+        alert(msg);
         return;
     }
 
@@ -120,7 +137,27 @@ async function addGoldenQuestion() {
         }
     } catch (error) {
         console.error('Failed to add question:', error);
-        alert('Failed to add question: ' + error.message);
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to Add Golden Question', {
+            message: error.message,
+            causes: [
+                'Backend golden questions API endpoint is not responding',
+                'Invalid question format or missing required repository field',
+                'Duplicate question already exists in the database',
+                'Network timeout while communicating with backend service'
+            ],
+            fixes: [
+                'Verify backend is running: check Infrastructure tab for green status',
+                'Ensure all required fields are filled: question text, repo selection, expected paths',
+                'Check if identical question already exists in Questions list',
+                'Refresh the page and try adding the question again after 5 seconds'
+            ],
+            links: [
+                ['Evaluation Setup Guide', '/docs/EVALUATION.md#golden-questions'],
+                ['API Documentation', '/docs/API.md#golden-questions'],
+                ['Backend Health Status', '/api/health']
+            ]
+        }) : 'Failed to add question: ' + error.message;
+        alert(msg);
     }
 }
 
