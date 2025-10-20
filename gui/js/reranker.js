@@ -1,6 +1,22 @@
 // gui/js/reranker.js - Learning Reranker UI Module
 // Handles feedback collection, triplet mining, training, evaluation, and all reranker features
 
+// ============ LIVE TERMINAL ============
+let _rerankerTerminal = null;
+let _lastOutputLineCount = 0;
+
+function initRerankerTerminal() {
+    if (!window.LiveTerminal) {
+        console.warn('[reranker] LiveTerminal not loaded yet, will initialize later');
+        return;
+    }
+
+    if (!_rerankerTerminal) {
+        _rerankerTerminal = new window.LiveTerminal('reranker-terminal-container');
+        console.log('[reranker] Live terminal initialized');
+    }
+}
+
 // ============ FEEDBACK SYSTEM ============
 
 // Track file link clicks
@@ -21,7 +37,7 @@ window.trackFileClick = async function(eventId, docId) {
 };
 
 // Add feedback buttons to a chat message (thumbs + stars + note)
-function addFeedbackButtons(messageElement, eventId) {
+window.addFeedbackButtons = function addFeedbackButtons(messageElement, eventId) {
     if (!eventId) return;
     
     const feedbackDiv = document.createElement('div');
@@ -85,7 +101,7 @@ function addFeedbackButtons(messageElement, eventId) {
             }
         });
     }
-}
+};
 
 async function submitFeedback(eventId, signal, note, feedbackDiv) {
     const statusSpan = feedbackDiv.querySelector('.feedback-status');
@@ -258,16 +274,53 @@ let statusPollInterval = null;
 
 function startStatusPolling() {
     if (statusPollInterval) return;
-    
+
+    // Initialize terminal if not already done
+    initRerankerTerminal();
+
+    // Show and configure terminal
+    if (_rerankerTerminal) {
+        _rerankerTerminal.show();
+        _rerankerTerminal.clear();
+        _lastOutputLineCount = 0;
+    }
+
     statusPollInterval = setInterval(async () => {
         const status = await getRerankerStatus();
         updateRerankerStatusUI(status);
-        
+
+        // Update terminal with new output lines
+        if (_rerankerTerminal && status.live_output && Array.isArray(status.live_output)) {
+            const newLines = status.live_output.slice(_lastOutputLineCount);
+            if (newLines.length > 0) {
+                _rerankerTerminal.appendLines(newLines);
+                _lastOutputLineCount = status.live_output.length;
+            }
+        }
+
+        // Update progress bar
+        if (_rerankerTerminal && status.running && status.progress > 0) {
+            const taskName = {
+                'mining': 'Mining Triplets',
+                'training': 'Training Model',
+                'evaluating': 'Evaluating Model'
+            }[status.task] || status.task;
+
+            _rerankerTerminal.updateProgress(status.progress, taskName);
+            _rerankerTerminal.setTitle(`${taskName} - Live Output`);
+        }
+
         // Stop polling when task completes
         if (!status.running && statusPollInterval) {
             clearInterval(statusPollInterval);
             statusPollInterval = null;
-            
+
+            // Hide progress bar
+            if (_rerankerTerminal) {
+                _rerankerTerminal.hideProgress();
+                _rerankerTerminal.setTitle('Live Output - Complete');
+            }
+
             // Update results display
             if (status.result) {
                 updateTaskResults(status);
@@ -288,7 +341,8 @@ function updateRerankerStatusUI(status) {
             statusEl.textContent = status.message || 'Task complete';
             statusEl.style.color = 'var(--accent)';
         } else {
-            statusEl.textContent = status.result.error || 'Task failed';
+            // Include message fallback so users see server-side details
+            statusEl.textContent = status.result.error || status.message || 'Task failed';
             statusEl.style.color = 'var(--err)';
         }
     } else {
@@ -449,21 +503,67 @@ async function updateRerankerStats() {
             costAvg.textContent = '$' + (data.avg_per_query || 0).toFixed(6);
         }
     } catch {}
-    
+
+    // Load server reranker info (model, device, params)
+    try {
+        const infoResp = await fetch('/api/reranker/info');
+        if (infoResp.ok) {
+            const info = await infoResp.json();
+            const on = !!info.enabled;
+            const apply = (suffix = '') => {
+                const enabledEl = document.getElementById(`reranker-info-enabled${suffix}`);
+                const pathEl = document.getElementById(`reranker-info-path${suffix}`);
+                const devEl = document.getElementById(`reranker-info-device${suffix}`);
+                const alphaEl = document.getElementById(`reranker-info-alpha${suffix}`);
+                const topnEl = document.getElementById(`reranker-info-topn${suffix}`);
+                const batchEl = document.getElementById(`reranker-info-batch${suffix}`);
+                const maxlenEl = document.getElementById(`reranker-info-maxlen${suffix}`);
+                if (enabledEl) {
+                    enabledEl.textContent = on ? 'ON' : 'OFF';
+                    enabledEl.style.color = on ? 'var(--accent)' : 'var(--err)';
+                }
+                if (pathEl) pathEl.textContent = info.resolved_path || info.path || '—';
+                if (devEl) devEl.textContent = info.device || 'cpu';
+                if (alphaEl) alphaEl.textContent = String(info.alpha ?? '—');
+                if (topnEl) topnEl.textContent = String(info.topn ?? '—');
+                if (batchEl) batchEl.textContent = String(info.batch ?? '—');
+                if (maxlenEl) maxlenEl.textContent = String(info.maxlen ?? '—');
+            };
+            // Update both panels: external-rerankers (-ext) and learning-ranker (no suffix)
+            apply('-ext');
+            apply('');
+        } else {
+            const panel = document.getElementById('reranker-info-panel');
+            if (panel) panel.innerHTML = '<div style="color:var(--err);">Failed to read /api/reranker/info</div>';
+        }
+    } catch (e) {
+        const panel = document.getElementById('reranker-info-panel');
+        if (panel) panel.innerHTML = `<div style=\"color:var(--err);\">Error: ${e.message}</div>`;
+    }
+
     // Load no-hit queries
     try {
         const nohitsResp = await fetch('/api/reranker/nohits');
         const data = await nohitsResp.json();
         const nohitsList = document.getElementById('reranker-nohits-list');
-        if (nohitsList && data.queries && data.queries.length > 0) {
-            nohitsList.innerHTML = data.queries.map(q => 
-                `<div style="padding:6px; border-bottom:1px solid var(--line);">
-                    <div style="color: var(--fg);">${q.query}</div>
-                    <div style="font-size:10px; color:var(--fg-muted);">${q.ts}</div>
-                </div>`
-            ).join('');
+        if (nohitsList) {
+            if (data.queries && data.queries.length > 0) {
+                nohitsList.innerHTML = data.queries.map(q =>
+                    `<div style="padding:6px; border-bottom:1px solid var(--line);">
+                        <div style="color: var(--fg);">${q.query}</div>
+                        <div style="font-size:10px; color:var(--fg-muted);">${q.ts}</div>
+                    </div>`
+                ).join('');
+            } else {
+                nohitsList.innerHTML = '<div style="color: var(--fg-muted); text-align: center; padding: 20px;">No no-hit queries tracked yet.</div>';
+            }
         }
-    } catch {}
+    } catch (error) {
+        const nohitsList = document.getElementById('reranker-nohits-list');
+        if (nohitsList) {
+            nohitsList.innerHTML = '<div style="color: var(--err); text-align: center; padding: 20px;">Failed to load no-hit queries</div>';
+        }
+    }
 }
 
 // ============ LOG VIEWER ============
@@ -960,6 +1060,11 @@ function initRerankerUI() {
     // Smoke test button
     const smokeTestBtn = document.getElementById('reranker-smoke-test');
     if (smokeTestBtn) smokeTestBtn.addEventListener('click', runSmokeTest);
+
+    // Initialize terminal (lazy init, will be created when first needed)
+    setTimeout(() => {
+        initRerankerTerminal();
+    }, 500);
 
     // Load initial stats
     setTimeout(updateRerankerStats, 100);

@@ -37,6 +37,12 @@
 **/_site/**
 **/site/**
 
+# IDE / Editor data (CRITICAL - prevents VS Code extension pollution)
+**/.editor_data/**
+**/.code-server/**
+**/.vscode-server/**
+**/.openvscode-server/**
+
 # Minified or large static
 **/*.min.js
 **/*.min.css
@@ -65,17 +71,18 @@
 **/*.gz
 **/*.7z
 
-# Test files and data - DISABLED for SOTA RAG (tests contain valuable context)
-# **/test/**
-# **/tests/**
-# **/*.spec.ts
-# **/*.test.ts
-# **/*.spec.js
-# **/*.test.js
-# **/fixtures/**
-# **/mocks/**
-# **/__mocks__/**
-# **/test-data/**
+# Test files and data (CRITICAL - test pollution causes catastrophic 1.9% baseline)
+**/test/**
+**/tests/**
+**/*.spec.ts
+**/*.test.ts
+**/*.spec.js
+**/*.test.js
+**/fixtures/**
+**/mocks/**
+**/__mocks__/**
+**/test-data/**
+**/playwright*.ts
 
 # Generated/vendor code
 **/*.d.ts

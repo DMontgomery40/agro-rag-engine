@@ -9,23 +9,25 @@ import time
 import argparse
 from typing import Dict, Any
 from dotenv import load_dotenv
-from .eval_rag import hit, GOLDEN_PATH, USE_MULTI, FINAL_K
+from .eval_rag import hit, _resolve_golden_path, USE_MULTI, FINAL_K, MULTI_M
 from retrieval.hybrid_search import search_routed, search_routed_multi
 
 load_dotenv()
 
-BASELINE_PATH = os.getenv('BASELINE_PATH', 'eval_baseline.json')
+# Keep in sync with UI default (ui/ALL_KNOBS.yaml) and server endpoints
+BASELINE_PATH = os.getenv('BASELINE_PATH', 'data/evals/eval_baseline.json')
 
 def run_eval_with_results() -> Dict[str, Any]:
-    if not os.path.exists(GOLDEN_PATH):
-        return {"error": f"No golden questions file found at: {GOLDEN_PATH}. Create golden.json with test questions first."}
+    golden_path = _resolve_golden_path()
+    if not os.path.exists(golden_path):
+        return {"error": f"No golden questions file found at: {golden_path}. Create golden.json with test questions first."}
     try:
-        with open(GOLDEN_PATH) as f:
+        with open(golden_path) as f:
             gold = json.load(f)
     except json.JSONDecodeError as e:
-        return {"error": f"Invalid JSON in {GOLDEN_PATH}: {e}. Check file syntax."}
+        return {"error": f"Invalid JSON in {golden_path}: {e}. Check file syntax."}
     except Exception as e:
-        return {"error": f"Failed to read {GOLDEN_PATH}: {e}"}
+        return {"error": f"Failed to read {golden_path}: {e}"}
     if not isinstance(gold, list):
         return {"error": f"golden.json must be a JSON array, got {type(gold).__name__}"}
     valid_questions = []
@@ -40,7 +42,7 @@ def run_eval_with_results() -> Dict[str, Any]:
             continue
         valid_questions.append(row)
     if not valid_questions:
-        return {"error": f"No valid questions found in {GOLDEN_PATH}. Each question must have a 'q' field."}
+        return {"error": f"No valid questions found in {golden_path}. Each question must have a 'q' field."}
     total = len(valid_questions)
     hits_top1 = 0
     hits_topk = 0
@@ -52,7 +54,7 @@ def run_eval_with_results() -> Dict[str, Any]:
         expect = row.get('expect_paths') or []
         try:
             if USE_MULTI:
-                docs = search_routed_multi(q, repo_override=repo, m=4, final_k=FINAL_K)
+                docs = search_routed_multi(q, repo_override=repo, m=MULTI_M, final_k=FINAL_K)
             else:
                 docs = search_routed(q, repo_override=repo, final_k=FINAL_K)
         except Exception as e:
@@ -92,4 +94,3 @@ def save_baseline(results: Dict[str, Any]):
     with open(BASELINE_PATH, 'w') as f:
         json.dump(results, f, indent=2)
     print(f"✓ Baseline saved to {BASELINE_PATH}")
-

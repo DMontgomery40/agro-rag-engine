@@ -169,7 +169,7 @@ Ask a question:
 Switch repo:
 ```
 > /repo agro
-> How do we handle inbound faxes?
+> How do we handle inbound tracing?
 ```
         """
         console.print(Markdown(help_text))
@@ -279,7 +279,7 @@ Type your question or use `/help` for commands.
                             rating = int(rating_input.strip())
                             if 1 <= rating <= 5:
                                 note_input = Prompt.ask(
-                                    "[bold cyan]Optional note[/bold cyan] (or Enter to skip)",
+                                    "[cyan]Optional note[/cyan] (or Enter to skip)",
                                     default="",
                                     show_default=False
                                 )

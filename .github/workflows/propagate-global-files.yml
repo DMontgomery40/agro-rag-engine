@@ -1,0 +1,96 @@
+name: Propagate Global Files to All Branches
+
+on:
+  push:
+    paths:
+      - 'CLAUDE.md'
+      - 'AGENTS.md'
+      - 'README.md'
+      - 'docs/**'
+      - 'assets/**'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: propagate-global-files-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  propagate:
+    if: ${{ !contains(github.event.head_commit.message, '[auto-propagate]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+
+      - name: Compute changed paths
+        id: diff
+        shell: bash
+        run: |
+          BEFORE=${{ github.event.before }}
+          AFTER=${{ github.sha }}
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            echo "Initial push or unknown before; using last commit^" >&2
+            BEFORE=$(git rev-parse ${AFTER}^ || echo ${AFTER})
+          fi
+          CHANGED=$(git diff --name-only "$BEFORE" "$AFTER" | tr '\n' ' ')
+          echo "changed=$CHANGED" >> $GITHUB_OUTPUT
+          echo "Changed files: $CHANGED"
+
+      - name: Propagate to all branches
+        env:
+          SRC_SHA: ${{ github.sha }}
+          SRC_BRANCH: ${{ github.ref_name }}
+          CHANGED: ${{ steps.diff.outputs.changed }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Determine candidate paths to copy (limit to the global set)
+          PATHS=()
+          for p in $CHANGED; do
+            case "$p" in
+              CLAUDE.md|AGENTS.md|README.md|docs/*|assets/*) PATHS+=("$p");;
+              *) ;;
+            esac
+          done
+          if [ ${#PATHS[@]} -eq 0 ]; then
+            echo "No global files changed; nothing to propagate."
+            exit 0
+          fi
+          echo "Paths to propagate: ${PATHS[*]}"
+
+          # List all remote branches (excluding HEAD and the source branch)
+          mapfile -t TARGETS < <(git for-each-ref --format='%(refname:short)' refs/remotes/origin | sed 's#^origin/##' | grep -v '^HEAD$' | grep -v "^${SRC_BRANCH}$" | sort -u)
+          echo "Targets: ${TARGETS[*]}"
+
+          for BR in "${TARGETS[@]}"; do
+            echo "--- Propagating to $BR ---"
+            git fetch origin "$BR":"$BR" || true
+            git checkout "$BR"
+            git reset --hard "origin/$BR" || true
+            # Checkout the changed paths from the source commit into this branch
+            for path in "${PATHS[@]}"; do
+              # Ensure directory exists on target branch if needed
+              mkdir -p "$(dirname "$path")" || true
+              git checkout "$SRC_SHA" -- "$path" || true
+            done
+            if ! git diff --quiet -- ${PATHS[@]}; then
+              git add -- ${PATHS[@]}
+              git commit -m "chore(auto-propagate): sync global files from ${SRC_BRANCH} ${SRC_SHA} to ${BR} [skip ci][auto-propagate]" || true
+              git push origin "$BR" || true
+              echo "Pushed updates to $BR"
+            else
+              echo "No changes needed on $BR"
+            fi
+          done
+
+
+

@@ -5,8 +5,10 @@
 
   async function load(){
     try{
+      console.log('[cards.js] Starting load...');
       const resp = await fetch(api('/api/cards'));
       const data = await resp.json();
+      console.log('[cards.js] Loaded data:', data);
       const cards = Array.isArray(data.cards) ? data.cards : [];
       const last = data.last_build || null;
       const lastBox = document.getElementById('cards-last-build');
@@ -22,6 +24,7 @@
         }
       }
       const cardsContainer = document.getElementById('cards-viewer');
+      console.log('[cards.js] Container found:', !!cardsContainer, 'with', cards.length, 'cards');
       if (cardsContainer) {
         cardsContainer.innerHTML = cards.length === 0 ?
           `<div style="text-align: center; padding: 24px; color: var(--fg-muted);">
@@ -35,16 +38,18 @@
           </div>` :
           cards.map(card => `
             <div class="card-item" data-filepath="${card.file_path}" data-line="${card.start_line || 1}"
-                 style="background: var(--bg-elev2); border: 1px solid var(--line); border-radius: 6px; padding: 12px; cursor: pointer; transition: all 0.2s;"
-                 onmouseover="this.style.borderColor='var(--accent)'; this.style.background='var(--bg-elev1)';"
-                 onmouseout="this.style.borderColor='var(--line)'; this.style.background='var(--bg-elev2)';">
-              <h4 style="margin: 0 0 8px 0; color: var(--accent); font-size: 14px; font-weight: 600;">
-                ${(card.symbols && card.symbols[0]) ? card.symbols[0] : (card.file_path || '').split('/').slice(-1)[0]}
-              </h4>
-              <p style="margin: 0 0 8px 0; color: var(--fg-muted); font-size: 12px; line-height: 1.4;">
-                ${card.purpose || 'No description available'}
-              </p>
-              <div style="font-size: 10px; color: var(--fg-muted);">
+                 style="background: var(--bg-elev2); border: 1px solid var(--line); border-radius: 8px; padding: 16px; cursor: pointer; transition: all 0.2s; min-height: 180px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,0.1);"
+                 onmouseover="this.style.borderColor='var(--accent)'; this.style.background='var(--bg-elev1)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)';"
+                 onmouseout="this.style.borderColor='var(--line)'; this.style.background='var(--bg-elev2)'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.1)';">
+              <div>
+                <h4 style="margin: 0 0 8px 0; color: var(--accent); font-size: 14px; font-weight: 600; word-break: break-word;">
+                  ${(card.symbols && card.symbols[0]) ? card.symbols[0] : (card.file_path || '').split('/').slice(-1)[0]}
+                </h4>
+                <p style="margin: 0 0 8px 0; color: var(--fg-muted); font-size: 12px; line-height: 1.4; word-break: break-word; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">
+                  ${card.purpose || 'No description available'}
+                </p>
+              </div>
+              <div style="font-size: 10px; color: var(--fg-muted); word-break: break-all;">
                 <span style="color: var(--link);">${card.file_path || 'Unknown file'}</span>
                 ${card.start_line ? ` : ${card.start_line}` : ''}
               </div>
@@ -96,11 +101,77 @@
     }
   }
 
+  async function viewAllCards(){
+    try {
+      console.log('[cards.js] Fetching all cards for raw view...');
+      const resp = await fetch(api('/api/cards/raw-text'));
+      const rawText = await resp.text();
+
+      // Create a modal/terminal view
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.8); display: flex; align-items: center;
+        justify-content: center; z-index: 9999; padding: 20px;
+      `;
+
+      const container = document.createElement('div');
+      container.style.cssText = `
+        background: var(--code-bg); border: 1px solid var(--line);
+        border-radius: 8px; width: 100%; max-width: 90%;
+        max-height: 85vh; display: flex; flex-direction: column;
+        font-family: 'SF Mono', monospace; font-size: 12px;
+        color: var(--fg);
+      `;
+
+      // Header
+      const header = document.createElement('div');
+      header.style.cssText = `
+        padding: 12px 16px; border-bottom: 1px solid var(--line);
+        display: flex; justify-content: space-between; align-items: center;
+        background: var(--bg-elev2);
+      `;
+      header.innerHTML = `
+        <strong style="color: var(--accent);">📋 All Cards Raw Data</strong>
+        <button style="padding: 4px 8px; background: var(--accent); color: var(--code-bg); border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600;">Close</button>
+      `;
+
+      // Content
+      const content = document.createElement('div');
+      content.style.cssText = `
+        flex: 1; overflow-y: auto; padding: 16px;
+        white-space: pre-wrap; word-wrap: break-word; word-break: break-word;
+        line-height: 1.5;
+      `;
+      content.textContent = rawText;
+
+      // Close handler
+      const closeBtn = header.querySelector('button');
+      const closeModal = () => modal.remove();
+      closeBtn.addEventListener('click', closeModal);
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+      });
+
+      container.appendChild(header);
+      container.appendChild(content);
+      modal.appendChild(container);
+      document.body.appendChild(modal);
+
+      console.log('[cards.js] Raw data modal opened');
+    } catch(error) {
+      console.error('[cards.js] Error viewing all cards:', error);
+      alert('Error loading raw cards data: ' + error.message);
+    }
+  }
+
   function bind(){
     const btnRefresh = document.getElementById('btn-cards-refresh');
     const btnBuild = document.getElementById('btn-cards-build');
+    const btnViewAll = document.getElementById('btn-cards-view-all');
     if (btnRefresh && !btnRefresh.dataset.bound){ btnRefresh.dataset.bound='1'; btnRefresh.addEventListener('click', refresh); }
     if (btnBuild && !btnBuild.dataset.bound){ btnBuild.dataset.bound='1'; btnBuild.addEventListener('click', build); }
+    if (btnViewAll && !btnViewAll.dataset.bound){ btnViewAll.dataset.bound='1'; btnViewAll.addEventListener('click', viewAllCards); }
   }
 
   // Initialization function for data quality view

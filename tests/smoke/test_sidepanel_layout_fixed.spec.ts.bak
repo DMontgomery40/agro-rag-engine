@@ -1,0 +1,117 @@
+import { test, expect } from '@playwright/test';
+
+test.describe('Sidepanel Layout Fixed - Post Cherry-Pick', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('http://127.0.0.1:8012');
+    // Wait for GUI to load - look for tab button instead of hidden tab content
+    await page.waitForSelector('#tab-btn-rag', { timeout: 10000 });
+  });
+
+  test('Sidepanel is properly positioned on the side, not covering content', async ({ page }) => {
+    console.log('Testing sidepanel layout...');
+    
+    // Get viewport dimensions
+    const viewport = page.viewportSize();
+    if (!viewport) throw new Error('No viewport size');
+    
+    // Check sidepanel position and dimensions
+    const sidepanel = page.locator('.sidepanel');
+    await expect(sidepanel).toBeVisible();
+    
+    const sidepanelBox = await sidepanel.boundingBox();
+    if (!sidepanelBox) throw new Error('Could not get sidepanel dimensions');
+    
+    console.log(`Sidepanel position: x=${sidepanelBox.x}, width=${sidepanelBox.width}`);
+    
+    // Sidepanel should be on the right side
+    expect(sidepanelBox.x).toBeGreaterThan(viewport.width * 0.5);
+    
+    // Check content area
+    const content = page.locator('.content');
+    await expect(content).toBeVisible();
+    
+    const contentBox = await content.boundingBox();
+    if (!contentBox) throw new Error('Could not get content dimensions');
+    
+    console.log(`Content position: x=${contentBox.x}, width=${contentBox.width}`);
+    
+    // Content should be on the left
+    expect(contentBox.x).toBe(0);
+    
+    // Content and sidepanel should not overlap
+    expect(contentBox.x + contentBox.width).toBeLessThanOrEqual(sidepanelBox.x + 5); // 5px tolerance
+    
+    console.log('✓ Sidepanel is properly positioned on the side');
+  });
+  
+  test('Apply Changes button is visible and not hidden by overflow', async ({ page }) => {
+    // Navigate to RAG tab
+    await page.click('#tab-btn-rag');
+    
+    // Check Apply Changes button
+    const applyButton = page.locator('#apply-changes-btn');
+    await expect(applyButton).toBeVisible();
+    
+    // Check that button is not cut off (has non-zero height/width)
+    const buttonBox = await applyButton.boundingBox();
+    if (!buttonBox) throw new Error('Could not get Apply button dimensions');
+    
+    expect(buttonBox.height).toBeGreaterThan(0);
+    expect(buttonBox.width).toBeGreaterThan(0);
+    
+    // Button should not be obscured by viewport
+    await expect(applyButton).toBeInViewport({ ratio: 0.5 }); // At least 50% visible
+    
+    console.log('✓ Apply Changes button is properly visible');
+  });
+  
+  test('Content area is scrollable', async ({ page }) => {
+    await page.click('#tab-btn-rag');
+    
+    const content = page.locator('.content');
+    const overflow = await content.evaluate((el) => {
+      const styles = window.getComputedStyle(el);
+      return styles.overflow;
+    });
+    
+    // Content should have overflow: visible to prevent cutting off
+    expect(overflow).toBe('visible');
+    
+    console.log('✓ Content area has correct overflow setting');
+  });
+  
+  test('All restored features still work with fixed layout', async ({ page }) => {
+    // Quick check of key restored features
+    await page.click('#tab-btn-rag');
+    await page.click('button[data-subtab="data-quality"]');
+    
+    // View All Cards button
+    await expect(page.locator('#btn-cards-view-all')).toBeVisible();
+    
+    // Navigate to Learning Ranker
+    await page.click('button[data-subtab="learning-ranker"]');
+    
+    // Reranker info panel
+    await expect(page.locator('#reranker-info-panel').first()).toBeVisible();
+    
+    // Mining configuration
+    await expect(page.locator('input[name="AGRO_TRIPLETS_PATH"]')).toBeVisible();
+    
+    console.log('✓ All restored features work with fixed layout');
+  });
+  
+  test('Sidepanel calculator is accessible and functional', async ({ page }) => {
+    // Check cost calculator in sidepanel
+    const costProvider = page.locator('#cost-provider');
+    await expect(costProvider).toBeVisible();
+    
+    const costModel = page.locator('#cost-model');
+    await expect(costModel).toBeVisible();
+    
+    // Check that we can interact with sidepanel elements
+    await costProvider.selectOption('anthropic');
+    await expect(costProvider).toHaveValue('anthropic');
+    
+    console.log('✓ Sidepanel calculator is functional');
+  });
+});

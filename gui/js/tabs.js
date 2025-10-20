@@ -105,6 +105,8 @@
             return;
         }
 
+        // Keep sidepanel visible for all tabs (requested behavior)
+
         // Fallback to old tab switching (compatibility mode)
         const groups = {
             start: ['onboarding'],
@@ -213,8 +215,13 @@
                     }
                 }
 
-                // Hide all parent tab contents, then show the requested section
+                // Hide all parent tab contents first
                 $$('.tab-content').forEach(el => el.classList.remove('active'));
+                // Ensure the parent tab container is re-activated so its section-subtabs can be visible
+                const parentWrap = document.getElementById(`tab-${parent}`);
+                if (parentWrap) parentWrap.classList.add('active');
+                // Then collapse any section-subtab within the same parent tab container
+                if (parentWrap) parentWrap.querySelectorAll('.section-subtab').forEach(el => el.classList.remove('active'));
                 const target = document.getElementById(`tab-${subtab}`);
                 if (target) {
                     target.classList.add('active');

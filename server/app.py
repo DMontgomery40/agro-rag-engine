@@ -253,8 +253,15 @@ def answer(
     except Exception:
         tr = None
     state = {"question": q, "documents": [], "generation":"", "iteration":0, "confidence":0.0, "repo": (repo.strip() if repo else None)}
-    res = g.invoke(state, CFG)
-    
+    try:
+        res = g.invoke(state, CFG)
+    except Exception as e:
+        # Return error response with proper JSON instead of HTML
+        import traceback
+        error_msg = str(e)
+        print(f"[ERROR] Graph invocation failed: {error_msg}\n{traceback.format_exc()}")
+        return {"answer": f"Error processing your question: {error_msg}", "event_id": None}
+
     # Log the query and retrieval
     try:
         latency_ms = int((time.time() - start_time) * 1000)
@@ -1515,11 +1522,13 @@ _INDEX_STATUS: List[str] = []
 _INDEX_METADATA: Dict[str, Any] = {}
 
 @app.post("/api/index/start")
-def index_start() -> Dict[str, Any]:
+def index_start(payload: Dict[str, Any] = None) -> Dict[str, Any]:
     """Start indexing with real subprocess execution."""
     global _INDEX_STATUS, _INDEX_METADATA
     import subprocess
     import threading
+
+    payload = payload or {}
 
     _INDEX_STATUS = ["Indexing started..."]
     _INDEX_METADATA = {}
@@ -1530,13 +1539,26 @@ def index_start() -> Dict[str, Any]:
             repo = os.getenv("REPO", "agro")
             _INDEX_STATUS.append(f"Indexing repository: {repo}")
 
+            # Prepare environment
+            env = {**os.environ, "REPO": repo}
+
+            # Handle enriching parameter
+            if payload.get("enrich"):
+                env["ENRICH_CODE_CHUNKS"] = "true"
+                _INDEX_STATUS.append("Enriching chunks with summaries and keywords...")
+
+            # Handle skip_dense parameter
+            if payload.get("skip_dense"):
+                env["SKIP_DENSE"] = "1"
+                _INDEX_STATUS.append("Skipping dense embeddings (BM25 only)...")
+
             # Run the actual indexer
             result = subprocess.run(
                 ["python", "-m", "indexer.index_repo"],
                 capture_output=True,
                 text=True,
                 cwd=repo_root(),
-                env={**os.environ, "REPO": repo}
+                env=env
             )
 
             if result.returncode == 0:
@@ -1551,7 +1573,7 @@ def index_start() -> Dict[str, Any]:
     thread = threading.Thread(target=run_index, daemon=True)
     thread.start()
 
-    return {"ok": True, "message": "Indexing started in background"}
+    return {"ok": True, "success": True, "message": "Indexing started in background"}
 
 @app.get("/api/index/stats")
 def index_stats() -> Dict[str, Any]:
@@ -2229,7 +2251,7 @@ async def editor_proxy(path: str, request: Request):
 
 @app.get("/api/cards")
 def cards_list() -> Dict[str, Any]:
-    """Return cards index information"""
+    """Return cards index information (paginated - first 10 for UI)"""
     try:
         from common.config_loader import out_dir
         repo = os.getenv('REPO', 'agro').strip()
@@ -2259,6 +2281,70 @@ def cards_list() -> Dict[str, Any]:
         return {"count": count, "cards": cards, "path": str(cards_path), "last_build": last_build}
     except Exception as e:
         return {"count": 0, "cards": [], "error": str(e)}
+
+@app.get("/api/cards/all")
+def cards_all() -> Dict[str, Any]:
+    """Return ALL cards (for raw data view)"""
+    try:
+        from common.config_loader import out_dir
+        repo = os.getenv('REPO', 'agro').strip()
+        base = _Path(out_dir(repo))
+        cards_path = base / "cards.jsonl"
+
+        cards = []
+        if cards_path.exists():
+            with cards_path.open('r', encoding='utf-8') as f:
+                for line in f:
+                    if not line.strip():
+                        continue
+                    try:
+                        cards.append(json.loads(line))
+                    except Exception:
+                        pass
+        return {"count": len(cards), "cards": cards, "path": str(cards_path)}
+    except Exception as e:
+        return {"count": 0, "cards": [], "error": str(e)}
+
+@app.get("/api/cards/raw-text")
+def cards_raw_text() -> str:
+    """Return all cards as formatted text (for terminal view)"""
+    try:
+        from common.config_loader import out_dir
+        repo = os.getenv('REPO', 'agro').strip()
+        base = _Path(out_dir(repo))
+        cards_path = base / "cards.jsonl"
+
+        lines = []
+        count = 0
+        if cards_path.exists():
+            with cards_path.open('r', encoding='utf-8') as f:
+                for line_num, line in enumerate(f, 1):
+                    if not line.strip():
+                        continue
+                    try:
+                        card = json.loads(line)
+                        count += 1
+                        # Format each card nicely
+                        symbol = (card.get('symbols', [None])[0] or card.get('file_path', 'Unknown')).split('/')[-1]
+                        lines.append(f"\n{'='*80}")
+                        lines.append(f"[Card #{count}] {symbol}")
+                        lines.append(f"{'='*80}")
+                        lines.append(f"File: {card.get('file_path', 'N/A')}")
+                        if card.get('start_line'):
+                            lines.append(f"Line: {card.get('start_line', 'N/A')}")
+                        lines.append(f"\nPurpose:\n{card.get('purpose', 'N/A')}")
+                        if card.get('technical_details'):
+                            lines.append(f"\nTechnical Details:\n{card.get('technical_details', '')}")
+                        if card.get('domain_concepts'):
+                            lines.append(f"\nDomain Concepts: {', '.join(card.get('domain_concepts', []))}")
+                    except Exception as e:
+                        lines.append(f"\n[ERROR parsing card at line {line_num}]: {str(e)}")
+        lines.append(f"\n{'='*80}")
+        lines.append(f"Total: {count} cards loaded from {cards_path}")
+        lines.append(f"{'='*80}\n")
+        return '\n'.join(lines)
+    except Exception as e:
+        return f"Error loading cards: {str(e)}"
 
 # ---------------- Autotune ----------------
 @app.get("/api/autotune/status")
@@ -2649,10 +2735,25 @@ def eval_run(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
         }
 
         try:
-            from eval.eval_loop import run_eval_with_results
             # Temporarily set env vars
             old_multi = os.environ.get("EVAL_MULTI")
             old_k = os.environ.get("EVAL_FINAL_K")
+            old_gp = os.environ.get("GOLDEN_PATH")
+
+            # Ensure GOLDEN_PATH points to repo-standard path if not set or invalid
+            gp = old_gp or "data/golden.json"
+            try:
+                from pathlib import Path as _P
+                if not _P(gp).exists():
+                    # If legacy value like 'golden.json', try under data/
+                    candidate = _P('data') / _P(gp).name
+                    gp = str(candidate)
+            except Exception:
+                gp = "data/golden.json"
+
+            print(f"[eval] Using GOLDEN_PATH={gp}")
+            os.environ["GOLDEN_PATH"] = gp
+            from eval.eval_loop import run_eval_with_results
             os.environ["EVAL_MULTI"] = "1" if use_multi else "0"
             os.environ["EVAL_FINAL_K"] = str(final_k)
 
@@ -2671,6 +2772,10 @@ def eval_run(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
                     os.environ["EVAL_FINAL_K"] = old_k
                 elif "EVAL_FINAL_K" in os.environ:
                     del os.environ["EVAL_FINAL_K"]
+                if old_gp is not None:
+                    os.environ["GOLDEN_PATH"] = old_gp
+                elif "GOLDEN_PATH" in os.environ:
+                    del os.environ["GOLDEN_PATH"]
 
         except Exception as e:
             _EVAL_STATUS["results"] = {"error": str(e)}
@@ -2705,7 +2810,8 @@ _RERANKER_STATUS: Dict[str, Any] = {
     "task": "",
     "progress": 0,
     "message": "",
-    "result": None
+    "result": None,
+    "live_output": []  # List of output lines for streaming to UI
 }
 
 @app.post("/api/reranker/mine")
@@ -2720,26 +2826,41 @@ def reranker_mine() -> Dict[str, Any]:
     
     def run_mine():
         global _RERANKER_STATUS
-        _RERANKER_STATUS = {"running": True, "task": "mining", "progress": 0, "message": "Mining triplets...", "result": None}
+        _RERANKER_STATUS = {"running": True, "task": "mining", "progress": 0, "message": "Mining triplets...", "result": None, "live_output": []}
         try:
-            result = subprocess.run(
+            proc = subprocess.Popen(
                 [sys.executable, "scripts/mine_triplets.py"],
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
                 text=True,
                 cwd=repo_root(),
-                timeout=300
+                bufsize=1
             )
-            if result.returncode == 0:
-                # Parse output for count
-                output = result.stdout
-                _RERANKER_STATUS["message"] = output.strip() if output else "Mining complete"
+
+            output_lines = []
+            for line in proc.stdout:
+                line = line.rstrip()
+                output_lines.append(line)
+                _RERANKER_STATUS["live_output"].append(line)
+
+                # Keep only last 1000 lines
+                if len(_RERANKER_STATUS["live_output"]) > 1000:
+                    _RERANKER_STATUS["live_output"] = _RERANKER_STATUS["live_output"][-1000:]
+
+            proc.wait(timeout=300)
+            output = '\n'.join(output_lines)
+
+            if proc.returncode == 0:
+                msg = output.strip() if output else "Mining complete"
+                _RERANKER_STATUS["message"] = msg
                 _RERANKER_STATUS["result"] = {"ok": True, "output": output}
             else:
-                _RERANKER_STATUS["message"] = f"Mining failed: {result.stderr[:200]}"
-                _RERANKER_STATUS["result"] = {"ok": False, "error": result.stderr}
+                _RERANKER_STATUS["message"] = f"Mining failed (exit code {proc.returncode})"
+                _RERANKER_STATUS["result"] = {"ok": False, "error": output}
         except Exception as e:
             _RERANKER_STATUS["message"] = f"Error: {str(e)}"
             _RERANKER_STATUS["result"] = {"ok": False, "error": str(e)}
+            _RERANKER_STATUS["live_output"].append(f"ERROR: {str(e)}")
         finally:
             _RERANKER_STATUS["running"] = False
             _RERANKER_STATUS["progress"] = 100
@@ -2763,22 +2884,29 @@ def reranker_train(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
     
     def run_train():
         global _RERANKER_STATUS
-        _RERANKER_STATUS = {"running": True, "task": "training", "progress": 0, "message": f"Training model ({epochs} epochs)...", "result": None}
+        _RERANKER_STATUS = {"running": True, "task": "training", "progress": 0, "message": f"Training model ({epochs} epochs)...", "result": None, "live_output": []}
         try:
             # Stream output to capture epoch progress
             import subprocess
             proc = subprocess.Popen(
                 [sys.executable, "scripts/train_reranker.py", "--epochs", str(epochs), "--batch", str(batch_size)],
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stderr=subprocess.STDOUT,  # Merge stderr to stdout
                 text=True,
                 cwd=repo_root(),
                 bufsize=1
             )
-            
+
             output_lines = []
             for line in proc.stdout:
+                line = line.rstrip()
                 output_lines.append(line)
+                _RERANKER_STATUS["live_output"].append(line)  # Add to live output buffer
+
+                # Keep only last 1000 lines to prevent memory issues
+                if len(_RERANKER_STATUS["live_output"]) > 1000:
+                    _RERANKER_STATUS["live_output"] = _RERANKER_STATUS["live_output"][-1000:]
+
                 # Update status with epoch progress
                 if "[EPOCH" in line:
                     _RERANKER_STATUS["message"] = line.strip()
@@ -2788,20 +2916,20 @@ def reranker_train(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
                     if match:
                         current, total = int(match.group(1)), int(match.group(2))
                         _RERANKER_STATUS["progress"] = int((current / total) * 100)
-            
+
             proc.wait(timeout=3600)
-            output = ''.join(output_lines)
-            
+            output = '\n'.join(output_lines)
+
             if proc.returncode == 0:
                 _RERANKER_STATUS["message"] = "Training complete!"
                 _RERANKER_STATUS["result"] = {"ok": True, "output": output}
             else:
-                stderr = proc.stderr.read() if proc.stderr else ""
-                _RERANKER_STATUS["message"] = f"Training failed: {stderr[:200]}"
-                _RERANKER_STATUS["result"] = {"ok": False, "error": stderr}
+                _RERANKER_STATUS["message"] = f"Training failed (exit code {proc.returncode})"
+                _RERANKER_STATUS["result"] = {"ok": False, "error": output}
         except Exception as e:
             _RERANKER_STATUS["message"] = f"Error: {str(e)}"
             _RERANKER_STATUS["result"] = {"ok": False, "error": str(e)}
+            _RERANKER_STATUS["live_output"].append(f"ERROR: {str(e)}")
         finally:
             _RERANKER_STATUS["running"] = False
             _RERANKER_STATUS["progress"] = 100
@@ -2822,17 +2950,31 @@ def reranker_evaluate() -> Dict[str, Any]:
     
     def run_eval():
         global _RERANKER_STATUS
-        _RERANKER_STATUS = {"running": True, "task": "evaluating", "progress": 0, "message": "Evaluating model...", "result": None}
+        _RERANKER_STATUS = {"running": True, "task": "evaluating", "progress": 0, "message": "Evaluating model...", "result": None, "live_output": []}
         try:
-            result = subprocess.run(
+            proc = subprocess.Popen(
                 [sys.executable, "scripts/eval_reranker.py"],
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
                 text=True,
                 cwd=repo_root(),
-                timeout=300
+                bufsize=1
             )
-            if result.returncode == 0:
-                output = result.stdout
+
+            output_lines = []
+            for line in proc.stdout:
+                line = line.rstrip()
+                output_lines.append(line)
+                _RERANKER_STATUS["live_output"].append(line)
+
+                # Keep only last 1000 lines
+                if len(_RERANKER_STATUS["live_output"]) > 1000:
+                    _RERANKER_STATUS["live_output"] = _RERANKER_STATUS["live_output"][-1000:]
+
+            proc.wait(timeout=300)
+            output = '\n'.join(output_lines)
+
+            if proc.returncode == 0:
                 _RERANKER_STATUS["message"] = "Evaluation complete!"
                 _RERANKER_STATUS["result"] = {"ok": True, "output": output}
 
@@ -2885,11 +3027,12 @@ def reranker_evaluate() -> Dict[str, Any]:
                 except Exception:
                     pass  # Don't fail if persistence fails
             else:
-                _RERANKER_STATUS["message"] = f"Evaluation failed: {result.stderr[:200]}"
-                _RERANKER_STATUS["result"] = {"ok": False, "error": result.stderr}
+                _RERANKER_STATUS["message"] = f"Evaluation failed (exit code {proc.returncode})"
+                _RERANKER_STATUS["result"] = {"ok": False, "error": output}
         except Exception as e:
             _RERANKER_STATUS["message"] = f"Error: {str(e)}"
             _RERANKER_STATUS["result"] = {"ok": False, "error": str(e)}
+            _RERANKER_STATUS["live_output"].append(f"ERROR: {str(e)}")
         finally:
             _RERANKER_STATUS["running"] = False
             _RERANKER_STATUS["progress"] = 100

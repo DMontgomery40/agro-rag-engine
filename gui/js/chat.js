@@ -152,8 +152,24 @@ async function sendMessage() {
     sendBtn.disabled = true;
     sendBtn.textContent = 'Thinking...';
 
-    // Add loading message
-    const loadingId = addMessage('assistant', '...', true);
+    // Add loading message with animated MODEL indicator
+    const loadingId = addMessage('assistant', 'MODEL ', true);
+
+    // Animate the loading dots
+    let dotCount = 0;
+    const loadingInterval = setInterval(() => {
+        const msgEl = document.getElementById(loadingId);
+        if (!msgEl) {
+            clearInterval(loadingInterval);
+            return;
+        }
+        dotCount = (dotCount + 1) % 4;
+        const dots = '.'.repeat(dotCount);
+        const contentDiv = msgEl.querySelector('[style*="line-height"]');
+        if (contentDiv) {
+            contentDiv.textContent = 'MODEL ' + dots;
+        }
+    }, 300);
 
     try {
         // Use /api/chat endpoint with full settings support
@@ -185,7 +201,8 @@ async function sendMessage() {
             throw new Error(data.detail || 'Failed to get answer');
         }
 
-        // Remove loading message and add real answer
+        // Clear loading animation and remove loading message
+        clearInterval(loadingInterval);
         removeMessage(loadingId);
 
         // Add confidence score if enabled
@@ -214,6 +231,7 @@ async function sendMessage() {
 
     } catch (error) {
         console.error('Chat error:', error);
+        clearInterval(loadingInterval);
         removeMessage(loadingId);
         const errorMsg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to get AI answer', {
             message: error.message,

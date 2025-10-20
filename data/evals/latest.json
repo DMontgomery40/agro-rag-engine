@@ -1,11 +1,11 @@
 {
-  "timestamp": "Oct 16, 2025 10:39 PM",
+  "timestamp": "Oct 19, 2025 07:38 PM",
   "model_path": "models/cross-encoder-agro",
   "metrics": {
-    "hit_at_1": 1.0,
-    "hit_at_3": 1.0,
+    "hit_at_1": 0.4,
+    "hit_at_3": 0.8,
     "hit_at_5": 1.0,
     "hit_at_10": 1.0
   },
-  "raw_output": "Loading model from models/cross-encoder-agro...\nEvaluating on 2 triplets...\n\nEvaluated on 2 items\nMRR@all: 1.0000\nHit@1: 1.0000\nHit@3: 1.0000\nHit@5: 1.0000\nHit@10: 1.0000\n"
+  "raw_output": "Loading model from models/cross-encoder-agro...\nEvaluating on 10 triplets...\n\nEvaluated on 10 items\nMRR@all: 0.6283\nHit@1: 0.4000\nHit@3: 0.8000\nHit@5: 1.0000\nHit@10: 1.0000"
 }

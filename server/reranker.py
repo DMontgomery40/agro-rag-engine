@@ -38,7 +38,7 @@ def get_reranker() -> CrossEncoder:
       AGRO_RERANKER_MAXLEN (default 512)
     """
     global _RERANKER, _RERANKER_PATH, _RERANKER_MTIME, _LAST_CHECK
-    path = os.getenv("AGRO_RERANKER_MODEL_PATH", "cross-encoder/ms-marco-MiniLM-L-6-v2")
+    path = os.getenv("AGRO_RERANKER_MODEL_PATH", "cross-encoder/ms-marco-MiniLM-L-12-v2")
     need_reload = False
 
     if _RERANKER is None or path != _RERANKER_PATH:
@@ -105,7 +105,7 @@ def get_reranker_info() -> Dict[str, Any]:
     Returns current reranker config/state without mutating env.
     """
     global _RERANKER, _RERANKER_PATH, _RERANKER_MTIME, _LAST_CHECK
-    path = os.getenv("AGRO_RERANKER_MODEL_PATH", "cross-encoder/ms-marco-MiniLM-L-6-v2")
+    path = os.getenv("AGRO_RERANKER_MODEL_PATH", "cross-encoder/ms-marco-MiniLM-L-12-v2")
     try:
         resolved = str(Path(path).resolve())
     except Exception:

@@ -1,0 +1,15 @@
+<svg width="1400" height="400" viewBox="0 0 1400 400" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1400" height="400" fill="#0a0a0a"/>
+  <defs>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <text x="700" y="200" font-family="Inter, sans-serif" font-weight="900" font-size="120" text-anchor="middle" fill="#00ff88" filter="url(#glow)">AGRO</text>
+  <line x1="650" y1="240" x2="750" y2="240" stroke="#00ff88" stroke-width="1" opacity="0.5"/>
+  <text x="700" y="280" font-family="Inter, sans-serif" font-weight="300" font-size="16" text-anchor="middle" fill="#888" letter-spacing="0.3em">ANOTHER GOOD RAG OPTION</text>
+</svg>

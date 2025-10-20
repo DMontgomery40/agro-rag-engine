@@ -1,21 +1,23 @@
 ![AGRO Banner](assets/agro-banner.svg)
-# AGRO is a local‑first RAG engine for codebases.
+# AGRO is a local‑first RAG Engine Workspace for codebases.
 
 
-#### It provides a rich GUI (also a decent TUI), easy setup with an Onboarding Wizard, a built-in Self-Learning Transformer model (it's literally always getting better and faster), Evals w/ Regression Analysis, Multi-Query, Hybrid-Search, Local Hydration, Traceability (Langsmith and OpenAI Agents SDK), Grafana Telemetry, Multiple Transports, Chat Interface, and Modular-everything.
+#### It provides a rich GUI (also a decent TUI), easy setup with an Onboarding Wizard, a built-in Self-Learning Transformer model (it's literally always getting better and faster), Evals w/ Regression Analysis, Multi-Query, Hybrid-Search, Local Hydration, Traceability (Langsmith and OpenAI Agents SDK), Embedded-Grafana dash w/ alerts, Multiple Transports, Chat Interface, and Modular-everything.
 And it even has a VSCode instance embedded in the GUI (you don't have to turn it on just wanted to see if I could do it ; )
 
 ### (Really) Quick Start
 ```bash
 git clone https://github.com/DMontgomery40/agro.git
 cd agro
-Make dev
-
-# Starts: Infra, MCP, API, UV, and GUI
-
+Make dev. # Starts: Qdrant/Redis, MCPs, API, GUI, etc.
+cd scripts/.setup.sh #CLI walkthrough to set repos, etc.
 
 # GUI at http://127.0.0.1:8012/
 ```
+
+## 📖 Documentation
+
+**[Full Documentation Site](https://dmontgomery40.github.io/agro-rag-engine/)** - Complete guides for setup, API, MCP integration, and more
 
 ## **Fully-local model support, or any SOTA API Model, mix, match, and set profiles based on task**
 <table>
@@ -96,6 +98,7 @@ conf_avg5: 0.52
 ## Dashboard
 ![Dashboard](assets/dashboard.png)
 
+## Built-In Grafana Dashboard
 ![Grafana Metrics](assets/grafana-metrics.png)
 
 ## Documentation
@@ -1151,8 +1154,8 @@ See **[docs/MODEL_RECOMMENDATIONS.md](docs/MODEL_RECOMMENDATIONS.md)** for:
 ---
 
 ## Advanced Configuration
-<a href="assets/onboarding_carosel/advanced_config.png" target="_blank">
-  <img src="assets/onboarding_carosel/advanced_config.png" alt="Advanced Configuration" />
+<a href="assets/tune_and_trace.png" target="_blank">
+  <img src="assets/tune_and_trace.png" alt="Advanced RAG Tuning & Tracing Configuration" />
 </a>
 
 ### Environment Variables Reference
