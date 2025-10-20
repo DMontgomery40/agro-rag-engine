@@ -2712,10 +2712,10 @@ _EVAL_STATUS: Dict[str, Any] = {
     "results": None
 }
 
-def _validate_eval_preflight(golden_path: str) -> tuple[bool, str]:
+def _validate_eval_preflight(golden_path: str) -> tuple[bool, str, str]:
     """Validate prerequisites before running evaluation.
 
-    Returns: (is_valid, error_message)
+    Returns: (is_valid, error_message, warning_message)
     """
     import json
     from pathlib import Path
@@ -2723,19 +2723,20 @@ def _validate_eval_preflight(golden_path: str) -> tuple[bool, str]:
     # Check golden.json exists and is valid JSON
     gp = Path(golden_path)
     if not gp.exists():
-        return False, f"Golden questions file not found: {golden_path}"
+        return False, f"Golden questions file not found: {golden_path}", ""
 
     try:
         with open(gp) as f:
             golden = json.load(f)
         if not isinstance(golden, list) or len(golden) == 0:
-            return False, f"Golden questions file is empty or not a valid list: {golden_path}"
+            return False, f"Golden questions file is empty or not a valid list: {golden_path}", ""
     except json.JSONDecodeError as e:
-        return False, f"Golden questions file has invalid JSON: {e}"
+        return False, f"Golden questions file has invalid JSON: {e}", ""
     except Exception as e:
-        return False, f"Failed to read golden questions file: {e}"
+        return False, f"Failed to read golden questions file: {e}", ""
 
-    # Check Qdrant connectivity
+    # Check Qdrant connectivity (warning only, BM25 still works)
+    warning = ""
     try:
         from qdrant_client import QdrantClient
         qdrant_url = os.getenv('QDRANT_URL', 'http://localhost:6333')
@@ -2743,9 +2744,11 @@ def _validate_eval_preflight(golden_path: str) -> tuple[bool, str]:
         # Try to list collections to verify connectivity
         qc.get_collections()
     except Exception as e:
-        return False, f"Qdrant is not accessible at {os.getenv('QDRANT_URL', 'http://localhost:6333')}: {e}"
+        qdrant_url = os.getenv('QDRANT_URL', 'http://localhost:6333')
+        warning = f"⚠ Qdrant unavailable at {qdrant_url} - evaluation will use BM25-only retrieval"
+        print(f"[eval] {warning}: {e}")
 
-    return True, ""
+    return True, "", warning
 
 @app.post("/api/eval/run")
 def eval_run(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
@@ -2758,12 +2761,18 @@ def eval_run(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
 
     # Pre-flight validation
     golden_path = os.getenv("GOLDEN_PATH", "data/golden.json")
-    is_valid, error_msg = _validate_eval_preflight(golden_path)
+    is_valid, error_msg, warning_msg = _validate_eval_preflight(golden_path)
     if not is_valid:
         return {"ok": False, "error": error_msg}
 
     use_multi = payload.get("use_multi", os.getenv("EVAL_MULTI", "1") == "1")
     final_k = int(payload.get("final_k") or os.getenv("EVAL_FINAL_K", "5"))
+    sample_limit = payload.get("sample_limit")  # None = all questions
+    if sample_limit:
+        try:
+            sample_limit = int(sample_limit)
+        except (ValueError, TypeError):
+            sample_limit = None
 
     def run_eval():
         global _EVAL_STATUS
@@ -2772,7 +2781,8 @@ def eval_run(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
             "progress": 0,
             "total": 0,
             "current_question": "",
-            "results": None
+            "results": None,
+            "warning": warning_msg  # Store warning message to include in results
         }
 
         try:
@@ -2793,13 +2803,17 @@ def eval_run(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
                 gp = "data/golden.json"
 
             print(f"[eval] Using GOLDEN_PATH={gp}")
+            if sample_limit:
+                print(f"[eval] Sample limit: {sample_limit} questions")
             os.environ["GOLDEN_PATH"] = gp
             from eval.eval_loop import run_eval_with_results
             os.environ["EVAL_MULTI"] = "1" if use_multi else "0"
             os.environ["EVAL_FINAL_K"] = str(final_k)
 
             try:
-                results = run_eval_with_results()
+                results = run_eval_with_results(sample_limit=sample_limit)
+                if warning_msg:
+                    results["warning"] = warning_msg
                 _EVAL_STATUS["results"] = results
                 _EVAL_STATUS["progress"] = results.get("total", 0)
                 _EVAL_STATUS["total"] = results.get("total", 0)
@@ -2826,7 +2840,10 @@ def eval_run(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
     thread = threading.Thread(target=run_eval, daemon=True)
     thread.start()
 
-    return {"ok": True, "message": "Evaluation started"}
+    response = {"ok": True, "message": "Evaluation started"}
+    if warning_msg:
+        response["warning"] = warning_msg
+    return response
 
 @app.get("/api/eval/status")
 def eval_status() -> Dict[str, Any]:

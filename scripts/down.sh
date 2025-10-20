@@ -13,6 +13,9 @@ fi
 echo "[down] Stopping MCP server ..."
 pkill -f "server.mcp.server" 2>/dev/null || true
 
+echo "[down] Stopping API ..."
+docker compose -f "$ROOT_DIR/docker-compose.services.yml" down api || true
+
 echo "[down] Stopping infra (Qdrant + Redis) ..."
 (
   cd "$ROOT_DIR/infra"

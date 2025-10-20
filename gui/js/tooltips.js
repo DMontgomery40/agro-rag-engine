@@ -502,6 +502,16 @@
           ['FINAL_K Setting', '/docs/RETRIEVAL.md#final-k']
         ]
       ),
+      EVAL_SAMPLE_SIZE: L(
+        'Sample Size (Quick vs Full)',
+        'Limit evaluation to a subset of golden questions for faster iteration and testing. Quick (10): ~1 minute, good for sanity checks. Medium (25): ~2-3 minutes, better coverage. Large (50): ~5 minutes, more representative. Full (all): Run complete eval suite for milestone validation and regression detection. Leave empty or select "Full" to evaluate all questions. Sample evals are perfect for rapid iteration; use full evals before production changes or major updates.',
+        [
+          ['Evaluation Best Practices', '/docs/EVALUATION.md#quick-vs-full'],
+          ['Regression Testing', '/docs/EVALUATION.md#baseline-comparison'],
+          ['Evaluation Metrics Guide', '/docs/EVALUATION.md#metrics']
+        ],
+        [['Quick testing', 'info'], ['Sample recommended for CI', 'info']]
+      ),
 
       // Repo‑specific env overrides (legacy)
       agro_PATH: L(

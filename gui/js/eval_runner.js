@@ -38,10 +38,11 @@ async function saveEvalSettings() {
         const r = await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         if (!r.ok) throw new Error('Config update failed');
         await fetch('/api/env/reload', { method: 'POST' }).catch(() => {});
-        showToast('✓ Eval settings saved', 'success');
+        console.log('✓ Eval settings saved');
+        // Button re-enables itself, providing user feedback
     } catch (e) {
         console.error('Failed to save eval settings:', e);
-        showToast('Failed to save eval settings', 'error');
+        alert('Failed to save eval settings: ' + e.message);
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = 'Save Eval Settings'; }
     }
@@ -51,21 +52,32 @@ async function saveEvalSettings() {
 async function runEvaluation() {
     const useMulti = document.getElementById('eval-use-multi').value === '1';
     const finalK = parseInt(document.getElementById('eval-final-k').value) || 5;
+    const sampleSize = document.getElementById('eval-sample-size');
+    const sampleLimit = sampleSize ? parseInt(sampleSize.value) || null : null;
 
     const btn = document.getElementById('btn-eval-run');
     btn.disabled = true;
     btn.textContent = 'Starting...';
 
     try {
+        const payload = { use_multi: useMulti, final_k: finalK };
+        if (sampleLimit && sampleLimit > 0) {
+            payload.sample_limit = sampleLimit;
+        }
+
         const response = await fetch('/api/eval/run', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ use_multi: useMulti, final_k: finalK })
+            body: JSON.stringify(payload)
         });
 
         const data = await response.json();
 
         if (data.ok) {
+            // Store warning to display during/after eval
+            if (data.warning) {
+                window._evalWarning = data.warning;
+            }
             showEvalProgress();
             startPolling();
         } else {
@@ -226,6 +238,35 @@ function renderEvalResults() {
     // Show results section
     document.getElementById('eval-results').style.display = 'block';
 
+    // Display warning if present (either from results or stored from start)
+    const warning = evalResults.warning || window._evalWarning;
+    if (warning) {
+        let resultsContainer = document.getElementById('eval-results');
+        let warningEl = resultsContainer.querySelector('#eval-warning-banner');
+        if (!warningEl) {
+            warningEl = document.createElement('div');
+            warningEl.id = 'eval-warning-banner';
+            warningEl.style.cssText = `
+                background: color-mix(in oklch, var(--warn) 8%, var(--bg));
+                border: 1px solid var(--warn);
+                border-radius: 4px;
+                padding: 12px;
+                margin-bottom: 16px;
+                font-size: 13px;
+            `;
+            warningEl.innerHTML = `
+                <div style="color: var(--warn); font-weight: 600; margin-bottom: 4px;">
+                    ⚠ ${warning}
+                </div>
+                <div style="color: var(--fg-muted); font-size: 12px; margin-top: 4px;">
+                    Evaluation proceeded with available services. Results may reflect BM25-only retrieval if vector search was unavailable.
+                </div>
+            `;
+            resultsContainer.insertBefore(warningEl, resultsContainer.firstChild);
+        }
+    }
+    window._evalWarning = null;
+
     // Overall metrics
     const top1Pct = (evalResults.top1_accuracy * 100).toFixed(1) + '%';
     const topkPct = (evalResults.topk_accuracy * 100).toFixed(1) + '%';
@@ -322,7 +363,7 @@ async function saveBaseline() {
 
         const data = await response.json();
         if (data.ok) {
-            showToast('Baseline saved successfully', 'success');
+            console.log('✓ Baseline saved successfully');
         } else {
             throw new Error('Failed to save baseline');
         }
@@ -480,7 +521,7 @@ function exportEvalResults() {
     a.download = `eval_results_${timestamp}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    showToast('Results exported', 'success');
+    console.log('✓ Results exported');
 }
 
 // Helper functions
@@ -490,26 +531,8 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-function showToast(message, type = 'info') {
-    const color = type === 'success' ? 'var(--ok)' : type === 'error' ? 'var(--err)' : 'var(--link)';
-    const toast = document.createElement('div');
-    toast.style.cssText = `
-        position: fixed;
-        top: 80px;
-        right: 24px;
-        background: var(--panel);
-        color: ${color};
-        border: 1px solid ${color};
-        padding: 12px 20px;
-        border-radius: 6px;
-        font-size: 13px;
-        z-index: 10000;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-    `;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
-}
+// Toast notifications have been replaced with inline warning banners
+// using the design system patterns from error-helpers.js and tooltips.js
 
 // Initialize
 if (typeof window !== 'undefined') {

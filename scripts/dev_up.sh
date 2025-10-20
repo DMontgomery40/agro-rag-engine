@@ -38,12 +38,9 @@ if ! docker info >/dev/null 2>&1; then
   exit 1
 fi
 
-# 4) Start API container (compose)
-log "Starting API container via docker compose ..."
-(
-  cd "$ROOT_DIR/infra"
-  docker compose up -d api
-)
+# 4) Start API container (docker-compose.services.yml)
+log "Starting API container via docker compose (docker-compose.services.yml) ..."
+docker compose -f "$ROOT_DIR/docker-compose.services.yml" up -d api
 
 # 5) Wait for health
 URL="http://$HOST:$PORT/health"
