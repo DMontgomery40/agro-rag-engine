@@ -66,7 +66,7 @@ def rerank_results(query: str, results: List[Dict], top_k: int = 10, trace: Any 
         return []
     # Read backend dynamically to respect GUI updates without server restart
     backend = (os.getenv('RERANK_BACKEND', 'local') or 'local').lower()
-    print(f"🔧 Reranker backend: {backend}")  # DEBUG
+    # DEBUG: print(f"🔧 Reranker backend: {backend}")
     if backend in ('none', 'off', 'disabled'):
         for i, r in enumerate(results):
             r['rerank_score'] = float(1.0 - (i * 0.01))
@@ -84,17 +84,17 @@ def rerank_results(query: str, results: List[Dict], top_k: int = 10, trace: Any 
     except Exception:
         pass
     if backend == 'cohere':
-        print(f"  → Using Cohere API (no local processing)")  # DEBUG
+        # DEBUG: print(f"  → Using Cohere API (no local processing)")
         try:
-            print(f"  → Importing cohere...")  # DEBUG
+            # DEBUG: print(f"  → Importing cohere...")
             import cohere
-            print(f"  → Getting API key...")  # DEBUG
+            # DEBUG: print(f"  → Getting API key...")
             api_key = os.getenv('COHERE_API_KEY')
             if not api_key:
                 raise RuntimeError('COHERE_API_KEY not set')
-            print(f"  → Creating client...")  # DEBUG
+            # DEBUG: print(f"  → Creating client...")
             client = cohere.Client(api_key=api_key)
-            print(f"  → Client created, building docs...")  # DEBUG
+            # DEBUG: print(f"  → Client created, building docs...")
             docs = []
             for r in results:
                 file_ctx = r.get('file_path', '')

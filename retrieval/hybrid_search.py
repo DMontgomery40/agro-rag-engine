@@ -575,10 +575,10 @@ def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final
     except Exception:
         pass
 
-    # DEBUG: What does RRF return?
-    print(f"  [DEBUG] After RRF, top 5:")
-    for i, d in enumerate(docs[:5], 1):
-        print(f"    {i}. {d['file_path'].split('/')[-1]} ({d.get('language')})")
+    # DEBUG: What does RRF return? (removed for production - enable via DEBUG env var)
+    # print(f"  [DEBUG] After RRF, top 5:")
+    # for i, d in enumerate(docs[:5], 1):
+    #     print(f"    {i}. {d['file_path'].split('/')[-1]} ({d.get('language')})")
     
     # Detect implementation queries BEFORE reranking
     q_lower = query.lower()
