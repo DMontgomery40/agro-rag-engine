@@ -42,7 +42,29 @@ async function saveEvalSettings() {
         // Button re-enables itself, providing user feedback
     } catch (e) {
         console.error('Failed to save eval settings:', e);
-        alert('Failed to save eval settings: ' + e.message);
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to Save Evaluation Settings', {
+          message: e.message,
+          causes: [
+            'Backend API server is not running or responding slowly',
+            'Invalid file path format entered (golden.json or baseline.json path)',
+            'File system permissions issue - cannot read/write evaluation files',
+            'Network connectivity issue preventing config update',
+            'Qdrant or other backend service temporarily unavailable'
+          ],
+          fixes: [
+            'Verify file paths are correct: use relative paths like "data/golden.json"',
+            'Check backend is running: look at Infrastructure tab or docker logs',
+            'Verify file permissions: "ls -la data/" to check directory permissions',
+            'Try again - the issue may be temporary',
+            'Check if port 8012 is in use by another service'
+          ],
+          links: [
+            ['Evaluation Setup Docs', '/docs/EVALUATION.md#setup'],
+            ['Troubleshooting', '/docs/TROUBLESHOOTING.md#evaluation'],
+            ['File Permissions', 'https://en.wikipedia.org/wiki/File_permissions']
+          ]
+        }) : `Failed to save settings: ${e.message}`;
+        alert(msg);
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = 'Save Eval Settings'; }
     }
@@ -173,12 +195,30 @@ function startPolling() {
                 await loadEvalResults();
             }
         } catch (error) {
-            console.error('Failed to poll status:', error);
+            console.error('Failed to poll evaluation status:', error);
 
-            // Hide progress bar on error
+            // Stop polling and show error to user
+            clearInterval(evalPollingInterval);
+            evalPollingInterval = null;
+
+            // Hide progress bar
             if (window.UXFeedback) {
                 window.UXFeedback.progress.hide('evaluation');
             }
+
+            // Show error in the UI
+            const statusEl = document.getElementById('eval-status');
+            if (statusEl) {
+                statusEl.style.color = 'var(--err)';
+                statusEl.textContent = '✗ Evaluation polling failed. Backend may have crashed. Check server logs and try again.';
+                statusEl.title = `Error: ${error.message}. The backend evaluation process may have terminated.`;
+            }
+
+            console.warn('[Eval] Polling stopped. Possible causes:');
+            console.warn('  • Backend server crashed or restarted');
+            console.warn('  • Network connection interrupted');
+            console.warn('  • Evaluation process terminated unexpectedly');
+            console.warn('  • Qdrant or other service became unavailable');
         }
     }, 1000);
 }

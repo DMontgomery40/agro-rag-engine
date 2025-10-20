@@ -35,7 +35,29 @@
           out.textContent = JSON.stringify(d, null, 2);
         }
       } catch (e) {
-        out.textContent = `Request failed: ${e.message}`;
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('RAG Search Failed', {
+          message: e.message,
+          causes: [
+            'Backend API server (http://localhost:8012) is not running',
+            'Qdrant vector database is unavailable or not indexed',
+            'Network connectivity issue or CORS misconfiguration',
+            'Invalid question format or missing repository configuration',
+            'Search backend temporarily unavailable'
+          ],
+          fixes: [
+            'Verify backend is running: check server logs and Infrastructure tab',
+            'Check Qdrant status: verify docker containers are up (docker ps)',
+            'Verify repository is indexed: run indexing from Data tab',
+            'Check browser console for CORS errors (F12 → Console)',
+            'Try the query again in a few moments'
+          ],
+          links: [
+            ['RAG Search Docs', '/docs/RETRIEVAL.md'],
+            ['Troubleshooting', '/docs/TROUBLESHOOTING.md#search-failures'],
+            ['Infrastructure', 'http://localhost:8012']
+          ]
+        }) : `Search Error: ${e.message}`;
+        out.textContent = msg;
       }
     });
     // Pre-fill repo field from env on load

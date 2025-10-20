@@ -32,8 +32,16 @@
       if (modeEl) modeEl.textContent = d.current_mode || '—';
     } catch (e) {
       const modeEl = $('#autotune-mode');
-      if (modeEl) modeEl.textContent = '—';
+      if (modeEl) {
+        modeEl.textContent = '⚠ Error loading';
+        modeEl.title = `Failed to load autotune status: ${e.message}. The backend API may be unavailable.`;
+        modeEl.style.color = 'var(--warn)';
+      }
       console.error('[Autotune] Refresh failed:', e);
+      console.warn('[Autotune] Tips to resolve:');
+      console.warn('  • Verify backend is running (check Infrastructure tab)');
+      console.warn('  • Check server logs: docker logs agro-api');
+      console.warn('  • Refresh the page (Ctrl+F5) to retry');
     }
   }
 
