@@ -4,11 +4,33 @@ import json
 import time
 from typing import List
 from dotenv import load_dotenv
+from pathlib import Path
 from retrieval.hybrid_search import search_routed, search_routed_multi
 
 load_dotenv()
 
-GOLDEN_PATH = os.getenv('GOLDEN_PATH', 'golden.json')
+def _resolve_golden_path() -> str:
+    """Resolve the golden questions path robustly.
+
+    Priority:
+      1) Respect $GOLDEN_PATH if it exists
+      2) If $GOLDEN_PATH is a relative file that doesn't exist, try under data/
+      3) Fallback to repo-standard 'data/golden.json'
+    """
+    env_val = os.getenv('GOLDEN_PATH')
+    if env_val:
+        p = Path(env_val)
+        if p.exists():
+            return str(p)
+        # Common legacy value was 'golden.json' at repo root –
+        # transparently upgrade to data/golden.json if present
+        alt = Path('data') / p.name
+        if alt.exists():
+            return str(alt)
+    # Default to repo-standard location used by tests and UI
+    return 'data/golden.json'
+
+GOLDEN_PATH = _resolve_golden_path()
 USE_MULTI = os.getenv('EVAL_MULTI','1') == '1'
 FINAL_K = int(os.getenv('EVAL_FINAL_K','5'))
 MULTI_M = int(os.getenv('EVAL_MULTI_M', '10'))  # Multi-query expansion count
@@ -62,4 +84,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

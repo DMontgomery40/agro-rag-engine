@@ -115,6 +115,8 @@
       
       const stats = $('cards-progress-stats');
       if (stats) stats.textContent = `${done||0} / ${total||0} (${(pct||0).toFixed(1)}%)`;
+      const statsModal = $('cards-progress-stats-modal');
+      if (statsModal) statsModal.textContent = `${done||0} / ${total||0} (${(pct||0).toFixed(1)}%)`;
       
       const thr = $('cards-progress-throughput');
       if (thr) thr.textContent = throughput || '--';
@@ -321,4 +323,3 @@
 
   console.log('[cards_builder.js] Module loaded (coordination with cards.js for rag-data-quality view)');
 })();
-

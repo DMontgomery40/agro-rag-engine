@@ -75,8 +75,8 @@
     const handle = $('.resize-handle');
     if (!handle) return;
 
-    const MIN_WIDTH = 300;
-    const MAX_WIDTH = 600; // prevent sidepanel from covering too much content
+    const MIN_WIDTH = 280;
+    const MAX_WIDTH = 900; // soft cap; also clamp to viewport % below
     const DEFAULT_WIDTH = 360;
     const STORAGE_KEY = 'agro-sidepanel-width';
 
@@ -112,7 +112,9 @@
     }
 
     function setWidth(width) {
-      const clampedWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, width));
+      const viewportMax = Math.floor(window.innerWidth * 0.6); // never exceed 60% of viewport
+      const hardMax = Math.min(MAX_WIDTH, viewportMax);
+      const clampedWidth = Math.max(MIN_WIDTH, Math.min(hardMax, width));
       document.documentElement.style.setProperty('--sidepanel-width', clampedWidth + 'px');
       localStorage.setItem(STORAGE_KEY, clampedWidth.toString());
     }

@@ -15,7 +15,28 @@
         "search",
         "hybrid_search",
         "redis",
-        "tokens"
+        "tokens",
+        "hybrid",
+        "bm25",
+        "qdrant",
+        "rerank",
+        "embedding",
+        "chunking",
+        "langgraph",
+        "fastapi",
+        "prometheus",
+        "grafana",
+        "loki",
+        "alertmanager",
+        "triplet",
+        "cross-encoder",
+        "telemetry",
+        "tracing",
+        "mcp",
+        "eval",
+        "indexer",
+        "retrieval",
+        "layer"
       ],
       "path_boosts": [
         "/gui",
@@ -23,15 +44,37 @@
         "/indexer",
         "/retrieval",
         "/scripts",
-        "/gui/js"
+        "/gui/js",
+        "/gui/index.html"
       ],
       "layer_bonuses": {
-        "gui": {"gui": 0.15, "server": 0.05},
-        "retrieval": {"retrieval": 0.15, "server": 0.05},
-        "indexer": {"indexer": 0.15, "retrieval": 0.08, "common": 0.05},
-        "eval": {"eval": 0.15, "tests": 0.10, "retrieval": 0.05},
-        "infra": {"infra": 0.15, "scripts": 0.08},
-        "server": {"server": 0.15, "retrieval": 0.05, "common": 0.05}
+        "gui": {
+          "gui": 0.15,
+          "server": 0.05
+        },
+        "retrieval": {
+          "retrieval": 0.15,
+          "server": 0.05
+        },
+        "indexer": {
+          "indexer": 0.15,
+          "retrieval": 0.08,
+          "common": 0.05
+        },
+        "eval": {
+          "eval": 0.15,
+          "tests": 0.1,
+          "retrieval": 0.05
+        },
+        "infra": {
+          "infra": 0.15,
+          "scripts": 0.08
+        },
+        "server": {
+          "server": 0.15,
+          "retrieval": 0.05,
+          "common": 0.05
+        }
       }
     }
   ]

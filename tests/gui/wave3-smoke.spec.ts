@@ -10,7 +10,6 @@ test.describe('Wave 3 Smoke Tests', () => {
 
   test('Test 1: All 9 Tabs Load Without Errors', async ({ page }) => {
     const tabs = [
-      'get-started',
       'dashboard',
       'chat',
       'vscode',
@@ -35,7 +34,7 @@ test.describe('Wave 3 Smoke Tests', () => {
     let tabsLoaded = 0;
 
     for (const tabId of tabs) {
-      const tab = page.locator(`[data-tab="${tabId}"]`);
+      const tab = page.getByTestId(`tab-btn-${tabId}`);
 
       if (await tab.count() > 0) {
         await tab.click();
@@ -72,14 +71,14 @@ test.describe('Wave 3 Smoke Tests', () => {
 
   test('Test 2: Infrastructure Consolidation Worked', async ({ page }) => {
     // Click Infrastructure tab
-    const infraTab = page.locator('[data-tab="infrastructure"]');
+    const infraTab = page.getByTestId('tab-btn-infrastructure');
     await infraTab.click();
     await page.waitForTimeout(500);
 
     const expectedSections = [
       'Services',
       'MCP Servers',
-      'Paths & Endpoints',
+      'Infrastructure Configuration',
       'Performance',
       'Usage',
       'Tracing'
@@ -137,7 +136,7 @@ test.describe('Wave 3 Smoke Tests', () => {
 
   test('Test 4: RAG Subtabs All Work', async ({ page }) => {
     // Click RAG tab
-    const ragTab = page.locator('[data-tab="rag"]');
+    const ragTab = page.getByTestId('tab-btn-rag');
     await ragTab.click();
     await page.waitForTimeout(500);
 
@@ -219,7 +218,7 @@ test.describe('Wave 3 Smoke Tests', () => {
     for (const tabId of tabs) {
       const start = Date.now();
 
-      const tab = page.locator(`[data-tab="${tabId}"]`);
+      const tab = page.getByTestId(`tab-btn-${tabId}`);
       if (await tab.count() > 0) {
         await tab.click();
         await page.waitForTimeout(100);

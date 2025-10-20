@@ -2735,10 +2735,25 @@ def eval_run(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
         }
 
         try:
-            from eval.eval_loop import run_eval_with_results
             # Temporarily set env vars
             old_multi = os.environ.get("EVAL_MULTI")
             old_k = os.environ.get("EVAL_FINAL_K")
+            old_gp = os.environ.get("GOLDEN_PATH")
+
+            # Ensure GOLDEN_PATH points to repo-standard path if not set or invalid
+            gp = old_gp or "data/golden.json"
+            try:
+                from pathlib import Path as _P
+                if not _P(gp).exists():
+                    # If legacy value like 'golden.json', try under data/
+                    candidate = _P('data') / _P(gp).name
+                    gp = str(candidate)
+            except Exception:
+                gp = "data/golden.json"
+
+            print(f"[eval] Using GOLDEN_PATH={gp}")
+            os.environ["GOLDEN_PATH"] = gp
+            from eval.eval_loop import run_eval_with_results
             os.environ["EVAL_MULTI"] = "1" if use_multi else "0"
             os.environ["EVAL_FINAL_K"] = str(final_k)
 
@@ -2757,6 +2772,10 @@ def eval_run(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
                     os.environ["EVAL_FINAL_K"] = old_k
                 elif "EVAL_FINAL_K" in os.environ:
                     del os.environ["EVAL_FINAL_K"]
+                if old_gp is not None:
+                    os.environ["GOLDEN_PATH"] = old_gp
+                elif "GOLDEN_PATH" in os.environ:
+                    del os.environ["GOLDEN_PATH"]
 
         except Exception as e:
             _EVAL_STATUS["results"] = {"error": str(e)}

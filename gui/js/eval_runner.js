@@ -4,6 +4,49 @@
 let evalResults = null;
 let evalPollingInterval = null;
 
+// Defaults for settings
+const DEFAULT_GOLDEN = 'data/golden.json';
+const DEFAULT_BASELINE = 'data/evals/eval_baseline.json';
+
+async function loadEvalSettings() {
+    try {
+        const r = await fetch('/api/config');
+        const cfg = await r.json();
+        const env = (cfg && cfg.env) || {};
+        const golden = env.GOLDEN_PATH || DEFAULT_GOLDEN;
+        const baseline = env.BASELINE_PATH || DEFAULT_BASELINE;
+        const gp = document.getElementById('eval-golden-path');
+        const bp = document.getElementById('eval-baseline-path');
+        if (gp) gp.value = golden;
+        if (bp) bp.value = baseline;
+    } catch (e) {
+        console.warn('[eval_runner] loadEvalSettings failed', e);
+        const gp = document.getElementById('eval-golden-path');
+        const bp = document.getElementById('eval-baseline-path');
+        if (gp && !gp.value) gp.value = DEFAULT_GOLDEN;
+        if (bp && !bp.value) bp.value = DEFAULT_BASELINE;
+    }
+}
+
+async function saveEvalSettings() {
+    const btn = document.getElementById('btn-eval-save-settings');
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+    try {
+        const gp = document.getElementById('eval-golden-path')?.value?.trim() || DEFAULT_GOLDEN;
+        const bp = document.getElementById('eval-baseline-path')?.value?.trim() || DEFAULT_BASELINE;
+        const payload = { env: { GOLDEN_PATH: gp, BASELINE_PATH: bp }, repos: [] };
+        const r = await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (!r.ok) throw new Error('Config update failed');
+        await fetch('/api/env/reload', { method: 'POST' }).catch(() => {});
+        showToast('✓ Eval settings saved', 'success');
+    } catch (e) {
+        console.error('Failed to save eval settings:', e);
+        showToast('Failed to save eval settings', 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Save Eval Settings'; }
+    }
+}
+
 // Run full evaluation
 async function runEvaluation() {
     const useMulti = document.getElementById('eval-use-multi').value === '1';
@@ -470,11 +513,14 @@ if (typeof window !== 'undefined') {
         const btnSaveBaseline = document.getElementById('btn-eval-save-baseline');
         const btnCompare = document.getElementById('btn-eval-compare');
         const btnExport = document.getElementById('btn-eval-export');
+        const btnSaveSettings = document.getElementById('btn-eval-save-settings');
 
         if (btnRun) btnRun.addEventListener('click', runEvaluation);
         if (btnSaveBaseline) btnSaveBaseline.addEventListener('click', saveBaseline);
         if (btnCompare) btnCompare.addEventListener('click', compareWithBaseline);
         if (btnExport) btnExport.addEventListener('click', exportEvalResults);
+        if (btnSaveSettings) btnSaveSettings.addEventListener('click', saveEvalSettings);
+        loadEvalSettings();
     };
 
     // Legacy mode support
@@ -483,11 +529,14 @@ if (typeof window !== 'undefined') {
         const btnSaveBaseline = document.getElementById('btn-eval-save-baseline');
         const btnCompare = document.getElementById('btn-eval-compare');
         const btnExport = document.getElementById('btn-eval-export');
+        const btnSaveSettings = document.getElementById('btn-eval-save-settings');
 
         if (btnRun) btnRun.addEventListener('click', runEvaluation);
         if (btnSaveBaseline) btnSaveBaseline.addEventListener('click', saveBaseline);
         if (btnCompare) btnCompare.addEventListener('click', compareWithBaseline);
         if (btnExport) btnExport.addEventListener('click', exportEvalResults);
+        if (btnSaveSettings) btnSaveSettings.addEventListener('click', saveEvalSettings);
+        loadEvalSettings();
     });
 
     console.log('[eval_runner.js] Module loaded (coordination with golden_questions.js for rag-evaluate view)');

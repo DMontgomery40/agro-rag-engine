@@ -1,7 +1,9 @@
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
-  testDir: 'tests',
+  // testDir is resolved relative to this config file's directory (tools/)
+  // Point it to the repo-level tests directory
+  testDir: '../tests',
   fullyParallel: true,
   timeout: 60_000,
   expect: { timeout: 10_000 },

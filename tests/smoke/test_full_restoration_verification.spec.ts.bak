@@ -1,0 +1,191 @@
+import { test, expect } from '@playwright/test';
+
+test.describe('Full Feature Verification - All Missing Elements', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('http://127.0.0.1:8012');
+    await page.waitForSelector('button[data-tab="rag"]', { timeout: 10000 });
+  });
+
+  test('Complete feature check - All reported issues', async ({ page }) => {
+    const issues = [];
+
+    // 1. CHECK CARDS VISIBILITY
+    try {
+      await page.click('button[data-tab="rag"]');
+      await page.click('button[data-subtab="data-quality"]');
+      await page.waitForTimeout(1000); // Let cards load
+      
+      const cardsContainer = page.locator('#cards-viewer-container');
+      await expect(cardsContainer).toBeVisible({ timeout: 5000 });
+      
+      // Check if cards are actually displayed
+      const cardsViewer = page.locator('#cards-viewer');
+      const cardsHTML = await cardsViewer.innerHTML();
+      
+      if (cardsHTML.includes('No cards available')) {
+        issues.push('❌ Cards show "No cards available" despite API having data');
+      } else {
+        const cardItems = await page.locator('.card-item').count();
+        if (cardItems === 0) {
+          issues.push('❌ No card items rendered in cards viewer');
+        } else {
+          console.log(`✓ Cards visible: ${cardItems} cards displayed`);
+        }
+      }
+    } catch (e) {
+      issues.push(`❌ Cards section error: ${e.message}`);
+    }
+    
+    // 2. CHECK CHAT SETTINGS
+    try {
+      await page.click('#tab-btn-chat');
+      const chatSettingsBtn = page.locator('button[data-subtab="chat-settings"]');
+      
+      if (await chatSettingsBtn.isVisible()) {
+        await chatSettingsBtn.click();
+        
+        // Check for settings inputs
+        const chatModel = page.locator('#chat-model');
+        const chatTemp = page.locator('#chat-temperature');
+        const chatMaxTokens = page.locator('#chat-max-tokens');
+        
+        if (await chatModel.isVisible() && await chatTemp.isVisible() && await chatMaxTokens.isVisible()) {
+          console.log('✓ Chat settings inputs present');
+        } else {
+          issues.push('❌ Chat settings inputs missing');
+        }
+      } else {
+        issues.push('❌ Chat Settings subtab button not found');
+      }
+    } catch (e) {
+      issues.push(`❌ Chat settings error: ${e.message}`);
+    }
+    
+    // 3. CHECK CHAT FEEDBACK BUTTONS
+    try {
+      // Check if feedback functions exist in chat.js
+      const hasFeedback = await page.evaluate(() => {
+        return typeof window.addFeedbackButtons === 'function';
+      });
+      
+      if (!hasFeedback) {
+        issues.push('❌ Chat feedback function (addFeedbackButtons) not defined');
+      } else {
+        console.log('✓ Chat feedback function exists');
+      }
+    } catch (e) {
+      issues.push(`❌ Chat feedback check error: ${e.message}`);
+    }
+    
+    // 4. CHECK KEYWORDS SECTION (RAG Performance)
+    try {
+      await page.click('#tab-btn-rag');
+      
+      // Look for keywords in any subtab
+      const keywordElements = await page.locator('text=/Keywords.*AGRO_KEYWORDS/').count();
+      const kwSelects = await page.locator('select[id^="kw-"]').count();
+      
+      if (keywordElements === 0 && kwSelects === 0) {
+        issues.push('❌ Keywords section (AGRO_KEYWORDS) completely missing');
+      } else {
+        console.log(`✓ Found ${keywordElements} keyword labels and ${kwSelects} keyword selects`);
+      }
+    } catch (e) {
+      issues.push(`❌ Keywords check error: ${e.message}`);
+    }
+    
+    // 5. CHECK GRAFANA DASHBOARD
+    try {
+      await page.click('#tab-btn-grafana');
+      
+      const grafanaDash = page.locator('#tab-grafana-dashboard');
+      if (await grafanaDash.isVisible()) {
+        const iframe = page.locator('#grafana-iframe');
+        if (await iframe.isVisible()) {
+          console.log('✓ Grafana dashboard iframe present');
+        } else {
+          issues.push('❌ Grafana iframe not visible');
+        }
+      } else {
+        issues.push('❌ Grafana dashboard tab content not visible');
+      }
+    } catch (e) {
+      issues.push(`❌ Grafana check error: ${e.message}`);
+    }
+    
+    // 6. CHECK SIDEPANEL LAYOUT
+    try {
+      const sidepanel = page.locator('.sidepanel');
+      const content = page.locator('.content');
+      
+      const sidepanelBox = await sidepanel.boundingBox();
+      const contentBox = await content.boundingBox();
+      
+      if (sidepanelBox && contentBox) {
+        const viewport = page.viewportSize();
+        if (sidepanelBox.x > viewport.width * 0.5) {
+          console.log('✓ Sidepanel properly positioned on the right');
+        } else {
+          issues.push('❌ Sidepanel not properly positioned');
+        }
+      }
+    } catch (e) {
+      issues.push(`❌ Sidepanel layout check error: ${e.message}`);
+    }
+    
+    // 7. CHECK APPLY CHANGES BUTTON
+    try {
+      await page.click('#tab-btn-rag');
+      const applyBtn = page.locator('#apply-changes-btn');
+      if (await applyBtn.isVisible()) {
+        console.log('✓ Apply Changes button visible');
+      } else {
+        issues.push('❌ Apply Changes button not visible');
+      }
+    } catch (e) {
+      issues.push(`❌ Apply button check error: ${e.message}`);
+    }
+    
+    // REPORT ALL ISSUES
+    if (issues.length > 0) {
+      console.log('\n❌ ISSUES FOUND:');
+      issues.forEach(issue => console.log(issue));
+      throw new Error(`${issues.length} issues found:\n${issues.join('\n')}`);
+    } else {
+      console.log('\n✅ ALL FEATURES WORKING!');
+    }
+  });
+
+  test('Cards API vs Display reconciliation', async ({ page }) => {
+    // Check if API has cards
+    const apiResponse = await fetch('http://127.0.0.1:8012/api/cards');
+    const apiData = await apiResponse.json();
+    const apiCardCount = apiData.cards?.length || 0;
+    
+    console.log(`API reports ${apiCardCount} cards`);
+    
+    // Navigate to cards viewer
+    await page.click('#tab-btn-rag');
+    await page.click('button[data-subtab="data-quality"]');
+    await page.waitForTimeout(2000); // Give time for cards to load
+    
+    // Trigger refresh to ensure cards are loaded
+    const refreshBtn = page.locator('#btn-cards-refresh');
+    if (await refreshBtn.isVisible()) {
+      await refreshBtn.click();
+      await page.waitForTimeout(1000);
+    }
+    
+    // Count displayed cards
+    const displayedCards = await page.locator('.card-item').count();
+    console.log(`UI displays ${displayedCards} cards`);
+    
+    if (apiCardCount > 0 && displayedCards === 0) {
+      // Try to debug why cards aren't showing
+      const cardsHTML = await page.locator('#cards-viewer').innerHTML();
+      console.log('Cards viewer HTML:', cardsHTML.substring(0, 200));
+      
+      throw new Error(`API has ${apiCardCount} cards but UI shows ${displayedCards}`);
+    }
+  });
+});
