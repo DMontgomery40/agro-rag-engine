@@ -75,7 +75,7 @@
         }
 
         bannerMsg.textContent = isDisabled
-          ? `Editor is disabled. Enable it in the Misc tab and restart.`
+          ? `Editor is disabled. Enable it under Admin → Embedded Editor and restart.`
           : `${reason}. ${isDisabled ? '' : 'Retrying...'}`;
         wrap.style.display = 'none';
         iframe.src = '';

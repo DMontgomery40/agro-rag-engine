@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Smoke test Grafana dashboard with Playwright"""
 import asyncio
-from playwright.async_api import async_playwright
+from playwright.async_api import async_playwright  # type: ignore[import]
 
 async def test_dashboard():
     async with async_playwright() as p:

@@ -4784,11 +4784,19 @@
                     <h3 id="admin-editor-settings-anchor"><span class="accent-blue">●</span> Embedded Editor</h3>
                     <div class="input-row">
                         <div class="input-group">
-                            <label><input type="checkbox" name="EDITOR_ENABLED" value="1"> Enable Embedded Editor</label>
+                            <label class="toggle">
+                                <input type="checkbox" name="EDITOR_ENABLED" value="1">
+                                <span class="toggle-track" aria-hidden="true"><span class="toggle-thumb"></span></span>
+                                <span class="toggle-label">Enable Embedded Editor</span>
+                            </label>
                             <p class="small">Start OpenVSCode Server container on up.sh</p>
                         </div>
                         <div class="input-group">
-                            <label><input type="checkbox" name="EDITOR_EMBED_ENABLED" value="1" checked> Enable Editor Embed (iframe)</label>
+                            <label class="toggle">
+                                <input type="checkbox" name="EDITOR_EMBED_ENABLED" value="1" checked>
+                                <span class="toggle-track" aria-hidden="true"><span class="toggle-thumb"></span></span>
+                                <span class="toggle-label">Enable Editor Embed (iframe)</span>
+                            </label>
                             <p class="small">Show the editor inline in the GUI (hides automatically in CI)</p>
                         </div>
                     </div>

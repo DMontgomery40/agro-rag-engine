@@ -16,10 +16,13 @@
         ['Qdrant (GitHub)', 'https://github.com/qdrant/qdrant']
       ]),
       REDIS_URL: L('Redis URL', 'Connection string for Redis, used for LangGraph checkpoints and optional session memory. The graph runs even if Redis is down (stateless mode).', [
-        ['Redis Docs', 'https://redis.io/docs/latest/']
+        ['Redis Docs', 'https://redis.io/docs/latest/'],
+        ['LangGraph Checkpoints', 'https://langchain-ai.github.io/langgraph/concepts/persistence/'],
+        ['Redis Connection URLs', 'https://redis.io/docs/latest/develop/connect/clients/']
       ]),
-      REPO: L('Active Repository', 'Logical repository name for routing and indexing. MCP and CLI use this to scope retrieval.', [
-        ['Docs: MCP Quickstart', '/docs/QUICKSTART_MCP.md']
+      REPO: L('Active Repository', 'Logical repository name for routing and indexing. MCP and CLI use this to scope retrieval. Must match a repository name defined in repos.json for multi-repo setups.', [
+        ['Docs: MCP Quickstart', '/docs/QUICKSTART_MCP.md'],
+        ['repos.json Config', '/repos.json']
       ]),
       COLLECTION_NAME: L('Collection Name', 'Optional override for the Qdrant collection name. Defaults to code_chunks_{REPO}. Set this if you maintain multiple profiles.', [
         ['Qdrant Docs: Collections', 'https://qdrant.tech/documentation/concepts/collections/']
@@ -30,31 +33,31 @@
         [
           ['Qdrant Collections', 'https://qdrant.tech/documentation/concepts/collections/'],
           ['Collection Management', 'https://qdrant.tech/documentation/concepts/collections/#create-collection'],
-          ['A/B Testing Indexes', '/docs/AB_TESTING_INDEXES.md']
+          ['Collection Naming', 'https://qdrant.tech/documentation/concepts/collections/#collection-name']
         ],
         [['Experimental', 'warn']]
       ),
       REPOS_FILE: L('Repos File', 'Path to repos.json that defines repo names, paths, keywords, path boosts, and layer bonuses used for routing.', [
-        ['Local repos.json', '/files/repos.json']
+        ['Local repos.json', '/repos.json']
       ]),
       REPO_PATH: L(
         'Repo Path (fallback)',
         'Absolute filesystem path to the active repository when repos.json is not configured. This is the directory that will be indexed for code retrieval. Use repos.json instead for multi-repo setups with routing, keywords, and path boosts. Example: /Users/you/projects/myapp',
         [
-          ['repos.json Format', '/files/repos.json'],
-          ['Indexing Guide', '/docs/INDEXING.md'],
+          ['repos.json Format', '/repos.json'],
+          ['Main README', '/README.md'],
           ['File System Paths', 'https://en.wikipedia.org/wiki/Path_(computing)']
         ]
       ),
       OUT_DIR_BASE: L('Out Dir Base', 'Where retrieval looks for indices (chunks.jsonl, bm25_index/). Use ./out.noindex-shared for one index across branches so MCP and local tools stay in sync. Symptom of mismatch: rag_search returns 0 results.', [
-        ['Docs: Shared Index', '/files/README.md']
+        ['Main README', '/README.md']
       ], [['Requires restart (MCP)','info']]),
       RAG_OUT_BASE: L(
         'RAG Out Base',
         'Optional override for OUT_DIR_BASE setting. Advanced users can set this to use a different output directory for specific retrieval operations while keeping OUT_DIR_BASE for indexing. Most users should leave this empty and only configure OUT_DIR_BASE. Used internally by loader modules.',
         [
-          ['Directory Structure', '/docs/DIRECTORY_STRUCTURE.md'],
-          ['Advanced Configuration', '/docs/CONFIGURATION.md#advanced']
+          ['Main README', '/README.md'],
+          ['Settings UI Guide', '/docs/SETTINGS_UI_PROMPT.md']
         ],
         [['Advanced', 'warn']]
       ),
@@ -89,7 +92,11 @@
       VOYAGE_API_KEY: L('Voyage API Key', 'API key for Voyage AI embeddings when EMBEDDING_TYPE=voyage.', [
         ['Voyage AI Docs', 'https://docs.voyageai.com/']
       ]),
-      VOYAGE_EMBED_DIM: L('Voyage Embed Dim', 'Embedding vector dimension when using Voyage embeddings (provider‑specific). Larger dims can improve recall but increase Qdrant storage.', [], [['Requires reindex','reindex']]),
+      VOYAGE_EMBED_DIM: L('Voyage Embed Dim', 'Embedding vector dimension when using Voyage embeddings (provider‑specific). Larger dims can improve recall but increase Qdrant storage. Must match the output dimension of your chosen Voyage model (e.g., voyage-code-2 uses 1536 dims).', [
+        ['Voyage Embeddings API', 'https://docs.voyageai.com/docs/embeddings'],
+        ['Vector Dimensionality', 'https://www.sbert.net/docs/pretrained_models.html#model-overview'],
+        ['Qdrant Storage Config', 'https://qdrant.tech/documentation/concepts/collections/']
+      ], [['Requires reindex','reindex']]),
 
       // Reranking
       RERANK_BACKEND: L('Rerank Backend', 'Reranks fused candidates for better ordering.\n• cohere — best quality, paid (COHERE_API_KEY)\n• local/hf — no cost (ensure model installed)\nDisable only to save cost.', [
@@ -108,8 +115,8 @@
         [
           ['Cross-Encoder Models', 'https://www.sbert.net/docs/cross_encoder/pretrained_models.html'],
           ['HuggingFace Model Hub', 'https://huggingface.co/models?pipeline_tag=text-classification&sort=downloads'],
-          ['Local Reranker README', '/models/cross-encoder-agro.baseline/README.md'],
-          ['Training Custom Reranker', '/docs/RERANKER.md#training']
+          ['Local Reranker README', '/models/cross-encoder-agro/README.md'],
+          ['Learning Reranker', '/docs/LEARNING_RERANKER.md']
         ],
         [['Free (no API costs)', 'info'], ['Requires download', 'warn']]
       ),
@@ -160,7 +167,7 @@
         'Controls when full code is loaded from chunks.jsonl. "Lazy" (recommended) loads code after retrieval, providing full context with minimal memory overhead. "None" returns only metadata (file path, line numbers) - fastest but no code content. Use "none" for testing retrieval quality or when you only need file locations, not actual code.',
         [
           ['Lazy Loading', 'https://en.wikipedia.org/wiki/Lazy_loading'],
-          ['Memory vs Performance', '/docs/PERFORMANCE.md#hydration'],
+          ['Performance Guide', '/docs/PERFORMANCE_AND_COST.md'],
           ['chunks.jsonl Format', '/docs/INDEXING.md#chunks-format']
         ],
         [['Lazy Recommended', 'info']]
@@ -170,7 +177,7 @@
         'Maximum characters to load per chunk when hydrating results with code content. Prevents huge chunks from bloating responses and consuming excessive memory. 0 = no limit (may cause memory issues with large files). Recommended: 2000 for general use, 1000 for memory-constrained environments, 5000 for detailed code review. Chunks larger than this limit are truncated.',
         [
           ['Text Truncation', 'https://en.wikipedia.org/wiki/Truncation'],
-          ['Memory Management', '/docs/PERFORMANCE.md#memory-optimization'],
+          ['Performance Guide', '/docs/PERFORMANCE_AND_COST.md'],
           ['Chunk Size Tuning', '/docs/INDEXING.md#chunk-size']
         ],
         [['Performance', 'info']]
@@ -209,15 +216,16 @@
       ),
 
       // Netlify
-      NETLIFY_API_KEY: L('Netlify API Key', 'Key for the netlify_deploy MCP tool to trigger builds.', [
-        ['Netlify: Access Tokens', 'https://docs.netlify.com/api/get-started/#access-tokens']
+      NETLIFY_API_KEY: L('Netlify API Key', 'API key for the netlify_deploy MCP tool to trigger automated site deployments and builds. Get your personal access token from Netlify dashboard under User Settings > Applications > Personal Access Tokens. Used to programmatically deploy site updates from your workflow.', [
+        ['Netlify: Access Tokens', 'https://docs.netlify.com/api/get-started/#access-tokens'],
+        ['MCP README', '/docs/MCP_README.md']
       ]),
       NETLIFY_DOMAINS: L(
         'Netlify Domains',
         'Comma-separated list of Netlify site domains for the netlify_deploy MCP tool (e.g., "mysite.netlify.app,docs.mysite.com"). When deploying, the tool targets these specific sites. Find your site domains in Netlify dashboard under Site Settings > Domain Management. Multiple domains allow you to deploy to staging and production from the same config.',
         [
           ['Netlify Sites', 'https://docs.netlify.com/domains-https/custom-domains/'],
-          ['MCP Tool Usage', '/docs/MCP_TOOLS.md#netlify-deploy'],
+          ['MCP Tools Guide', '/docs/MCP_README.md'],
           ['Netlify Dashboard', 'https://app.netlify.com/']
         ]
       ),
@@ -257,9 +265,9 @@
         'HTTP Channel Model',
         'Override GEN_MODEL specifically for HTTP API requests (GUI, external API calls). Useful for serving different models to different channels - e.g., use gpt-4o for production HTTP but qwen-coder locally. If not set, falls back to GEN_MODEL. Example use case: cheaper models for public API, expensive models for internal tools.',
         [
-          ['Channel Overrides', '/docs/CHANNEL_ROUTING.md'],
+          ['Model Recommendations', '/docs/MODEL_RECOMMENDATIONS.md'],
           ['Model Selection', 'https://platform.openai.com/docs/models'],
-          ['Cost Optimization', '/docs/COST_OPTIMIZATION.md']
+          ['Cost & Performance', '/docs/PERFORMANCE_AND_COST.md']
         ],
         [['Channel-specific', 'info']]
       ),
@@ -267,8 +275,8 @@
         'MCP Channel Model',
         'Override GEN_MODEL for MCP tool invocations only. Use a lighter/cheaper model for MCP tools since tool calls are typically simpler than complex reasoning. Example: gpt-4o-mini for MCP, gpt-4o for main chat. Reduces costs when tools are called frequently (search, file operations, etc.). If not set, uses GEN_MODEL.',
         [
-          ['MCP Tools', '/docs/MCP_TOOLS.md'],
-          ['Channel Routing', '/docs/CHANNEL_ROUTING.md'],
+          ['MCP Tools Guide', '/docs/MCP_README.md'],
+          ['Model Recommendations', '/docs/MODEL_RECOMMENDATIONS.md'],
           ['Model Pricing', 'https://openai.com/api/pricing/']
         ],
         [['Cost savings', 'info'], ['Channel-specific', 'info']]
@@ -278,7 +286,7 @@
         'Override GEN_MODEL for CLI chat sessions only. Allows using different models for terminal vs web interface - e.g., faster models for CLI iteration, higher quality for production GUI. Useful for developer workflows where CLI is for quick testing and HTTP is for end users. If not set, uses GEN_MODEL.',
         [
           ['CLI Chat', '/docs/CLI_CHAT.md'],
-          ['Channel Overrides', '/docs/CHANNEL_ROUTING.md'],
+          ['Model Recommendations', '/docs/MODEL_RECOMMENDATIONS.md'],
           ['Model Selection Guide', '/docs/MODELS.md']
         ],
         [['Channel-specific', 'info']]
@@ -355,7 +363,7 @@
         [
           ['Cards Feature', '/docs/CARDS.md'],
           ['Code Summarization', 'https://en.wikipedia.org/wiki/Automatic_summarization'],
-          ['Cards Builder Source', '/files/indexer/build_cards.py'],
+          ['Cards Builder Source', '/indexer/build_cards.py'],
           ['Enrichment Guide', '/docs/ENRICHMENT.md']
         ],
         [['Better retrieval', 'info'], ['Slower indexing', 'warn'], ['Costs API calls', 'warn']]
@@ -365,7 +373,7 @@
         'Maximum number of summary cards to load and consider during retrieval for score boosting. Cards are high-level summaries of code modules/features. Lower values (10-20) are faster but may miss relevant modules. Higher values (30-50) provide better coverage but increase memory and latency. Set to 0 to disable cards entirely. Recommended: 20-30 for balanced performance.',
         [
           ['Cards Feature Overview', '/docs/CARDS.md'],
-          ['Cards Builder Source', '/files/indexer/build_cards.py'],
+          ['Cards Builder Source', '/indexer/build_cards.py'],
           ['Score Boosting', '/docs/RETRIEVAL.md#card-boosting']
         ],
         [['Affects memory', 'warn']]
@@ -427,7 +435,7 @@
         'Repository Path',
         'Absolute filesystem path to the repository directory to be indexed under this logical repo name. Example: /Users/you/projects/myapp or /home/dev/backend. This directory will be scanned for code files during indexing. Use repos.json to configure multiple repositories with different paths, keywords, and routing rules.',
         [
-          ['repos.json Format', '/files/repos.json'],
+          ['repos.json Format', '/repos.json'],
           ['Multi-Repo Setup', '/docs/MULTI_REPO.md'],
           ['Indexing Workflow', '/docs/INDEXING.md#repository-setup']
         ]
@@ -438,7 +446,7 @@
         [
           ['Query Routing', '/docs/MULTI_REPO.md#routing'],
           ['Keyword Selection', '/docs/MULTI_REPO.md#keyword-strategy'],
-          ['repos.json Examples', '/files/repos.json']
+          ['repos.json Examples', '/repos.json']
         ],
         [['Multi-repo only', 'info']]
       ),
@@ -447,7 +455,7 @@
         'Comma-separated directory path substrings to boost in search rankings for this repo. Examples: "src/,app/,lib/" boosts code in those directories. Use this to prioritize your main application code over tests, docs, or vendor code. Partial matches work - "api/" matches "src/api/", "backend/api/", etc. Boosts are applied during reranking.',
         [
           ['Score Boosting', '/docs/RETRIEVAL.md#path-boosting'],
-          ['repos.json Config', '/files/repos.json'],
+          ['repos.json Config', '/repos.json'],
           ['Ranking Logic', '/docs/RETRIEVAL.md#ranking-algorithm']
         ],
         [['Affects ranking', 'info']]
@@ -469,7 +477,7 @@
         'Filesystem path to your golden questions JSON file (default: golden.json). Golden questions are curated query-answer pairs used to evaluate retrieval quality through automated testing. Format: [{"query": "how does auth work?", "expected_file": "src/auth.py"}]. Used by eval loop to measure metrics like Hit@K, MRR, and precision. Create golden questions from real user queries for best results.',
         [
           ['Golden Questions Format', '/docs/EVALUATION.md#golden-format'],
-          ['Eval Script Source', '/files/eval/eval_loop.py'],
+          ['Eval Script Source', '/eval/eval_loop.py'],
           ['Creating Golden Sets', '/docs/EVALUATION.md#creating-golden-questions'],
           ['Evaluation Metrics', 'https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval)']
         ]
@@ -479,7 +487,7 @@
         'Directory where evaluation loop saves baseline results for regression testing and A/B comparison. Each eval run\'s metrics (Hit@K, MRR, latency) are stored here with timestamps. Use this to ensure retrieval quality doesn\'t regress after configuration changes, reindexing, or model upgrades. Compare current run against baseline to detect improvements or degradations.',
         [
           ['Baseline Testing', '/docs/EVALUATION.md#baseline-comparison'],
-          ['Eval Script Source', '/files/eval/eval_loop.py'],
+          ['Eval Script Source', '/eval/eval_loop.py'],
           ['Regression Prevention', 'https://en.wikipedia.org/wiki/Software_regression']
         ]
       ),
@@ -518,7 +526,7 @@
         'agro PATH (legacy)',
         'DEPRECATED: Legacy environment variable for setting the agro repository path. This is repo-specific and only works for a repo named "agro". Modern approach: use REPO_PATH for single repos or configure repos.json for multi-repo setups with proper routing. Kept for backwards compatibility - will be removed in future versions.',
         [
-          ['repos.json Format', '/files/repos.json'],
+          ['repos.json Format', '/repos.json'],
           ['Migration Guide', '/docs/MIGRATION.md#legacy-env-vars'],
           ['REPO_PATH Setting', '/docs/CONFIGURATION.md#repo-path']
         ],
@@ -528,7 +536,7 @@
         'agro Path Boosts (CSV)',
         'DEPRECATED: Legacy comma-separated path boosts for the "agro" repository only (e.g., "app/,lib/,config/"). Repo-specific environment variables like this don\'t scale for multi-repo setups. Modern approach: configure path boosts in repos.json per-repo settings. Kept for backwards compatibility.',
         [
-          ['repos.json Path Boosts', '/files/repos.json'],
+          ['repos.json Path Boosts', '/repos.json'],
           ['Migration Guide', '/docs/MIGRATION.md#path-boosts'],
           ['Modern Path Boosting', '/docs/RETRIEVAL.md#path-boosting']
         ],
@@ -620,7 +628,7 @@
       }
       let html = map[key];
       if (!html) {
-        html = `<span class=\"tt-title\">${name}</span><div>No detailed tooltip available yet. See our docs for related settings.</div><div class=\"tt-links\"><a href=\"/files/README.md\" target=\"_blank\" rel=\"noopener\">Main README</a> <a href=\"/docs/README.md\" target=\"_blank\" rel=\"noopener\">Docs Index</a></div>`;
+        html = `<span class=\"tt-title\">${name}</span><div>No detailed tooltip available yet. See our docs for related settings.</div><div class=\"tt-links\"><a href=\"/README.md\" target=\"_blank\" rel=\"noopener\">Main README</a> <a href=\"/docs/README_INDEX.md\" target=\"_blank\" rel=\"noopener\">Docs Index</a></div>`;
       }
       const spanText = document.createElement('span');
       spanText.className = 'label-text';

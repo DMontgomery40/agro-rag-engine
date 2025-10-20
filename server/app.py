@@ -1744,10 +1744,11 @@ def mcp_status() -> Dict[str, Any]:
         'url': f"http://{py_host}:{py_port}{py_path}",
     }
 
-    # Node HTTP MCP (proxy); default to :8014
+    # Node HTTP MCP (proxy); default to :8014. Do NOT fall back to PORT, which is
+    # the main API port and would confuse the dashboard when kube/compose ports differ.
     node_host = os.getenv('NODE_MCP_HOST') or '127.0.0.1'
     try:
-        node_port = int(os.getenv('NODE_MCP_PORT') or os.getenv('PORT') or '8014')
+        node_port = int(os.getenv('NODE_MCP_PORT') or '8014')
     except Exception:
         node_port = 8014
     node_http = {

@@ -1,0 +1,160 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - heading "AGRO Another Good RAG Option" [level=1] [ref=e3]:
+      - generic [ref=e4]: AGRO
+      - generic [ref=e5]: Another Good RAG Option
+    - generic [ref=e6]:
+      - searchbox "Search settings (Ctrl+K)" [ref=e7]
+      - combobox "Theme Mode" [ref=e8]:
+        - option "Auto"
+        - option "Dark" [selected]
+        - option "Light"
+      - button "Health" [ref=e9] [cursor=pointer]
+      - generic [ref=e10]: OK @ 10/20/2025, 12:58:36 PM
+  - generic [ref=e11]:
+    - generic [ref=e13]:
+      - generic [ref=e14]:
+        - button "🚀 Get Started" [ref=e15] [cursor=pointer]
+        - button "📊 Dashboard" [ref=e16] [cursor=pointer]
+        - button "💬 Chat" [ref=e17] [cursor=pointer]
+        - button "📝 VS Code ✨" [ref=e18] [cursor=pointer]
+        - button "📈 Grafana ✨" [ref=e19] [cursor=pointer]
+        - button "🧠 RAG" [ref=e20] [cursor=pointer]
+        - button "💾 Profiles" [ref=e21] [cursor=pointer]
+        - button "🔧 Infrastructure" [ref=e22] [cursor=pointer]
+        - button "⚙️ Admin" [ref=e23] [cursor=pointer]
+      - generic [ref=e24]:
+        - button "Interface" [ref=e25] [cursor=pointer]
+        - button "Settings" [ref=e26] [cursor=pointer]
+      - generic [ref=e27]:
+        - generic [ref=e31]:
+          - generic [ref=e32]:
+            - generic [ref=e33]:
+              - heading "● RAG Chat" [level=3] [ref=e34]:
+                - generic [ref=e35]: ●
+                - text: RAG Chat
+              - paragraph [ref=e36]: Ask questions about your codebase
+            - generic [ref=e37]:
+              - combobox [ref=e38]:
+                - option "Auto-detect repo" [selected]
+                - option "agro"
+                - option
+              - button "History" [ref=e40] [cursor=pointer]:
+                - img [ref=e41]
+                - text: History
+              - button "Clear" [ref=e44] [cursor=pointer]
+          - generic [ref=e46]:
+            - img [ref=e47]
+            - generic [ref=e49]: Start a conversation with your codebase
+            - generic [ref=e50]: "Try: \"Where is OAuth token validated?\" or \"How do we handle API errors?\""
+          - generic [ref=e51]:
+            - generic [ref=e52]:
+              - textbox "Ask a question about your codebase..." [ref=e53]
+              - button "Send" [ref=e54] [cursor=pointer]
+            - generic [ref=e55]: Press Ctrl+Enter to send • Citations will appear as clickable file links
+            - group [ref=e56]:
+              - generic "Routing Trace" [ref=e57] [cursor=pointer]
+        - button "Apply All Changes" [ref=e59] [cursor=pointer]
+    - generic [ref=e60]:
+      - button "Reset Width" [ref=e62]
+      - generic [ref=e63]:
+        - heading "▸ Live Cost Calculator LIVE" [level=4] [ref=e64]:
+          - text: ▸ Live Cost Calculator
+          - generic [ref=e65]: LIVE
+        - generic [ref=e67]:
+          - generic [ref=e68]: Inference Provider
+          - combobox [ref=e69]:
+            - option "openai" [selected]
+            - option "anthropic"
+            - option "google"
+            - option "mistral"
+            - option "cohere"
+            - option "local"
+        - generic [ref=e70]:
+          - generic [ref=e71]: Inference Model
+          - combobox [ref=e72]: gpt-4o-mini
+        - generic [ref=e73]:
+          - generic [ref=e74]:
+            - generic [ref=e75]: Embeddings Provider
+            - combobox [ref=e76]:
+              - option "Use current"
+              - option "OpenAI" [selected]
+              - option "Voyage"
+              - option "MXBAI"
+              - option "Local"
+          - generic [ref=e77]:
+            - generic [ref=e78]: Embedding Model
+            - combobox "text-embedding-3-small" [ref=e79]
+        - generic [ref=e80]:
+          - generic [ref=e81]:
+            - generic [ref=e82]: Reranker
+            - combobox [ref=e83]:
+              - option "Use current"
+              - option "Cohere"
+              - option "Hugging Face"
+              - option "Local" [selected]
+              - option "None"
+          - generic [ref=e84]:
+            - generic [ref=e85]: Rerank Model
+            - textbox "rerank-english-v3.0" [ref=e86]: rerank-3.5
+        - generic [ref=e87]:
+          - generic [ref=e88]:
+            - generic [ref=e89]: Input Tokens / Request
+            - spinbutton [ref=e90]: "500"
+          - generic [ref=e91]:
+            - generic [ref=e92]: Output Tokens / Request
+            - spinbutton [ref=e93]: "800"
+        - generic [ref=e94]:
+          - generic [ref=e95]:
+            - generic [ref=e96]: Embedding Tokens / Day
+            - spinbutton [ref=e97]: "0"
+          - generic [ref=e98]:
+            - generic [ref=e99]: Reranks / Day
+            - spinbutton [ref=e100]: "0"
+        - generic [ref=e101]:
+          - generic [ref=e102]: API Requests / Day
+          - spinbutton [ref=e103]: "100"
+        - button "Calculate Cost" [ref=e104] [cursor=pointer]
+        - button "Add Model" [ref=e105] [cursor=pointer]
+        - generic [ref=e106]:
+          - generic [ref=e107]:
+            - generic [ref=e108]: Daily
+            - generic [ref=e109]: —
+          - generic [ref=e110]:
+            - generic [ref=e111]: Monthly
+            - generic [ref=e112]: —
+      - generic [ref=e113]:
+        - heading "▸ Profiles" [level=4] [ref=e114]
+        - generic [ref=e115]:
+          - generic [ref=e116]: Save Current As
+          - textbox "my-config" [ref=e117]
+        - button "Save Profile" [ref=e118] [cursor=pointer]
+        - generic [ref=e119]:
+          - generic [ref=e120]: Saved Profiles
+          - list [ref=e121]:
+            - listitem [ref=e122] [cursor=pointer]: defaults
+            - listitem [ref=e123] [cursor=pointer]: min_local
+            - listitem [ref=e124] [cursor=pointer]: onboard-wizard-test-project
+            - listitem [ref=e125] [cursor=pointer]: pw-test
+      - generic [ref=e126]:
+        - heading "▸ Auto‑Tune" [level=4] [ref=e127]
+        - generic [ref=e129]:
+          - checkbox "Enable Auto‑Tune" [ref=e130] [cursor=pointer]
+          - text: Enable Auto‑Tune
+        - generic [ref=e132]: "Current Mode: —"
+        - generic [ref=e133]:
+          - generic [ref=e134]: Last Indexed
+          - generic [ref=e135]: 10/20/2025, 12:58:36 PM
+        - button "Refresh Status" [ref=e136] [cursor=pointer]
+      - generic [ref=e137]:
+        - heading "▸ Secrets Ingest" [level=4] [ref=e138]
+        - generic [ref=e139] [cursor=pointer]:
+          - text: Drop .env / .txt / .md
+          - text: or click to upload
+        - generic [ref=e141] [cursor=pointer]:
+          - checkbox "Persist to defaults.json" [ref=e142]
+          - generic [ref=e143]: Persist to defaults.json
+```

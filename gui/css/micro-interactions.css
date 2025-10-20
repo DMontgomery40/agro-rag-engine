@@ -412,6 +412,68 @@ input[type="radio"] {
     transition: transform var(--timing-fast) var(--ease-bounce);
 }
 
+/* Toggle switch wrapper for configuration checkboxes */
+.toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+}
+
+.toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+.toggle-track {
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    background: var(--line);
+    border-radius: 999px;
+    position: relative;
+    transition: background var(--timing-normal) ease;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15);
+}
+
+.toggle-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--card-bg);
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    transition: transform var(--timing-fast) var(--ease-out), background var(--timing-fast) ease;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+}
+
+.toggle input:checked + .toggle-track {
+    background: var(--accent);
+}
+
+.toggle input:checked + .toggle-track .toggle-thumb {
+    transform: translateX(20px);
+    background: var(--accent-contrast);
+}
+
+.toggle input:focus-visible + .toggle-track {
+    outline: 2px solid var(--link);
+    outline-offset: 2px;
+}
+
+.toggle-label {
+    font-size: 13px;
+    color: var(--fg);
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 500;
+}
+
 input[type="checkbox"]:checked,
 input[type="radio"]:checked {
     animation: check-pop var(--timing-slow) var(--ease-bounce);

@@ -9,7 +9,7 @@ import time
 import argparse
 from typing import Dict, Any
 from dotenv import load_dotenv
-from .eval_rag import hit, _resolve_golden_path, USE_MULTI, FINAL_K, MULTI_M
+from eval.eval_rag import hit, _resolve_golden_path, USE_MULTI, FINAL_K, MULTI_M  # type: ignore[import]
 from retrieval.hybrid_search import search_routed, search_routed_multi
 
 load_dotenv()

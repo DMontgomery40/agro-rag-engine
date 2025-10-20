@@ -72,31 +72,37 @@ def extract_imports(src:str, lang:str)->List[str]:
             return re.findall(r"^import\s+[^\n]+;$", src, flags=re.M)
         return []
 
-def greedy_fallback(src:str, fpath:str, lang:str, target:int)->List[Dict]:
+def greedy_fallback(src:str, fpath:str, lang:str, target:int)->List[Dict]:  # type: ignore
     sep = r"(?:\nclass\s+|\ndef\s+)" if lang=="python" else r"(?:\nclass\s+|\nfunction\s+)"
     parts = re.split(sep, src)
     if len(parts) < 2:
-        out, cur, acc = [], [], 0
+        out: List[str] = []
+        cur: List[str] = []
+        acc = 0
         for line in src.splitlines(True):
             cur.append(line)
             acc += nonws_len(line)
             if acc >= target:
                 out.append("".join(cur))
-                cur, acc = [], 0
+                cur = []
+                acc = 0
         if cur:
             out.append("".join(cur))
         return [{
             "id": hashlib.md5((fpath+str(i)+s[:80]).encode()).hexdigest()[:12],
             "file_path": fpath, "language": lang, "type":"blob","name":None,
             "start_line": 1, "end_line": s.count("\n")+1, "imports": extract_imports(src, lang), "code": s
-        } for i,s in enumerate(out)]
-    else:
-        rejoined, buf, acc = [], [], 0
+        } for i, s in enumerate(out)]
+    else:  # type: ignore
+        rejoined: List[str] = []
+        buf: List[str] = []
+        acc = 0
         for p in parts:
             if acc + nonws_len(p) > target and buf:
-                s = "".join(buf)
+                s: str = "".join(buf)
                 rejoined.append(s)
-                buf, acc = [], 0
+                buf = []
+                acc = 0
             buf.append(p)
             acc += nonws_len(p)
         if buf:

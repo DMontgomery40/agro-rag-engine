@@ -101,8 +101,9 @@ class ChatCLI:
                     "confidence": 0.0,
                     "repo": self.repo
                 }
-                # mypy/pyright: self.graph is initialized in _init_graph or process exits
-                result = self.graph.invoke(state, self._get_config())  # type: ignore[call-arg]
+                if self.graph is None:
+                    raise Exception("Graph not initialized")
+                result = self.graph.invoke(state, self._get_config())  # type: ignore[attr-defined]
                 result['event_id'] = None  # No event_id for direct calls
                 return result
         except Exception as e:
