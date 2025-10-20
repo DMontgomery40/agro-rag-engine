@@ -164,10 +164,24 @@ def _feature_bonus(query: str, fp: str, code: str) -> float:
     code = (code or '').lower()
     bumps = 0.0
     
-    # DISABLED: Discriminative keywords are boosting wrong files (test infrastructure)
-    # TODO: Re-generate discriminative keywords excluding test/config terms
-    # keywords = _load_discriminative_keywords(REPO)
-    # ... discriminative keyword boosting ...
+    # Discriminative keyword boosting
+    keywords = _load_discriminative_keywords(REPO)
+    if keywords:
+        # Check how many discriminative keywords match
+        matches_in_query = sum(1 for kw in keywords if kw in ql)
+        matches_in_path = sum(1 for kw in keywords if kw in fp)
+        matches_in_code = sum(1 for kw in keywords[:20] if kw in code)  # Only check top 20 in code for performance
+        
+        # Apply graduated boosts based on match quality
+        if matches_in_query > 0:
+            # Keywords in query are highly relevant
+            if matches_in_path > 0:
+                bumps += 0.08 * min(matches_in_path, 3)  # Path + query match is very strong
+            if matches_in_code > 0:
+                bumps += 0.06 * min(matches_in_code, 2)  # Code + query match is strong
+        elif matches_in_path > 0:
+            # Keywords in path even without query match are still useful
+            bumps += 0.04 * min(matches_in_path, 2)
     
     # Legacy hardcoded boosts (keep for backward compat)
     if any(k in ql for k in ['diagnostic', 'health', 'event log', 'phi', 'hipaa']):
