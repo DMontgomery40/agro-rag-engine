@@ -61,11 +61,11 @@ conf_avg5: 0.52
 
 ## And crucially, the ability to estimate the impact of that 'refactor' profile, *before* you run it
 <div align="center">
-  <a href="assets/dashboard.png" target="_blank">
-    <img src="assets/dashboard.png" alt="Dashboard with Cost Analysis" width="48%" />
+  <a href="assets/cost_est.png" target="_blank">
+    <img src="assets/cost_est.png" alt="Cost Estimation" width="48%" />
   </a>
-  <a href="assets/grafana-metrics.png" target="_blank">
-    <img src="assets/grafana-metrics.png" alt="Performance Metrics" width="48%" />
+  <a href="assets/stor.png" target="_blank">
+    <img src="assets/stor.png" alt="Storage Calculation" width="48%" />
   </a>
 </div>
 
@@ -77,8 +77,8 @@ conf_avg5: 0.52
 ### (Python and Node.js) supporting HTTP, SSE, STDIO, and WebSocket transports
   - ***Per-transport configuration:*** choose different models and search backends for each mode
 
-<a href="assets/config - models .png" target="_blank">
-  <img src="assets/config - models .png" alt="Configure Models Per Transport" />
+<a href="assets/onboarding_carosel/mcp_transport_changing_model_per_transport.png" target="_blank">
+  <img src="assets/onboarding_carosel/mcp_transport_changing_model_per_transport.png" alt="Configure Models Per Transport" />
 </a>
 
 ### Robust API with optional OAuth 2.0
@@ -98,6 +98,7 @@ conf_avg5: 0.52
 ## Dashboard
 ![Dashboard](assets/dashboard.png)
 
+## Built-In Grafana Dashboard
 ![Grafana Metrics](assets/grafana-metrics.png)
 
 ## Documentation
@@ -387,8 +388,8 @@ echo "**/migrations/**" >> data/exclude_globs.txt
 ```
 
 #### 3. Auto-Generate Keywords (Optional)
-<a href="assets/getting started wizard.png" target="_blank">
-  <img src="assets/getting started wizard.png" alt="Auto-Generate Keywords" />
+<a href="assets/onboarding_carosel/auto-generate-keywords.png" target="_blank">
+  <img src="assets/onboarding_carosel/auto-generate-keywords.png" alt="Auto-Generate Keywords" />
 </a>
 
 The `scripts/` folder contains tools to analyze your codebase and generate optimal configurations:
@@ -766,8 +767,8 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' | \
 
 
 ### In GUI
-<a href="assets/dev tools - testing .png" target="_blank">
-  <img src="assets/dev tools - testing .png" alt="Evaluation Interface" />
+<a href="assets/evals.png" target="_blank">
+  <img src="assets/evals.png" alt="Evaluation Interface" />
 </a>
 
 **GUI Controls:**
@@ -813,8 +814,8 @@ python eval_loop.py
 ```
 
 ### Creating Golden Tests
-<a href="assets/data indexing pt 1.png" target="_blank">
-  <img src="assets/data indexing pt 1.png" alt="Golden Tests GUI" />
+<a href="assets/onboarding_carosel/golden-tests-gui.png" target="_blank">
+  <img src="assets/onboarding_carosel/golden-tests-gui.png" alt="Golden Tests GUI" />
 </a>
 
 Golden tests are in `golden.json`:
@@ -1153,8 +1154,8 @@ See **[docs/MODEL_RECOMMENDATIONS.md](docs/MODEL_RECOMMENDATIONS.md)** for:
 ---
 
 ## Advanced Configuration
-<a href="assets/config - infra.png" target="_blank">
-  <img src="assets/config - infra.png" alt="Advanced Configuration" />
+<a href="assets/tune_and_trace.png" target="_blank">
+  <img src="assets/tune_and_trace.png" alt="Advanced RAG Tuning & Tracing Configuration" />
 </a>
 
 ### Environment Variables Reference
