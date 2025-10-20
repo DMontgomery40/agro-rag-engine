@@ -273,15 +273,19 @@
     try {
       const r = await fetch(api('/api/cards/build/logs'));
       const d = await r.json();
-      alert(d.content || 'No logs available');
+      if (window.UXFeedback && window.UXFeedback.toast) {
+        window.UXFeedback.toast(d.content ? `Build logs (${(d.content.length/1024).toFixed(1)}KB)` : 'No logs available', 'info');
+      } else {
+        alert(d.content || 'No logs available');
+      }
     } catch(e){
-      const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to load build logs', {
+      const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to Load Build Logs', {
         message: e.message,
         causes: [
-          'Log service API is not responding',
-          'Build logs have not been generated yet',
-          'Logs file is missing, corrupted, or not accessible',
-          'Network connectivity issue retrieving logs'
+          'Cards builder process has not run yet',
+          'Log file was cleared or deleted',
+          'Backend failed to capture build process output',
+          'Network timeout retrieving logs'
         ],
         fixes: [
           'Ensure a cards build has been run previously',

@@ -161,7 +161,27 @@
       console.log('[cards.js] Raw data modal opened');
     } catch(error) {
       console.error('[cards.js] Error viewing all cards:', error);
-      alert('Error loading raw cards data: ' + error.message);
+      const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to Load Cards', {
+        message: error.message,
+        causes: [
+          'Backend cards API endpoint is not responding',
+          'No semantic cards have been built yet',
+          'Cards database file is corrupted or missing',
+          'Network timeout while fetching cards data'
+        ],
+        fixes: [
+          'Build semantic cards first: go to Data > Cards Builder',
+          'Verify backend is running: check Infrastructure tab',
+          'Check backend logs for cards loading errors',
+          'Refresh the page and try loading cards again'
+        ],
+        links: [
+          ['Semantic Cards Documentation', '/docs/CARDS.md'],
+          ['Building Cards', '/docs/CARDS.md#building-cards'],
+          ['Backend Health', '/api/health']
+        ]
+      }) : ('Error loading raw cards data: ' + error.message);
+      alert(msg);
     }
   }
 

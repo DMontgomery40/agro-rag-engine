@@ -466,7 +466,27 @@
                 try {
                     repoMap[repoName]['layer_bonuses'] = field.value ? JSON.parse(field.value) : {};
                 } catch (e) {
-                    alert(`Invalid JSON for ${repoName} layer_bonuses: ${e.message}`);
+                    const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Invalid Layer Bonuses JSON', {
+                        message: `${repoName} layer_bonuses: ${e.message}`,
+                        causes: [
+                            'Layer bonuses field contains malformed JSON syntax',
+                            'Unmatched braces, brackets, or quotes in JSON',
+                            'Trailing comma in JSON object (not allowed)',
+                            'JavaScript comments in JSON field (not valid JSON)'
+                        ],
+                        fixes: [
+                            'Use a JSON validator to check syntax: jsonlint.com',
+                            'Remove trailing commas from JSON objects',
+                            'Ensure all quotes are properly closed and escaped',
+                            'Use correct JSON format: {\"key\": value} not {key: value}'
+                        ],
+                        links: [
+                            ['JSON Syntax Reference', 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON'],
+                            ['JSON Validator', 'https://jsonlint.com/'],
+                            ['Layer Configuration', '/docs/CONFIGURATION.md#layers']
+                        ]
+                    }) : `Invalid JSON for ${repoName} layer_bonuses: ${e.message}`;
+                    alert(msg);
                     return null;
                 }
             } else if (fieldType === 'path') {
