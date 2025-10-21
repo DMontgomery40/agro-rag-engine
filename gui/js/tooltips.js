@@ -164,7 +164,7 @@
         [
           ['BM25 Algorithm', 'https://en.wikipedia.org/wiki/Okapi_BM25'],
           ['BM25S Library (GitHub)', 'https://github.com/xhluca/bm25s'],
-          ['Lexical vs Semantic', '/docs/RETRIEVAL.md#hybrid-search']
+          ['Lexical Search', 'https://en.wikipedia.org/wiki/Lexicographic_search']
         ],
         [['Affects latency','info'], ['Keyword matches', 'info']]
       ),
@@ -173,8 +173,8 @@
         'Number of top results to return after hybrid fusion, reranking, and scoring boosts. This is what you get back from search. Higher values (15-30) provide more context but may include noise. Lower values (5-10) are faster and more precise. Default: 10. Recommended: 10 for chat, 20-30 for browsing/exploration.',
         [
           ['Precision vs Recall', 'https://en.wikipedia.org/wiki/Precision_and_recall'],
-          ['Top-K Selection', 'https://en.wikipedia.org/wiki/Tf%E2%80%93idf#Top-K_retrieval'],
-          ['RAG Retrieval', '/docs/RETRIEVAL.md#final-k']
+          ['Top-K Retrieval', 'https://en.wikipedia.org/wiki/Nearest_neighbor_search#k-nearest_neighbors'],
+          ['Ranking (IR)', 'https://en.wikipedia.org/wiki/Ranking_(information_retrieval)']
         ],
         [['Core Setting', 'info']]
       ),
@@ -183,8 +183,8 @@
         'Controls when full code is loaded from chunks.jsonl. "Lazy" (recommended) loads code after retrieval, providing full context with minimal memory overhead. "None" returns only metadata (file path, line numbers) - fastest but no code content. Use "none" for testing retrieval quality or when you only need file locations, not actual code.',
         [
           ['Lazy Loading', 'https://en.wikipedia.org/wiki/Lazy_loading'],
-          ['Performance Guide', '/docs/PERFORMANCE_AND_COST.md'],
-          ['chunks.jsonl Format', '/docs/INDEXING.md#chunks-format']
+          ['Lazy Evaluation', 'https://en.wikipedia.org/wiki/Lazy_evaluation'],
+          ['JSONL Format', 'https://jsonlines.org/']
         ],
         [['Lazy Recommended', 'info']]
       ),
@@ -193,8 +193,8 @@
         'Maximum characters to load per chunk when hydrating results with code content. Prevents huge chunks from bloating responses and consuming excessive memory. 0 = no limit (may cause memory issues with large files). Recommended: 2000 for general use, 1000 for memory-constrained environments, 5000 for detailed code review. Chunks larger than this limit are truncated.',
         [
           ['Text Truncation', 'https://en.wikipedia.org/wiki/Truncation'],
-          ['Performance Guide', '/docs/PERFORMANCE_AND_COST.md'],
-          ['Chunk Size Tuning', '/docs/INDEXING.md#chunk-size']
+          ['String Truncation', 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/substring'],
+          ['Memory Management', 'https://en.wikipedia.org/wiki/Memory_management']
         ],
         [['Performance', 'info']]
       ),
@@ -204,9 +204,9 @@
         'Confidence Top‑1',
         'Minimum confidence score (0.0-1.0) required to accept the top-1 result without further processing. If the best result scores above this threshold, it\'s returned immediately. Lower values (0.55-0.60) produce more answers but risk lower quality. Higher values (0.65-0.70) ensure precision but may trigger unnecessary query rewrites. Recommended: 0.60-0.65 for balanced precision/recall.',
         [
-          ['Confidence Thresholds', 'https://en.wikipedia.org/wiki/Confidence_interval'],
+          ['Confidence Interval', 'https://en.wikipedia.org/wiki/Confidence_interval'],
           ['Precision-Recall Tradeoff', 'https://developers.google.com/machine-learning/crash-course/classification/precision-and-recall'],
-          ['Score Calibration', '/docs/RETRIEVAL.md#confidence-scoring']
+          ['Statistical Threshold', 'https://en.wikipedia.org/wiki/Statistical_significance']
         ],
         [['Affects answer rate', 'info']]
       ),
@@ -216,7 +216,7 @@
         [
           ['Iterative Refinement', 'https://en.wikipedia.org/wiki/Iterative_refinement'],
           ['Query Reformulation', 'https://en.wikipedia.org/wiki/Query_reformulation'],
-          ['Confidence Scoring', '/docs/RETRIEVAL.md#confidence-thresholds']
+          ['Mean Score Calculation', 'https://en.wikipedia.org/wiki/Mean']
         ],
         [['Controls retries', 'warn']]
       ),
@@ -225,7 +225,7 @@
         'Fallback threshold - proceed with retrieval if ANY single result exceeds this score, even if top-1 or avg-5 thresholds aren\'t met. This prevents the system from giving up when there\'s at least one decent match. Lower values (0.30-0.40) are more permissive, returning results even with weak confidence. Higher values (0.45-0.50) maintain quality standards. Recommended: 0.35-0.45 as a safety net.',
         [
           ['Fallback Strategies', 'https://en.wikipedia.org/wiki/Fault_tolerance'],
-          ['Confidence Bounds', '/docs/RETRIEVAL.md#confidence-fallback'],
+          ['Graceful Degradation', 'https://en.wikipedia.org/wiki/Fault_tolerance#Graceful_degradation'],
           ['Decision Boundaries', 'https://en.wikipedia.org/wiki/Decision_boundary']
         ],
         [['Safety net', 'info']]
@@ -234,14 +234,15 @@
       // Netlify
       NETLIFY_API_KEY: L('Netlify API Key', 'API key for the netlify_deploy MCP tool to trigger automated site deployments and builds. Get your personal access token from Netlify dashboard under User Settings > Applications > Personal Access Tokens. Used to programmatically deploy site updates from your workflow.', [
         ['Netlify: Access Tokens', 'https://docs.netlify.com/api/get-started/#access-tokens'],
-        ['MCP README', '/docs/MCP_README.md']
+        ['Netlify API Authentication', 'https://docs.netlify.com/api/get-started/#authentication'],
+        ['Personal Access Tokens Guide', 'https://docs.netlify.com/cli/get-started/#obtain-a-token-via-the-command-line']
       ]),
       NETLIFY_DOMAINS: L(
         'Netlify Domains',
         'Comma-separated list of Netlify site domains for the netlify_deploy MCP tool (e.g., "mysite.netlify.app,docs.mysite.com"). When deploying, the tool targets these specific sites. Find your site domains in Netlify dashboard under Site Settings > Domain Management. Multiple domains allow you to deploy to staging and production from the same config.',
         [
-          ['Netlify Sites', 'https://docs.netlify.com/domains-https/custom-domains/'],
-          ['MCP Tools Guide', '/docs/MCP_README.md'],
+          ['Netlify Custom Domains', 'https://docs.netlify.com/domains-https/custom-domains/'],
+          ['Domain Management', 'https://docs.netlify.com/domains-https/custom-domains/#assign-a-domain-to-a-site'],
           ['Netlify Dashboard', 'https://app.netlify.com/']
         ]
       ),
@@ -253,7 +254,7 @@
         [
           ['LangGraph Checkpoints', 'https://langchain-ai.github.io/langgraph/concepts/persistence/'],
           ['Thread Management', 'https://langchain-ai.github.io/langgraph/how-tos/persistence/#threads'],
-          ['CLI Chat Guide', '/docs/CLI_CHAT.md#sessions']
+          ['UUID Standards', 'https://en.wikipedia.org/wiki/Universally_unique_identifier']
         ]
       ),
       TRANSFORMERS_TRUST_REMOTE_CODE: L(
@@ -281,9 +282,9 @@
         'HTTP Channel Model',
         'Override GEN_MODEL specifically for HTTP API requests (GUI, external API calls). Useful for serving different models to different channels - e.g., use gpt-4o for production HTTP but qwen-coder locally. If not set, falls back to GEN_MODEL. Example use case: cheaper models for public API, expensive models for internal tools.',
         [
-          ['Model Recommendations', '/docs/MODEL_RECOMMENDATIONS.md'],
+          ['OpenAI API Pricing', 'https://openai.com/api/pricing/'],
           ['Model Selection', 'https://platform.openai.com/docs/models'],
-          ['Cost & Performance', '/docs/PERFORMANCE_AND_COST.md']
+          ['Anthropic Models', 'https://docs.anthropic.com/en/docs/about-claude/models']
         ],
         [['Channel-specific', 'info']]
       ),
@@ -291,9 +292,9 @@
         'MCP Channel Model',
         'Override GEN_MODEL for MCP tool invocations only. Use a lighter/cheaper model for MCP tools since tool calls are typically simpler than complex reasoning. Example: gpt-4o-mini for MCP, gpt-4o for main chat. Reduces costs when tools are called frequently (search, file operations, etc.). If not set, uses GEN_MODEL.',
         [
-          ['MCP Tools Guide', '/docs/MCP_README.md'],
-          ['Model Recommendations', '/docs/MODEL_RECOMMENDATIONS.md'],
-          ['Model Pricing', 'https://openai.com/api/pricing/']
+          ['MCP Specification', 'https://github.com/modelcontextprotocol/specification'],
+          ['OpenAI Pricing', 'https://openai.com/api/pricing/'],
+          ['Model Selection', 'https://platform.openai.com/docs/models']
         ],
         [['Cost savings', 'info'], ['Channel-specific', 'info']]
       ),
@@ -301,9 +302,9 @@
         'CLI Channel Model',
         'Override GEN_MODEL for CLI chat sessions only. Allows using different models for terminal vs web interface - e.g., faster models for CLI iteration, higher quality for production GUI. Useful for developer workflows where CLI is for quick testing and HTTP is for end users. If not set, uses GEN_MODEL.',
         [
-          ['CLI Chat', '/docs/CLI_CHAT.md'],
-          ['Model Recommendations', '/docs/MODEL_RECOMMENDATIONS.md'],
-          ['Model Selection Guide', '/docs/MODELS.md']
+          ['OpenAI Model List', 'https://platform.openai.com/docs/models'],
+          ['Anthropic Models', 'https://docs.anthropic.com/en/docs/about-claude/models'],
+          ['Ollama Model Library', 'https://ollama.com/library']
         ],
         [['Channel-specific', 'info']]
       ),
@@ -346,9 +347,9 @@
         'Enrichment Backend',
         'Backend service for generating code summaries and enrichment metadata during indexing. Options: "openai" (GPT models, highest quality), "ollama" (local models, free), "mlx" (Apple Silicon optimized). Enrichment adds per-chunk summaries and keywords used by features like cards and improved reranking. Disable to speed up indexing or reduce costs.',
         [
-          ['Code Enrichment', '/docs/ENRICHMENT.md'],
-          ['MLX on Apple Silicon', 'https://github.com/ml-explore/mlx'],
-          ['Ollama Local Models', 'https://ollama.com/library']
+          ['Text Generation with OpenAI', 'https://platform.openai.com/docs/guides/text-generation'],
+          ['MLX Inference Framework', 'https://github.com/ml-explore/mlx'],
+          ['Ollama Model Library', 'https://ollama.com/library']
         ],
         [['Optional feature', 'info'], ['Increases index time', 'warn']]
       ),
@@ -356,9 +357,9 @@
         'Enrichment Model',
         'Specific model name for code enrichment when ENRICH_BACKEND is set. For OpenAI: "gpt-4o-mini" (recommended, cheap), "gpt-4o" (higher quality, costly). For Ollama: specify via ENRICH_MODEL_OLLAMA instead. Smaller models (gpt-4o-mini, qwen2.5-coder:7b) balance cost and quality for summaries. Enrichment happens during indexing, not at query time.',
         [
-          ['OpenAI Models', 'https://platform.openai.com/docs/models'],
-          ['Model Selection Guide', '/docs/ENRICHMENT.md#model-selection'],
-          ['Cost Comparison', 'https://openai.com/api/pricing/']
+          ['OpenAI Available Models', 'https://platform.openai.com/docs/models'],
+          ['OpenAI Pricing', 'https://openai.com/api/pricing/'],
+          ['Anthropic Claude Models', 'https://www.anthropic.com/api']
         ],
         [['Affects index cost', 'warn']]
       ),
@@ -377,10 +378,9 @@
         'Enrich Code Chunks',
         'Enable per-chunk code summarization during indexing. When on, each code chunk gets an AI-generated summary and keywords stored alongside the code. Powers the Cards feature (high-level code summaries) and improves reranking by providing semantic context. Increases indexing time and cost (API calls) but significantly improves retrieval quality for conceptual queries like "where is auth handled?"',
         [
-          ['Cards Feature', '/docs/CARDS.md'],
-          ['Code Summarization', 'https://en.wikipedia.org/wiki/Automatic_summarization'],
-          ['Cards Builder Source', '/indexer/build_cards.py'],
-          ['Enrichment Guide', '/docs/ENRICHMENT.md']
+          ['Automatic Summarization', 'https://en.wikipedia.org/wiki/Automatic_summarization'],
+          ['OpenAI Text Generation', 'https://platform.openai.com/docs/guides/text-generation'],
+          ['Hugging Face Summarization', 'https://huggingface.co/blog/summarization']
         ],
         [['Better retrieval', 'info'], ['Slower indexing', 'warn'], ['Costs API calls', 'warn']]
       ),
@@ -388,9 +388,9 @@
         'Cards Max',
         'Maximum number of summary cards to load and consider during retrieval for score boosting. Cards are high-level summaries of code modules/features. Lower values (10-20) are faster but may miss relevant modules. Higher values (30-50) provide better coverage but increase memory and latency. Set to 0 to disable cards entirely. Recommended: 20-30 for balanced performance.',
         [
-          ['Cards Feature Overview', '/docs/CARDS.md'],
-          ['Cards Builder Source', '/indexer/build_cards.py'],
-          ['Score Boosting', '/docs/RETRIEVAL.md#card-boosting']
+          ['Information Retrieval', 'https://en.wikipedia.org/wiki/Information_retrieval'],
+          ['Semantic Search Concepts', 'https://www.pinecone.io/learn/semantic-search/'],
+          ['Qdrant Vector Search', 'https://qdrant.tech/documentation/concepts/search/']
         ],
         [['Affects memory', 'warn']]
       ),
@@ -398,9 +398,9 @@
         'Skip Dense Embeddings',
         'Skip vector embeddings and Qdrant during indexing to create a fast BM25-only (keyword-only) index. Useful for quick testing, CI/CD pipelines, or when Qdrant is unavailable. BM25-only mode is faster and uses less resources but loses semantic search capability - only exact keyword matches work. Not recommended for production use unless you have a purely keyword-based use case.',
         [
-          ['BM25 vs Semantic', '/docs/RETRIEVAL.md#bm25-vs-dense'],
-          ['Hybrid Search Benefits', 'https://www.pinecone.io/learn/hybrid-search-intro/'],
-          ['Fast Indexing Guide', '/docs/INDEXING.md#bm25-only']
+          ['Okapi BM25 Algorithm', 'https://en.wikipedia.org/wiki/Okapi_BM25'],
+          ['Hybrid Search Guide', 'https://www.pinecone.io/learn/hybrid-search-intro/'],
+          ['Vector Embeddings Concepts', 'https://en.wikipedia.org/wiki/Word_embedding']
         ],
         [['Much faster', 'info'], ['Keyword-only', 'warn'], ['No semantic search', 'warn']]
       ),
@@ -408,9 +408,9 @@
         'Vendor Mode',
         'Controls scoring preference for your code vs third-party library code during reranking. "prefer_first_party" (recommended) boosts your app code (+0.06) and penalizes node_modules/vendor libs (-0.08) - best for understanding YOUR codebase. "prefer_vendor" does the opposite - useful when debugging library internals or learning from open-source code. Most users want prefer_first_party.',
         [
-          ['First-Party vs Third-Party', 'https://en.wikipedia.org/wiki/First-party_and_third-party_sources'],
-          ['Score Boosting Logic', '/docs/RETRIEVAL.md#vendor-mode'],
-          ['Path Detection', '/docs/RETRIEVAL.md#vendor-detection']
+          ['First-Party vs Third-Party Sources', 'https://en.wikipedia.org/wiki/First-party_and_third-party_sources'],
+          ['Elasticsearch Query Boosting', 'https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-boosting-query.html'],
+          ['Relevance in IR', 'https://en.wikipedia.org/wiki/Relevance_(information_retrieval)']
         ],
         [['Code priority', 'info']]
       ),
@@ -421,7 +421,7 @@
           ['Vector Embeddings', 'https://en.wikipedia.org/wiki/Word_embedding'],
           ['Dimensionality Tradeoffs', 'https://www.sbert.net/docs/pretrained_models.html#model-overview'],
           ['Qdrant Vector Config', 'https://qdrant.tech/documentation/concepts/collections/#create-a-collection'],
-          ['Reindexing Guide', '/docs/INDEXING.md#full-reindex']
+          ['Vector Dimensionality', 'https://en.wikipedia.org/wiki/Dimensionality']
         ],
         [['Requires reindex','reindex'], ['Affects storage', 'warn']]
       ),
@@ -430,8 +430,8 @@
         'TCP port for the HTTP server that serves the GUI and API endpoints when running serve_rag. Default: 8012. Change if port 8012 is already in use by another service (common conflict: development servers). After changing, access GUI at http://127.0.0.1:<NEW_PORT>. Requires server restart to take effect.',
         [
           ['TCP Ports', 'https://en.wikipedia.org/wiki/List_of_TCP_and_UDP_port_numbers'],
-          ['Port Conflicts', 'https://en.wikipedia.org/wiki/Port_scanner'],
-          ['Server Configuration', '/docs/SERVER.md#port-configuration']
+          ['HTTP Server', 'https://developer.mozilla.org/en-US/docs/Learn/Common_questions/Web_mechanics/What_is_a_web_server'],
+          ['Port Scanner', 'https://en.wikipedia.org/wiki/Port_scanner']
         ],
         [['Requires restart', 'warn']]
       ),
@@ -439,9 +439,9 @@
         'Edition',
         'Product edition identifier for feature gating in multi-tier deployments. Values: "oss" (open source, all community features), "pro" (professional tier with advanced features), "enterprise" (full feature set with support). This flag enables/disables certain UI elements and API endpoints based on licensing. Most users should leave this as "oss".',
         [
-          ['Feature Matrix', '/docs/EDITIONS.md'],
-          ['Licensing', '/docs/LICENSE.md'],
-          ['Enterprise Features', '/docs/ENTERPRISE.md']
+          ['Software Licensing', 'https://en.wikipedia.org/wiki/Software_license'],
+          ['Open Source Initiative', 'https://opensource.org/licenses'],
+          ['Choosing a License', 'https://choosealicense.com/']
         ],
         [['Feature gating', 'info']]
       ),
@@ -451,18 +451,18 @@
         'Repository Path',
         'Absolute filesystem path to the repository directory to be indexed under this logical repo name. Example: /Users/you/projects/myapp or /home/dev/backend. This directory will be scanned for code files during indexing. Use repos.json to configure multiple repositories with different paths, keywords, and routing rules.',
         [
-          ['repos.json Format', '/repos.json'],
-          ['Multi-Repo Setup', '/docs/MULTI_REPO.md'],
-          ['Indexing Workflow', '/docs/INDEXING.md#repository-setup']
+          ['File System Paths', 'https://en.wikipedia.org/wiki/Path_(computing)'],
+          ['Absolute vs Relative Paths', 'https://en.wikipedia.org/wiki/Path_(computing)#Absolute_and_relative_paths'],
+          ['JSON Configuration', 'https://www.json.org/json-en.html']
         ]
       ),
       repo_keywords: L(
         'Repository Keywords',
         'Comma-separated keywords for query routing to this repository. When users ask questions containing these keywords, this repo is prioritized. Examples: "auth,authentication,login" or "payment,stripe,billing". Choose terms users naturally use when asking about this repo\'s domain. Helps multi-repo setups route queries to the right codebase.',
         [
-          ['Query Routing', '/docs/MULTI_REPO.md#routing'],
-          ['Keyword Selection', '/docs/MULTI_REPO.md#keyword-strategy'],
-          ['repos.json Examples', '/repos.json']
+          ['Query Routing', 'https://en.wikipedia.org/wiki/Routing'],
+          ['Keyword Matching', 'https://en.wikipedia.org/wiki/Index_term'],
+          ['Text Tokenization', 'https://en.wikipedia.org/wiki/Lexical_analysis#Tokenization']
         ],
         [['Multi-repo only', 'info']]
       ),
@@ -470,9 +470,9 @@
         'Path Boosts',
         'Comma-separated directory path substrings to boost in search rankings for this repo. Examples: "src/,app/,lib/" boosts code in those directories. Use this to prioritize your main application code over tests, docs, or vendor code. Partial matches work - "api/" matches "src/api/", "backend/api/", etc. Boosts are applied during reranking.',
         [
-          ['Score Boosting', '/docs/RETRIEVAL.md#path-boosting'],
-          ['repos.json Config', '/repos.json'],
-          ['Ranking Logic', '/docs/RETRIEVAL.md#ranking-algorithm']
+          ['Relevance Ranking', 'https://en.wikipedia.org/wiki/Relevance_(information_retrieval)'],
+          ['Query Boosting', 'https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-boosting-query.html'],
+          ['Score Modification', 'https://en.wikipedia.org/wiki/Ranking_(information_retrieval)']
         ],
         [['Affects ranking', 'info']]
       ),
@@ -480,8 +480,8 @@
         'Layer Bonuses',
         'JSON object mapping intent types to architecture layer bonuses for smart routing. Example: {"ui": {"frontend": 0.1, "components": 0.08}, "api": {"routes": 0.1, "controllers": 0.08}}. When users ask UI questions, code in frontend/ gets a +0.1 boost. Advanced feature for multi-tier architectures. Leave empty if not needed.',
         [
-          ['Layer Routing', '/docs/MULTI_REPO.md#layer-bonuses'],
-          ['Intent Detection', '/docs/RETRIEVAL.md#intent-classification'],
+          ['Multitier Architecture', 'https://en.wikipedia.org/wiki/Multitier_architecture'],
+          ['Intent Classification', 'https://en.wikipedia.org/wiki/Intent_classification'],
           ['JSON Format', 'https://www.json.org/json-en.html']
         ],
         [['Advanced', 'warn'], ['Multi-repo only', 'info']]
@@ -492,28 +492,27 @@
         'Golden Questions Path',
         'Filesystem path to your golden questions JSON file (default: golden.json). Golden questions are curated query-answer pairs used to evaluate retrieval quality through automated testing. Format: [{"query": "how does auth work?", "expected_file": "src/auth.py"}]. Used by eval loop to measure metrics like Hit@K, MRR, and precision. Create golden questions from real user queries for best results.',
         [
-          ['Golden Questions Format', '/docs/EVALUATION.md#golden-format'],
-          ['Eval Script Source', '/eval/eval_loop.py'],
-          ['Creating Golden Sets', '/docs/EVALUATION.md#creating-golden-questions'],
-          ['Evaluation Metrics', 'https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval)']
+          ['Evaluation Measures (IR)', 'https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval)'],
+          ['Test Data Sets', 'https://en.wikipedia.org/wiki/Training,_validation,_and_test_data_sets'],
+          ['JSON Format', 'https://www.json.org/json-en.html']
         ]
       ),
       BASELINE_PATH: L(
         'Baseline Path',
         'Directory where evaluation loop saves baseline results for regression testing and A/B comparison. Each eval run\'s metrics (Hit@K, MRR, latency) are stored here with timestamps. Use this to ensure retrieval quality doesn\'t regress after configuration changes, reindexing, or model upgrades. Compare current run against baseline to detect improvements or degradations.',
         [
-          ['Baseline Testing', '/docs/EVALUATION.md#baseline-comparison'],
-          ['Eval Script Source', '/eval/eval_loop.py'],
-          ['Regression Prevention', 'https://en.wikipedia.org/wiki/Software_regression']
+          ['Regression Testing', 'https://en.wikipedia.org/wiki/Regression_testing'],
+          ['A/B Testing', 'https://en.wikipedia.org/wiki/A/B_testing'],
+          ['Software Regression', 'https://en.wikipedia.org/wiki/Software_regression']
         ]
       ),
       EVAL_MULTI: L(
         'Eval Multi‑Query',
         'Enable multi-query expansion during evaluation runs (1=yes, 0=no). When enabled, each golden question is rewritten multiple times (per MQ_REWRITES setting) to test recall under query variation. Turning this on makes eval results match production behavior if you use multi-query in prod, but increases eval runtime. Use 1 to measure realistic performance, 0 for faster eval iterations.',
         [
-          ['Multi-Query RAG', 'https://arxiv.org/abs/2305.14283'],
-          ['Evaluation Setup', '/docs/EVALUATION.md#multi-query'],
-          ['MQ_REWRITES Setting', '/docs/RETRIEVAL.md#multi-query']
+          ['Multi-Query RAG Paper', 'https://arxiv.org/abs/2305.14283'],
+          ['Query Expansion', 'https://en.wikipedia.org/wiki/Query_expansion'],
+          ['Recall (IR)', 'https://en.wikipedia.org/wiki/Precision_and_recall']
         ],
         [['Affects eval time', 'warn']]
       ),
@@ -521,18 +520,18 @@
         'Eval Final‑K',
         'Number of top results to consider when evaluating Hit@K metrics. If set to 10, eval checks if the expected answer appears in the top 10 results. Lower values (5) test precision, higher values (20) test recall. Should match your production FINAL_K setting for realistic evaluation. Common: 5 (strict), 10 (balanced), 20 (lenient).',
         [
-          ['Hit@K Metric', 'https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval)#Precision_at_K'],
-          ['Evaluation Metrics', '/docs/EVALUATION.md#metrics'],
-          ['FINAL_K Setting', '/docs/RETRIEVAL.md#final-k']
+          ['Precision at K', 'https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval)#Precision_at_K'],
+          ['Mean Reciprocal Rank', 'https://en.wikipedia.org/wiki/Mean_reciprocal_rank'],
+          ['Top-K Retrieval', 'https://en.wikipedia.org/wiki/Nearest_neighbor_search#k-nearest_neighbors']
         ]
       ),
       EVAL_SAMPLE_SIZE: L(
         'Sample Size (Quick vs Full)',
         'Limit evaluation to a subset of golden questions for faster iteration and testing. Quick (10): ~1 minute, good for sanity checks. Medium (25): ~2-3 minutes, better coverage. Large (50): ~5 minutes, more representative. Full (all): Run complete eval suite for milestone validation and regression detection. Leave empty or select "Full" to evaluate all questions. Sample evals are perfect for rapid iteration; use full evals before production changes or major updates.',
         [
-          ['Evaluation Best Practices', '/docs/EVALUATION.md#quick-vs-full'],
-          ['Regression Testing', '/docs/EVALUATION.md#baseline-comparison'],
-          ['Evaluation Metrics Guide', '/docs/EVALUATION.md#metrics']
+          ['Sample Size Determination', 'https://en.wikipedia.org/wiki/Sample_size_determination'],
+          ['Statistical Sampling', 'https://en.wikipedia.org/wiki/Sampling_(statistics)'],
+          ['Test Suite', 'https://en.wikipedia.org/wiki/Test_suite']
         ],
         [['Quick testing', 'info'], ['Sample recommended for CI', 'info']]
       ),
@@ -542,9 +541,9 @@
         'agro PATH (legacy)',
         'DEPRECATED: Legacy environment variable for setting the agro repository path. This is repo-specific and only works for a repo named "agro". Modern approach: use REPO_PATH for single repos or configure repos.json for multi-repo setups with proper routing. Kept for backwards compatibility - will be removed in future versions.',
         [
-          ['repos.json Format', '/repos.json'],
-          ['Migration Guide', '/docs/MIGRATION.md#legacy-env-vars'],
-          ['REPO_PATH Setting', '/docs/CONFIGURATION.md#repo-path']
+          ['Deprecation', 'https://en.wikipedia.org/wiki/Deprecation'],
+          ['Environment Variables', 'https://en.wikipedia.org/wiki/Environment_variable'],
+          ['Backward Compatibility', 'https://en.wikipedia.org/wiki/Backward_compatibility']
         ],
         [['Deprecated', 'warn'], ['Use repos.json instead', 'warn']]
       ),
@@ -552,9 +551,9 @@
         'agro Path Boosts (CSV)',
         'DEPRECATED: Legacy comma-separated path boosts for the "agro" repository only (e.g., "app/,lib/,config/"). Repo-specific environment variables like this don\'t scale for multi-repo setups. Modern approach: configure path boosts in repos.json per-repo settings. Kept for backwards compatibility.',
         [
-          ['repos.json Path Boosts', '/repos.json'],
-          ['Migration Guide', '/docs/MIGRATION.md#path-boosts'],
-          ['Modern Path Boosting', '/docs/RETRIEVAL.md#path-boosting']
+          ['CSV Format', 'https://en.wikipedia.org/wiki/Comma-separated_values'],
+          ['Deprecation', 'https://en.wikipedia.org/wiki/Deprecation'],
+          ['Configuration Management', 'https://en.wikipedia.org/wiki/Configuration_management']
         ],
         [['Deprecated', 'warn'], ['Use repos.json instead', 'warn']]
       ),
@@ -563,8 +562,8 @@
         'DEPRECATED: Legacy/internal environment variable for LangChain tracing metadata specific to the "agro" repo. Repo-specific tracing keys don\'t work well with modern LangSmith. Modern approach: use LANGCHAIN_TRACING_V2=true + LANGCHAIN_PROJECT in your environment for proper tracing across all repos.',
         [
           ['LangSmith Tracing', 'https://docs.smith.langchain.com/'],
-          ['LANGCHAIN_TRACING_V2', 'https://docs.smith.langchain.com/tracing/faq#how-do-i-turn-on-tracing'],
-          ['Migration Guide', '/docs/MIGRATION.md#langchain-tracing']
+          ['LangSmith FAQ', 'https://docs.smith.langchain.com/tracing/faq#how-do-i-turn-on-tracing'],
+          ['Deprecation', 'https://en.wikipedia.org/wiki/Deprecation']
         ],
         [['Deprecated', 'warn'], ['Use LANGCHAIN_TRACING_V2', 'warn']]
       ),
