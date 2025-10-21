@@ -10,7 +10,7 @@ services:
       - QDRANT_URL=${QDRANT_URL:-http://qdrant:6333}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - GEN_MODEL=${GEN_MODEL:-qwen3-coder:30b}
+      - GEN_MODEL=${GEN_MODEL}
       - OLLAMA_URL=${OLLAMA_URL:-}
       - OAUTH_ENABLED=${OAUTH_ENABLED:-false}
       - OAUTH_TOKEN=${OAUTH_TOKEN:-}

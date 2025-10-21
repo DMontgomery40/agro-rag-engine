@@ -20,12 +20,15 @@
         ['LangGraph Checkpoints', 'https://langchain-ai.github.io/langgraph/concepts/persistence/'],
         ['Redis Connection URLs', 'https://redis.io/docs/latest/develop/connect/clients/']
       ]),
-      REPO: L('Active Repository', 'Logical repository name for routing and indexing. MCP and CLI use this to scope retrieval. Must match a repository name defined in repos.json for multi-repo setups.', [
-        ['Docs: MCP Quickstart', '/docs/QUICKSTART_MCP.md'],
-        ['repos.json Config', '/repos.json']
+      REPO: L('Active Repository', 'Logical repository name for routing and indexing. MCP and CLI use this to scope retrieval. Must match a repository name defined in repos.json for multi-repo setups. Example: "agro", "myapp", "cli-tool". Used for multi-repo RAG systems where each repo has separate indices, keywords, and path boosts.', [
+        ['Namespace Concept', 'https://en.wikipedia.org/wiki/Namespace'],
+        ['MCP Protocol Spec', 'https://github.com/modelcontextprotocol/specification'],
+        ['LangSmith Context', 'https://www.langchain.com/langsmith']
       ]),
-      COLLECTION_NAME: L('Collection Name', 'Optional override for the Qdrant collection name. Defaults to code_chunks_{REPO}. Set this if you maintain multiple profiles.', [
-        ['Qdrant Docs: Collections', 'https://qdrant.tech/documentation/concepts/collections/']
+      COLLECTION_NAME: L('Collection Name', 'Optional override for the Qdrant collection name where vectors are stored. Defaults to code_chunks_{REPO}. Set this if you maintain multiple profiles, A/B test embedding models, or run parallel indexing. Must be lowercase alphanumeric + underscore. Examples: code_chunks_v2, vectors_staging, embeddings_prod', [
+        ['Qdrant Collections Intro', 'https://qdrant.tech/documentation/concepts/collections/'],
+        ['Create Collections', 'https://qdrant.tech/documentation/concepts/collections/#create-collection'],
+        ['Database Collections', 'https://en.wikipedia.org/wiki/Database_collection']
       ]),
       COLLECTION_SUFFIX: L(
         'Collection Suffix',
@@ -37,38 +40,49 @@
         ],
         [['Experimental', 'warn']]
       ),
-      REPOS_FILE: L('Repos File', 'Path to repos.json that defines repo names, paths, keywords, path boosts, and layer bonuses used for routing.', [
-        ['Local repos.json', '/repos.json']
+      REPOS_FILE: L('Repos File', 'Path to repos.json that defines repo names, paths, keywords, path boosts, and layer bonuses used for multi-repo routing. Each repo entry includes name, path, optional keywords for boosting, path_boosts for directory-specific relevance, and layer_bonuses for hierarchical retrieval.', [
+        ['JSON Format Reference', 'https://www.json.org/json-en.html'],
+        ['Configuration Management', 'https://github.com/topics/configuration-management'],
+        ['Config File Concepts', 'https://en.wikipedia.org/wiki/Configuration_file']
       ]),
       REPO_PATH: L(
         'Repo Path (fallback)',
-        'Absolute filesystem path to the active repository when repos.json is not configured. This is the directory that will be indexed for code retrieval. Use repos.json instead for multi-repo setups with routing, keywords, and path boosts. Example: /Users/you/projects/myapp',
+        'Absolute filesystem path to the active repository when repos.json is not configured. This is the directory that will be indexed for code retrieval. Use repos.json instead for multi-repo setups with routing, keywords, and path boosts. Example: /Users/you/projects/myapp or /home/user/code/myrepo',
         [
-          ['repos.json Format', '/repos.json'],
-          ['Main README', '/README.md'],
+          ['Path Patterns', 'https://github.com/github/gitignore'],
+          ['Python pathlib Module', 'https://docs.python.org/3/library/pathlib.html'],
           ['File System Paths', 'https://en.wikipedia.org/wiki/Path_(computing)']
         ]
       ),
-      OUT_DIR_BASE: L('Out Dir Base', 'Where retrieval looks for indices (chunks.jsonl, bm25_index/). Use ./out.noindex-shared for one index across branches so MCP and local tools stay in sync. Symptom of mismatch: rag_search returns 0 results.', [
-        ['Main README', '/README.md']
+      OUT_DIR_BASE: L('Out Dir Base', 'Where retrieval looks for indices (chunks.jsonl, bm25_index/). Use ./out.noindex-shared for one index across branches so MCP and local tools stay in sync. Stores dense vectors (Qdrant), sparse BM25 index, and indexed chunks. Symptom of mismatch: rag_search returns 0 results.', [
+        ['Directory Concepts', 'https://en.wikipedia.org/wiki/Directory_(computing)'],
+        ['MCP Protocol Spec', 'https://github.com/modelcontextprotocol/specification'],
+        ['Storage Management', 'https://qdrant.tech/documentation/concepts/storage/']
       ], [['Requires restart (MCP)','info']]),
       RAG_OUT_BASE: L(
         'RAG Out Base',
-        'Optional override for OUT_DIR_BASE setting. Advanced users can set this to use a different output directory for specific retrieval operations while keeping OUT_DIR_BASE for indexing. Most users should leave this empty and only configure OUT_DIR_BASE. Used internally by loader modules.',
+        'Optional override for OUT_DIR_BASE for retrieval-specific output directory. Advanced users can use this to separate indexing output from retrieval search indices while keeping OUT_DIR_BASE for main indexing. Most users should leave empty—use OUT_DIR_BASE only. Primarily for multi-environment setups needing separate retrieval and indexing directories.',
         [
-          ['Main README', '/README.md'],
-          ['Settings UI Guide', '/docs/SETTINGS_UI_PROMPT.md']
+          ['Configuration Management', 'https://12factor.net/config'],
+          ['Storage Concepts', 'https://qdrant.tech/documentation/concepts/storage/'],
+          ['BM25 Index Storage', 'https://github.com/BM25S/bm25s']
         ],
         [['Advanced', 'warn']]
       ),
-      MCP_HTTP_HOST: L('MCP HTTP Host', 'Bind address for the HTTP MCP server (fast transport). Use 0.0.0.0 to listen on all interfaces.', [
-        ['Docs: Remote MCP', '/docs/REMOTE_MCP.md']
+      MCP_HTTP_HOST: L('MCP HTTP Host', 'Bind address for the HTTP MCP server (fast transport). Use 0.0.0.0 to listen on all interfaces, 127.0.0.1 for localhost only, or a specific IP like 192.168.1.100 for LAN access. MCP (Model Context Protocol) enables fast communication between clients and the RAG engine.', [
+        ['HTTP Host Header Reference', 'https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Host'],
+        ['Localhost Concept', 'https://en.wikipedia.org/wiki/Localhost'],
+        ['MCP Specification', 'https://github.com/modelcontextprotocol/specification']
       ]),
-      MCP_HTTP_PORT: L('MCP HTTP Port', 'TCP port for HTTP MCP server (default 8013).', [
-        ['Docs: Remote MCP', '/docs/REMOTE_MCP.md']
+      MCP_HTTP_PORT: L('MCP HTTP Port', 'TCP port for HTTP MCP server (default 8013). Must not conflict with other services. Use ports 1024+ without special permissions. MCP enables fast, stateless communication for multi-client scenarios.', [
+        ['Port Numbers', 'https://en.wikipedia.org/wiki/List_of_TCP_and_UDP_port_numbers'],
+        ['HTTP Basics', 'https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP'],
+        ['MCP Specification', 'https://github.com/modelcontextprotocol/specification']
       ]),
-      MCP_HTTP_PATH: L('MCP HTTP Path', 'URL path for the HTTP MCP endpoint (default /mcp).', [
-        ['Docs: Remote MCP', '/docs/REMOTE_MCP.md']
+      MCP_HTTP_PATH: L('MCP HTTP Path', 'URL path for the HTTP MCP endpoint (default /mcp). Example: http://localhost:8013/mcp. Customize for reverse proxies or routing needs. Must match client configuration if changed.', [
+        ['URL Structure', 'https://developer.mozilla.org/en-US/docs/Learn/Common_questions/Web_mechanics/What_is_a_URL'],
+        ['URI Standard', 'https://en.wikipedia.org/wiki/Uniform_Resource_Identifier'],
+        ['MCP Specification', 'https://github.com/modelcontextprotocol/specification']
       ]),
 
       // Models / Providers
@@ -76,8 +90,10 @@
         ['OpenAI Models', 'https://platform.openai.com/docs/models'],
         ['Ollama API (GitHub)', 'https://github.com/ollama/ollama/blob/main/docs/api.md']
       ], [['Affects latency','info']]),
-      OLLAMA_URL: L('Ollama URL', 'Local inference endpoint for Ollama (e.g., http://127.0.0.1:11434/api). Used when GEN_MODEL targets a local model.', [
-        ['Ollama API (GitHub)', 'https://github.com/ollama/ollama/blob/main/docs/api.md']
+      OLLAMA_URL: L('Ollama URL', 'Local inference endpoint for Ollama running on your machine (e.g., http://127.0.0.1:11434/api). Used when GEN_MODEL targets a local model like llama2, mistral, qwen, or neural-chat. Requires Ollama installed and running: ollama serve', [
+        ['Ollama REST API', 'https://github.com/ollama/ollama/blob/main/docs/api.md'],
+        ['Ollama Docker Setup', 'https://ollama.com/blog/ollama-is-now-available-as-an-official-docker-image'],
+        ['Ollama Model Library', 'https://ollama.com/library']
       ]),
       OPENAI_API_KEY: L('OpenAI API Key', 'API key used for OpenAI-based embeddings and/or generation.', [
         ['OpenAI: API Keys', 'https://platform.openai.com/docs/quickstart/step-2-set-up-your-api-key'],

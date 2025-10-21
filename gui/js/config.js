@@ -140,6 +140,9 @@
             window.updateWizardSummary();
         }
 
+        // Populate MCP model datalists
+        populateMCPModelLists();
+
         // Populate repos metadata editor
         const reposSection = $('#repos-section');
         if (reposSection) {
@@ -624,6 +627,105 @@
         }
     }
 
+    /**
+     * Populate MCP and model dropdowns from prices.json
+     */
+    async function populateMCPModelLists() {
+        try {
+            // Load prices from API
+            const response = await fetch(api('/api/prices'));
+            if (!response.ok) throw new Error('Failed to load prices');
+            const data = await response.json();
+            
+            if (!data.models || !Array.isArray(data.models)) {
+                console.warn('No models found in prices data');
+                return;
+            }
+
+            // Get all unique model names for generation models
+            const generationModels = data.models
+                .filter(m => m.input_per_1k !== undefined || m.provider === 'ollama' || m.provider === 'local')
+                .map(m => m.model)
+                .filter((model, index, arr) => arr.indexOf(model) === index) // Remove duplicates
+                .sort();
+
+            // Populate all generation model select dropdowns
+            const selectIds = [
+                'gen-model-select',
+                'http-model-select', 
+                'mcp-model-select',
+                'cli-model-select',
+                'enrich-model-select',
+                'enrich-model-ollama-select',
+                'http-override-model-select',
+                'mcp-override-model-select',
+                'cli-override-model-select'
+            ];
+
+            // Establish preferred selections from env (preserve current selection if present)
+            const env = (state && state.config && state.config.env) ? state.config.env : {};
+            const preferredById = {
+                'gen-model-select': env.GEN_MODEL,
+                'http-model-select': env.GEN_MODEL_HTTP,
+                'mcp-model-select': env.GEN_MODEL_MCP,
+                'cli-model-select': env.GEN_MODEL_CLI,
+                'enrich-model-select': env.ENRICH_MODEL,
+                'enrich-model-ollama-select': env.ENRICH_MODEL_OLLAMA,
+                'http-override-model-select': env.GEN_MODEL_HTTP,
+                'mcp-override-model-select': env.GEN_MODEL_MCP,
+                'cli-override-model-select': env.GEN_MODEL_CLI,
+            };
+
+            selectIds.forEach(selectId => {
+                const select = document.getElementById(selectId);
+                if (select) {
+                    // Remember current selection before repopulating
+                    const currentValue = select.value;
+                    // Clear existing options except the first one
+                    const firstOption = select.querySelector('option');
+                    select.innerHTML = '';
+                    if (firstOption) {
+                        select.appendChild(firstOption);
+                    } else {
+                        const defaultOption = document.createElement('option');
+                        defaultOption.value = '';
+                        defaultOption.textContent = 'Select a model...';
+                        select.appendChild(defaultOption);
+                    }
+                    
+                    generationModels.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model;
+                        option.textContent = model;
+                        select.appendChild(option);
+                    });
+                    // Restore selection preference: current UI value, then env, else leave default
+                    const preferred = currentValue || preferredById[selectId] || '';
+                    if (preferred && Array.from(select.options).some(o => o.value === preferred)) {
+                        select.value = preferred;
+                    }
+                    console.log(`Populated ${selectId} with ${generationModels.length} models`);
+                }
+            });
+
+            // Populate backend options
+            const backendSelect = document.getElementById('enrich-backend-select');
+            if (backendSelect) {
+                const backends = ['openai', 'anthropic', 'google', 'cohere', 'ollama', 'local'];
+                backends.forEach(backend => {
+                    const option = document.createElement('option');
+                    option.value = backend;
+                    option.textContent = backend.charAt(0).toUpperCase() + backend.slice(1);
+                    backendSelect.appendChild(option);
+                });
+                console.log(`Populated enrich-backend-select with ${backends.length} backends`);
+            }
+
+        } catch (error) {
+            console.error('Failed to populate MCP model lists:', error);
+        }
+    }
+
     // Export to window
     window.Config = {
         loadConfig,
@@ -631,7 +733,8 @@
         gatherConfigForm,
         saveConfig,
         initConfigRetrieval,
-        initProfilesUI
+        initProfilesUI,
+        populateMCPModelLists
     };
 
     console.log('[config.js] Module loaded with dual registration (rag-retrieval + profiles)');

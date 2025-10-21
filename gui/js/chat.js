@@ -658,8 +658,22 @@ function initChatUI() {
         resetSettingsBtn.addEventListener('click', resetChatSettings);
     }
 
-    // Apply loaded settings on page load
-    applyChatSettings();
+    // Populate chat model dropdown from pricing
+    (async function populateChatModels(){
+        try{
+            const sel = document.getElementById('chat-model');
+            if (!sel || sel.tagName !== 'SELECT') { applyChatSettings(); return; }
+            const r = await fetch((window.CoreUtils?.api||((p)=>p))('/api/prices'));
+            if (!r.ok) { applyChatSettings(); return; }
+            const data = await r.json();
+            const models = Array.isArray(data?.models) ? data.models.map(m=>m.model) : [];
+            const seen = new Set();
+            models.filter(m=>m && !seen.has(m) && seen.add(m)).sort().forEach(m=>{
+                const o = document.createElement('option'); o.value=m; o.textContent=m; sel.appendChild(o);
+            });
+        }catch(_e){/* ignore */}
+        finally{ applyChatSettings(); }
+    })();
 
     // Load chat history if enabled
     loadChatHistory();

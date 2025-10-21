@@ -2904,8 +2904,9 @@
                         <div class="input-row">
                             <div class="input-group">
                                 <label>Primary Model (GEN_MODEL)</label>
-                                <input type="text" name="GEN_MODEL" placeholder="gpt-4o-mini or qwen3-coder:30b" list="gen-model-list">
-                                <datalist id="gen-model-list"></datalist>
+                                <select name="GEN_MODEL" id="gen-model-select">
+                                    <option value="">Select a model...</option>
+                                </select>
                             </div>
                             <div class="input-group">
                                 <label>OpenAI API Key</label>
@@ -2928,13 +2929,17 @@
                             </div>
                         </div>
                         <div class="input-row">
-                            <div class="input-group">
-                                <label>Enrich Model (ENRICH_MODEL)</label>
-                                <input type="text" name="ENRICH_MODEL" placeholder="gpt-4o-mini">
-                            </div>
+                        <div class="input-group">
+                            <label>Enrich Model (ENRICH_MODEL)</label>
+                            <select name="ENRICH_MODEL" id="enrich-model-select">
+                                <option value="">Select a model...</option>
+                            </select>
+                        </div>
                             <div class="input-group">
                                 <label>Enrich Model (Ollama)</label>
-                                <input type="text" name="ENRICH_MODEL_OLLAMA" placeholder="qwen3-coder:30b">
+                                <select name="ENRICH_MODEL_OLLAMA" id="enrich-model-ollama-select">
+                                    <option value="">Select a model...</option>
+                                </select>
                             </div>
                         </div>
                         <div class="input-row">
@@ -2960,25 +2965,35 @@
                         <div class="input-row">
                             <div class="input-group">
                                 <label>HTTP Override Model</label>
-                                <input type="text" name="GEN_MODEL_HTTP">
+                                <select name="GEN_MODEL_HTTP" id="http-override-model-select">
+                                    <option value="">Select a model...</option>
+                                </select>
                             </div>
                             <div class="input-group">
                                 <label>MCP Override Model</label>
-                                <input type="text" name="GEN_MODEL_MCP">
+                                <select name="GEN_MODEL_MCP" id="mcp-override-model-select">
+                                    <option value="">Select a model...</option>
+                                </select>
                             </div>
                         </div>
                         <div class="input-row">
                             <div class="input-group">
                                 <label>CLI Override Model</label>
-                                <input type="text" name="GEN_MODEL_CLI">
+                                <select name="GEN_MODEL_CLI" id="cli-override-model-select">
+                                    <option value="">Select a model...</option>
+                                </select>
                             </div>
                             <div class="input-group">
                                 <label>Enrich Backend</label>
-                                <select name="ENRICH_BACKEND">
+                                <select name="ENRICH_BACKEND" id="enrich-backend-select">
                                     <option value="">Default</option>
                                     <option value="openai">OpenAI</option>
-                                    <option value="mlx">MLX (Apple)</option>
+                                    <option value="anthropic">Anthropic</option>
+                                    <option value="google">Google</option>
+                                    <option value="cohere">Cohere</option>
                                     <option value="ollama">Ollama</option>
+                                    <option value="local">Local</option>
+                                    <option value="mlx">MLX (Apple)</option>
                                 </select>
                             </div>
                         </div>
@@ -4837,17 +4852,23 @@
                     <div class="input-row">
                         <div class="input-group">
                             <label>HTTP Responses Model</label>
-                            <input type="text" name="GEN_MODEL_HTTP" placeholder="override HTTP model">
+                            <select name="GEN_MODEL_HTTP" id="http-model-select">
+                                <option value="">Select a model...</option>
+                            </select>
                         </div>
                         <div class="input-group">
                             <label>MCP stdio Model</label>
-                            <input type="text" name="GEN_MODEL_MCP" placeholder="override MCP model">
+                            <select name="GEN_MODEL_MCP" id="mcp-model-select">
+                                <option value="">Select a model...</option>
+                            </select>
                         </div>
                     </div>
                     <div class="input-row">
                         <div class="input-group">
                             <label>CLI Chat Model</label>
-                            <input type="text" name="GEN_MODEL_CLI" placeholder="override CLI model">
+                            <select name="GEN_MODEL_CLI" id="cli-model-select">
+                                <option value="">Select a model...</option>
+                            </select>
                         </div>
                         <div class="input-group">
                             <label>MCP HTTP (host/port/path)</label>
@@ -5462,7 +5483,9 @@
                                     </div>
                                 </span>
                             </label>
-                            <input type="text" id="chat-model" placeholder="e.g., gpt-4o-mini (leave empty for default)">
+                            <select id="chat-model">
+                                <option value="">Use default (GEN_MODEL)</option>
+                            </select>
                         </div>
                         <div class="input-group">
                             <label>
