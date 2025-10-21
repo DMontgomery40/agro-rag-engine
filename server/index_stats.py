@@ -92,13 +92,17 @@ def get_index_stats() -> Dict[str, Any]:
     # Current repo + branch
     try:
         repo = os.getenv("REPO", "agro")
-        branch_result = subprocess.run(["git", "branch", "--show-current"], capture_output=True, text=True, cwd=str(repo_root()))
-        branch = branch_result.stdout.strip() if branch_result.returncode == 0 else "unknown"
+        # Try env var first (for Docker containers where git isn't available)
+        branch = os.getenv("GIT_BRANCH", "").strip()
+        if not branch:
+            # Fallback to git command (for local development)
+            branch_result = subprocess.run(["git", "branch", "--show-current"], capture_output=True, text=True, cwd=str(repo_root()))
+            branch = branch_result.stdout.strip() if branch_result.returncode == 0 else "unknown"
         stats["current_repo"] = repo
-        stats["current_branch"] = branch
+        stats["current_branch"] = branch if branch else "unknown"
     except Exception:
         stats["current_repo"] = os.getenv("REPO", "agro")
-        stats["current_branch"] = "unknown"
+        stats["current_branch"] = os.getenv("GIT_BRANCH", "unknown")
 
     total_chunks = 0
 

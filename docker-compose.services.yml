@@ -19,6 +19,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
+      - ./.env:/app/.env
       - ./out:/app/out
       - ./data:/app/data
       - ./gui:/app/gui

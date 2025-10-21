@@ -5,8 +5,27 @@ from pathlib import Path
 try:
     from langtrace_python_sdk import langtrace
     LANGTRACE_KEY = os.getenv('LANGTRACE_API_KEY', '0b20be5d3e82b7c514cd1bea1fa583f92683e55ebe895452ece7d9261d4412d2')
-    langtrace.init(api_key=LANGTRACE_KEY)
-    print("✅ LangTrace initialized in FastAPI server")
+    LANGTRACE_HOST = os.getenv('LANGTRACE_API_HOST')
+    LANGTRACE_PROJECT_ID = os.getenv('LANGTRACE_PROJECT_ID')
+
+    # Build initialization parameters
+    init_params = {'api_key': LANGTRACE_KEY}
+
+    if LANGTRACE_HOST:
+        init_params['api_host'] = LANGTRACE_HOST
+
+    # Add project_id as header if provided (for multi-project scenarios)
+    if LANGTRACE_PROJECT_ID:
+        init_params['headers'] = {'x-project-id': LANGTRACE_PROJECT_ID}
+
+    langtrace.init(**init_params)
+
+    msg_parts = ["✅ LangTrace initialized"]
+    if LANGTRACE_HOST:
+        msg_parts.append(f"host={LANGTRACE_HOST}")
+    if LANGTRACE_PROJECT_ID:
+        msg_parts.append(f"project_id={LANGTRACE_PROJECT_ID}")
+    print(" | ".join(msg_parts))
 except Exception as e:
     print(f"⚠️ LangTrace init failed: {e}")
 
@@ -546,7 +565,7 @@ def chat(req: ChatRequest, request: Request) -> Dict[str, Any]:
 def search(
     q: str = Query(..., description="Question"),
     repo: Optional[str] = Query(None, description="Repository override: agro|agro"),
-    top_k: int = Query(10, description="Number of results to return"),
+    top_k: Optional[int] = Query(None, description="Number of results to return (defaults to FINAL_K env var)"),
     response: Response = None,
     request: Request = None,
 ):
@@ -556,6 +575,10 @@ def search(
     """
     import time
     start_time = time.time()
+
+    # Use FINAL_K env var as default if top_k not provided
+    if top_k is None:
+        top_k = int(os.getenv('FINAL_K', '10'))
 
     # Track retrieval stage
     with stage("retrieve"):
@@ -790,9 +813,22 @@ def get_config() -> Dict[str, Any]:
     cfg = load_repos()
     # return a broad env snapshot for the GUI; rely on client to pick what it needs
     env: Dict[str, Any] = {}
+
+    # List of secret fields that should be masked in API responses
+    SECRET_FIELDS = {
+        'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GOOGLE_API_KEY',
+        'COHERE_API_KEY', 'VOYAGE_API_KEY', 'LANGSMITH_API_KEY',
+        'LANGCHAIN_API_KEY', 'LANGTRACE_API_KEY', 'NETLIFY_API_KEY',
+        'OAUTH_TOKEN', 'GRAFANA_API_KEY'
+    }
+
     for k, v in os.environ.items():
-        # keep it simple; include strings only
-        env[k] = v
+        # Mask secret fields for security
+        if k in SECRET_FIELDS and v:
+            env[k] = '••••••••••••••••'  # Return mask indicator
+        else:
+            env[k] = v
+
     repos = cfg.get("repos", [])
     return {
         "env": env,

@@ -3775,6 +3775,19 @@
 
                 <!-- RAG Subtab: Indexing -->
                 <div id="tab-rag-indexing" class="rag-subtab-content">
+                    <!-- Current Repo Display -->
+                    <div style="background: var(--bg-elev1); border: 2px solid var(--ok); border-radius: 8px; padding: 16px 24px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span style="color: var(--fg-muted); font-size: 13px; font-family: 'SF Mono', monospace; text-transform: uppercase; letter-spacing: 0.5px;">Current Repo:</span>
+                            <select id="indexing-repo-selector" style="background: var(--ok); color: #000; border: none; padding: 6px 12px; border-radius: 4px; font-size: 14px; font-weight: 700; font-family: 'SF Mono', monospace; cursor: pointer;">
+                                <option value="">Loading...</option>
+                            </select>
+                        </div>
+                        <div style="color: var(--fg-muted); font-size: 11px; font-family: 'SF Mono', monospace;">
+                            <span style="color: var(--fg-muted);">Branch:</span> <span id="indexing-branch-display" style="color: var(--link); font-weight: 600;">—</span>
+                        </div>
+                    </div>
+
                     <!-- ONE SIMPLE INDEX BUTTON -->
                     <div class="settings-section" style="border-left: 3px solid var(--ok); padding: 32px;">
                         <h2 style="margin: 0 0 24px 0; font-size: 24px; font-weight: 700;">

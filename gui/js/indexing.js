@@ -164,7 +164,23 @@
         const skipDenseSelect = $('#index-skip-dense');
         const enrichSelect = $('#index-enrich-chunks');
 
-        const repo = repoSelect ? repoSelect.value : null;
+        // Try to get repo from dropdown, or fall back to config default
+        let repo = repoSelect ? repoSelect.value : null;
+
+        if (!repo || repo === '') {
+            // Fallback to default repo from config or env
+            const config = state.config;
+            if (config && config.env && config.env.REPO) {
+                repo = config.env.REPO;
+                console.log('[indexing] Using default repo from config:', repo);
+            } else if (config && config.default_repo) {
+                repo = config.default_repo;
+                console.log('[indexing] Using default_repo from config:', repo);
+            } else {
+                repo = 'agro'; // Final fallback
+                console.log('[indexing] Using hardcoded fallback repo: agro');
+            }
+        }
 
         if (!repo) {
             if (window.showStatus) {
@@ -388,6 +404,86 @@
     }
 
     /**
+     * Populate indexing repo selector (current repo display)
+     */
+    function populateIndexingRepoSelector() {
+        const select = $('#indexing-repo-selector');
+        if (!select) return;
+
+        const config = state.config;
+        if (!config || !config.repos) {
+            console.warn('[indexing] No config or repos available for indexing repo selector');
+            return;
+        }
+
+        // Clear existing options
+        select.innerHTML = '';
+
+        // Add repos
+        config.repos.forEach((repo) => {
+            const opt = document.createElement('option');
+            opt.value = repo.name;
+            opt.textContent = repo.name;
+            select.appendChild(opt);
+        });
+
+        // Set current repo
+        const currentRepo = config.env && config.env.REPO ? config.env.REPO : config.default_repo || (config.repos[0] && config.repos[0].name);
+        if (currentRepo) {
+            select.value = currentRepo;
+        }
+
+        console.log('[indexing] Populated indexing repo selector with', config.repos.length, 'repos');
+    }
+
+    /**
+     * Update branch display
+     */
+    async function updateBranchDisplay() {
+        const branchDisplay = $('#indexing-branch-display');
+        if (!branchDisplay) return;
+
+        try {
+            const response = await fetch(api('/api/index/stats'));
+            const stats = await response.json();
+
+            if (stats.current_branch) {
+                branchDisplay.textContent = stats.current_branch;
+                branchDisplay.style.color = 'var(--link)';
+            }
+        } catch (e) {
+            console.error('[indexing] Failed to load branch:', e);
+            branchDisplay.textContent = 'unknown';
+            branchDisplay.style.color = 'var(--err)';
+        }
+    }
+
+    /**
+     * Handle repo selector change
+     */
+    function handleRepoSelectorChange() {
+        const selector = $('#indexing-repo-selector');
+        if (!selector) return;
+
+        const newRepo = selector.value;
+        console.log('[indexing] Repo changed to:', newRepo);
+
+        // Sync with other dropdowns
+        const simpleSelect = $('#simple-repo-select');
+        const advancedSelect = $('#index-repo-select');
+
+        if (simpleSelect && simpleSelect.value !== newRepo) {
+            simpleSelect.value = newRepo;
+        }
+        if (advancedSelect && advancedSelect.value !== newRepo) {
+            advancedSelect.value = newRepo;
+        }
+
+        // TODO: Update .env file via backend endpoint if needed
+        // For now, just update the UI
+    }
+
+    /**
      * Initialize indexing UI
      */
     function initIndexing() {
@@ -397,12 +493,16 @@
             window.Config.loadConfig = async function() {
                 await originalLoadConfig.call(window.Config);
                 populateIndexRepoDropdown();
+                populateIndexingRepoSelector();
+                updateBranchDisplay();
             };
         }
 
         // Try to populate immediately if config already loaded
         if (state.config) {
             populateIndexRepoDropdown();
+            populateIndexingRepoSelector();
+            updateBranchDisplay();
         }
 
         // Fallback: fetch config directly if dropdown is still empty after a delay
@@ -437,11 +537,13 @@
         const startBtn = $('#btn-index-start');
         const stopBtn = $('#btn-index-stop');
         const dashStartBtn = $('#dash-index-start');
-        
+        const repoSelector = $('#indexing-repo-selector');
+
         if (refreshBtn) refreshBtn.addEventListener('click', refreshIndexStats);
         if (startBtn) startBtn.addEventListener('click', startIndexing);
         if (stopBtn) stopBtn.addEventListener('click', stopIndexing);
         if (dashStartBtn) dashStartBtn.addEventListener('click', startIndexing);
+        if (repoSelector) repoSelector.addEventListener('change', handleRepoSelectorChange);
 
         // Initial stats load
         refreshIndexStats();

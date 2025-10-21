@@ -163,6 +163,24 @@
                 }
             });
         }
+
+        // Open latest trace in LangSmith
+        const langsmithBtn = document.getElementById('btn-trace-open-ls');
+        if (langsmithBtn) {
+            langsmithBtn.addEventListener('click', async () => {
+                try {
+                    const resp = await fetch('/api/langsmith/latest');
+                    const data = await resp.json();
+                    if (data.url) {
+                        window.open(data.url, '_blank');
+                    } else {
+                        alert('No LangSmith trace URL available. Error: ' + (data.error || 'unknown'));
+                    }
+                } catch (e) {
+                    alert('Failed to get LangSmith URL: ' + e.message);
+                }
+            });
+        }
     }
 
     /**
