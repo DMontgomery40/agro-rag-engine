@@ -48,7 +48,7 @@ categories:
   generation:
     - key: GEN_MODEL
       type: string
-      default: gpt-4o-mini (or qwen3-coder:30b in docs/docker)
+      default: gpt-4o-mini (or llama3.2:3b in docs/docker)
       description: Primary text generation model (Responses API or local)
       notes: Overrides ENRICH_MODEL if set
     - key: GEN_MODEL_HTTP
@@ -407,7 +407,7 @@ categories:
       description: Optional tracing agro name
     - key: ENRICH_MODEL_OLLAMA
       type: string
-      default: qwen3-coder:30b
+      default: llama3.2:3b
       description: Ollama model for metadata_enricher when ENRICH_BACKEND=ollama
 
 performance_notes:

@@ -1,0 +1,254 @@
+[
+  {
+    "embedding_type": "local",
+    "model_name": "BAAI/bge-small-en-v1.5",
+    "dimensions": null,
+    "avg_time_ms": 376.70741081237793,
+    "embeddings_generated": 5,
+    "error": null,
+    "sample_embedding_dim": 384,
+    "embeddings": [
+      {
+        "query": "How does authentication work in this codebase?",
+        "embedding_dim": 384,
+        "time_ms": 1816.2150382995605,
+        "first_values": [
+          -0.04574675112962723,
+          -0.027116088196635246,
+          -0.08115047216415405
+        ]
+      },
+      {
+        "query": "Where is the database connection configured?",
+        "embedding_dim": 384,
+        "time_ms": 21.399974822998047,
+        "first_values": [
+          -0.023203058168292046,
+          -0.06637577712535858,
+          0.0037934251595288515
+        ]
+      },
+      {
+        "query": "What are the main API endpoints?",
+        "embedding_dim": 384,
+        "time_ms": 20.216941833496094,
+        "first_values": [
+          -0.05351686105132103,
+          -0.044544171541929245,
+          0.01673484407365322
+        ]
+      },
+      {
+        "query": "How to handle errors in the application?",
+        "embedding_dim": 384,
+        "time_ms": 8.491039276123047,
+        "first_values": [
+          -0.05334722623229027,
+          0.008277708664536476,
+          0.043728891760110855
+        ]
+      },
+      {
+        "query": "Performance optimization techniques used",
+        "embedding_dim": 384,
+        "time_ms": 17.192840576171875,
+        "first_values": [
+          -0.07367611676454544,
+          0.03730113059282303,
+          0.052648745477199554
+        ]
+      }
+    ],
+    "config_name": "BGE-Small",
+    "expected_dim": 384
+  },
+  {
+    "embedding_type": "local",
+    "model_name": "BAAI/bge-large-en-v1.5",
+    "dimensions": null,
+    "avg_time_ms": 17.21062660217285,
+    "embeddings_generated": 5,
+    "error": null,
+    "sample_embedding_dim": 384,
+    "embeddings": [
+      {
+        "query": "How does authentication work in this codebase?",
+        "embedding_dim": 384,
+        "time_ms": 43.222904205322266,
+        "first_values": [
+          -0.04574675112962723,
+          -0.027116088196635246,
+          -0.08115047216415405
+        ]
+      },
+      {
+        "query": "Where is the database connection configured?",
+        "embedding_dim": 384,
+        "time_ms": 10.181903839111328,
+        "first_values": [
+          -0.023203058168292046,
+          -0.06637577712535858,
+          0.0037934251595288515
+        ]
+      },
+      {
+        "query": "What are the main API endpoints?",
+        "embedding_dim": 384,
+        "time_ms": 15.136003494262695,
+        "first_values": [
+          -0.05351686105132103,
+          -0.044544171541929245,
+          0.01673484407365322
+        ]
+      },
+      {
+        "query": "How to handle errors in the application?",
+        "embedding_dim": 384,
+        "time_ms": 8.867740631103516,
+        "first_values": [
+          -0.05334722623229027,
+          0.008277708664536476,
+          0.043728891760110855
+        ]
+      },
+      {
+        "query": "Performance optimization techniques used",
+        "embedding_dim": 384,
+        "time_ms": 8.624076843261719,
+        "first_values": [
+          -0.07367611676454544,
+          0.03730113059282303,
+          0.052648745477199554
+        ]
+      }
+    ],
+    "config_name": "BGE-Large",
+    "expected_dim": 1024
+  },
+  {
+    "embedding_type": "mxbai",
+    "model_name": null,
+    "dimensions": null,
+    "avg_time_ms": 371.76036834716797,
+    "embeddings_generated": 5,
+    "error": null,
+    "sample_embedding_dim": 512,
+    "embeddings": [
+      {
+        "query": "How does authentication work in this codebase?",
+        "embedding_dim": 512,
+        "time_ms": 1767.1141624450684,
+        "first_values": [
+          0.01109204813838005,
+          -0.0005973095539957285,
+          -0.000819535693153739
+        ]
+      },
+      {
+        "query": "Where is the database connection configured?",
+        "embedding_dim": 512,
+        "time_ms": 25.864839553833008,
+        "first_values": [
+          -0.028993625193834305,
+          -0.016456399112939835,
+          -0.007619861047714949
+        ]
+      },
+      {
+        "query": "What are the main API endpoints?",
+        "embedding_dim": 512,
+        "time_ms": 21.65699005126953,
+        "first_values": [
+          -0.016147619113326073,
+          0.01686089113354683,
+          -0.04207964986562729
+        ]
+      },
+      {
+        "query": "How to handle errors in the application?",
+        "embedding_dim": 512,
+        "time_ms": 11.973857879638672,
+        "first_values": [
+          -0.025169329717755318,
+          -0.05063852667808533,
+          0.007655693218111992
+        ]
+      },
+      {
+        "query": "Performance optimization techniques used",
+        "embedding_dim": 512,
+        "time_ms": 32.1810245513916,
+        "first_values": [
+          0.010176838375627995,
+          0.032020650804042816,
+          0.01752607524394989
+        ]
+      }
+    ],
+    "config_name": "MXBAI-512",
+    "expected_dim": 512
+  },
+  {
+    "embedding_type": "mxbai",
+    "model_name": null,
+    "dimensions": null,
+    "avg_time_ms": 28.11880111694336,
+    "embeddings_generated": 5,
+    "error": null,
+    "sample_embedding_dim": 1024,
+    "embeddings": [
+      {
+        "query": "How does authentication work in this codebase?",
+        "embedding_dim": 1024,
+        "time_ms": 73.9891529083252,
+        "first_values": [
+          0.01109204813838005,
+          -0.0005973095539957285,
+          -0.000819535693153739
+        ]
+      },
+      {
+        "query": "Where is the database connection configured?",
+        "embedding_dim": 1024,
+        "time_ms": 16.50714874267578,
+        "first_values": [
+          -0.028993625193834305,
+          -0.016456399112939835,
+          -0.007619861047714949
+        ]
+      },
+      {
+        "query": "What are the main API endpoints?",
+        "embedding_dim": 1024,
+        "time_ms": 14.497041702270508,
+        "first_values": [
+          -0.016147619113326073,
+          0.01686089113354683,
+          -0.04207964986562729
+        ]
+      },
+      {
+        "query": "How to handle errors in the application?",
+        "embedding_dim": 1024,
+        "time_ms": 13.96489143371582,
+        "first_values": [
+          -0.025169329717755318,
+          -0.05063852667808533,
+          0.007655693218111992
+        ]
+      },
+      {
+        "query": "Performance optimization techniques used",
+        "embedding_dim": 1024,
+        "time_ms": 21.625280380249023,
+        "first_values": [
+          0.010176838375627995,
+          0.032020650804042816,
+          0.01752607524394989
+        ]
+      }
+    ],
+    "config_name": "MXBAI-1024",
+    "expected_dim": 1024
+  }
+]

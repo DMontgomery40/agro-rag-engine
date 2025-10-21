@@ -1098,11 +1098,13 @@
             }
 
             .content {
+                grid-column: 1; /* Reset to column 1 for single-column mobile layout */
                 border-right: none;
             }
 
             /* Sidepanel: stacked below */
             .sidepanel {
+                grid-column: 1; /* Reset to column 1 for single-column mobile layout */
                 border-top: 1px solid var(--line);
                 max-height: 60vh;
             }

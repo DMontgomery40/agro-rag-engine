@@ -42,12 +42,14 @@ def reranker_available_options():
             "backend": "cohere"
         })
 
-    # Always include a "no reranking" option for baseline comparison
-    options.append({
-        "id": "none",
-        "label": "📊 No Reranking (Baseline)",
-        "description": "Use raw retrieval scores without reranking",
-        "backend": "none"
-    })
+    # Only include "no reranking" if user has multiple rerankers (for comparison)
+    # If they only have one, don't confuse them with a "none" option
+    if len(options) > 1:
+        options.append({
+            "id": "none",
+            "label": "🚫 None (Skip Reranking)",
+            "description": "Evaluate without reranking - raw retrieval scores only",
+            "backend": "none"
+        })
 
     return {"options": options, "count": len(options)}

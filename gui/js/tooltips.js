@@ -621,6 +621,37 @@
       const label = parent.querySelector('label');
       if (!label) return;
       if (label.querySelector('.help-icon')) return;
+      
+      // Skip labels that are part of toggle controls - they have special structure
+      if (label.classList.contains('toggle')) {
+        // For toggle labels, we need to preserve the existing structure
+        // and only add tooltips to the label text, not replace everything
+        const existingText = label.querySelector('.toggle-label');
+        if (existingText && !label.querySelector('.help-icon')) {
+          const spanText = document.createElement('span');
+          spanText.className = 'label-text';
+          spanText.textContent = existingText.textContent;
+          existingText.textContent = '';
+          existingText.appendChild(spanText);
+          const wrap = document.createElement('span');
+          wrap.className = 'tooltip-wrap';
+          const icon = document.createElement('span');
+          icon.className = 'help-icon';
+          icon.setAttribute('tabindex', '0');
+          icon.setAttribute('aria-label', `Help: ${name}`);
+          icon.textContent = '?';
+          icon.dataset.tooltipAttached = 'true';
+          const bubble = document.createElement('div');
+          bubble.className = 'tooltip-bubble';
+          bubble.setAttribute('role', 'tooltip');
+          bubble.innerHTML = html;
+          wrap.appendChild(icon);
+          wrap.appendChild(bubble);
+          existingText.appendChild(wrap);
+          attachTooltipListeners(icon, bubble, wrap);
+        }
+        return;
+      }
       let key = name;
       if (name.startsWith('repo_')) {
         const type = name.split('_')[1];

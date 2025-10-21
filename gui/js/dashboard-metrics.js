@@ -56,29 +56,58 @@
         }
 
         /**
-         * Get API performance metrics (response times, cache hits)
+         * Get API performance metrics from tracking logs
          */
         async getAPIPerformance() {
             try {
-                // Try to get frequency stats which includes API performance
-                const stats = await this.fetchWithCache('/api/frequency-stats', 60000);
+                // Use actual tracking data from queries.jsonl
+                const trackingResp = await fetch(api('/api/tracking'));
+                if (!trackingResp.ok) {
+                    console.warn('[DashboardMetrics] Tracking API unavailable');
+                    return null;
+                }
 
-                if (!stats) {
+                const tracking = await trackingResp.json();
+
+                // Calculate stats from actual logged queries (last 5 min)
+                const fiveMinAgo = Date.now() - (5 * 60 * 1000);
+                const recentQueries = (tracking.queries || []).filter(q => {
+                    const ts = new Date(q.timestamp).getTime();
+                    return ts > fiveMinAgo;
+                });
+
+                if (recentQueries.length === 0) {
                     return {
                         avg_response_ms: 0,
                         p95_response_ms: 0,
-                        cache_hit_rate: 0,
+                        cache_hit_rate: 'N/A',
                         total_calls: 0,
-                        error_rate: 0
+                        error_rate: '0.00'
                     };
                 }
 
+                // Calculate real metrics
+                const responseTimes = recentQueries
+                    .map(q => q.latency_ms || 0)
+                    .filter(t => t > 0)
+                    .sort((a, b) => a - b);
+
+                const avgResponse = responseTimes.length > 0
+                    ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length
+                    : 0;
+
+                const p95Index = Math.floor(responseTimes.length * 0.95);
+                const p95Response = responseTimes[p95Index] || 0;
+
+                const errors = recentQueries.filter(q => q.error || q.status === 'error').length;
+                const errorRate = ((errors / recentQueries.length) * 100).toFixed(2);
+
                 return {
-                    avg_response_ms: stats.avg_response_ms || 0,
-                    p95_response_ms: stats.p95_response_ms || 0,
-                    cache_hit_rate: (stats.cache_hits / (stats.total_calls || 1) * 100).toFixed(1),
-                    total_calls: stats.total_calls || 0,
-                    error_rate: ((stats.errors / (stats.total_calls || 1)) * 100).toFixed(2)
+                    avg_response_ms: Math.round(avgResponse),
+                    p95_response_ms: Math.round(p95Response),
+                    cache_hit_rate: 'N/A',
+                    total_calls: recentQueries.length,
+                    error_rate: errorRate
                 };
             } catch (e) {
                 console.error('[DashboardMetrics] Error fetching API performance:', e);
@@ -87,26 +116,34 @@
         }
 
         /**
-         * Get index health metrics
+         * Get index health metrics from REAL API data
          */
         async getIndexHealth() {
             try {
                 const indexStats = await this.fetchWithCache('/api/index/stats', 60000);
 
-                if (!indexStats) {
+                if (!indexStats || !indexStats.repos) {
                     return null;
                 }
 
-                // Calculate basic health metrics
-                const totalChunks = indexStats.total_chunks || 0;
-                const avgScoreDistribution = indexStats.avg_score || 0;
-                const anomaliesDetected = indexStats.anomalies_count || 0;
+                // Sum chunks across all repos
+                const totalChunks = indexStats.repos.reduce((sum, repo) => {
+                    return sum + (repo.chunk_count || 0);
+                }, 0);
+
+                // Get agro repo (main repo) for detailed stats
+                const agroRepo = indexStats.repos.find(r => r.name === 'agro');
+                const hasCards = agroRepo ? agroRepo.has_cards : false;
+
+                // Calculate storage
+                const totalStorageGB = (indexStats.total_storage / (1024 * 1024 * 1024)).toFixed(2);
 
                 return {
                     total_chunks: totalChunks,
-                    avg_score: avgScoreDistribution.toFixed(3),
-                    anomalies: anomaliesDetected,
-                    health_status: anomaliesDetected === 0 ? 'healthy' : 'warning'
+                    total_storage_gb: totalStorageGB,
+                    has_cards: hasCards,
+                    repos_count: indexStats.repos.length,
+                    health_status: totalChunks > 0 ? 'healthy' : 'warning'
                 };
             } catch (e) {
                 console.error('[DashboardMetrics] Error fetching index health:', e);
@@ -188,7 +225,7 @@
         }
 
         /**
-         * Format index health display
+         * Format index health display with REAL data
          */
         formatIndexHealthHTML(health) {
             if (!health) {
@@ -196,6 +233,7 @@
             }
 
             const healthColor = health.health_status === 'healthy' ? 'var(--ok)' : 'var(--warn)';
+            const cardsIcon = health.has_cards ? '✅' : '⚠️';
 
             return `
                 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
@@ -204,12 +242,12 @@
                         <div style="font-size:13px;font-weight:700;color:var(--link);font-family:'SF Mono',monospace;">${health.total_chunks.toLocaleString()}</div>
                     </div>
                     <div style="background:var(--card-bg);padding:12px;border-radius:6px;border:1px solid var(--bg-elev2);">
-                        <div style="font-size:9px;color:var(--fg-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Avg Score</div>
-                        <div style="font-size:13px;font-weight:700;color:var(--accent);font-family:'SF Mono',monospace;">${health.avg_score}</div>
+                        <div style="font-size:9px;color:var(--fg-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Storage</div>
+                        <div style="font-size:13px;font-weight:700;color:var(--accent);font-family:'SF Mono',monospace;">${health.total_storage_gb} GB</div>
                     </div>
                     <div style="background:var(--card-bg);padding:12px;border-radius:6px;border:1px solid var(--bg-elev2);">
-                        <div style="font-size:9px;color:var(--fg-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Anomalies</div>
-                        <div style="font-size:13px;font-weight:700;color:${healthColor};font-family:'SF Mono',monospace;">${health.anomalies}</div>
+                        <div style="font-size:9px;color:var(--fg-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Cards</div>
+                        <div style="font-size:13px;font-weight:700;color:${healthColor};font-family:'SF Mono',monospace;">${cardsIcon} ${health.has_cards ? 'Ready' : 'None'}</div>
                     </div>
                 </div>
             `;

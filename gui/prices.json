@@ -1,63 +1,394 @@
 {
-  "last_updated": "2025-10-12",
+  "last_updated": "2025-10-20",
   "currency": "USD",
   "models": [
-    {"provider":"openai","family":"gpt-4o-mini","model":"gpt-4o-mini","unit":"1k_tokens","input_per_1k":0.00015,"output_per_1k":0.00060,"context":128000,"notes":"128K context; text+vision; function calling"},
-    {"provider":"openai","family":"gpt-4o","model":"gpt-4o","unit":"1k_tokens","input_per_1k":0.00250,"output_per_1k":0.01000,"context":100000,"notes":"Production GPT‑4o"},
-    {"provider":"openai","family":"o3-mini","model":"o3-mini","unit":"1k_tokens","input_per_1k":0.00040,"output_per_1k":0.00160,"context":16384,"notes":"fast reasoning tier"},
-    {"provider":"openai","family":"text-embedding-3-large","model":"text-embedding-3-large","unit":"1k_tokens","embed_per_1k":0.00013,"dimensions":3072,"notes":"3072‑d embeddings"},
-    {"provider":"openai","family":"text-embedding-3-small","model":"text-embedding-3-small","unit":"1k_tokens","embed_per_1k":0.00002,"dimensions":1536,"notes":"budget embeddings"},
-
-    {"provider":"anthropic","family":"Claude Haiku 3.5","model":"claude-3.5-haiku","unit":"1k_tokens","input_per_1k":0.00080,"output_per_1k":0.00400,"context":100000,"notes":"fast & economical"},
-    {"provider":"anthropic","family":"Claude Sonnet 4.5","model":"claude-4.5-sonnet","unit":"1k_tokens","input_per_1k":0.00300,"output_per_1k":0.01500,"context":200000,"notes":"balanced 200K"},
-    {"provider":"anthropic","family":"Claude Opus 4.1","model":"claude-4.1-opus","unit":"1k_tokens","input_per_1k":0.01500,"output_per_1k":0.07500,"context":1000000,"notes":"largest"},
-
-    {"provider":"google","family":"Gemini 2.5 Flash","model":"gemini-2.5-flash","unit":"1k_tokens","input_per_1k":0.000075,"output_per_1k":0.00030,"context":1000000,"notes":"1M ctx value"},
-    {"provider":"google","family":"Gemini 2.5 Pro","model":"gemini-2.5-pro","unit":"1k_tokens","input_per_1k":0.00125,"output_per_1k":0.00500,"context":100000,"notes":"advanced reasoning"},
-    {"provider":"google","family":"Gemini Embeddings","model":"gemini-embedding-001","unit":"1k_tokens","embed_per_1k":0.00015,"dimensions":3072,"notes":"multilingual embedding"},
-
-    {"provider":"xai","family":"Grok 4 Fast (Reasoning)","model":"grok-4-fast-reasoning","unit":"1k_tokens","input_per_1k":0.00020,"output_per_1k":0.00050,"context":2000000,"notes":"2M context reasoning"},
-    {"provider":"xai","family":"Grok 3","model":"grok-3","unit":"1k_tokens","input_per_1k":0.00300,"output_per_1k":0.01500,"context":131072,"notes":"base"},
-
-    {"provider":"cohere","family":"Command R+","model":"command-xlarge-r-plus","unit":"1k_tokens","input_per_1k":0.00250,"output_per_1k":0.01000,"context":128000,"notes":"flagship"},
-    {"provider":"cohere","family":"Command R","model":"command-xlarge-r","unit":"1k_tokens","input_per_1k":0.00050,"output_per_1k":0.00150,"context":128000,"notes":"balanced"},
-    {"provider":"cohere","family":"Embed English v3.0","model":"embed-english-v3.0","unit":"1k_tokens","embed_per_1k":0.00050,"dimensions":1024},
-    {"provider":"cohere","family":"Embed Multilingual v3.0","model":"embed-multilingual-v3.0","unit":"1k_tokens","embed_per_1k":0.00050,"dimensions":1024},
-    {"provider":"cohere","family":"Rerank English v3.0","model":"rerank-english-v3.0","unit":"request","rerank_per_1k":2.00000},
-    {"provider":"cohere","family":"Rerank 3.5","model":"rerank-3.5","unit":"request","per_request":0.002},
-    {"provider":"cohere","family":"Rerank Multilingual v3.0","model":"rerank-multilingual-v3.0","unit":"request","rerank_per_1k":2.00000},
-
-    {"provider":"mistral","family":"Mistral Large 2","model":"mistral-large-2","unit":"1k_tokens","input_per_1k":0.00300,"output_per_1k":0.00900,"context":32768},
-    {"provider":"mistral","family":"Mixtral 8x22B MOE","model":"mixtral-8x22b","unit":"1k_tokens","input_per_1k":0.00200,"output_per_1k":0.00600,"context":64000},
-
-    {"provider":"deepseek","family":"DeepSeek R1","model":"deepseek-reasoner","unit":"1k_tokens","input_per_1k":0.00055,"output_per_1k":0.00219,"context":16000},
-
-    {"provider":"voyage","family":"voyage-3-large-embed","model":"voyage-3-large","unit":"1k_tokens","embed_per_1k":0.00018,"dimensions":1024},
-    {"provider":"voyage","family":"voyage-code-3-embed","model":"voyage-code-3","unit":"1k_tokens","embed_per_1k":0.00018,"dimensions":1024},
-    {"provider":"voyage","family":"voyage-rerank-2","model":"voyage-rerank-2","unit":"1k_tokens","rerank_per_1k":0.00005},
-    {"provider":"voyage","family":"voyage-rerank-2-lite","model":"voyage-rerank-2-lite","unit":"1k_tokens","rerank_per_1k":0.00002},
-
-    {"provider":"jina","family":"Jina Embeddings v3","model":"jina-embeddings-v3","unit":"1k_tokens","embed_per_1k":0.00018,"dimensions":768},
-    {"provider":"jina","family":"Jina CLIP v2","model":"jina-clip-v2","unit":"1k_tokens","embed_per_1k":0.07200,"dimensions":768},
-
-    {"provider":"huggingface","family":"E5-large-v2","model":"intfloat/e5-large-v2","unit":"1k_tokens","embed_per_1k":0.0,"dimensions":1024,"notes":"local open source"},
-    {"provider":"huggingface","family":"BGE-M3","model":"BAAI/bge-m3","unit":"1k_tokens","embed_per_1k":0.0,"dimensions":1024},
-    {"provider":"huggingface","family":"BGE-small-en","model":"BAAI/bge-small-en-v1.5","unit":"1k_tokens","embed_per_1k":0.0,"dimensions":384},
-    {"provider":"huggingface","family":"BGE-reranker-v2-m3","model":"BAAI/bge-reranker-v2-m3","unit":"1k_tokens","rerank_per_1k":0.0},
-    {"provider":"huggingface","family":"Jina-reranker-v3","model":"jinaai/jina-reranker-v3","unit":"1k_tokens","rerank_per_1k":0.0},
-    {"provider":"huggingface","family":"MXBAI-rerank-v2-large","model":"mixedbread-ai/mxbai-rerank-large-v2","unit":"1k_tokens","rerank_per_1k":0.0},
-    {"provider":"huggingface","family":"MXBAI-embed-large","model":"mixedbread-ai/mxbai-embed-large-v1","unit":"1k_tokens","embed_per_1k":0.0,"dimensions":768},
-
-    {"provider":"ollama","family":"Qwen3-Coder-30B","model":"qwen3-coder:30b","unit":"1k_tokens","input_per_1k":0.0,"output_per_1k":0.0,"context":256000},
-    {"provider":"ollama","family":"Qwen3-Coder-14B","model":"qwen3-coder:14b","unit":"1k_tokens","input_per_1k":0.0,"output_per_1k":0.0,"context":256000},
-    {"provider":"ollama","family":"Qwen3-Coder-7B","model":"qwen3-coder:7b","unit":"1k_tokens","input_per_1k":0.0,"output_per_1k":0.0,"context":256000},
-
-    {"provider":"mlx","family":"Qwen3-Coder-30B-4bit","model":"mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit","unit":"1k_tokens","input_per_1k":0.0,"output_per_1k":0.0,"context":256000},
-
-    {"provider":"local","family":"DeepSeek-Coder-16B","model":"deepseek-coder-v3:16b","unit":"1k_tokens","input_per_1k":0.0,"output_per_1k":0.0,"context":16000},
-    {"provider":"local","family":"DeepSeek-Coder-236B","model":"deepseek-coder-v3:236b","unit":"1k_tokens","input_per_1k":0.0,"output_per_1k":0.0,"context":16000},
-
-    {"provider":"ollama","family":"nomic-embed-text","model":"nomic-embed-text","unit":"1k_tokens","embed_per_1k":0.0,"dimensions":768},
-    {"provider":"local","family":"NV-Embed-v2","model":"NV-Embed-v2","unit":"1k_tokens","embed_per_1k":0.0,"dimensions":1024}
+    {
+      "provider": "openai",
+      "family": "gpt-4o-mini",
+      "model": "gpt-4o-mini",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.00015,
+      "output_per_1k": 0.0006,
+      "context": 128000,
+      "notes": "128K context; text+vision; function calling"
+    },
+    {
+      "provider": "openai",
+      "family": "gpt-4o",
+      "model": "gpt-4o",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.0025,
+      "output_per_1k": 0.01,
+      "context": 100000,
+      "notes": "Production GPT\u20114o"
+    },
+    {
+      "provider": "openai",
+      "family": "o3-mini",
+      "model": "o3-mini",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.0004,
+      "output_per_1k": 0.0016,
+      "context": 16384,
+      "notes": "fast reasoning tier"
+    },
+    {
+      "provider": "openai",
+      "family": "text-embedding-3-large",
+      "model": "text-embedding-3-large",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.00013,
+      "dimensions": 3072,
+      "notes": "3072\u2011d embeddings"
+    },
+    {
+      "provider": "openai",
+      "family": "text-embedding-3-small",
+      "model": "text-embedding-3-small",
+      "unit": "1k_tokens",
+      "embed_per_1k": 2e-05,
+      "dimensions": 1536,
+      "notes": "budget embeddings"
+    },
+    {
+      "provider": "anthropic",
+      "family": "Claude Haiku 3.5",
+      "model": "claude-3.5-haiku",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.0008,
+      "output_per_1k": 0.004,
+      "context": 100000,
+      "notes": "fast & economical"
+    },
+    {
+      "provider": "anthropic",
+      "family": "Claude Sonnet 4.5",
+      "model": "claude-4.5-sonnet",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.003,
+      "output_per_1k": 0.015,
+      "context": 200000,
+      "notes": "balanced 200K"
+    },
+    {
+      "provider": "anthropic",
+      "family": "Claude Opus 4.1",
+      "model": "claude-4.1-opus",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.015,
+      "output_per_1k": 0.075,
+      "context": 1000000,
+      "notes": "largest"
+    },
+    {
+      "provider": "google",
+      "family": "Gemini 2.5 Flash",
+      "model": "gemini-2.5-flash",
+      "unit": "1k_tokens",
+      "input_per_1k": 7.5e-05,
+      "output_per_1k": 0.0003,
+      "context": 1000000,
+      "notes": "1M ctx value"
+    },
+    {
+      "provider": "google",
+      "family": "Gemini 2.5 Pro",
+      "model": "gemini-2.5-pro",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.00125,
+      "output_per_1k": 0.005,
+      "context": 100000,
+      "notes": "advanced reasoning"
+    },
+    {
+      "provider": "google",
+      "family": "Gemini Embeddings",
+      "model": "gemini-embedding-001",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.00015,
+      "dimensions": 3072,
+      "notes": "multilingual embedding"
+    },
+    {
+      "provider": "xai",
+      "family": "Grok 4 Fast (Reasoning)",
+      "model": "grok-4-fast-reasoning",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.0002,
+      "output_per_1k": 0.0005,
+      "context": 2000000,
+      "notes": "2M context reasoning"
+    },
+    {
+      "provider": "xai",
+      "family": "Grok 3",
+      "model": "grok-3",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.003,
+      "output_per_1k": 0.015,
+      "context": 131072,
+      "notes": "base"
+    },
+    {
+      "provider": "cohere",
+      "family": "Command R+",
+      "model": "command-xlarge-r-plus",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.0025,
+      "output_per_1k": 0.01,
+      "context": 128000,
+      "notes": "flagship"
+    },
+    {
+      "provider": "cohere",
+      "family": "Command R",
+      "model": "command-xlarge-r",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.0005,
+      "output_per_1k": 0.0015,
+      "context": 128000,
+      "notes": "balanced"
+    },
+    {
+      "provider": "cohere",
+      "family": "Embed English v3.0",
+      "model": "embed-english-v3.0",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.0005,
+      "dimensions": 1024
+    },
+    {
+      "provider": "cohere",
+      "family": "Embed Multilingual v3.0",
+      "model": "embed-multilingual-v3.0",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.0005,
+      "dimensions": 1024
+    },
+    {
+      "provider": "cohere",
+      "family": "Rerank English v3.0",
+      "model": "rerank-english-v3.0",
+      "unit": "request",
+      "rerank_per_1k": 2.0
+    },
+    {
+      "provider": "cohere",
+      "family": "Rerank 3.5",
+      "model": "rerank-3.5",
+      "unit": "request",
+      "per_request": 0.002
+    },
+    {
+      "provider": "cohere",
+      "family": "Rerank Multilingual v3.0",
+      "model": "rerank-multilingual-v3.0",
+      "unit": "request",
+      "rerank_per_1k": 2.0
+    },
+    {
+      "provider": "mistral",
+      "family": "Mistral Large 2",
+      "model": "mistral-large-2",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.003,
+      "output_per_1k": 0.009,
+      "context": 32768
+    },
+    {
+      "provider": "mistral",
+      "family": "Mixtral 8x22B MOE",
+      "model": "mixtral-8x22b",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.002,
+      "output_per_1k": 0.006,
+      "context": 64000
+    },
+    {
+      "provider": "deepseek",
+      "family": "DeepSeek R1",
+      "model": "deepseek-reasoner",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.00055,
+      "output_per_1k": 0.00219,
+      "context": 16000
+    },
+    {
+      "provider": "voyage",
+      "family": "voyage-3-large-embed",
+      "model": "voyage-3-large",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.00018,
+      "dimensions": 1024
+    },
+    {
+      "provider": "voyage",
+      "family": "voyage-code-3-embed",
+      "model": "voyage-code-3",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.00018,
+      "dimensions": 1024
+    },
+    {
+      "provider": "voyage",
+      "family": "voyage-rerank-2",
+      "model": "voyage-rerank-2",
+      "unit": "1k_tokens",
+      "rerank_per_1k": 5e-05
+    },
+    {
+      "provider": "voyage",
+      "family": "voyage-rerank-2-lite",
+      "model": "voyage-rerank-2-lite",
+      "unit": "1k_tokens",
+      "rerank_per_1k": 2e-05
+    },
+    {
+      "provider": "jina",
+      "family": "Jina Embeddings v3",
+      "model": "jina-embeddings-v3",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.00018,
+      "dimensions": 768
+    },
+    {
+      "provider": "jina",
+      "family": "Jina CLIP v2",
+      "model": "jina-clip-v2",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.072,
+      "dimensions": 768
+    },
+    {
+      "provider": "huggingface",
+      "family": "E5-large-v2",
+      "model": "intfloat/e5-large-v2",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.0,
+      "dimensions": 1024,
+      "notes": "local open source"
+    },
+    {
+      "provider": "huggingface",
+      "family": "BGE-M3",
+      "model": "BAAI/bge-m3",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.0,
+      "dimensions": 1024
+    },
+    {
+      "provider": "huggingface",
+      "family": "BGE-small-en",
+      "model": "BAAI/bge-small-en-v1.5",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.0,
+      "dimensions": 384
+    },
+    {
+      "provider": "huggingface",
+      "family": "BGE-reranker-v2-m3",
+      "model": "BAAI/bge-reranker-v2-m3",
+      "unit": "1k_tokens",
+      "rerank_per_1k": 0.0
+    },
+    {
+      "provider": "huggingface",
+      "family": "Jina-reranker-v3",
+      "model": "jinaai/jina-reranker-v3",
+      "unit": "1k_tokens",
+      "rerank_per_1k": 0.0
+    },
+    {
+      "provider": "huggingface",
+      "family": "MXBAI-rerank-v2-large",
+      "model": "mixedbread-ai/mxbai-rerank-large-v2",
+      "unit": "1k_tokens",
+      "rerank_per_1k": 0.0
+    },
+    {
+      "provider": "huggingface",
+      "family": "MXBAI-embed-large",
+      "model": "mixedbread-ai/mxbai-embed-large-v1",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.0,
+      "dimensions": 768
+    },
+    {
+      "provider": "ollama",
+      "family": "Qwen3-Coder-30B",
+      "model": "qwen3-coder:30b",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.0,
+      "output_per_1k": 0.0,
+      "context": 256000
+    },
+    {
+      "provider": "ollama",
+      "family": "Qwen3-Coder-14B",
+      "model": "qwen3-coder:14b",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.0,
+      "output_per_1k": 0.0,
+      "context": 256000
+    },
+    {
+      "provider": "ollama",
+      "family": "Qwen3-Coder-7B",
+      "model": "qwen3-coder:7b",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.0,
+      "output_per_1k": 0.0,
+      "context": 256000
+    },
+    {
+      "provider": "mlx",
+      "family": "Qwen3-Coder-30B-4bit",
+      "model": "mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.0,
+      "output_per_1k": 0.0,
+      "context": 256000
+    },
+    {
+      "provider": "local",
+      "family": "DeepSeek-Coder-16B",
+      "model": "deepseek-coder-v3:16b",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.0,
+      "output_per_1k": 0.0,
+      "context": 16000
+    },
+    {
+      "provider": "local",
+      "family": "DeepSeek-Coder-236B",
+      "model": "deepseek-coder-v3:236b",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.0,
+      "output_per_1k": 0.0,
+      "context": 16000
+    },
+    {
+      "provider": "ollama",
+      "family": "nomic-embed-text",
+      "model": "nomic-embed-text",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.0,
+      "dimensions": 768
+    },
+    {
+      "provider": "local",
+      "family": "NV-Embed-v2",
+      "model": "NV-Embed-v2",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.0,
+      "dimensions": 1024
+    },
+    {
+      "provider": "local",
+      "model": "gpt-oss:20b",
+      "family": "gen",
+      "base_url": "http://127.0.0.1:11434",
+      "unit": "request"
+    }
   ]
 }

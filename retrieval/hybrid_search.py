@@ -389,8 +389,9 @@ def _lazy_import_voyage():
     return voyageai.Client(api_key=os.getenv("VOYAGE_API_KEY"))
 
 
-# Cache for local embedding model to avoid reloading
+# Cache for local embedding models to avoid reloading
 _local_embed_model = None
+_mxbai_embed_model = None
 
 
 def _get_embedding(text: str, kind: str = "query") -> list[float]:
@@ -400,6 +401,7 @@ def _get_embedding(text: str, kind: str = "query") -> list[float]:
     - OpenAI: General purpose, good quality
     - Voyage: Optimized for code search
     - Local: Privacy-preserving, no API costs
+    - MXBAI: High-quality open source embeddings
     
     Args:
         text: Text to embed
@@ -409,6 +411,28 @@ def _get_embedding(text: str, kind: str = "query") -> list[float]:
         Embedding vector as list of floats
     """
     et = (os.getenv("EMBEDDING_TYPE", "openai") or "openai").lower()
+    if et == "mxbai":
+        global _mxbai_embed_model
+        if _mxbai_embed_model is None:
+            from sentence_transformers import SentenceTransformer
+            # MXBAI with Matryoshka representation learning (configurable dimensions)
+            _mxbai_embed_model = SentenceTransformer('mixedbread-ai/mxbai-embed-large-v1')
+        
+        # MXBAI uses special query prefixes for better retrieval
+        if kind == "query":
+            prefixed_text = "Represent this sentence for searching relevant passages: " + text
+        else:
+            prefixed_text = text
+            
+        # Get configurable dimensions (MXBAI supports Matryoshka)
+        dim = int(os.getenv("EMBEDDING_DIM", "1024"))
+        embedding = _mxbai_embed_model.encode([prefixed_text], normalize_embeddings=True, show_progress_bar=False)[0]
+        
+        # Truncate to desired dimensions if needed
+        if len(embedding) > dim:
+            embedding = embedding[:dim]
+            
+        return embedding.tolist()
     if et == "voyage":
         import time
         from server.api_tracker import track_api_call, APIProvider
@@ -438,7 +462,9 @@ def _get_embedding(text: str, kind: str = "query") -> list[float]:
         global _local_embed_model
         if _local_embed_model is None:
             from sentence_transformers import SentenceTransformer
-            _local_embed_model = SentenceTransformer('BAAI/bge-small-en-v1.5')
+            # Use configurable local embedding model
+            local_model = os.getenv('EMBEDDING_MODEL_LOCAL', 'BAAI/bge-small-en-v1.5')
+            _local_embed_model = SentenceTransformer(local_model)
         return _local_embed_model.encode([text], normalize_embeddings=True, show_progress_bar=False)[0].tolist()
     import time
     from server.api_tracker import track_api_call, APIProvider

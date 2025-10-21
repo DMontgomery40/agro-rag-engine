@@ -105,11 +105,8 @@
                 keywordsBtn.addEventListener('click', () => this.handleGenerateKeywords());
             }
 
-            // Run Indexer button
-            const indexerBtn = document.getElementById('dash-index-start');
-            if (indexerBtn) {
-                indexerBtn.addEventListener('click', () => this.handleRunIndexer());
-            }
+            // Note: Run Indexer button is bound in app.js to window.IndexStatus.startIndexing()
+            // We don't duplicate the binding here to avoid conflicts
 
             // Run Eval dropdown trigger
             const evalTrigger = document.getElementById('dash-eval-trigger');
@@ -331,13 +328,18 @@
                 }
 
                 terminal.appendLine(`✅ ${data.message}\n`);
-                terminal.appendLine('Polling for progress updates...\n');
+                terminal.appendLine('📊 Running evaluation...\n');
 
                 // Poll for status updates
                 let lastProgress = 0;
                 let lastQuestion = '';
+                let pollCount = 0;
+                const maxPolls = 300; // 5 minutes max
+                let hasStarted = false;
+
                 const pollInterval = setInterval(async () => {
                     try {
+                        pollCount++;
                         const statusResp = await fetch(api('/api/eval/status'));
                         if (!statusResp.ok) {
                             clearInterval(pollInterval);
@@ -348,23 +350,35 @@
 
                         const status = await statusResp.json();
 
+                        // Debug log first few polls
+                        if (pollCount <= 3) {
+                            terminal.appendLine(`[Poll ${pollCount}] Status: running=${status.running}, progress=${status.progress}/${status.total}`);
+                        }
+
+                        // Check if eval has started
+                        if (status.running || status.total > 0) {
+                            hasStarted = true;
+                        }
+
                         // Update progress bar
                         if (status.total > 0) {
                             const percent = Math.round((status.progress / status.total) * 100);
-                            if (percent !== lastProgress) {
-                                terminal.updateProgress(percent, `${status.progress}/${status.total} questions`);
-                                lastProgress = percent;
+                            terminal.updateProgress(percent, `${status.progress}/${status.total} questions`);
+
+                            if (status.progress !== lastProgress) {
+                                terminal.appendLine(`   Progress: ${status.progress}/${status.total} (${percent}%)`);
+                                lastProgress = status.progress;
                             }
                         }
 
                         // Show current question
                         if (status.current_question && status.current_question !== lastQuestion) {
-                            terminal.appendLine(`[${status.progress}/${status.total}] ${status.current_question}`);
+                            terminal.appendLine(`   Q: ${status.current_question.substring(0, 80)}...`);
                             lastQuestion = status.current_question;
                         }
 
                         // Check if complete
-                        if (!status.running && status.progress > 0) {
+                        if (!status.running && hasStarted && status.progress > 0) {
                             clearInterval(pollInterval);
                             terminal.appendLine('\n✅ Evaluation complete!');
                             terminal.updateProgress(100, 'Complete');
@@ -374,10 +388,10 @@
                             if (resultsResp.ok) {
                                 const results = await resultsResp.json();
                                 if (results && results.scores) {
-                                    terminal.appendLine(`\n📊 Results:`);
-                                    terminal.appendLine(`   Hit Rate: ${(results.scores.hit_rate * 100).toFixed(1)}%`);
-                                    terminal.appendLine(`   MRR: ${results.scores.mrr.toFixed(3)}`);
-                                    terminal.appendLine(`   NDCG@5: ${results.scores.ndcg5.toFixed(3)}`);
+                                    terminal.appendLine(`\n📊 Final Results:`);
+                                    terminal.appendLine(`   Hit Rate:  ${(results.scores.hit_rate * 100).toFixed(1)}%`);
+                                    terminal.appendLine(`   MRR:       ${results.scores.mrr.toFixed(3)}`);
+                                    terminal.appendLine(`   NDCG@5:    ${results.scores.ndcg5.toFixed(3)}`);
                                     if (results.scores.precision) {
                                         terminal.appendLine(`   Precision: ${(results.scores.precision * 100).toFixed(1)}%`);
                                     }
@@ -387,8 +401,17 @@
                             if (window.showStatus) window.showStatus('Evaluation complete', 'success');
                             setTimeout(() => { operationInProgress = false; }, 1000);
                         }
+
+                        // Timeout check
+                        if (pollCount >= maxPolls) {
+                            clearInterval(pollInterval);
+                            terminal.appendLine(`\n⏱️ Polling timeout after ${maxPolls} seconds`);
+                            terminal.appendLine('Eval may still be running - check /api/eval/status manually');
+                            operationInProgress = false;
+                        }
                     } catch (e) {
                         console.error('[DashboardOperations] Status poll error:', e);
+                        terminal.appendLine(`\n❌ Poll error: ${e.message}`);
                     }
                 }, 1000); // Poll every second
 

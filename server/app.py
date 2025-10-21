@@ -1931,6 +1931,13 @@ def editor_health() -> Dict[str, Any]:
         url = status.get("url", "")
         if not url:
             return {"ok": False, "error": "No URL in status", "enabled": True}
+        
+        # Store original URL for iframe (browser access)
+        original_url = url
+        
+        # Fix URL for Docker networking - use host.docker.internal instead of 127.0.0.1
+        if url.startswith("http://127.0.0.1:"):
+            url = url.replace("http://127.0.0.1:", "http://host.docker.internal:")
 
         try:
             # Check 1: Basic HTTP connectivity (homepage redirect is OK)
@@ -1982,7 +1989,7 @@ def editor_health() -> Dict[str, Any]:
                 "ok": True,
                 "enabled": True,
                 "port": status.get("port"),
-                "url": url,
+                "url": original_url,  # Use original URL for iframe (browser access)
                 "started_at": status.get("started_at"),
                 "readiness_stage": "ready"
             }
