@@ -20,4 +20,6 @@ COPY . .
 
 EXPOSE 8012
 
-CMD ["gunicorn", "server.app:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8012", "--timeout", "120", "--keep-alive", "2"]
+# Simplified: single worker, no gunicorn complexity, direct uvicorn
+# Enable reload for development (with volume mounts)
+CMD ["uvicorn", "server.app:app", "--host", "0.0.0.0", "--port", "8012", "--timeout-keep-alive", "120", "--log-level", "debug", "--reload"]

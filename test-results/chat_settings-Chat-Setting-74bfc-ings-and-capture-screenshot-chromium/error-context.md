@@ -13,7 +13,7 @@
         - option "Dark" [selected]
         - option "Light"
       - button "Health" [ref=e9] [cursor=pointer]
-      - generic [ref=e10]: OK @ 10/20/2025, 9:37:22 PM
+      - generic [ref=e10]: OK @ 10/21/2025, 9:20:57 AM
   - generic [ref=e11]:
     - generic [ref=e13]:
       - generic [ref=e14]:
@@ -39,15 +39,15 @@
         - generic [ref=e38]:
           - generic [ref=e39]: Inference Provider
           - combobox [ref=e40]:
-            - option "openai"
+            - option "openai" [selected]
             - option "anthropic"
             - option "google"
             - option "mistral"
             - option "cohere"
-            - option "local" [selected]
+            - option "local"
         - generic [ref=e41]:
           - generic [ref=e42]: Inference Model
-          - combobox [ref=e43]: llama3.2:3b
+          - combobox [ref=e43]: gpt-4o-mini
         - generic [ref=e44]:
           - generic [ref=e45]:
             - generic [ref=e46]: Embeddings Provider
@@ -107,26 +107,25 @@
         - generic [ref=e90]:
           - generic [ref=e91]: Saved Profiles
           - list [ref=e92]:
-            - listitem [ref=e93] [cursor=pointer]: defaults
-            - listitem [ref=e94] [cursor=pointer]: min_local
-            - listitem [ref=e95] [cursor=pointer]: onboard-wizard-test-project
-            - listitem [ref=e96] [cursor=pointer]: pw-test
-      - generic [ref=e97]:
-        - heading "▸ Auto‑Tune" [level=4] [ref=e98]
-        - generic [ref=e100]:
-          - checkbox "Enable Auto‑Tune" [ref=e101] [cursor=pointer]
+            - listitem [ref=e93] [cursor=pointer]: min_local
+            - listitem [ref=e94] [cursor=pointer]: onboard-wizard-test-project
+            - listitem [ref=e95] [cursor=pointer]: pw-test
+      - generic [ref=e96]:
+        - heading "▸ Auto‑Tune" [level=4] [ref=e97]
+        - generic [ref=e99]:
+          - checkbox "Enable Auto‑Tune" [ref=e100] [cursor=pointer]
           - text: Enable Auto‑Tune
-        - generic [ref=e103]: "Current Mode: —"
-        - generic [ref=e104]:
-          - generic [ref=e105]: Last Indexed
-          - generic [ref=e106]: 10/20/2025, 5:53:28 PM
-        - button "Refresh Status" [ref=e107] [cursor=pointer]
-      - generic [ref=e108]:
-        - heading "▸ Secrets Ingest" [level=4] [ref=e109]
-        - generic [ref=e110] [cursor=pointer]:
+        - generic [ref=e102]: "Current Mode: —"
+        - generic [ref=e103]:
+          - generic [ref=e104]: Last Indexed
+          - generic [ref=e105]: 10/20/2025, 5:53:28 PM
+        - button "Refresh Status" [ref=e106] [cursor=pointer]
+      - generic [ref=e107]:
+        - heading "▸ Secrets Ingest" [level=4] [ref=e108]
+        - generic [ref=e109] [cursor=pointer]:
           - text: Drop .env / .txt / .md
           - text: or click to upload
-        - generic [ref=e112] [cursor=pointer]:
-          - checkbox "Persist to defaults.json" [ref=e113]
-          - generic [ref=e114]: Persist to defaults.json
+        - generic [ref=e111] [cursor=pointer]:
+          - checkbox "Persist to defaults.json" [ref=e112]
+          - generic [ref=e113]: Persist to defaults.json
 ```

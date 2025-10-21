@@ -1,5 +1,5 @@
 {
-  "timestamp": "Oct 20, 2025 10:39 AM",
+  "timestamp": "Oct 21, 2025 07:52 PM",
   "model_path": "models/cross-encoder-agro",
   "metrics": {
     "hit_at_1": 0.5,

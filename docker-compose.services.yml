@@ -16,6 +16,8 @@ services:
       - OAUTH_TOKEN=${OAUTH_TOKEN:-}
     ports:
       - "8012:8012"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./out:/app/out
       - ./data:/app/data

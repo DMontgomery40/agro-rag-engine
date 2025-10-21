@@ -698,21 +698,38 @@ function initChatUI() {
         resetSettingsBtn.addEventListener('click', resetChatSettings);
     }
 
-    // Populate chat model dropdown from pricing
+    // Populate chat model dropdown using ModelPicker
+    // Note: ModelPicker auto-loads on page load, but we call it here to ensure
+    // it runs after the chat settings UI is fully initialized
     (async function populateChatModels(){
         try{
-            const sel = document.getElementById('chat-model');
-            if (!sel || sel.tagName !== 'SELECT') { applyChatSettings(); return; }
-            const r = await fetch((window.CoreUtils?.api||((p)=>p))('/api/prices'));
-            if (!r.ok) { applyChatSettings(); return; }
-            const data = await r.json();
-            const models = Array.isArray(data?.models) ? data.models.map(m=>m.model) : [];
-            const seen = new Set();
-            models.filter(m=>m && !seen.has(m) && seen.add(m)).sort().forEach(m=>{
-                const o = document.createElement('option'); o.value=m; o.textContent=m; sel.appendChild(o);
-            });
-        }catch(_e){/* ignore */}
-        finally{ applyChatSettings(); }
+            if (window.ModelPicker) {
+                // Use ModelPicker to populate all model-select elements
+                await window.ModelPicker.populateAll();
+                console.log('[chat.js] ModelPicker populated chat model dropdown');
+            } else {
+                console.warn('[chat.js] ModelPicker not available, falling back to manual population');
+                // Fallback: manual population (kept for compatibility)
+                const sel = document.getElementById('chat-model');
+                if (sel && sel.tagName === 'SELECT') {
+                    const r = await fetch((window.CoreUtils?.api||((p)=>p))('/api/prices'));
+                    if (r.ok) {
+                        const data = await r.json();
+                        const models = Array.isArray(data?.models) ? data.models.map(m=>m.model) : [];
+                        const seen = new Set();
+                        models.filter(m=>m && !seen.has(m) && seen.add(m)).sort().forEach(m=>{
+                            const o = document.createElement('option'); o.value=m; o.textContent=m; sel.appendChild(o);
+                        });
+                    }
+                }
+            }
+        }catch(e){
+            console.error('[chat.js] Error populating chat models:', e);
+        }
+        finally{
+            // Always apply saved settings after populating
+            applyChatSettings();
+        }
     })();
 
     // Load chat history if enabled

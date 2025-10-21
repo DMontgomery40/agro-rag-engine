@@ -1,7 +1,9 @@
 apiVersion: 1
 
+# Fixed indentation for the list under datasources
+# (YAML requires a space before the dash for list items)
 datasources:
-- name: Loki
+  - name: Loki
     type: loki
     access: proxy
     url: http://loki:3100
@@ -14,4 +16,4 @@ datasources:
         - datasourceUid: loki
           matcherRegex: "trace_id=(\\w+)"
           name: TraceID
-          url: "$${__value.raw}"
+          url: "$$${__value.raw}"

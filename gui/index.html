@@ -2904,7 +2904,7 @@
                         <div class="input-row">
                             <div class="input-group">
                                 <label>Primary Model (GEN_MODEL)</label>
-                                <select name="GEN_MODEL" id="gen-model-select">
+                                <select name="GEN_MODEL" id="gen-model-select" class="model-select" data-component-filter="GEN">
                                     <option value="">Select a model...</option>
                                 </select>
                             </div>
@@ -2931,13 +2931,13 @@
                         <div class="input-row">
                         <div class="input-group">
                             <label>Enrich Model (ENRICH_MODEL)</label>
-                            <select name="ENRICH_MODEL" id="enrich-model-select">
+                            <select name="ENRICH_MODEL" id="enrich-model-select" class="model-select" data-component-filter="GEN">
                                 <option value="">Select a model...</option>
                             </select>
                         </div>
                             <div class="input-group">
                                 <label>Enrich Model (Ollama)</label>
-                                <select name="ENRICH_MODEL_OLLAMA" id="enrich-model-ollama-select">
+                                <select name="ENRICH_MODEL_OLLAMA" id="enrich-model-ollama-select" class="model-select">
                                     <option value="">Select a model...</option>
                                 </select>
                             </div>
@@ -5483,7 +5483,7 @@
                                     </div>
                                 </span>
                             </label>
-                            <select id="chat-model">
+                            <select id="chat-model" class="model-select" data-component-filter="GEN">
                                 <option value="">Use default (GEN_MODEL)</option>
                             </select>
                         </div>
@@ -5957,7 +5957,10 @@
     <!-- UI helpers -->
     <script src="/gui/js/ui-helpers.js"></script>
     <script src="/gui/js/theme.js"></script>
-    
+
+    <!-- Model Picker (must load before modules that use it) -->
+    <script src="/gui/js/model_picker.js"></script>
+
     <!-- Navigation system (new) -->
     <script src="/gui/js/test-instrumentation.js"></script>
     <script src="/gui/js/navigation.js"></script>

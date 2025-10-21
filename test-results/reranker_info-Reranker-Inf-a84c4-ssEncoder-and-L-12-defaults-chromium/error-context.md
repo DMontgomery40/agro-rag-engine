@@ -1,0 +1,293 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - heading "AGRO Another Good RAG Option" [level=1] [ref=e3]:
+      - generic [ref=e4]: AGRO
+      - generic [ref=e5]: Another Good RAG Option
+    - generic [ref=e6]:
+      - searchbox "Search settings (Ctrl+K)" [ref=e7]
+      - combobox "Theme Mode" [ref=e8]:
+        - option "Auto"
+        - option "Dark" [selected]
+        - option "Light"
+      - button "Health" [ref=e9] [cursor=pointer]
+      - generic [ref=e10]: OK @ 10/21/2025, 9:28:29 AM
+  - generic [ref=e11]:
+    - generic [ref=e13]:
+      - generic [ref=e14]:
+        - button "🚀 Get Started" [ref=e15] [cursor=pointer]
+        - button "📊 Dashboard" [ref=e16] [cursor=pointer]
+        - button "💬 Chat" [ref=e17] [cursor=pointer]
+        - button "📝 VS Code ✨" [ref=e18] [cursor=pointer]
+        - button "📈 Grafana ✨" [ref=e19] [cursor=pointer]
+        - button "🧠 RAG" [ref=e20] [cursor=pointer]
+        - button "💾 Profiles" [ref=e21] [cursor=pointer]
+        - button "🔧 Infrastructure" [ref=e22] [cursor=pointer]
+        - button "⚙️ Admin" [ref=e23] [cursor=pointer]
+      - generic [ref=e24]:
+        - button "Data Quality" [ref=e25] [cursor=pointer]
+        - button "Retrieval" [ref=e26] [cursor=pointer]
+        - button "External Rerankers" [ref=e27] [cursor=pointer]
+        - button "Learning Ranker" [active] [ref=e28] [cursor=pointer]
+        - button "Indexing" [ref=e29] [cursor=pointer]
+        - button "Evaluate" [ref=e30] [cursor=pointer]
+      - generic [ref=e31]:
+        - generic [ref=e33]:
+          - generic [ref=e34]:
+            - heading "🧠 Learning Reranker System" [level=2] [ref=e35]
+            - paragraph [ref=e36]: Self-improving retrieval through user feedback. Trains a cross-encoder that learns from thumbs-up/down and clicks to rank better results higher - without touching your chat model.
+          - generic [ref=e37]:
+            - heading "📊 System Status" [level=3] [ref=e38]
+            - generic [ref=e39]:
+              - generic [ref=e40]:
+                - generic [ref=e41]: Reranker Status
+                - generic [ref=e42]: ✓ Enabled
+              - generic [ref=e43]:
+                - generic [ref=e44]: Logged Queries
+                - generic [ref=e45]: 0 queries
+              - generic [ref=e46]:
+                - generic [ref=e47]: Training Triplets
+                - generic [ref=e48]: 107 triplets
+          - generic [ref=e49]:
+            - heading "🎓 Training Workflow" [level=3] [ref=e50]
+            - paragraph [ref=e51]: Click buttons below in order. Each step shows progress and results.
+            - generic [ref=e52]:
+              - generic [ref=e53]:
+                - heading "1. Mine Triplets" [level=4] [ref=e54]
+                - paragraph [ref=e55]: Extract training data from logs
+                - button "Mine Triplets" [ref=e56] [cursor=pointer]
+              - generic [ref=e57]:
+                - heading "2. Train Model" [level=4] [ref=e58]
+                - paragraph [ref=e59]: Fine-tune cross-encoder (5-15 min)
+                - button "Train Model" [ref=e60] [cursor=pointer]
+              - generic [ref=e61]:
+                - heading "3. Evaluate" [level=4] [ref=e62]
+                - paragraph [ref=e63]: Measure MRR and Hit@K metrics
+                - button "Evaluate" [ref=e64] [cursor=pointer]
+            - generic [ref=e65]:
+              - generic [ref=e66]: "Current Task:"
+              - generic [ref=e67]: Ready
+            - generic [ref=e69]:
+              - generic [ref=e70]:
+                - generic [ref=e76]: Live Output
+                - generic [ref=e77]:
+                  - button "📜 Auto" [ref=e78] [cursor=pointer]
+                  - button "🗑️ Clear" [ref=e79] [cursor=pointer]
+                  - button "▼" [ref=e80] [cursor=pointer]
+              - generic [ref=e82]: Waiting for output...
+          - generic [ref=e83]:
+            - heading "⚙️ Reranker Configuration" [level=3] [ref=e84]
+            - generic [ref=e85]:
+              - generic [ref=e86]:
+                - generic [ref=e87]:
+                  - text: Enable Learning Reranker
+                  - 'generic "Help: AGRO_RERANKER_ENABLED" [ref=e89]': "?"
+                - combobox [ref=e90]:
+                  - option "OFF"
+                  - option "ON" [selected]
+              - generic [ref=e91]:
+                - generic [ref=e92]:
+                  - text: Model Path (AGRO_RERANKER_MODEL_PATH)
+                  - 'generic "Help: AGRO_RERANKER_MODEL_PATH" [ref=e94]': "?"
+                - textbox "cross-encoder/ms-marco-MiniLM-L-12-v2" [ref=e95]: models/cross-encoder-agro
+              - generic [ref=e96]:
+                - generic [ref=e97]:
+                  - text: Telemetry Log Path
+                  - 'generic "Help: AGRO_LOG_PATH" [ref=e99]': "?"
+                - textbox "data/logs/queries.jsonl" [ref=e100]
+            - generic [ref=e101]:
+              - generic [ref=e102]:
+                - generic [ref=e103]:
+                  - text: Triplets Output (AGRO_TRIPLETS_PATH)
+                  - 'generic "Help: AGRO_TRIPLETS_PATH" [ref=e105]': "?"
+                - textbox "data/training/triplets.jsonl" [ref=e106]
+              - generic [ref=e107]:
+                - generic [ref=e108]:
+                  - text: Mine Mode (AGRO_RERANKER_MINE_MODE)
+                  - 'generic "Help: AGRO_RERANKER_MINE_MODE" [ref=e110]': "?"
+                - combobox [ref=e111]:
+                  - option "append" [selected]
+                  - option "replace"
+              - generic [ref=e112]:
+                - generic [ref=e113]:
+                  - text: Reset Before Mine (AGRO_RERANKER_MINE_RESET)
+                  - 'generic "Help: AGRO_RERANKER_MINE_RESET" [ref=e115]': "?"
+                - combobox [ref=e116]:
+                  - option "No" [selected]
+                  - option "Yes"
+            - generic [ref=e118]:
+              - generic [ref=e119]: Current Reranker (Server)
+              - generic [ref=e120]:
+                - generic [ref=e121]: "Enabled: ON"
+                - generic [ref=e122]: "Model Path: /Users/davidmontgomery/agro-rag-engine/models/cross-encoder-agro"
+                - generic [ref=e123]: "Device: mps:0"
+                - generic [ref=e124]: "Alpha: 0.7 • TopN: 50 • Batch: 16 • MaxLen: 512"
+            - generic [ref=e125]:
+              - generic [ref=e126]:
+                - generic [ref=e127]:
+                  - text: Blend Alpha (CE Weight)
+                  - 'generic "Help: AGRO_RERANKER_ALPHA" [ref=e129]': "?"
+                - spinbutton [ref=e130]: "0.7"
+              - generic [ref=e131]:
+                - generic [ref=e132]:
+                  - text: Max Sequence Length
+                  - 'generic "Help: AGRO_RERANKER_MAXLEN" [ref=e134]': "?"
+                - spinbutton [ref=e135]: "512"
+              - generic [ref=e136]:
+                - generic [ref=e137]:
+                  - text: Batch Size (Inference)
+                  - 'generic "Help: AGRO_RERANKER_BATCH" [ref=e139]': "?"
+                - spinbutton [ref=e140]: "16"
+            - generic [ref=e141]:
+              - generic [ref=e142]:
+                - generic [ref=e143]: Training Epochs
+                - spinbutton [ref=e144]: "2"
+              - generic [ref=e145]:
+                - generic [ref=e146]: Training Batch Size
+                - spinbutton [ref=e147]: "16"
+          - generic [ref=e148]:
+            - heading "📊 Evaluation Metrics" [level=3] [ref=e149]
+            - generic [ref=e151]: No evaluation results yet. Click "Evaluate" above.
+            - generic [ref=e152]:
+              - button "Save as Baseline" [ref=e154] [cursor=pointer]
+              - button "Compare vs Baseline" [ref=e156] [cursor=pointer]
+              - button "Rollback Model" [ref=e158] [cursor=pointer]
+          - generic [ref=e159]:
+            - heading "📝 Query Logs" [level=3] [ref=e160]
+            - generic [ref=e161]:
+              - button "View Logs" [ref=e163] [cursor=pointer]
+              - button "Download Logs" [ref=e165] [cursor=pointer]
+              - button "Clear Logs" [ref=e167] [cursor=pointer]
+          - generic [ref=e168]:
+            - heading "🔄 Automation" [level=3] [ref=e169]
+            - paragraph [ref=e170]: Set up nightly training to automatically improve the reranker.
+            - generic [ref=e171]:
+              - generic [ref=e172]:
+                - generic [ref=e173]: Nightly Training Time
+                - textbox [ref=e174]: 02:15
+              - button "Setup Nightly Job" [ref=e177] [cursor=pointer]
+            - button "Remove Nightly Job" [ref=e179] [cursor=pointer]
+          - generic [ref=e181]:
+            - heading "🧪 Smoke Test" [level=3] [ref=e182]
+            - paragraph [ref=e183]: "Verify end-to-end functionality: query → retrieve → rerank → log → feedback."
+            - generic [ref=e184]:
+              - generic [ref=e185]:
+                - generic [ref=e186]: Test Query
+                - textbox "Where is OAuth validated?" [ref=e187]
+              - button "Run Smoke Test" [ref=e190] [cursor=pointer]
+          - generic [ref=e191]:
+            - heading "💰 Cost Tracking" [level=3] [ref=e192]
+            - generic [ref=e193]:
+              - generic [ref=e194]:
+                - generic [ref=e195]: Total Cost (Last 24h)
+                - generic [ref=e196]: $0.0009
+              - generic [ref=e197]:
+                - generic [ref=e198]: Avg Cost per Query
+                - generic [ref=e199]: $0.000150
+            - button "View Cost Breakdown" [ref=e200] [cursor=pointer]
+          - generic [ref=e201]:
+            - heading "⚠️ No-Hit Queries" [level=3] [ref=e202]
+            - paragraph [ref=e203]: Queries that returned no relevant results. Consider reindexing or adding these terms to your corpus.
+            - generic [ref=e205]: No no-hit queries tracked yet.
+        - button "Apply All Changes" [ref=e207] [cursor=pointer]
+    - generic [ref=e208]:
+      - button "Reset Width" [ref=e210]
+      - generic [ref=e211]:
+        - heading "▸ Live Cost Calculator LIVE" [level=4] [ref=e212]:
+          - text: ▸ Live Cost Calculator
+          - generic [ref=e213]: LIVE
+        - generic [ref=e215]:
+          - generic [ref=e216]: Inference Provider
+          - combobox [ref=e217]:
+            - option "openai" [selected]
+            - option "anthropic"
+            - option "google"
+            - option "mistral"
+            - option "cohere"
+            - option "local"
+        - generic [ref=e218]:
+          - generic [ref=e219]: Inference Model
+          - combobox [ref=e220]: gpt-4o-mini
+        - generic [ref=e221]:
+          - generic [ref=e222]:
+            - generic [ref=e223]: Embeddings Provider
+            - combobox [ref=e224]:
+              - option "Use current"
+              - option "OpenAI" [selected]
+              - option "Voyage"
+              - option "MXBAI"
+              - option "Local"
+          - generic [ref=e225]:
+            - generic [ref=e226]: Embedding Model
+            - combobox "text-embedding-3-small" [ref=e227]
+        - generic [ref=e228]:
+          - generic [ref=e229]:
+            - generic [ref=e230]: Reranker
+            - combobox [ref=e231]:
+              - option "Use current"
+              - option "Cohere"
+              - option "Hugging Face"
+              - option "Local" [selected]
+              - option "None"
+          - generic [ref=e232]:
+            - generic [ref=e233]: Rerank Model
+            - textbox "rerank-english-v3.0" [ref=e234]: rerank-3.5
+        - generic [ref=e235]:
+          - generic [ref=e236]:
+            - generic [ref=e237]: Input Tokens / Request
+            - spinbutton [ref=e238]: "500"
+          - generic [ref=e239]:
+            - generic [ref=e240]: Output Tokens / Request
+            - spinbutton [ref=e241]: "800"
+        - generic [ref=e242]:
+          - generic [ref=e243]:
+            - generic [ref=e244]: Embedding Tokens / Day
+            - spinbutton [ref=e245]: "0"
+          - generic [ref=e246]:
+            - generic [ref=e247]: Reranks / Day
+            - spinbutton [ref=e248]: "0"
+        - generic [ref=e249]:
+          - generic [ref=e250]: API Requests / Day
+          - spinbutton [ref=e251]: "100"
+        - button "Calculate Cost" [ref=e252] [cursor=pointer]
+        - button "Add Model" [ref=e253] [cursor=pointer]
+        - generic [ref=e254]:
+          - generic [ref=e255]:
+            - generic [ref=e256]: Daily
+            - generic [ref=e257]: —
+          - generic [ref=e258]:
+            - generic [ref=e259]: Monthly
+            - generic [ref=e260]: —
+      - generic [ref=e261]:
+        - heading "▸ Profiles" [level=4] [ref=e262]
+        - generic [ref=e263]:
+          - generic [ref=e264]: Save Current As
+          - textbox "my-config" [ref=e265]
+        - button "Save Profile" [ref=e266] [cursor=pointer]
+        - generic [ref=e267]:
+          - generic [ref=e268]: Saved Profiles
+          - list [ref=e269]:
+            - listitem [ref=e270] [cursor=pointer]: min_local
+            - listitem [ref=e271] [cursor=pointer]: onboard-wizard-test-project
+            - listitem [ref=e272] [cursor=pointer]: pw-test
+      - generic [ref=e273]:
+        - heading "▸ Auto‑Tune" [level=4] [ref=e274]
+        - generic [ref=e276]:
+          - checkbox "Enable Auto‑Tune" [ref=e277] [cursor=pointer]
+          - text: Enable Auto‑Tune
+        - generic [ref=e279]: "Current Mode: —"
+        - generic [ref=e280]:
+          - generic [ref=e281]: Last Indexed
+          - generic [ref=e282]: 10/20/2025, 5:53:28 PM
+        - button "Refresh Status" [ref=e283] [cursor=pointer]
+      - generic [ref=e284]:
+        - heading "▸ Secrets Ingest" [level=4] [ref=e285]
+        - generic [ref=e286] [cursor=pointer]:
+          - text: Drop .env / .txt / .md
+          - text: or click to upload
+        - generic [ref=e288] [cursor=pointer]:
+          - checkbox "Persist to defaults.json" [ref=e289]
+          - generic [ref=e290]: Persist to defaults.json
+```
