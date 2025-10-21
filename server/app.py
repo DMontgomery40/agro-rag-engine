@@ -275,8 +275,10 @@ def answer(
         # Return error response with proper JSON instead of HTML
         import traceback
         error_msg = str(e)
-        print(f"[ERROR] Graph invocation failed: {error_msg}\n{traceback.format_exc()}")
-        return {"answer": f"Error processing your question: {error_msg}", "event_id": None}
+        full_trace = traceback.format_exc()
+        print(f"[ERROR] Graph invocation failed: {error_msg}\n{full_trace}")
+        # Return full traceback for debugging
+        return {"answer": f"Error processing your question: {error_msg}\n\nFull traceback:\n{full_trace}", "event_id": None}
 
     # Log the query and retrieval
     try:
@@ -774,8 +776,17 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
     env_updates: Dict[str, Any] = dict(payload.get("env") or {})
     repos_updates: List[Dict[str, Any]] = list(payload.get("repos") or [])
 
-    # 1) Upsert .env
+    # 1) Backup .env before making changes
     env_path = root / ".env"
+    if env_path.exists():
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        backup_path = root / f".env.backup-{timestamp}"
+        import shutil
+        shutil.copy2(env_path, backup_path)
+        print(f"[config] Backed up .env to {backup_path}")
+
+    # 2) Upsert .env
     existing: Dict[str, str] = {}
     if env_path.exists():
         for line in env_path.read_text().splitlines():

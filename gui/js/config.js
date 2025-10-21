@@ -12,6 +12,22 @@
         return;
     }
 
+    // Secret fields that should be masked in the GUI
+    const SECRET_FIELDS = [
+        'OPENAI_API_KEY',
+        'ANTHROPIC_API_KEY',
+        'GOOGLE_API_KEY',
+        'COHERE_API_KEY',
+        'VOYAGE_API_KEY',
+        'LANGSMITH_API_KEY',
+        'HUGGINGFACE_API_KEY',
+        'TOGETHER_API_KEY',
+        'GROQ_API_KEY',
+        'MISTRAL_API_KEY'
+    ];
+
+    const SECRET_MASK = '••••••••••••••••';
+
     /**
      * Load configuration from API and populate form
      */
@@ -21,6 +37,20 @@
             const r = await fetch(api('/api/config'));
             const d = await r.json();
             state.config = d;
+
+            // Log config precedence for clarity
+            console.log('[config.js] ═══════════════════════════════════════════════');
+            console.log('[config.js] Configuration Precedence:');
+            console.log('[config.js]   1. .env file (HIGHEST - Single Source of Truth)');
+            console.log('[config.js]   2. Docker environment variables');
+            console.log('[config.js]   3. Runtime os.environ');
+            console.log('[config.js]   4. GUI localStorage (browser-specific)');
+            console.log('[config.js]   5. Profiles (ONLY when explicitly applied by user)');
+            console.log('[config.js] ═══════════════════════════════════════════════');
+            console.log('[config.js] IMPORTANT: Profiles are NOT auto-applied.');
+            console.log('[config.js] To change config permanently, use GUI save or edit .env');
+            console.log('[config.js] ═══════════════════════════════════════════════');
+
             populateConfigForm(d);
             // Apply theme after fields are populated so selects reflect env
             if (window.Theme?.initThemeFromEnv) {
@@ -62,6 +92,27 @@
             const field = document.querySelector(`[name="${k}"]`);
             if (!field) return;
 
+            // Handle secret fields specially to prevent exposing API keys
+            if (SECRET_FIELDS.includes(k)) {
+                if (v && String(v).length > 0) {
+                    // Has a value - show masked
+                    field.value = SECRET_MASK;
+                    field.setAttribute('data-has-secret', 'true');
+                    field.setAttribute('data-secret-length', String(v).length);
+                    field.setAttribute('placeholder', `${String(v).length} characters (hidden for security)`);
+                    field.setAttribute('title', 'API key is set but hidden. Type a new key to replace, or leave as-is to keep existing.');
+                    console.log(`[config.js] Masked secret field: ${k} (${String(v).length} chars)`);
+                } else {
+                    // No value
+                    field.value = '';
+                    field.setAttribute('data-has-secret', 'false');
+                    field.setAttribute('placeholder', 'Enter API key...');
+                    field.setAttribute('title', 'No API key set. Enter one to enable this provider.');
+                }
+                return;
+            }
+
+            // Non-secret fields - normal behavior
             if (field.type === 'checkbox') {
                 field.checked = String(v).toLowerCase() === 'true' || v === '1' || v === true;
             } else if (field.tagName === 'SELECT') {
@@ -436,6 +487,29 @@
             const key = field.name;
             let val;
 
+            // Handle secret fields - preserve existing secrets if unchanged
+            if (SECRET_FIELDS.includes(key)) {
+                const hasSecret = field.getAttribute('data-has-secret') === 'true';
+                const currentValue = field.value;
+                const isUnchanged = (currentValue === SECRET_MASK || currentValue === '');
+
+                if (hasSecret && isUnchanged) {
+                    // Secret exists but user didn't change it - don't send (server keeps existing)
+                    console.log(`[config.js] Preserving existing secret: ${key}`);
+                    return;
+                } else if (currentValue && currentValue !== SECRET_MASK) {
+                    // User typed a new value - send it
+                    update.env[key] = currentValue;
+                    console.log(`[config.js] Updating secret: ${key} (${currentValue.length} chars)`);
+                    return;
+                } else if (currentValue === '' && !hasSecret) {
+                    // Empty and no secret - don't send (allows keeping it unset)
+                    return;
+                }
+                // If we get here, fall through to normal handling
+            }
+
+            // Non-secret fields - normal behavior
             if (field.type === 'checkbox') {
                 val = field.checked;
             } else if (field.type === 'number') {

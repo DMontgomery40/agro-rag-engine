@@ -553,7 +553,27 @@ function clearChatHistory() {
         showToast('Chat history cleared', 'success');
     } catch (e) {
         console.error('Failed to clear chat history:', e);
-        showToast('Failed to clear history: ' + e.message, 'error');
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to Clear History', {
+            message: e.message,
+            causes: [
+                'Browser localStorage is disabled or in private mode',
+                'Storage quota exceeded preventing delete operation',
+                'Browser security policy blocking localStorage access',
+                'localStorage data is corrupted or in invalid state'
+            ],
+            fixes: [
+                'Enable localStorage in browser settings (Privacy & Security)',
+                'Exit private/incognito browsing mode',
+                'Clear all browser data and refresh the page',
+                'Try using a different browser to clear history'
+            ],
+            links: [
+                ['Web Storage API', 'https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API'],
+                ['Browser Storage Quota', 'https://developer.mozilla.org/en-US/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria'],
+                ['Privacy Settings', 'https://developer.mozilla.org/en-US/docs/Web/Privacy']
+            ]
+        }) : 'Failed to clear history: ' + e.message;
+        showToast(msg, 'error');
     }
 }
 
@@ -573,7 +593,27 @@ function exportChatHistory() {
         showToast('Chat history exported', 'success');
     } catch (e) {
         console.error('Failed to export chat history:', e);
-        showToast('Failed to export history: ' + e.message, 'error');
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to Export History', {
+            message: e.message,
+            causes: [
+                'Browser blocked file download (popup blocker or security policy)',
+                'Insufficient permissions to create download file',
+                'localStorage data is corrupted or cannot be serialized to JSON',
+                'Browser security settings preventing Blob URL creation'
+            ],
+            fixes: [
+                'Allow downloads in browser settings (check popup blocker)',
+                'Grant file download permissions when prompted by browser',
+                'Try exporting again after refreshing the page',
+                'Check browser console for additional security errors'
+            ],
+            links: [
+                ['Blob API', 'https://developer.mozilla.org/en-US/docs/Web/API/Blob'],
+                ['File Download Guide', 'https://developer.mozilla.org/en-US/docs/Web/API/HTMLAnchorElement/download'],
+                ['Browser Permissions', 'https://developer.mozilla.org/en-US/docs/Web/API/Permissions_API']
+            ]
+        }) : 'Failed to export history: ' + e.message;
+        showToast(msg, 'error');
     }
 }
 

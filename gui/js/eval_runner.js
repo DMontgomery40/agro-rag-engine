@@ -206,11 +206,35 @@ function startPolling() {
                 window.UXFeedback.progress.hide('evaluation');
             }
 
-            // Show error in the UI
+            // Show error in the UI with enhanced diagnostics
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Evaluation Polling Failed', {
+                message: error.message,
+                causes: [
+                    'Backend server crashed or was restarted during evaluation',
+                    'Network connection interrupted while polling status',
+                    'Evaluation process terminated unexpectedly',
+                    'Qdrant vector database became unavailable mid-evaluation',
+                    'API timeout while fetching evaluation status'
+                ],
+                fixes: [
+                    'Check Infrastructure tab to verify backend is running',
+                    'Review backend logs for evaluation process errors',
+                    'Ensure Qdrant is running: check Infrastructure > Services',
+                    'Check network connectivity and retry evaluation',
+                    'Restart evaluation after verifying all services are up'
+                ],
+                links: [
+                    ['Evaluation Troubleshooting', '/docs/EVALUATION.md#troubleshooting'],
+                    ['Backend Logs', '/docs/DEBUGGING.md#backend-logs'],
+                    ['Qdrant Status', 'https://qdrant.tech/documentation/guides/monitoring/'],
+                    ['Backend Health', '/api/health']
+                ]
+            }) : `✗ Evaluation polling failed: ${error.message}. Backend may have crashed.`;
+
             const statusEl = document.getElementById('eval-status');
             if (statusEl) {
                 statusEl.style.color = 'var(--err)';
-                statusEl.textContent = '✗ Evaluation polling failed. Backend may have crashed. Check server logs and try again.';
+                statusEl.textContent = msg;
                 statusEl.title = `Error: ${error.message}. The backend evaluation process may have terminated.`;
             }
 
@@ -258,7 +282,27 @@ async function loadEvalResults() {
         }
     } catch (error) {
         console.error('Failed to load results:', error);
-        document.getElementById('eval-status').textContent = 'Error: ' + error.message;
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to Load Evaluation Results', {
+            message: error.message,
+            causes: [
+                'Evaluation has not been run yet or results were not saved',
+                'Backend evaluation results API endpoint is not responding',
+                'Evaluation results file is corrupted or has invalid format',
+                'Network timeout while fetching evaluation results'
+            ],
+            fixes: [
+                'Run a full evaluation first using "Run Full Evaluation" button',
+                'Verify backend service is running: check Infrastructure tab',
+                'Check backend logs for /api/eval/results endpoint errors',
+                'Refresh the page and try loading results again'
+            ],
+            links: [
+                ['Evaluation Guide', '/docs/EVALUATION.md#viewing-results'],
+                ['OpenAI Evals', 'https://platform.openai.com/docs/guides/evals'],
+                ['Backend Health', '/api/health']
+            ]
+        }) : 'Error: ' + error.message;
+        document.getElementById('eval-status').textContent = msg;
         document.getElementById('eval-status').style.color = 'var(--err)';
         const btn = document.getElementById('btn-eval-run');
         btn.disabled = false;

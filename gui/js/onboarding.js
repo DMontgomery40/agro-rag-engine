@@ -108,8 +108,35 @@
       }
     }catch(err){
       console.error('Indexing error:', err);
+      const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Onboarding Indexing Failed', {
+        message: err.message,
+        causes: [
+          'Repository path is invalid or inaccessible',
+          'Backend indexing service crashed during onboarding',
+          'Insufficient disk space for index creation',
+          'Qdrant vector database is not running or not accessible',
+          'Repository contains files that cannot be parsed'
+        ],
+        fixes: [
+          'Verify repository path exists and is readable',
+          'Check Infrastructure tab to ensure Qdrant is running',
+          'Check available disk space: need at least 1GB free',
+          'Review backend logs for specific indexing errors',
+          'Try selecting a smaller repository for initial setup'
+        ],
+        links: [
+          ['Onboarding Guide', '/docs/ONBOARDING.md'],
+          ['Indexing Process', '/docs/INDEXING.md#troubleshooting'],
+          ['Qdrant Setup', 'https://qdrant.tech/documentation/quick-start/'],
+          ['Backend Health', '/api/health']
+        ]
+      }) : 'Indexing error: ' + err.message;
       if (status) status.textContent = 'Indexing completed with keyword-only mode';
-      const fb = $('#onboard-index-fallback'); if (fb) fb.style.display = 'block';
+      const fb = $('#onboard-index-fallback');
+      if (fb) {
+        fb.style.display = 'block';
+        fb.innerHTML = `<div style="color: var(--warn); padding: 12px; background: var(--bg-elev1); border: 1px solid var(--warn); border-radius: 4px; margin-top: 12px;">${msg}</div>`;
+      }
       if (bar) bar.style.width = '70%'; if (nextBtn) nextBtn.disabled = false; onboardingState.indexing.running = false;
     }
   }
@@ -202,6 +229,28 @@
       }
     } catch (e) {
       console.error('[onboarding.js] Failed to save onboarding completion:', e);
+      const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to Save Onboarding State', {
+        message: e.message,
+        causes: [
+          'Backend onboarding API endpoint is not responding',
+          'localStorage is disabled or in private browsing mode',
+          'Network connection interrupted during save',
+          'Server-side storage quota exceeded or permissions issue'
+        ],
+        fixes: [
+          'Verify backend service is running: check Infrastructure tab',
+          'Enable localStorage in browser settings',
+          'Check network connectivity and retry',
+          'Review backend logs for /api/onboarding/complete errors'
+        ],
+        links: [
+          ['Onboarding Guide', '/docs/ONBOARDING.md'],
+          ['Web Storage API', 'https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API'],
+          ['Backend Health', '/api/health']
+        ]
+      }) : 'Failed to save onboarding state: ' + e.message;
+      // Non-blocking error - log but don't alert user
+      console.warn(msg);
     }
   }
 

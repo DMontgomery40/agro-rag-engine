@@ -28,8 +28,28 @@ async function loadGoldenQuestions() {
         renderGoldenQuestions();
     } catch (error) {
         console.error('Failed to load golden questions:', error);
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to Load Golden Questions', {
+            message: error.message,
+            causes: [
+                'Backend golden questions API endpoint is not responding',
+                'Golden questions file (golden.json) is missing or corrupted',
+                'Network timeout while fetching questions from backend',
+                'Invalid JSON format in golden questions data file'
+            ],
+            fixes: [
+                'Verify backend service is running: check Infrastructure tab',
+                'Check that golden.json exists in project data directory',
+                'Refresh the page and try loading questions again',
+                'Review backend logs for /api/golden endpoint errors'
+            ],
+            links: [
+                ['Golden Questions Setup', '/docs/EVALUATION.md#golden-questions'],
+                ['File Format Guide', '/docs/EVALUATION.md#question-format'],
+                ['Backend Health', '/api/health']
+            ]
+        }) : 'Error loading questions: ' + error.message;
         document.getElementById('golden-questions-content').innerHTML =
-            `<div style="color: var(--err);">Error loading questions: ${error.message}</div>`;
+            `<div style="color: var(--err); padding: 16px;">${msg}</div>`;
     }
 }
 

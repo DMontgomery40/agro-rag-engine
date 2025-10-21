@@ -89,6 +89,27 @@ async function loadRepos() {
         }
     } catch (e) {
         console.error('Failed to load repos:', e);
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to Load Repositories', {
+            message: e.message,
+            causes: [
+                'Backend configuration API service is not responding',
+                'Repository configuration file (repos.json) is missing or corrupted',
+                'Network connectivity issue or timeout',
+                'Invalid JSON response from /api/config endpoint'
+            ],
+            fixes: [
+                'Verify backend service is running: check Infrastructure tab',
+                'Check that repos.json exists in project root directory',
+                'Refresh the page and try loading again',
+                'Check backend logs for configuration loading errors'
+            ],
+            links: [
+                ['Repository Configuration', '/docs/CONFIGURATION.md#repositories'],
+                ['Backend Health', '/api/health'],
+                ['Fetch API Reference', 'https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API']
+            ]
+        }) : 'Failed to load repos: ' + e.message;
+        alert(msg);
     }
 }
 

@@ -130,7 +130,27 @@
             grid.innerHTML = html;
         } catch (e) {
             console.error('[indexing] Failed to load stats:', e);
-            grid.innerHTML = '<div style="color: var(--err); padding: 16px;">Failed to load index stats</div>';
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to Load Index Statistics', {
+                message: e.message,
+                causes: [
+                    'Backend index statistics API endpoint is not responding',
+                    'Qdrant vector database is not running or not accessible',
+                    'Index data is corrupted or database schema mismatch',
+                    'Network timeout while fetching index statistics'
+                ],
+                fixes: [
+                    'Verify backend service is running: check Infrastructure tab',
+                    'Ensure Qdrant is running: check Infrastructure > Services status',
+                    'Refresh the page to retry loading statistics',
+                    'Check backend logs for index/stats endpoint errors'
+                ],
+                links: [
+                    ['Qdrant Collections', 'https://qdrant.tech/documentation/concepts/collections/'],
+                    ['Backend Health', '/api/health'],
+                    ['Indexing Guide', '/docs/INDEXING.md#monitoring']
+                ]
+            }) : 'Failed to load index stats: ' + e.message;
+            grid.innerHTML = '<div style="color: var(--err); padding: 16px;">' + msg + '</div>';
         }
     }
 
@@ -334,6 +354,31 @@
             }
         } catch (e) {
             console.error('[indexing] Failed to poll status:', e);
+
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Indexing Status Check Failed', {
+                message: e.message,
+                causes: [
+                    'Backend indexing status API endpoint is not responding',
+                    'Indexing process crashed or was terminated unexpectedly',
+                    'Network connection interrupted during status polling',
+                    'Backend server restarted during indexing operation'
+                ],
+                fixes: [
+                    'Check Infrastructure tab to verify backend service is running',
+                    'Review backend logs for indexing process errors',
+                    'Restart indexing process if it appears stalled',
+                    'Verify network connectivity and retry polling'
+                ],
+                links: [
+                    ['Indexing Process', '/docs/INDEXING.md#monitoring-progress'],
+                    ['Backend Health', '/api/health'],
+                    ['Troubleshooting', '/docs/TROUBLESHOOTING.md#indexing']
+                ]
+            }) : 'Indexing status check failed: ' + e.message;
+
+            if (window.showStatus) {
+                window.showStatus(msg, 'error');
+            }
 
             // Hide progress bar on error
             if (window.UXFeedback) {
