@@ -1,7 +1,7 @@
 # Editor data
 .editor_data/
 out/editor/
-
+*.webm
 # Python
 __pycache__/
 *.py[codz]
