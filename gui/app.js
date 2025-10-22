@@ -1434,6 +1434,11 @@
         } catch {}
 
         try {
+            const stats = await (await fetch(api('/api/index/stats'))).json();
+            const db = document.getElementById('dash-branch'); if (db) db.textContent = stats.current_branch || 'unknown';
+        } catch {}
+
+        try {
             const h = await (await fetch(api('/health'))).json();
             const dh = document.getElementById('dash-health'); if (dh) dh.textContent = `${h.status}${h.graph_loaded? ' (graph ready)':''}`;
         } catch {}

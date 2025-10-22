@@ -205,8 +205,18 @@
                 div.innerHTML = `
                     <h4 style="color: var(--accent); font-size: 14px; margin-bottom: 12px;">Repo: ${repo.name}</h4>
                     <div class="input-group" style="margin-bottom: 12px;">
-                        <label>Path</label>
-                        <input type="text" name="repo_path_${repo.name}" value="${repo.path || ''}" />
+                        <label>Path <span class="path-validation-status" id="path-status-${repo.name}" style="margin-left: 8px;"></span></label>
+                        <input type="text" name="repo_path_${repo.name}" value="${repo.path || ''}" data-repo="${repo.name}" />
+                        <div class="small" id="path-resolved-${repo.name}" style="color: var(--fg-muted); margin-top: 4px;"></div>
+                    </div>
+                    <div class="input-group" style="margin-bottom: 12px;">
+                        <label>Exclude Paths (paths/patterns to skip during indexing)</label>
+                        <div id="exclude-paths-container-${repo.name}" style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; min-height: 32px; padding: 8px; background: var(--bg-elev2); border: 1px solid var(--line); border-radius: 4px;"></div>
+                        <div style="display: flex; gap: 6px;">
+                            <input type="text" id="exclude-path-input-${repo.name}" placeholder="e.g., /website, *.pyc, /node_modules" style="flex: 1;" />
+                            <button type="button" class="small-button" id="exclude-path-add-${repo.name}" style="background: var(--accent); color: var(--accent-contrast); padding: 6px 12px;">Add</button>
+                        </div>
+                        <input type="hidden" name="repo_excludepaths_${repo.name}" value="${(repo.exclude_paths||[]).join(',')}" />
                     </div>
                     <div class="input-group" style="margin-bottom: 12px;">
                         <label>Keywords (comma-separated)</label>
@@ -467,6 +477,108 @@
                 // initial fill using existing values + catalog (if loaded later, loadKeywords will repaint)
                 setRepoKws((repo.keywords||[]));
                 if (state.keywordsCatalog) paintSource();
+
+                // Initialize exclude paths UI
+                const excludePathsContainer = div.querySelector(`#exclude-paths-container-${rname}`);
+                const excludePathInput = div.querySelector(`#exclude-path-input-${rname}`);
+                const excludePathAddBtn = div.querySelector(`#exclude-path-add-${rname}`);
+                const excludePathsHidden = div.querySelector(`[name="repo_excludepaths_${rname}"]`);
+
+                function renderExcludePaths() {
+                    const paths = (excludePathsHidden.value || '').split(',').filter(p => p.trim());
+                    excludePathsContainer.innerHTML = '';
+
+                    if (paths.length === 0) {
+                        const emptyMsg = document.createElement('span');
+                        emptyMsg.textContent = 'No exclusions (all files will be indexed)';
+                        emptyMsg.style.cssText = 'color: var(--fg-muted); font-size: 11px; font-style: italic;';
+                        excludePathsContainer.appendChild(emptyMsg);
+                        return;
+                    }
+
+                    paths.forEach(path => {
+                        const chip = document.createElement('div');
+                        chip.style.cssText = 'display: inline-flex; align-items: center; gap: 6px; background: var(--accent); color: var(--accent-contrast); padding: 4px 8px; border-radius: 4px; font-size: 11px;';
+                        chip.innerHTML = `
+                            <span>${path}</span>
+                            <button type="button" style="background: transparent; border: none; color: var(--accent-contrast); cursor: pointer; padding: 0; font-size: 14px; line-height: 1;" data-path="${path}">&times;</button>
+                        `;
+                        chip.querySelector('button').addEventListener('click', () => {
+                            const currentPaths = (excludePathsHidden.value || '').split(',').filter(p => p.trim());
+                            const newPaths = currentPaths.filter(p => p !== path);
+                            excludePathsHidden.value = newPaths.join(',');
+                            renderExcludePaths();
+                        });
+                        excludePathsContainer.appendChild(chip);
+                    });
+                }
+
+                excludePathAddBtn.addEventListener('click', () => {
+                    const newPath = excludePathInput.value.trim();
+                    if (newPath) {
+                        const currentPaths = (excludePathsHidden.value || '').split(',').filter(p => p.trim());
+                        if (!currentPaths.includes(newPath)) {
+                            currentPaths.push(newPath);
+                            excludePathsHidden.value = currentPaths.join(',');
+                            renderExcludePaths();
+                        }
+                        excludePathInput.value = '';
+                    }
+                });
+
+                excludePathInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        excludePathAddBtn.click();
+                    }
+                });
+
+                renderExcludePaths();
+
+                // Add path validation on blur
+                const pathInput = div.querySelector(`[name="repo_path_${rname}"]`);
+                const pathStatus = div.querySelector(`#path-status-${rname}`);
+                const pathResolved = div.querySelector(`#path-resolved-${rname}`);
+
+                async function validatePath() {
+                    const pathValue = pathInput.value.trim();
+                    if (!pathValue) {
+                        pathStatus.innerHTML = '';
+                        pathResolved.textContent = '';
+                        return;
+                    }
+
+                    pathStatus.innerHTML = '<span style="color: var(--fg-muted);">⏳ Validating...</span>';
+
+                    try {
+                        const response = await fetch(api(`/api/repos/${rname}/validate-path`), {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ path: pathValue })
+                        });
+
+                        const result = await response.json();
+
+                        if (result.valid) {
+                            pathStatus.innerHTML = '<span style="color: var(--success);">✓ Valid</span>';
+                            pathResolved.textContent = `Resolves to: ${result.resolved}`;
+                        } else {
+                            pathStatus.innerHTML = '<span style="color: var(--error);">✗ Invalid</span>';
+                            pathResolved.textContent = result.error || 'Path validation failed';
+                            pathResolved.style.color = 'var(--error)';
+                        }
+                    } catch (e) {
+                        pathStatus.innerHTML = '<span style="color: var(--warning);">⚠ Check failed</span>';
+                        pathResolved.textContent = 'Could not validate path';
+                        pathResolved.style.color = 'var(--warning)';
+                    }
+                }
+
+                pathInput.addEventListener('blur', validatePath);
+                // Validate on initial load
+                if (pathInput.value.trim()) {
+                    setTimeout(validatePath, 500);
+                }
             });
         }
 
@@ -536,8 +648,10 @@
                 repoMap[repoName] = { name: repoName };
             }
 
-            if (fieldType === 'keywords' || fieldType === 'pathboosts') {
-                const key = fieldType === 'pathboosts' ? 'path_boosts' : 'keywords';
+            if (fieldType === 'keywords' || fieldType === 'pathboosts' || fieldType === 'excludepaths') {
+                let key = fieldType;
+                if (fieldType === 'pathboosts') key = 'path_boosts';
+                else if (fieldType === 'excludepaths') key = 'exclude_paths';
                 repoMap[repoName][key] = field.value.split(',').map(s => s.trim()).filter(Boolean);
             } else if (fieldType === 'layerbonuses') {
                 try {

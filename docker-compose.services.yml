@@ -14,12 +14,14 @@ services:
       - OLLAMA_URL=${OLLAMA_URL:-}
       - OAUTH_ENABLED=${OAUTH_ENABLED:-false}
       - OAUTH_TOKEN=${OAUTH_TOKEN:-}
+      - GIT_BRANCH=${GIT_BRANCH}
     ports:
       - "8012:8012"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
       - ./.env:/app/.env
+      - ./repos.json:/app/repos.json
       - ./out:/app/out
       - ./data:/app/data
       - ./gui:/app/gui

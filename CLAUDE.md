@@ -33,6 +33,13 @@
   <section title="Critical: No Commits Without Approval">
     <p>> !!! CRITICAL !!!  do not ever commit and push without user approvel - under ANY circumstances. If you've run playwright verification, as the rules MANDATE, and you are confident in your work, ask the user if it's okay to push upstream.  NEVER commit without user authorization !!! CRITICAL !!!</p>
   </section>
+  <section title="Path Configuration: Always Use Relative Paths or Environment Variables">
+    <ul>
+      <li><b>NEVER hard-code absolute paths</b> like /Users/davidmontgomery/agro-rag-engine - they break in Docker and other environments</li>
+      <li><b>ALWAYS use relative paths</b> (e.g., models/cross-encoder-agro, data/evals/baseline.json) or environment variables with defaults (e.g., ${REPO_ROOT:-/app})</li>
+      <li>This ensures code works in both local development and Docker containers without modification</li>
+    </ul>
+  </section>
   <section title="RAG Preconditions">
     <p>You must verify the server is up, docker is running, and qdrant is accessible, before doing any RAG performance related tests</p>
   </section>

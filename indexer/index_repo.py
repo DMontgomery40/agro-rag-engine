@@ -4,7 +4,7 @@ import hashlib
 from typing import List, Dict
 from pathlib import Path
 from dotenv import load_dotenv, find_dotenv
-from common.config_loader import get_repo_paths, out_dir
+from common.config_loader import get_repo_paths, out_dir, exclude_paths
 from common.paths import data_dir
 from retrieval.ast_chunker import lang_from_path, collect_files, chunk_code
 import bm25s  # type: ignore
@@ -97,17 +97,34 @@ def _load_exclude_globs() -> list[str]:
 
 _EXCLUDE_GLOBS = _load_exclude_globs()
 
-def should_index_file(path: str) -> bool:
+def should_index_file(path: str, repo_exclude_patterns: List[str] = None) -> bool:
+    """Check if a file should be indexed.
+
+    Args:
+        path: Absolute file path
+        repo_exclude_patterns: List of exclude patterns from repo config (glob patterns)
+    """
     p = pathlib.Path(path)
     # 1) fast deny: extension must look like source
     if p.suffix.lower() not in SOURCE_EXTS:
         return False
-    # 2) glob excludes (vendor, caches, images, minified, etc.)
+
+    # 2) repo-specific exclude patterns (from repos.json)
+    if repo_exclude_patterns:
+        as_posix = p.as_posix()
+        for pat in repo_exclude_patterns:
+            # Support both absolute paths from repo root and glob patterns
+            # Pattern can be: /path/to/dir, *.ext, or /path/*.ext
+            if fnmatch.fnmatch(as_posix, pat) or fnmatch.fnmatch(as_posix, f"*{pat}*"):
+                return False
+
+    # 3) global glob excludes (vendor, caches, images, minified, etc.)
     as_posix = p.as_posix()
     for pat in _EXCLUDE_GLOBS:
         if fnmatch.fnmatch(as_posix, pat):
             return False
-    # 3) quick heuristic to skip huge/minified one-liners
+
+    # 4) quick heuristic to skip huge/minified one-liners
     try:
         text = p.read_text(errors="ignore")
         if len(text) > 2_000_000:  # ~2MB
@@ -223,11 +240,16 @@ def embed_texts_voyage(texts: List[str], batch: int = 128, output_dimension: int
     return out
 
 def main() -> None:
+    # Load repo-specific exclude patterns from repos.json
+    repo_exclude_patterns = exclude_paths(REPO)
+    if repo_exclude_patterns:
+        print(f'Loaded {len(repo_exclude_patterns)} exclude patterns for repo "{REPO}": {repo_exclude_patterns}')
+
     files = collect_files(BASES)
     print(f'Discovered {len(files)} source files.')
     all_chunks: List[Dict] = []
     for fp in files:
-        if not should_index_file(fp):
+        if not should_index_file(fp, repo_exclude_patterns):
             continue
         lang = lang_from_path(fp)
         if not lang:
@@ -237,7 +259,19 @@ def main() -> None:
                 src = f.read()
         except Exception:
             continue
-        ch = chunk_code(src, fp, lang, target=900)
+
+        # Convert absolute path to relative path (for portability)
+        # Try to make it relative to one of the repo base paths
+        relative_fp = fp
+        for base in BASES:
+            try:
+                relative_fp = str(Path(fp).relative_to(Path(base)))
+                break
+            except ValueError:
+                # fp is not relative to this base, try next one
+                continue
+
+        ch = chunk_code(src, relative_fp, lang, target=900)
         all_chunks.extend(ch)
 
     seen, chunks = set(), []

@@ -19,7 +19,13 @@
   - everything in the backend must be full wired up and connected to the gui
   - everything in the gui must be fully wired up and connected to the backend
 
-## > !!! CRITICAL !!!  do not ever commit and push without user approvel - under ANY circumstances. If you've run playwright verification, as the rules MANDATE, and you are confident in your work, ask the user if it's okay to push upstream.  NEVER commit without user authorization !!! CRITICAL !!! 
+## > !!! CRITICAL !!!  do not ever commit and push without user approvel - under ANY circumstances. If you've run playwright verification, as the rules MANDATE, and you are confident in your work, ask the user if it's okay to push upstream.  NEVER commit without user authorization !!! CRITICAL !!!
+
+## Path Configuration: Always Use Relative Paths or Environment Variables
+
+  - **NEVER hard-code absolute paths** like `/Users/davidmontgomery/agro-rag-engine` - they break in Docker and other environments
+  - **ALWAYS use relative paths** (e.g., `models/cross-encoder-agro`, `data/evals/baseline.json`) or environment variables with defaults (e.g., `${REPO_ROOT:-/app}`)
+  - This ensures code works in both local development and Docker containers without modification
 
 ## You must verify the server is up, docker is running, and qdrant is accessible, before doing any RAG performance related tests
 

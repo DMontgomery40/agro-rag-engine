@@ -897,6 +897,8 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
             cur["path_boosts"] = [str(x) for x in r["path_boosts"]]
         if "layer_bonuses" in r and isinstance(r["layer_bonuses"], dict):
             cur["layer_bonuses"] = r["layer_bonuses"]
+        if "exclude_paths" in r and isinstance(r["exclude_paths"], list):
+            cur["exclude_paths"] = [str(x) for x in r["exclude_paths"]]
         by_name[name] = cur
     new_cfg = {
         "default_repo": default_repo,
@@ -905,6 +907,103 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
     _write_json(repos_path, new_cfg)
 
     return {"status": "success", "applied_env_keys": sorted(existing.keys()), "repos_count": len(new_cfg["repos"]) }
+
+@app.get("/api/repos")
+def get_repos() -> Dict[str, Any]:
+    """Get all repos configuration."""
+    cfg = load_repos()
+    return {
+        "default_repo": cfg.get("default_repo"),
+        "repos": cfg.get("repos", [])
+    }
+
+@app.get("/api/repos/{repo_name}")
+def get_repo(repo_name: str) -> Dict[str, Any]:
+    """Get specific repo configuration."""
+    cfg = load_repos()
+    for repo in cfg.get("repos", []):
+        if str(repo.get("name", "")).lower() == repo_name.lower():
+            return {"ok": True, "repo": repo}
+    return JSONResponse({"ok": False, "error": f"Repo '{repo_name}' not found"}, status_code=404)
+
+@app.patch("/api/repos/{repo_name}")
+def patch_repo(repo_name: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Update specific fields of a repo configuration."""
+    repos_path = ROOT / "repos.json"
+    cfg = _read_json(repos_path, {"default_repo": None, "repos": []})
+
+    found = False
+    for repo in cfg.get("repos", []):
+        if str(repo.get("name", "")).lower() == repo_name.lower():
+            found = True
+            # Update only provided fields
+            if "path" in payload:
+                repo["path"] = str(payload["path"])
+            if "keywords" in payload and isinstance(payload["keywords"], list):
+                repo["keywords"] = [str(x) for x in payload["keywords"]]
+            if "path_boosts" in payload and isinstance(payload["path_boosts"], list):
+                repo["path_boosts"] = [str(x) for x in payload["path_boosts"]]
+            if "layer_bonuses" in payload and isinstance(payload["layer_bonuses"], dict):
+                repo["layer_bonuses"] = payload["layer_bonuses"]
+            if "exclude_paths" in payload and isinstance(payload["exclude_paths"], list):
+                repo["exclude_paths"] = [str(x) for x in payload["exclude_paths"]]
+            break
+
+    if not found:
+        return JSONResponse({"ok": False, "error": f"Repo '{repo_name}' not found"}, status_code=404)
+
+    _write_json(repos_path, cfg)
+    return {"ok": True, "message": f"Updated repo '{repo_name}'"}
+
+@app.post("/api/repos/{repo_name}/validate-path")
+def validate_repo_path(repo_name: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Validate that a repo path exists and is readable."""
+    from common.config_loader import _expand_env_vars
+
+    path_str = payload.get("path", "")
+    if not path_str:
+        return {"ok": False, "error": "No path provided", "valid": False}
+
+    try:
+        # Expand environment variables
+        expanded = _expand_env_vars(path_str)
+        resolved = Path(expanded).expanduser().resolve()
+
+        # Check if path exists
+        if not resolved.exists():
+            return {
+                "ok": True,
+                "valid": False,
+                "error": "Path does not exist",
+                "raw": path_str,
+                "resolved": str(resolved)
+            }
+
+        # Check if path is readable
+        if not os.access(resolved, os.R_OK):
+            return {
+                "ok": True,
+                "valid": False,
+                "error": "Path exists but is not readable",
+                "raw": path_str,
+                "resolved": str(resolved)
+            }
+
+        return {
+            "ok": True,
+            "valid": True,
+            "raw": path_str,
+            "resolved": str(resolved),
+            "exists": True,
+            "readable": True
+        }
+    except Exception as e:
+        return {
+            "ok": True,
+            "valid": False,
+            "error": str(e),
+            "raw": path_str
+        }
 
 @app.get("/api/prices")
 def get_prices():
