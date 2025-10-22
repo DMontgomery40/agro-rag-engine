@@ -43,6 +43,14 @@
       <li>Do not add features or code that the user didn't ask for, even if you think it's helpful of common sense to do, ASK THE USER FIRST</li>
     </ul>
   </section>
+  <section title="GUI Settings Must Not Be Removed">
+    <p>Never remove or hide anything from the GUI because it is "broken", "fake", or "simulated". These cases represent ADA and contractual compliance issues that MUST be FIXED immediately; they must not be erased. <b>BROKEN SETTINGS IN GUI MUST BE FIXED, THEY MUST NOT BE ERASED</b>.</p>
+    <ul>
+      <li>Do not delete, hide, or deprecate GUI settings for being broken; repair them.</li>
+      <li>Treat broken settings as high-priority defects requiring prompt correction.</li>
+      <li>Never assume removal is acceptable; escalate and fix while preserving visibility.</li>
+    </ul>
+  </section>
   <section title="Agent Docs Location">
     <p>***All agent-created .md files must go in /agent_docs/, please don't clutter root unnessarily***</p>
   </section>
@@ -124,6 +132,13 @@ markdown version
   - do NOT just put gui settings in a random place, if it's obvious where they go, that is okay, if it not crystal clear and logical where it should be, ask the user where it should go 
 
   - Do not add features or code that the user didn't ask for, even if you think it's helpful of common sense to do, ASK THE USER FIRST 
+
+## Broken GUI Settings Must Not Be Removed
+
+  - Never remove or hide settings because they are "broken", "fake", or "simulated".
+  - Such cases are ADA and contractual compliance issues that must be FIXED quickly.
+  - Do not erase anything from the GUI; preserve and repair functionality.
+  - **BROKEN SETTINGS IN GUI MUST BE FIXED, THEY MUST NOT BE ERASED**
 
 # ***All agent-created .md files must go in /agent_docs/, please don't clutter root unnessarily***
 
