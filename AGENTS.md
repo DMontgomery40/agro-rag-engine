@@ -29,6 +29,13 @@
 
   - Do not add features or code that the user didn't ask for, even if you think it's helpful of common sense to do, ASK THE USER FIRST 
 
+## Broken GUI Settings Must Not Be Removed
+
+  - Never remove or hide settings because they are "broken", "fake", or "simulated".
+  - Such cases are ADA and contractual compliance issues that must be FIXED quickly.
+  - Do not erase anything from the GUI; preserve and repair functionality.
+  - **BROKEN SETTINGS IN GUI MUST BE FIXED, THEY MUST NOT BE ERASED**
+
 # ***All agent-created .md files must go in /agent_docs/, please don't clutter root unnessarily***
 
 # Use the RAG server (API or MCP)
