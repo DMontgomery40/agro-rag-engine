@@ -1,0 +1,362 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - heading "AGRO Another Good RAG Option" [level=1] [ref=e3]:
+      - generic [ref=e4]: AGRO
+      - generic [ref=e5]: Another Good RAG Option
+    - generic [ref=e6]:
+      - searchbox "Search settings (Ctrl+K)" [ref=e7]
+      - combobox "Theme Mode" [ref=e8]:
+        - option "Auto"
+        - option "Dark" [selected]
+        - option "Light"
+      - button "Health" [ref=e9] [cursor=pointer]
+      - generic [ref=e10]: OK @ 10/22/2025, 3:11:05 AM
+  - generic [ref=e11]:
+    - generic [ref=e13]:
+      - generic [ref=e14]:
+        - button "🚀 Get Started" [ref=e15] [cursor=pointer]
+        - button "📊 Dashboard" [active] [ref=e16] [cursor=pointer]
+        - button "💬 Chat" [ref=e17] [cursor=pointer]
+        - button "📝 VS Code ✨" [ref=e18] [cursor=pointer]
+        - button "📈 Grafana ✨" [ref=e19] [cursor=pointer]
+        - button "🧠 RAG" [ref=e20] [cursor=pointer]
+        - button "💾 Profiles" [ref=e21] [cursor=pointer]
+        - button "🔧 Infrastructure" [ref=e22] [cursor=pointer]
+        - button "⚙️ Admin" [ref=e23] [cursor=pointer]
+      - button "Overview" [ref=e25] [cursor=pointer]
+      - generic [ref=e26]:
+        - generic [ref=e27]:
+          - generic [ref=e29]:
+            - generic [ref=e30]:
+              - heading "System Status" [level=3] [ref=e31]: System Status
+              - generic [ref=e33]:
+                - generic [ref=e34]:
+                  - generic [ref=e35]: Health
+                  - generic [ref=e36]: healthy (graph ready)
+                - generic [ref=e37]:
+                  - generic [ref=e38]: Repo
+                  - generic [ref=e39]: agro (1 repos)
+                - generic [ref=e40]:
+                  - generic [ref=e41]: Cards
+                  - generic [ref=e42]: 100 cards
+                - generic [ref=e43]:
+                  - generic [ref=e44]: MCP Servers
+                  - generic [ref=e45]:
+                    - generic [ref=e46]: py-http:0.0.0.0:8013/mcp (stopped)
+                    - generic [ref=e47]: node-http:127.0.0.1:8014/mcp (stopped)
+                    - generic [ref=e48]: py-stdio:available
+                - generic [ref=e49]:
+                  - generic [ref=e50]: Auto-Tune
+                  - generic [ref=e51]: disabled
+            - generic [ref=e52]:
+              - heading "Quick Actions" [level=3] [ref=e53]:
+                - img [ref=e54]
+                - text: Quick Actions
+              - generic [ref=e56]:
+                - button "Generate Keywords" [ref=e57] [cursor=pointer]:
+                  - img [ref=e58]
+                  - generic [ref=e60]: Generate Keywords
+                - button "Change Repo" [ref=e61] [cursor=pointer]:
+                  - img [ref=e62]
+                  - generic [ref=e64]: Change Repo
+                - button "Run Indexer" [ref=e65] [cursor=pointer]:
+                  - img [ref=e66]
+                  - generic [ref=e69]: Run Indexer
+                - button "Reload Config" [ref=e70] [cursor=pointer]:
+                  - img [ref=e71]
+                  - generic [ref=e75]: Reload Config
+                - button "Run Eval" [ref=e77] [cursor=pointer]:
+                  - img [ref=e78]
+                  - generic [ref=e81]: Run Eval
+                  - img [ref=e82]
+                - button "Refresh Status" [ref=e84] [cursor=pointer]:
+                  - img [ref=e85]
+                  - generic [ref=e89]: Refresh Status
+              - generic [ref=e90]:
+                - generic [ref=e91]:
+                  - generic [ref=e94]:
+                    - generic [ref=e95]: agro
+                    - generic [ref=e96]: "Branch: unknown"
+                  - generic [ref=e97]: 10/21/2025, 2:49:03 PM
+                - generic [ref=e98]:
+                  - generic [ref=e99]:
+                    - img [ref=e100]
+                    - text: Embedding Configuration
+                  - generic [ref=e103]:
+                    - generic [ref=e104]:
+                      - generic [ref=e105]: Model
+                      - generic [ref=e106]: text-embedding-3-large
+                    - generic [ref=e107]:
+                      - generic [ref=e108]: Dimensions
+                      - generic [ref=e109]: "512"
+                    - generic [ref=e110]:
+                      - generic [ref=e111]: Precision
+                      - generic [ref=e112]: float32
+                - generic [ref=e113]:
+                  - generic [ref=e114]:
+                    - img [ref=e115]
+                    - text: Indexing Costs
+                  - generic [ref=e117]:
+                    - generic [ref=e118]:
+                      - generic [ref=e119]: Total Tokens
+                      - generic [ref=e120]: 767,250
+                    - generic [ref=e121]:
+                      - generic [ref=e122]: Embedding Cost
+                      - generic [ref=e123]: $0.0997
+                - generic [ref=e124]:
+                  - generic [ref=e125]:
+                    - img [ref=e126]
+                    - text: Storage Requirements
+                  - generic [ref=e128]:
+                    - generic [ref=e129]:
+                      - generic [ref=e130]: Chunks JSON
+                      - generic [ref=e131]: 2.091 MiB
+                    - generic [ref=e132]:
+                      - generic [ref=e133]: Raw Embeddings
+                      - generic [ref=e134]: 1.998 MiB
+                    - generic [ref=e135]:
+                      - generic [ref=e136]: Qdrant (w/overhead)
+                      - generic [ref=e137]: 2.997 MiB
+                    - generic [ref=e138]:
+                      - generic [ref=e139]: BM25 Index
+                      - generic [ref=e140]: 4.12 MiB
+                    - generic [ref=e141]:
+                      - generic [ref=e142]: Cards/Summary
+                      - generic [ref=e143]: 29.096 KiB
+                    - generic [ref=e144]:
+                      - generic [ref=e145]: Reranker Cache
+                      - generic [ref=e146]: 1,023 KiB
+                    - generic [ref=e147]:
+                      - generic [ref=e148]: Redis Cache
+                      - generic [ref=e149]: 400 MiB
+                    - generic [ref=e150]:
+                      - generic [ref=e151]: Keywords
+                      - generic [ref=e152]: "0"
+                - group [ref=e153]:
+                  - generic "▸ Index Profiles (5)" [ref=e154] [cursor=pointer]
+                - generic [ref=e155]:
+                  - generic [ref=e156]: Total Index Storage
+                  - generic [ref=e157]: 410.235 MiB
+          - generic [ref=e160]:
+            - heading "Top Folders (Last 5 Days)" [level=3] [ref=e161]:
+              - img [ref=e162]
+              - text: Top Folders (Last 5 Days)
+            - generic [ref=e165]: No folder access data yet
+          - generic [ref=e166]:
+            - heading "● Auto-Profile" [level=3] [ref=e167]:
+              - generic [ref=e168]: ●
+              - text: Auto-Profile
+            - paragraph [ref=e169]: The only platform where you can mix any provider, model, and database. We analyze your hardware and budget to configure the optimal RAG automatically.
+            - generic [ref=e170]:
+              - generic [ref=e171]:
+                - generic [ref=e172]:
+                  - generic [ref=e173]: Monthly Budget ($)
+                  - spinbutton [ref=e174]: "0"
+                - generic [ref=e176]:
+                  - generic [ref=e177]: Auto‑Profile Engine
+                  - generic [ref=e178]:
+                    - checkbox [ref=e179] [cursor=pointer]
+                    - generic [ref=e180]: Use v2 engine (deterministic selector)
+                - button "Configure Automatically" [ref=e181] [cursor=pointer]
+                - generic [ref=e182]:
+                  - generic [ref=e184]: Quick Options
+                  - generic [ref=e185]:
+                    - button "Free Tier (Local Only)" [ref=e186] [cursor=pointer]
+                    - button "Starter ($10/mo)" [ref=e187] [cursor=pointer]
+                    - button "Professional ($50/mo)" [ref=e188] [cursor=pointer]
+                    - button "Enterprise ($200/mo)" [ref=e189] [cursor=pointer]
+                - generic [ref=e191] [cursor=pointer]:
+                  - generic [ref=e192]: Advanced (v2)
+                  - generic [ref=e193]: toggle
+              - generic [ref=e195]:
+                - img [ref=e196]
+                - paragraph [ref=e199]: Click "Configure Automatically" or select a quick option to generate your optimized RAG profile based on your hardware and budget.
+          - generic [ref=e200]:
+            - heading "📜 Monitoring Logs" [level=3] [ref=e201]
+            - paragraph [ref=e202]: Recent alerts and system notices from Alertmanager webhook log. Full controls are under Analytics → Performance.
+            - generic [ref=e203]:
+              - generic [ref=e204]:
+                - heading "Recent Alerts" [level=4] [ref=e205]
+                - generic [ref=e207]:
+                  - generic [ref=e210]:
+                    - generic [ref=e211]: ℹ️ RetrievalQualityDegraded
+                    - generic [ref=e212]: "📉 INFO: Retrieval quality degraded (MRR < 0.6)"
+                  - generic [ref=e215]:
+                    - generic [ref=e216]: ℹ️ RetrievalQualityDegraded
+                    - generic [ref=e217]: "📉 INFO: Retrieval quality degraded (MRR < 0.6)"
+                  - generic [ref=e220]:
+                    - generic [ref=e221]: ℹ️ RetrievalQualityDegraded
+                    - generic [ref=e222]: "📉 INFO: Retrieval quality degraded (MRR < 0.6)"
+                  - generic [ref=e225]:
+                    - generic [ref=e226]: ℹ️ RetrievalQualityDegraded
+                    - generic [ref=e227]: "📉 INFO: Retrieval quality degraded (MRR < 0.6)"
+                  - generic [ref=e230]:
+                    - generic [ref=e231]: ℹ️ RetrievalQualityDegraded
+                    - generic [ref=e232]: "📉 INFO: Retrieval quality degraded (MRR < 0.6)"
+                  - generic [ref=e235]:
+                    - generic [ref=e236]: ℹ️ RetrievalQualityDegraded
+                    - generic [ref=e237]: "📉 INFO: Retrieval quality degraded (MRR < 0.6)"
+                  - generic [ref=e240]:
+                    - generic [ref=e241]: ℹ️ RetrievalQualityDegraded
+                    - generic [ref=e242]: "📉 INFO: Retrieval quality degraded (MRR < 0.6)"
+                  - generic [ref=e245]:
+                    - generic [ref=e246]: ℹ️ RetrievalQualityDegraded
+                    - generic [ref=e247]: "📉 INFO: Retrieval quality degraded (MRR < 0.6)"
+                  - generic [ref=e250]:
+                    - generic [ref=e251]: ℹ️ RetrievalQualityDegraded
+                    - generic [ref=e252]: "📉 INFO: Retrieval quality degraded (MRR < 0.6)"
+                  - generic [ref=e255]:
+                    - generic [ref=e256]: ℹ️ RetrievalQualityDegraded
+                    - generic [ref=e257]: "📉 INFO: Retrieval quality degraded (MRR < 0.6)"
+              - generic [ref=e258]:
+                - heading "Alert History" [level=4] [ref=e259]
+                - table [ref=e261]:
+                  - rowgroup [ref=e262]:
+                    - row "Time Alert Severity" [ref=e263]:
+                      - cell "Time" [ref=e264]
+                      - cell "Alert" [ref=e265]
+                      - cell "Severity" [ref=e266]
+                  - rowgroup [ref=e267]:
+                    - row "10/21/2025, 5:51:44 PM RetrievalQualityDegraded INFO" [ref=e268]:
+                      - cell "10/21/2025, 5:51:44 PM" [ref=e269]
+                      - cell "RetrievalQualityDegraded" [ref=e270]
+                      - cell "INFO" [ref=e271]
+                    - row "10/21/2025, 4:50:46 PM RetrievalQualityDegraded INFO" [ref=e272]:
+                      - cell "10/21/2025, 4:50:46 PM" [ref=e273]
+                      - cell "RetrievalQualityDegraded" [ref=e274]
+                      - cell "INFO" [ref=e275]
+                    - row "10/21/2025, 2:18:44 PM RetrievalQualityDegraded INFO" [ref=e276]:
+                      - cell "10/21/2025, 2:18:44 PM" [ref=e277]
+                      - cell "RetrievalQualityDegraded" [ref=e278]
+                      - cell "INFO" [ref=e279]
+                    - row "10/21/2025, 12:28:14 PM RetrievalQualityDegraded INFO" [ref=e280]:
+                      - cell "10/21/2025, 12:28:14 PM" [ref=e281]
+                      - cell "RetrievalQualityDegraded" [ref=e282]
+                      - cell "INFO" [ref=e283]
+                    - row "10/21/2025, 5:56:51 AM RetrievalQualityDegraded INFO" [ref=e284]:
+                      - cell "10/21/2025, 5:56:51 AM" [ref=e285]
+                      - cell "RetrievalQualityDegraded" [ref=e286]
+                      - cell "INFO" [ref=e287]
+                    - row "10/21/2025, 5:56:34 AM RetrievalQualityDegraded INFO" [ref=e288]:
+                      - cell "10/21/2025, 5:56:34 AM" [ref=e289]
+                      - cell "RetrievalQualityDegraded" [ref=e290]
+                      - cell "INFO" [ref=e291]
+                    - row "10/21/2025, 5:30:39 AM RetrievalQualityDegraded INFO" [ref=e292]:
+                      - cell "10/21/2025, 5:30:39 AM" [ref=e293]
+                      - cell "RetrievalQualityDegraded" [ref=e294]
+                      - cell "INFO" [ref=e295]
+                    - row "10/21/2025, 4:54:49 AM RetrievalQualityDegraded INFO" [ref=e296]:
+                      - cell "10/21/2025, 4:54:49 AM" [ref=e297]
+                      - cell "RetrievalQualityDegraded" [ref=e298]
+                      - cell "INFO" [ref=e299]
+                    - row "10/21/2025, 4:19:05 AM RetrievalQualityDegraded INFO" [ref=e300]:
+                      - cell "10/21/2025, 4:19:05 AM" [ref=e301]
+                      - cell "RetrievalQualityDegraded" [ref=e302]
+                      - cell "INFO" [ref=e303]
+                    - row "10/21/2025, 3:43:37 AM RetrievalQualityDegraded INFO" [ref=e304]:
+                      - cell "10/21/2025, 3:43:37 AM" [ref=e305]
+                      - cell "RetrievalQualityDegraded" [ref=e306]
+                      - cell "INFO" [ref=e307]
+        - button "Apply All Changes" [ref=e309] [cursor=pointer]
+    - generic [ref=e310]:
+      - button "↻ Refresh Stats" [ref=e312] [cursor=pointer]
+      - generic [ref=e313]:
+        - heading "▸ Live Cost Calculator LIVE" [level=4] [ref=e314]:
+          - text: ▸ Live Cost Calculator
+          - generic [ref=e315]: LIVE
+        - generic [ref=e317]:
+          - generic [ref=e318]: Inference Provider
+          - combobox [ref=e319]:
+            - option "openai" [selected]
+            - option "anthropic"
+            - option "google"
+            - option "mistral"
+            - option "cohere"
+            - option "local"
+        - generic [ref=e320]:
+          - generic [ref=e321]: Inference Model
+          - combobox [ref=e322]: gpt-4o-mini
+        - generic [ref=e323]:
+          - generic [ref=e324]:
+            - generic [ref=e325]: Embeddings Provider
+            - combobox [ref=e326]:
+              - option "Use current"
+              - option "OpenAI" [selected]
+              - option "Voyage"
+              - option "MXBAI"
+              - option "Local"
+          - generic [ref=e327]:
+            - generic [ref=e328]: Embedding Model
+            - combobox "text-embedding-3-small" [ref=e329]
+        - generic [ref=e330]:
+          - generic [ref=e331]:
+            - generic [ref=e332]: Reranker
+            - combobox [ref=e333]:
+              - option "Use current"
+              - option "Cohere"
+              - option "Hugging Face"
+              - option "Local" [selected]
+              - option "None"
+          - generic [ref=e334]:
+            - generic [ref=e335]: Rerank Model
+            - textbox "rerank-english-v3.0" [ref=e336]: rerank-3.5
+        - generic [ref=e337]:
+          - generic [ref=e338]:
+            - generic [ref=e339]: Input Tokens / Request
+            - spinbutton [ref=e340]: "500"
+          - generic [ref=e341]:
+            - generic [ref=e342]: Output Tokens / Request
+            - spinbutton [ref=e343]: "800"
+        - generic [ref=e344]:
+          - generic [ref=e345]:
+            - generic [ref=e346]: Embedding Tokens / Day
+            - spinbutton [ref=e347]: "0"
+          - generic [ref=e348]:
+            - generic [ref=e349]: Reranks / Day
+            - spinbutton [ref=e350]: "0"
+        - generic [ref=e351]:
+          - generic [ref=e352]: API Requests / Day
+          - spinbutton [ref=e353]: "100"
+        - button "Calculate Cost" [ref=e354] [cursor=pointer]
+        - button "Add Model" [ref=e355] [cursor=pointer]
+        - generic [ref=e356]:
+          - generic [ref=e357]:
+            - generic [ref=e358]: Daily
+            - generic [ref=e359]: —
+          - generic [ref=e360]:
+            - generic [ref=e361]: Monthly
+            - generic [ref=e362]: —
+      - generic [ref=e363]:
+        - heading "▸ Profiles" [level=4] [ref=e364]
+        - generic [ref=e365]:
+          - generic [ref=e366]: Save Current As
+          - textbox "my-config" [ref=e367]
+        - button "Save Profile" [ref=e368] [cursor=pointer]
+        - generic [ref=e369]:
+          - generic [ref=e370]: Saved Profiles
+          - list [ref=e371]:
+            - listitem [ref=e372] [cursor=pointer]: min_local
+            - listitem [ref=e373] [cursor=pointer]: onboard-wizard-test-project
+            - listitem [ref=e374] [cursor=pointer]: pw-test
+      - generic [ref=e375]:
+        - heading "▸ Auto‑Tune" [level=4] [ref=e376]
+        - generic [ref=e378]:
+          - checkbox "Enable Auto‑Tune" [ref=e379] [cursor=pointer]
+          - text: Enable Auto‑Tune
+        - generic [ref=e381]: "Current Mode: —"
+        - generic [ref=e382]:
+          - generic [ref=e383]: Last Indexed
+          - generic [ref=e384]: 10/21/2025, 2:49:03 PM
+        - button "Refresh Status" [ref=e385] [cursor=pointer]
+      - generic [ref=e386]:
+        - heading "▸ Secrets Ingest" [level=4] [ref=e387]
+        - generic [ref=e388] [cursor=pointer]:
+          - text: Drop .env / .txt / .md
+          - text: or click to upload
+        - generic [ref=e390] [cursor=pointer]:
+          - checkbox "Persist to defaults.json" [ref=e391]
+          - generic [ref=e392]: Persist to defaults.json
+```

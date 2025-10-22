@@ -131,8 +131,8 @@ function formatIndexStatusDisplay(lines, metadata) {
                     <span style="font-size:13px;font-weight:700;color:var(--link);font-family:'SF Mono',monospace;">${formatBytes(storage.redis)}</span>
                 </div>
                 <div style="background:var(--card-bg);padding:12px;border-radius:6px;border:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;">
-                    <span style="font-size:10px;color:var(--fg-muted);text-transform:uppercase;letter-spacing:0.5px;">Total Chunks</span>
-                    <span style="font-size:13px;font-weight:700;color:var(--ok);font-family:'SF Mono',monospace;">${(metadata.total_chunks || 0).toLocaleString()}</span>
+                    <span style="font-size:10px;color:var(--fg-muted);text-transform:uppercase;letter-spacing:0.5px;">Keywords</span>
+                    <span style="font-size:13px;font-weight:700;color:var(--warn);font-family:'SF Mono',monospace;">${metadata.keywords_count.toLocaleString()}</span>
                 </div>
             </div>
         </div>
