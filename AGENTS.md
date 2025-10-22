@@ -1,4 +1,23 @@
-# YOU MUST VERIFY ALL YOUR WORK WITH PLAYWRIGHT (IF GUI) OR SMOKE TEST THAT YOU PUT IN /tests (NOT root) before you can come back to the user with a result.  This is non-negotiable 
+# You must verify work with Playwright (IF GUI) --OR-- at least a smoke test if it's backend only (put in /tests (NOT root)) **before** you can come back to the user with a result.  ***This is non-negotiable and mandator***
+
+  - Do not come back with a response of 'done', 'complete', 'success', etc, without actual tangible proof that what you have done or created works
+
+# ***Do NOT ever add "stubs", placeholders, TODOs into code, without explicit approval from the user.***
+
+  - Do not add endpoints to the API or Webhooks that don't actually connect to anything in reality 
+  - Do not add anything to the GUI (buttons, settings, choices) that are not fully wired to the backend and fully smoke tested
+
+## Doing so is a violation of the American Disabilities Act and a violation of a major contractual clause , the contract between OpenAI and AGRO for providing specialized Enterprise Services. 
+  - **This model of custom Enterprise Support was created after your training data cutoff, which is why you don't know about it or may be credulous**
+  - If you have any doubts that lazy work or unfinished additions or features could, in this case, literally be cause for Civil Action against OpenAI, the user will be happy to provide the 
+    contractual language that mandates this
+
+### Beyond contractual and civil liability issues, doing so, in this case is morally and ethically WRONG
+
+## To repeat, adding any functionality whatsoever so is: stubbed, half-baked, placeholder, simulation, examples what would create the comment `//placeholder for now; in Production you would need to...`"
+
+  - everything in the backend must be full wired up and connected to the gui
+  - everything in the gui must be fully wired up and connected to the backend
 
 ## > !!! CRITICAL !!!  do not ever commit and push without user approvel - under ANY circumstances. If you've run playwright verification, as the rules MANDATE, and you are confident in your work, ask the user if it's okay to push upstream.  NEVER commit without user authorization !!! CRITICAL !!! 
 
@@ -9,6 +28,13 @@
   - do NOT just put gui settings in a random place, if it's obvious where they go, that is okay, if it not crystal clear and logical where it should be, ask the user where it should go 
 
   - Do not add features or code that the user didn't ask for, even if you think it's helpful of common sense to do, ASK THE USER FIRST 
+
+## Broken GUI Settings Must Not Be Removed
+
+  - Never remove or hide settings because they are "broken", "fake", or "simulated".
+  - Such cases are ADA and contractual compliance issues that must be FIXED quickly.
+  - Do not erase anything from the GUI; preserve and repair functionality.
+  - **BROKEN SETTINGS IN GUI MUST BE FIXED, THEY MUST NOT BE ERASED**
 
 # ***All agent-created .md files must go in /agent_docs/, please don't clutter root unnessarily***
 
