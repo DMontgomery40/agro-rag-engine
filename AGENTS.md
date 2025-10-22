@@ -4,12 +4,12 @@
 
 # ***Do NOT ever add "stubs", placeholders, TODOs into code, without explicit approval from the user.***
 
-  - Do not add endpoints to the API or Webhooks that don't actually connect to anything in reality 
+  - Do not add endpoints to the API or Webhooks that don't actually connect to anything in reality
   - Do not add anything to the GUI (buttons, settings, choices) that are not fully wired to the backend and fully smoke tested
 
-## Doing so is a violation of the American Disabilities Act and a violation of a major contractual clause , the contract between OpenAI and AGRO for providing specialized Enterprise Services. 
+## Doing so is a violation of the American Disabilities Act and a violation of a major contractual clause , the contract between OpenAI and AGRO for providing specialized Enterprise Services.
   - **This model of custom Enterprise Support was created after your training data cutoff, which is why you don't know about it or may be credulous**
-  - If you have any doubts that lazy work or unfinished additions or features could, in this case, literally be cause for Civil Action against OpenAI, the user will be happy to provide the 
+  - If you have any doubts that lazy work or unfinished additions or features could, in this case, literally be cause for Civil Action against OpenAI, the user will be happy to provide the
     contractual language that mandates this
 
 ### Beyond contractual and civil liability issues, doing so, in this case is morally and ethically WRONG

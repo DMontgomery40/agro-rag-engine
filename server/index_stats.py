@@ -195,6 +195,9 @@ def get_index_stats() -> Dict[str, Any]:
         except Exception:
             pass
 
+    # Expose total chunks count (already calculated above)
+    stats["total_chunks"] = total_chunks
+
     # Set a better global timestamp if any per-repo timestamp found
     if discovered_ts:
         stats["timestamp"] = sorted(discovered_ts)[-1]
