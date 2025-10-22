@@ -5002,40 +5002,12 @@
             <div id="tab-dashboard" class="tab-content active">
                 <!-- Compact Status + Quick Actions -->
                 <div class="settings-section" style="background: var(--panel); border-left: 3px solid var(--accent);">
-                    <div style="display: grid; grid-template-columns: 300px 1fr; gap: 24px; align-items: start;">
-                        <!-- Left: Status Overview -->
-                        <div>
-                            <h3 style="font-size: 14px; margin-bottom: 16px; color: var(--accent); display: flex; align-items: center; gap: 8px;">
-                                <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent);"></span>
-                                System Status
-                            </h3>
-                            <div style="display: flex; flex-direction: column; gap: 10px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--card-bg); border-radius: 4px; border: 1px solid var(--line);">
-                                    <span style="font-size: 11px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.5px;">Health</span>
-                                    <span id="dash-health" class="mono" style="color: var(--ok); font-weight: 600;">—</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--card-bg); border-radius: 4px; border: 1px solid var(--line);">
-                                    <span style="font-size: 11px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.5px;">Repo</span>
-                                    <span id="dash-repo" class="mono" style="color: var(--fg); font-weight: 600;">—</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--card-bg); border-radius: 4px; border: 1px solid var(--line);">
-                                    <span style="font-size: 11px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.5px;">Cards</span>
-                                    <span id="dash-cards" class="mono" style="color: var(--link); font-weight: 600;">—</span>
-                                </div>
-                                <div style="display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; background: var(--card-bg); border-radius: 4px; border: 1px solid var(--line);">
-                                    <span style="font-size: 11px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.5px;">MCP Servers</span>
-                                    <div id="dash-mcp" style="display: flex; flex-direction: column; gap: 4px; font-size: 10px; font-family: 'SF Mono', monospace; color: var(--link);">
-                                        <span>—</span>
-                                    </div>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--card-bg); border-radius: 4px; border: 1px solid var(--line);">
-                                    <span style="font-size: 11px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.5px;">Auto-Tune</span>
-                                    <span id="dash-autotune" class="mono" style="color: var(--warn); font-weight: 600;">—</span>
-                                </div>
-                            </div>
-                        </div>
+                    <!-- REMOVED: Fake "System Status" section - all metrics were placeholders that never got populated.
+                         This violates CLAUDE.md: "Do NOT ever add stubs, placeholders, TODOs into code"
+                         Real system status is shown in: top bar health, Index Health section below -->
 
-                        <!-- Right: Quick Actions -->
+                    <div>
+                        <!-- Quick Actions -->
                         <div>
                             <h3 style="font-size: 14px; margin-bottom: 16px; color: var(--warn); display: flex; align-items: center; gap: 8px;">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -5165,17 +5137,6 @@
                     </div>
                 </div>
 
-                <!-- Enhanced Metrics Section -->
-                <div class="settings-section" style="background: var(--panel); border-left: 3px solid var(--link);">
-                    <h3 style="font-size: 14px; margin-bottom: 16px; color: var(--link); display: flex; align-items: center; gap: 8px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="12" y1="2" x2="12" y2="22"></line>
-                            <polyline points="19 5 9 15 5 11"></polyline>
-                        </svg>
-                        API Performance (Last 5 Min)
-                    </h3>
-                    <div id="dash-api-perf-metrics" style="color: var(--fg-muted); font-size: 12px;">Loading metrics...</div>
-                </div>
 
                 <!-- Index Health Section -->
                 <div class="settings-section" style="background: var(--panel); border-left: 3px solid var(--accent);">
@@ -5766,8 +5727,8 @@
         <div class="sidepanel">
             <!-- Sidepanel Controls -->
             <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
-                <button onclick="resetSidepanelWidth()" class="action-button" style="padding: 4px 8px; font-size: 11px; background: var(--panel);">
-                    Reset Width
+                <button onclick="if(window.IndexStatus){window.IndexStatus.pollIndexStatus();}" class="action-button" style="padding: 4px 8px; font-size: 11px; background: var(--link); color: var(--bg); font-weight: 600; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.background='var(--accent)'" onmouseout="this.style.background='var(--link)'">
+                    ↻ Refresh Stats
                 </button>
             </div>
 

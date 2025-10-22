@@ -3,11 +3,10 @@
 **Date**: 2025-10-21
 **Status**: IN PROGRESS
 **Total Elements**: 972
-**Audited**: 11/972
-**Working**: 10
-**Metadata Only**: 1
+**Audited**: 18/972 (1.9%)
+**Working**: 18 (100%)
 **Broken**: 0
-**Fixed**: 2 (critical bugs)
+**Fixed**: 6 bugs (2 critical security, 4 wiring)
 
 ---
 
@@ -425,9 +424,93 @@ Per user requirement: *"WHAT IF A USER HAS TWO PROJECTS??"* - This fix enables m
 
 ---
 
-## Updated Audit Progress
+#### 5. BUG FIXED: "Open in LangSmith" Button Not Wired ✅
 
-### Elements Audited: 11/972
+**Issue**: Button existed in GUI but had no JavaScript event handler
+
+**Impact**: Users clicking "Open in LangSmith" button saw JSON response instead of LangSmith trace viewer
+
+**Root Cause**: `gui/js/tabs.js` had no click handler for `#btn-trace-open-ls` button
+
+**Fix Applied**:
+```javascript
+// gui/js/tabs.js:167-183
+const langsmithBtn = document.getElementById('btn-trace-open-ls');
+if (langsmithBtn) {
+    langsmithBtn.addEventListener('click', async () => {
+        try {
+            const resp = await fetch('/api/langsmith/latest');
+            const data = await resp.json();
+            if (data.url) {
+                window.open(data.url, '_blank');
+            } else {
+                alert('No LangSmith trace URL available. Error: ' + (data.error || 'unknown'));
+            }
+        } catch (e) {
+            alert('Failed to get LangSmith URL: ' + e.message);
+        }
+    });
+}
+```
+
+**Verification**:
+- Backend endpoint `/api/langsmith/latest` already working
+- Button exists in HTML with correct ID
+- Click handler now fetches URL and opens in new tab
+- Test created: `tests/langsmith_button_smoke.spec.js` ✅ PASSED
+
+**Status**: FIXED ✅
+
+**Files Modified**:
+- `gui/js/tabs.js` lines 167-183
+
+---
+
+#### 6. BUG FIXED: FINAL_K Not Used by /search Endpoint ✅
+
+**Issue**: GUI setting `FINAL_K` existed but `/search` endpoint ignored it
+
+**Impact**: Users changing FINAL_K in GUI saw no effect on search results count
+
+**Root Cause**: `server/app.py:568` hardcoded default `top_k=10` instead of reading FINAL_K env var
+
+**Fix Applied**:
+```python
+# server/app.py:568-581
+@app.get("/search")
+def search(
+    q: str = Query(..., description="Question"),
+    repo: Optional[str] = Query(None, description="Repository override"),
+    top_k: Optional[int] = Query(None, description="Number of results (defaults to FINAL_K)"),
+    response: Response = None,
+    request: Request = None,
+):
+    # Use FINAL_K env var as default if top_k not provided
+    if top_k is None:
+        top_k = int(os.getenv('FINAL_K', '10'))
+```
+
+**Verification**:
+```bash
+# Test default (uses FINAL_K=10)
+curl "http://localhost:8012/search?q=test&repo=agro" | jq '.results | length'
+# Output: 10 ✅
+
+# Test override
+curl "http://localhost:8012/search?q=test&repo=agro&top_k=5" | jq '.results | length'
+# Output: 5 ✅
+```
+
+**Status**: FIXED ✅
+
+**Files Modified**:
+- `server/app.py` lines 568-581
+
+---
+
+## Updated Audit Progress - Session 2 Complete
+
+### Elements Audited: 18/972 (1.9%)
 
 | # | Element | Location | Type | Backend API | Backend Function | Status | Notes |
 |---|---------|----------|------|-------------|------------------|--------|-------|
@@ -442,11 +525,20 @@ Per user requirement: *"WHAT IF A USER HAS TWO PROJECTS??"* - This fix enables m
 | 9 | LANGCHAIN_PROJECT | Admin → Tracing | `<input>` | POST /api/config | health_langsmith() | ✅ WORKING | Used for LangSmith queries |
 | 10 | LANGTRACE_API_HOST | Admin → Tracing | `<input>` | POST /api/config | langtrace.init() | ✅ WORKING | **Fixed wiring bug** |
 | 11 | LANGTRACE_PROJECT_ID | Admin → Tracing | `<input>` | POST /api/config | langtrace.init() | ✅ WORKING | **Fixed wiring bug + tested** |
+| 12 | GEN_MODEL | RAG → Core Settings | `<select>` | POST /api/config | env_model.py, answer endpoint | ✅ WORKING | Primary generation model |
+| 13 | ENRICH_MODEL | RAG → Core Settings | `<select>` | POST /api/config | cards_builder.py | ✅ WORKING | Card enrichment model |
+| 14 | FINAL_K | RAG → Core Settings | `<input>` | POST /api/config | search endpoint | ✅ WORKING | **Fixed: /search endpoint** |
+| 15 | LANGGRAPH_FINAL_K | RAG → Core Settings | `<input>` | POST /api/config | langgraph_app.py | ✅ WORKING | Answer endpoint doc count |
+| 16 | TOPK_DENSE | RAG → Core Settings | `<input>` | POST /api/config | hybrid_search.py | ✅ WORKING | Vector search results |
+| 17 | TOPK_SPARSE | RAG → Core Settings | `<input>` | POST /api/config | hybrid_search.py | ✅ WORKING | BM25 search results |
+| 18 | RERANKER_MODEL | RAG → Reranking | `<input>` | POST /api/config | rerank.py | ✅ WORKING | Cross-encoder model path |
+| 19 | btn-trace-open-ls | RAG → Retrieval | `<button>` | GET /api/langsmith/latest | window.open() | ✅ WORKING | **Fixed: added click handler** |
 
 **Totals**:
-- Audited: 11/972 (1.1%)
-- Working: 11 (100%)
+- Audited: 18/972 (1.9%)
+- Working: 19 (18 settings + 1 button) (100%)
 - Broken: 0
-- Fixed: 4 bugs (2 critical security, 2 wiring)
-- SDK Added: langtrace-python-sdk (was missing)
+- Fixed Session 1: 4 bugs (.env mount, API key masking, LANGTRACE_API_HOST, LANGTRACE_PROJECT_ID + SDK)
+- Fixed Session 2: 2 bugs (LangSmith button, FINAL_K)
+- **Total Fixed**: 6 bugs
 

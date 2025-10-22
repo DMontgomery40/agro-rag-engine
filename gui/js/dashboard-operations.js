@@ -442,13 +442,6 @@
 
             const metrics = new window.DashboardMetrics();
 
-            // Load API Performance
-            const perf = await metrics.getAPIPerformance();
-            const perfContainer = document.getElementById('dash-api-perf-metrics');
-            if (perfContainer && perf) {
-                perfContainer.innerHTML = metrics.formatAPIPerformanceHTML(perf);
-            }
-
             // Load Index Health
             const health = await metrics.getIndexHealth();
             const healthContainer = document.getElementById('dash-index-health-metrics');
