@@ -104,3 +104,4 @@ The GUI should now populate dropdowns with all available models from:
 - Cohere (if COHERE_API_KEY is set) ✅
 - Local/Ollama models ✅
 
+
