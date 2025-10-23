@@ -112,8 +112,9 @@
 
         const safeName = escapeHtml(container.name || containerId);
         const safeImage = escapeHtml(container.image || '');
-        const safePorts = escapeHtml(container.ports || 'No ports exposed');
-        const statusText = escapeHtml(container.status || stateValue || 'unknown');
+        const portsText = container.ports ? String(container.ports) : '';
+        const safePorts = escapeHtml(portsText || 'No ports exposed');
+        const statusText = escapeHtml(container.status || container.raw_state || stateValue || 'unknown');
         const runningFor = escapeHtml(container.running_for || '');
 
         const badges = [];

@@ -64,6 +64,7 @@ from typing import Any, Dict
 from collections import Counter, defaultdict
 from pathlib import Path as _Path
 import subprocess
+import json as _json
 
 logger = logging.getLogger("agro.reranker")
 
@@ -3845,13 +3846,7 @@ def docker_containers_all() -> Dict[str, Any]:
     import subprocess
     try:
         result = subprocess.run(
-            [
-                "docker",
-                "ps",
-                "-a",
-                "--format",
-                "{{.ID}}|{{.Names}}|{{.Image}}|{{.State}}|{{.Status}}|{{.Ports}}|{{.Label \"com.docker.compose.project\"}}|{{.Label \"com.docker.compose.service\"}}|{{.CreatedAt}}|{{.RunningFor}}",
-            ],
+            ["docker", "ps", "-a", "--format", "{{json .}}"],
             capture_output=True,
             text=True,
             timeout=10
@@ -3861,50 +3856,63 @@ def docker_containers_all() -> Dict[str, Any]:
             for line in result.stdout.strip().split('\n'):
                 if not line:
                     continue
-                parts = line.split('|')
-                if len(parts) >= 6:
-                    container_id = parts[0]
-                    name = parts[1]
-                    image = parts[2]
-                    state = (parts[3] or "").lower()
-                    status = parts[4]
-                    ports = parts[5] if len(parts) > 5 else ""
-                    compose_project = parts[6] if len(parts) > 6 else ""
-                    compose_service = parts[7] if len(parts) > 7 else ""
-                    created_at = parts[8] if len(parts) > 8 else ""
-                    running_for = parts[9] if len(parts) > 9 else ""
+                try:
+                    info = _json.loads(line)
+                except Exception:
+                    continue
 
-                    name_lower = name.lower()
-                    image_lower = image.lower()
-                    compose_project_lower = compose_project.lower() if compose_project else ""
-                    compose_service_lower = compose_service.lower() if compose_service else ""
+                container_id = info.get("ID") or info.get("Id") or ""
+                name = info.get("Names") or info.get("Name") or container_id
+                image = info.get("Image") or ""
+                state_raw = info.get("State") or ""
+                state = state_raw.lower()
+                status = info.get("Status") or state
+                ports = info.get("Ports") or ""
+                created_at = info.get("CreatedAt") or ""
+                running_for = info.get("RunningFor") or ""
 
-                    agro_managed = (
-                        compose_project_lower in {"agro", "agro-rag-engine", "rag-service"} or
-                        compose_project_lower.startswith(("agro", "rag")) or
-                        compose_service_lower in {
-                            "api", "grafana", "prometheus", "promtail", "alertmanager",
-                            "openvscode", "redis", "qdrant", "mcp-http", "mcp-node"
-                        } or
-                        name_lower.startswith(("agro-", "rag-", "qdrant", "redis", "grafana", "prometheus", "promtail", "alertmanager")) or
-                        image_lower.startswith(("agro", "rag")) or
-                        "agro" in image_lower
-                    )
+                labels_field = info.get("Labels") or ""
+                labels = {}
+                for item in labels_field.split(','):
+                    if '=' in item:
+                        key, value = item.split('=', 1)
+                        labels[key.strip()] = value.strip()
 
-                    containers.append({
-                        "id": container_id,
-                        "short_id": container_id[:12],
-                        "name": name,
-                        "image": image,
-                        "state": state,
-                        "status": status,
-                        "ports": ports,
-                        "compose_project": compose_project or None,
-                        "compose_service": compose_service or None,
-                        "created_at": created_at,
-                        "running_for": running_for,
-                        "agro_managed": agro_managed
-                    })
+                compose_project = labels.get('com.docker.compose.project', '')
+                compose_service = labels.get('com.docker.compose.service', '')
+
+                name_lower = (name or '').lower()
+                image_lower = (image or '').lower()
+                compose_project_lower = compose_project.lower() if compose_project else ''
+                compose_service_lower = compose_service.lower() if compose_service else ''
+
+                agro_managed = (
+                    compose_project_lower in {"agro", "agro-rag-engine", "rag-service"} or
+                    compose_project_lower.startswith(("agro", "rag")) or
+                    compose_service_lower in {
+                        "api", "grafana", "prometheus", "promtail", "alertmanager",
+                        "openvscode", "redis", "qdrant", "mcp-http", "mcp-node"
+                    } or
+                    name_lower.startswith(("agro-", "rag-", "qdrant", "redis", "grafana", "prometheus", "promtail", "alertmanager")) or
+                    image_lower.startswith(("agro", "rag")) or
+                    "agro" in image_lower
+                )
+
+                containers.append({
+                    "id": container_id,
+                    "short_id": container_id[:12],
+                    "name": name,
+                    "image": image,
+                    "state": state,
+                    "status": status,
+                    "ports": ports,
+                    "compose_project": compose_project or None,
+                    "compose_service": compose_service or None,
+                    "created_at": created_at,
+                    "running_for": running_for,
+                    "agro_managed": agro_managed,
+                    "raw_state": state_raw
+                })
             return {"containers": containers}
         return {"containers": [], "error": "Failed to list containers"}
     except Exception as e:
