@@ -190,7 +190,7 @@ Historical docs and smoke tests assume triplets share `doc_id` semantics with qu
 ## 11. Suggested Next Steps
 
 1. ✅ **Telemetry audit** — Section 5 documents every writer/reader plus the migration plan; treat it as the canon moving forward.
-2. **Shared loader design** — [`05-shared-loader.md`](05-shared-loader.md) captures the implementation plan; next step is Phase 0 coding.
+2. **Shared loader design** — [`05-shared-loader.md`](05-shared-loader.md) captures the implementation plan; Phase 0 config module + unit tests are now in place (`reranker/config.py`).
 3. **API contract inventory** — Section 13 tables plus future async plan; validate before rewriting subprocess orchestration.
 4. **Metrics plan** — [`07-metrics-plan.md`](07-metrics-plan.md) outlines Prometheus instrumentation; integrate after loader Phase 1.
 5. **Test catalogue** — [`06-test-catalogue.md`](06-test-catalogue.md) tracks suites; expand with new API-level tests during refactors.

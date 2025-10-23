@@ -58,9 +58,9 @@ Out of scope for this phase:
 
 ## 5. Rollout Phases
 
-1. **Phase 0 – Foundations**
-   - Implement config module and unit tests under `tests/unit/test_reranker_config.py`.
-   - Document flag usage in `agent_docs/reranker-reset/03-runbooks/training.md`.
+1. **Phase 0 – Foundations** ✅ (2025-10-24)
+   - Implemented shared config loader (`reranker/config.py`) with unit coverage (`tests/unit/test_reranker_config.py`).
+   - TODO: Document flag usage in `agent_docs/reranker-reset/03-runbooks/training.md` before enabling in the field.
 2. **Phase 1 – Retrieval opt-in**
    - Update `retrieval/rerank.py` to call `load_settings()` when `AGRO_RERANKER_SHARED_LOADER=1`.
    - Compare old vs new rerank outputs in smoke test (tolerance ±1e-6).

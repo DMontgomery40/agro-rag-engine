@@ -22,6 +22,7 @@ This catalogue enumerates every automated check that exercises reranker function
 | T10 | TS utility | `tests/test-dashboard-final-verification.spec.ts` | Dashboard smoke includes reranker metrics cards. | Dependent on `/api/reranker/costs` output. |
 | T11 | TS utility | `tests/test-dashboard-enhancements.spec.ts` | Checks reranker telemetry cards in dashboard. | Evaluate updating when metrics change. |
 | T12 | Python util | `tests/compare_rerankers.py` | Script to compare reranker outputs (manual). | Not part of CI; keep for debugging. |
+| T13 | Unit (pytest) | `tests/unit/test_reranker_config.py` | Validates shared loader env resolution + model targeting. | Phase 0 blocker for shared loader flag. |
 
 ## 2. Coverage gaps
 
