@@ -39,13 +39,45 @@
     defaultProfile: null,
   };
 
+  // Simple event bus (on/off/emit)
+  function createEventBus() {
+    const listeners = {};
+    return {
+      on(event, handler) {
+        if (typeof handler !== 'function') return () => {};
+        (listeners[event] = listeners[event] || []).push(handler);
+        return () => this.off(event, handler);
+      },
+      off(event, handler) {
+        const arr = listeners[event];
+        if (!arr) return;
+        const idx = arr.indexOf(handler);
+        if (idx !== -1) arr.splice(idx, 1);
+      },
+      emit(event, payload) {
+        const arr = listeners[event];
+        if (!arr || !arr.length) return;
+        arr.slice().forEach(fn => {
+          try {
+            fn(payload);
+          } catch (err) {
+            console.error('[CoreUtils.events] handler error for', event, err);
+          }
+        });
+      }
+    };
+  }
+
+  const events = createEventBus();
+
   // Export public API
   window.CoreUtils = {
     API_BASE,
     api,
     $,
     $$,
-    state
+    state,
+    events
   };
 
   console.log('[CoreUtils] Loaded - API:', API_BASE);

@@ -19,6 +19,7 @@
 
     // Current subtab state
     let currentSubtab = 'data-quality';
+    let currentViewId = null;
 
     /**
      * Show RAG subtab navigation
@@ -40,11 +41,72 @@
         }
     }
 
+    function unmountCurrentRagView() {
+        if (!currentViewId) return;
+        if (window.NavigationViews) {
+            const view = window.NavigationViews[currentViewId];
+            if (view && typeof view.unmount === 'function') {
+                try {
+                    view.unmount();
+                } catch (e) {
+                    console.warn(`[RAG] Failed to unmount view ${currentViewId}:`, e);
+                }
+            }
+        }
+        currentViewId = null;
+    }
+
+    function activateRagView(subtabName) {
+        const viewId = `rag-${subtabName}`;
+        if (currentViewId === viewId) {
+            // Already active
+            return;
+        }
+
+        if (currentViewId && window.NavigationViews) {
+            const previous = window.NavigationViews[currentViewId];
+            if (previous && typeof previous.unmount === 'function') {
+                try {
+                    previous.unmount();
+                } catch (e) {
+                    console.warn(`[RAG] Failed to unmount view ${currentViewId}:`, e);
+                }
+            }
+        }
+
+        currentViewId = viewId;
+
+        if (!window.NavigationViews) return;
+        const view = window.NavigationViews[viewId];
+        if (view && typeof view.mount === 'function') {
+            try {
+                view.mount();
+            } catch (e) {
+                console.error(`[RAG] Failed to mount view ${viewId}:`, e);
+            }
+        } else {
+            console.debug(`[RAG] View ${viewId} not registered yet; will mount on registration.`);
+        }
+    }
+
     /**
      * Switch to a RAG subtab
      */
     function switchRagSubtab(subtabName) {
         console.log(`[RAG] Switching to subtab: ${subtabName}`);
+        currentSubtab = subtabName;
+
+        if (window.Navigation &&
+            typeof window.Navigation.getCurrentTab === 'function' &&
+            typeof window.Navigation.getCurrentSubtab === 'function' &&
+            typeof window.Navigation.navigateTo === 'function') {
+            const currentTab = window.Navigation.getCurrentTab();
+            const navSubtab = window.Navigation.getCurrentSubtab();
+            if (!(currentTab === 'rag' && navSubtab === subtabName)) {
+                window.Navigation.navigateTo('rag', subtabName);
+                return;
+            }
+        }
 
         // Ensure RAG main tab is visible
         const ragTab = $('#tab-rag');
@@ -68,12 +130,12 @@
             console.warn(`[RAG] Missing panel for subtab: #tab-rag-${subtabName}`);
         }
 
-        currentSubtab = subtabName;
-
         // Emit event
         if (events) {
             events.emit('rag:subtab-change', { subtab: subtabName });
         }
+
+        activateRagView(subtabName);
     }
 
     /**
@@ -90,6 +152,7 @@
             }
             switchRagSubtab(currentSubtab);
         } else {
+            unmountCurrentRagView();
             hideRagSubtabs();
         }
         
@@ -204,8 +267,3 @@
 
     console.log('[RAG] RAG Navigation module loaded');
 })();
-
-
-
-
-

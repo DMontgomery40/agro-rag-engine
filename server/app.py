@@ -1,4 +1,5 @@
 import os
+import tempfile
 from pathlib import Path
 
 # Initialize LangTrace FIRST - must precede ANY LLM/framework imports
@@ -722,13 +723,10 @@ def _read_json(path: Path, default: Any) -> Any:
     if path.exists():
         try:
             return json.loads(path.read_text())
-        except Exception:
+        except Exception as exc:
+            print(f"[config] Failed to parse JSON from {path}: {exc}")
             return default
     return default
-
-def _write_json(path: Path, data: Any) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2))
 
 # ---- Prices helper for auto-profile
 def _default_prices() -> Dict[str, Any]:
@@ -803,7 +801,7 @@ async def api_secrets_ingest(
                 kk, vv = ln.split("=", 1)
                 existing[kk.strip()] = vv.strip()
         existing.update(applied)
-        env_path.write_text("\n".join(f"{k}={existing[k]}" for k in sorted(existing.keys())) + "\n")
+        _atomic_write_text(env_path, "\n".join(f"{k}={existing[k]}" for k in sorted(existing.keys())) + "\n")
         saved = True
 
     return {"ok": True, "applied": sorted(applied.keys()), "persisted": saved}
@@ -874,7 +872,7 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
         os.environ[str(k)] = str(v)
     # Write back
     lines = [f"{k}={existing[k]}" for k in sorted(existing.keys())]
-    env_path.write_text("\n".join(lines) + "\n")
+    _atomic_write_text(env_path, "\n".join(lines) + "\n")
 
     # 2) Upsert repos.json
     repos_path = root / "repos.json"
@@ -2264,7 +2262,7 @@ def _write_onboarding_state(state: Dict[str, Any]) -> bool:
     """Persist onboarding state to server"""
     try:
         path = _get_onboarding_state_path()
-        path.write_text(json.dumps(state, indent=2))
+        _atomic_write_text(path, json.dumps(state, indent=2))
         return True
     except Exception as e:
         print(f"[Onboarding] Failed to write state: {e}")
@@ -2324,7 +2322,7 @@ def _write_editor_settings(settings: Dict[str, Any]) -> bool:
     """Persist editor settings to server"""
     try:
         path = _get_editor_settings_path()
-        path.write_text(json.dumps(settings, indent=2))
+        _atomic_write_text(path, json.dumps(settings, indent=2))
         return True
     except Exception as e:
         print(f"[Editor Settings] Failed to write settings: {e}")
@@ -3999,3 +3997,24 @@ def docker_container_logs(container_id: str, tail: int = 100, timestamps: bool =
         }
     except Exception as e:
         return {"success": False, "logs": "", "error": str(e)}
+
+
+def _atomic_write_text(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_path_str = tempfile.mkstemp(dir=path.parent, prefix=path.name, suffix=".tmp")
+    tmp_path = Path(tmp_path_str)
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as fh:
+            fh.write(content)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp_path, path)
+    finally:
+        if tmp_path.exists():
+            try:
+                tmp_path.unlink()
+            except FileNotFoundError:
+                pass
+
+def _write_json(path: Path, data: Any) -> None:
+    _atomic_write_text(path, json.dumps(data, indent=2))
