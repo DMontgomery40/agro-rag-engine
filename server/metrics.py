@@ -73,6 +73,12 @@ RERANKER_MARGIN_ABS = Histogram(
     buckets=(0.0, 0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.5, 0.75, 1.0),
 )
 
+RERANKER_MARGIN_LATEST = Gauge(
+    "agro_reranker_margin_latest",
+    "Latest reranker minus baseline margin (signed)",
+    labelnames=("provider", "model"),
+)
+
 RERANKER_WINNER_TOTAL = Counter(
     "agro_reranker_winner_total",
     "Which system won on canary (reranker|baseline|tie)",
@@ -164,6 +170,7 @@ def record_canary(provider: str, model: str, passed: bool, margin: Optional[floa
         CANARY_PASS_TOTAL.labels(provider=provider, model=model).inc()
     if margin is not None:
         RERANKER_MARGIN_ABS.labels(provider=provider, model=model).observe(abs(float(margin)))
+        RERANKER_MARGIN_LATEST.labels(provider=provider, model=model).set(float(margin))
     if winner:
         if winner not in ("reranker", "baseline", "tie"):
             winner = "unknown"

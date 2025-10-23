@@ -22,7 +22,7 @@
      */
     function addTestIds() {
         // Tab buttons in new tab bar
-        const tabButtons = document.querySelectorAll('.tab-bar button[data-tab]');
+        const tabButtons = document.querySelectorAll('.tab-bar button[data-nav="desktop"][data-tab]');
         tabButtons.forEach(btn => {
             const tabName = btn.getAttribute('data-tab');
             btn.setAttribute('data-testid', `tab-btn-${tabName}`);

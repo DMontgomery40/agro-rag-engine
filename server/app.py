@@ -46,7 +46,7 @@ from server.feedback import router as feedback_router
 from server.reranker_info import router as reranker_info_router
 from server.alerts import router as alerts_router, monitoring_router
 from server.telemetry import log_query_event
-from server.reranker import rerank_candidates
+from server.reranker import rerank_candidates, get_reranker_info
 from server.frequency_limiter import FrequencyAnomalyMiddleware, get_frequency_stats
 from server.api_interceptor import setup_interceptor
 from server.metrics import (
@@ -59,11 +59,13 @@ try:
 except Exception:
     _MCPServer = None  # type: ignore
 from common.paths import repo_root, gui_dir, docs_dir, files_root
-import os, json, sys
+import os, json, sys, logging
 from typing import Any, Dict
 from collections import Counter, defaultdict
 from pathlib import Path as _Path
 import subprocess
+
+logger = logging.getLogger("agro.reranker")
 
 app = FastAPI(title="AGRO RAG + GUI")
 
@@ -3092,6 +3094,61 @@ _RERANKER_STATUS: Dict[str, Any] = {
     "live_output": []  # List of output lines for streaming to UI
 }
 
+def _emit_reranker_canary(metrics: Dict[str, Any], baseline_metrics: Optional[Dict[str, Any]] = None) -> None:
+    """Record Prometheus canary metrics and emit structured log for Loki dashboards."""
+    try:
+        info = get_reranker_info()
+    except Exception:
+        info = {}
+
+    backend_env = (os.getenv("RERANK_BACKEND", "local") or "local").lower()
+    provider = "cohere" if backend_env == "cohere" else "cross-encoder"
+    if os.getenv("AGRO_RERANKER_ENABLED", "1") != "1":
+        provider = "disabled"
+
+    model_label = (
+        info.get("path")
+        or info.get("resolved_path")
+        or os.getenv("AGRO_RERANKER_MODEL_PATH", "models/cross-encoder-agro")
+    )
+
+    current_mrr = float(metrics.get("mrr") or 0.0)
+    baseline_mrr = float((baseline_metrics or {}).get("mrr") or 0.0)
+    delta = current_mrr - baseline_mrr
+
+    epsilon = 1e-6
+    if delta > epsilon:
+        winner = "reranker"
+    elif delta < -epsilon:
+        winner = "baseline"
+    else:
+        winner = "tie"
+
+    passed = delta >= 0 or not baseline_metrics
+
+    try:
+        record_canary(
+            provider=provider,
+            model=str(model_label),
+            passed=bool(passed),
+            margin=delta,
+            winner=winner,
+        )
+    except Exception as exc:
+        logger.warning("RERANKER_CANARY_METRIC_FAILED provider=%s model=%s error=%s", provider, model_label, exc)
+        return
+
+    logger.info(
+        "RERANKER_CANARY provider=%s model=%s mrr=%.6f baseline=%.6f delta=%.6f winner=%s passed=%s",
+        provider,
+        model_label,
+        current_mrr,
+        baseline_mrr,
+        delta,
+        winner,
+        passed,
+    )
+
 @app.post("/api/reranker/mine")
 def reranker_mine() -> Dict[str, Any]:
     """Mine triplets from telemetry logs."""
@@ -3302,6 +3359,16 @@ def reranker_evaluate() -> Dict[str, Any]:
                                 set_retrieval_quality(topk=10, hits=0, mrr=mrr_val)
                         except Exception:
                             pass
+                        try:
+                            baseline_metrics: Dict[str, Any] = {}
+                            baseline_path = repo_root() / "data" / "evals" / "reranker_baseline.json"
+                            if baseline_path.exists():
+                                baseline_payload = _read_json(baseline_path, {})
+                                if isinstance(baseline_payload, dict):
+                                    baseline_metrics = baseline_payload.get("metrics") or {}
+                            _emit_reranker_canary(metrics, baseline_metrics)
+                        except Exception as exc:
+                            logger.warning("RERANKER_CANARY_LOG_FAILED error=%s", exc)
                 except Exception:
                     pass  # Don't fail if persistence fails
             else:

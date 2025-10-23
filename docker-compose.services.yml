@@ -1,9 +1,9 @@
 services:
-  api:
+  api:  # Compose service name (use with `docker compose ... api`)
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: agro-api
+    container_name: agro-api  # Runtime container name (use with `docker ... agro-api`)
     env_file:
       - .env
     environment:

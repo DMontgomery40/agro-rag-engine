@@ -35,7 +35,7 @@ dev-headless:
 # Docker-first indexing (does not require venv)
 .PHONY: index-docker
 index-docker:
-	docker compose -f infra/docker-compose.yml exec -T api bash -lc "REPO=$${REPO:-agro} OUT_DIR_BASE=/app/out python index_repo.py"
+	docker compose -f docker-compose.services.yml exec -T api bash -lc "REPO=$${REPO:-agro} OUT_DIR_BASE=/app/out python index_repo.py"
 
 # Alias for dev (convenience)
 makedev: dev

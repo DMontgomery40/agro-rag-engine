@@ -15,6 +15,17 @@ cd scripts/.setup.sh #CLI walkthrough to set repos, etc.
 # GUI at http://127.0.0.1:8012/
 ```
 
+### Docker service vs. container names
+
+The API runs as the Compose service `api` but the container is named `agro-api`. Use the service name for `docker compose ... api` commands (build, up, logs) and the container name for direct `docker ... agro-api` operations (exec, logs, inspect). Example quick reference:
+
+| Task | Command |
+|------|---------|
+| Build / start via Compose | `docker compose -f docker-compose.services.yml up -d api` |
+| Follow logs via Compose | `docker compose -f docker-compose.services.yml logs -f api` |
+| Exec inside the container | `docker exec -it agro-api bash` |
+| Tail runtime logs directly | `docker logs -f agro-api` |
+
 ## 📖 Documentation
 
 **[Full Documentation Site](https://dmontgomery40.github.io/agro-rag-engine/)** - Complete guides for setup, API, MCP integration, and more

@@ -2256,30 +2256,30 @@
     <!-- Mobile Navigation Drawer -->
     <div class="mobile-nav-overlay" id="mobile-nav-overlay"></div>
     <nav class="mobile-nav-drawer" id="mobile-nav-drawer">
-        <button data-tab="start">🚀 Get Started</button>
-        <button class="active" data-tab="dashboard">📊 Dashboard</button>
-        <button data-tab="chat">💬 Chat</button>
-        <button data-tab="vscode">📝 VS Code</button>
-        <button data-tab="grafana">📈 Grafana</button>
-        <button data-tab="rag">🧠 RAG</button>
-        <button data-tab="profiles">💾 Profiles</button>
-        <button data-tab="infrastructure">🔧 Infrastructure</button>
-        <button data-tab="admin">⚙️ Admin</button>
+        <button data-nav="mobile" data-tab="start">🚀 Get Started</button>
+        <button class="active" data-nav="mobile" data-tab="dashboard">📊 Dashboard</button>
+        <button data-nav="mobile" data-tab="chat">💬 Chat</button>
+        <button data-nav="mobile" data-tab="vscode">📝 VS Code</button>
+        <button data-nav="mobile" data-tab="grafana">📈 Grafana</button>
+        <button data-nav="mobile" data-tab="rag">🧠 RAG</button>
+        <button data-nav="mobile" data-tab="profiles">💾 Profiles</button>
+        <button data-nav="mobile" data-tab="infrastructure">🔧 Infrastructure</button>
+        <button data-nav="mobile" data-tab="admin">⚙️ Admin</button>
     </nav>
 
     <div class="layout">
         <div class="resize-handle"></div>
         <div class="content">
             <div class="tab-bar">
-                <button data-tab="start">🚀 Get Started</button>
-                <button class="active" data-tab="dashboard">📊 Dashboard</button>
-                <button data-tab="chat">💬 Chat</button>
-                <button data-tab="vscode" class="promoted-tab">📝 VS Code</button>
-                <button data-tab="grafana" class="promoted-tab">📈 Grafana</button>
-                <button data-tab="rag">🧠 RAG</button>
-                <button data-tab="profiles">💾 Profiles</button>
-                <button data-tab="infrastructure">🔧 Infrastructure</button>
-                <button data-tab="admin">⚙️ Admin</button>
+                <button data-nav="desktop" data-tab="start">🚀 Get Started</button>
+                <button class="active" data-nav="desktop" data-tab="dashboard">📊 Dashboard</button>
+                <button data-nav="desktop" data-tab="chat">💬 Chat</button>
+                <button data-nav="desktop" data-tab="vscode" class="promoted-tab">📝 VS Code</button>
+                <button data-nav="desktop" data-tab="grafana" class="promoted-tab">📈 Grafana</button>
+                <button data-nav="desktop" data-tab="rag">🧠 RAG</button>
+                <button data-nav="desktop" data-tab="profiles">💾 Profiles</button>
+                <button data-nav="desktop" data-tab="infrastructure">🔧 Infrastructure</button>
+                <button data-nav="desktop" data-tab="admin">⚙️ Admin</button>
             </div>
             
             <!-- Subtab bars for each top-level tab (hidden by default; shown via JS) -->
@@ -2744,6 +2744,17 @@
             <div id="tab-rag" class="tab-content">
                 <!-- RAG Subtab: Data Quality -->
                 <div id="tab-rag-data-quality" class="rag-subtab-content active">
+                    <div id="data-quality-loading" class="loading-panel" role="status" aria-live="polite" style="display:none; background: var(--card-bg); border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <span id="data-quality-loading-label" style="font-weight:600; color: var(--fg);">Preparing Data Quality…</span>
+                            <span id="data-quality-loading-percent" class="mono" style="color: var(--accent);">0%</span>
+                        </div>
+                        <div style="height:8px; background: var(--bg-elev2); border: 1px solid var(--line); border-radius:999px; overflow:hidden;">
+                            <div id="data-quality-loading-bar" style="width:0%; height:100%; background: linear-gradient(90deg, var(--accent) 0%, var(--link) 100%); transition: width 0.3s ease;"></div>
+                        </div>
+                        <div id="data-quality-loading-step" class="small" style="margin-top:8px; color: var(--fg-muted);">Initializing…</div>
+                    </div>
+
                     <!-- Repository Configuration -->
                     <div class="settings-section">
                         <h3>Repository Configuration</h3>
@@ -2820,6 +2831,10 @@
                                 <div id="cards-progress-repo" style="font-size: 12px; font-weight: 600; color: var(--accent);"></div>
                             </div>
 
+                            <div id="cards-progress-models" style="font-family: 'SF Mono', monospace; font-size: 11px; color: var(--fg-muted); margin-bottom: 8px; display:none;">
+                                Models — embed: <span data-model="embed">—</span> • enrich: <span data-model="enrich">—</span> • rerank: <span data-model="rerank">—</span>
+                            </div>
+
                             <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
                                 <div id="cards-progress-stage-scan" class="cards-stage-pill" style="font-size: 11px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--line); color: var(--fg-muted); background: transparent;">scan</div>
                                 <div id="cards-progress-stage-chunk" class="cards-stage-pill" style="font-size: 11px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--line); color: var(--fg-muted); background: transparent;">chunk</div>
@@ -2855,6 +2870,8 @@
                                 </button>
                             </div>
                         </div>
+
+                        <div id="cards-terminal-container"></div>
 
                         <!-- Build Button -->
                         <div class="action-buttons" style="margin-bottom: 16px; display:flex; gap:8px;">
@@ -6059,7 +6076,7 @@
                 // Let the existing tabs.js handle the tab switching
                 // Just simulate a click on the corresponding desktop tab button
                 const tabName = btn.getAttribute('data-tab');
-                const desktopBtn = document.querySelector('.tab-bar button[data-tab="' + tabName + '"]');
+                const desktopBtn = document.querySelector('.tab-bar button[data-nav="desktop"][data-tab="' + tabName + '"]');
                 if (desktopBtn) {
                     desktopBtn.click();
                 }
@@ -6068,7 +6085,7 @@
 
         // Sync active state from desktop tab-bar to mobile drawer
         // Listen for tab changes and update drawer button states
-        const desktopButtons = document.querySelectorAll('.tab-bar button[data-tab]');
+        const desktopButtons = document.querySelectorAll('.tab-bar button[data-nav="desktop"][data-tab]');
         desktopButtons.forEach(function(desktopBtn) {
             desktopBtn.addEventListener('click', function() {
                 // Remove active class from all drawer buttons

@@ -28,7 +28,7 @@ export default defineConfig({
         }
     ],
     webServer: {
-        command: "bash -lc 'docker compose -f infra/docker-compose.yml up -d api && until curl -sf http://127.0.0.1:8012/health; do sleep 1; done'",
+        command: "bash -lc 'docker compose -f docker-compose.services.yml up -d api && until curl -sf http://127.0.0.1:8012/health; do sleep 1; done'",
         url: 'http://localhost:8012/health',
         reuseExistingServer: true,
         timeout: 180 * 1000,

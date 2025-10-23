@@ -234,7 +234,7 @@
         });
         
         // Override tab bar clicks to use Navigation system
-        $$('.tab-bar button[data-tab]').forEach(btn => {
+        $$('.tab-bar button[data-nav="desktop"][data-tab]').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();

@@ -3,7 +3,7 @@ set -euo pipefail
 
 # One-shot developer launcher (Docker-first):
 # - Optionally starts infra (Qdrant/Redis/Prom/Grafana) via scripts/up.sh when DEV_WITH_INFRA=1
-# - Starts API as a Docker Compose service (infra/docker-compose.yml: api)
+# - Starts API as a Docker Compose service (docker-compose.services.yml: api)
 # - Waits for /health and optionally opens the GUI
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -67,4 +67,6 @@ else
   log "GUI: http://$HOST:$PORT/"
 fi
 
-log "Done. View API logs: docker compose -f infra/docker-compose.yml logs -f api"
+log "Done. View API logs:"
+log "  docker compose -f \"$ROOT_DIR/docker-compose.services.yml\" logs -f api"
+log "  or docker logs agro-api"

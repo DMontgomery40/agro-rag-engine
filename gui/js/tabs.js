@@ -128,8 +128,8 @@
         const show = groups[tabName] || [tabName];
         $$('.tab-content').forEach(el => el.classList.remove('active'));
         show.forEach(id => { const el = document.getElementById(`tab-${id}`); if (el) el.classList.add('active'); });
-        $$('.tab-bar button').forEach(el => el.classList.remove('active'));
-        const btn = document.querySelector(`.tab-bar button[data-tab="${tabName}"]`);
+        $$('.tab-bar button[data-nav="desktop"]').forEach(el => el.classList.remove('active'));
+        const btn = document.querySelector(`.tab-bar button[data-nav="desktop"][data-tab="${tabName}"]`);
         if (btn) btn.classList.add('active');
 
         // Load storage calculator when the tab is opened
@@ -149,7 +149,7 @@
      * Bind click handlers to main tab buttons
      */
     function bindTabs() {
-        $$('.tab-bar button').forEach(btn => {
+        $$('.tab-bar button[data-nav="desktop"]').forEach(btn => {
             btn.addEventListener('click', () => {
                 const tab = btn.getAttribute('data-tab');
                 switchTab(tab);

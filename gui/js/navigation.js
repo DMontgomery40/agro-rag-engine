@@ -439,10 +439,10 @@
         } catch {}
 
         // 3. Update button states in both old and new tab bars
-        $$('.tab-bar button, nav.tabs button').forEach(el => el.classList.remove('active'));
+        $$('.tab-bar button[data-nav="desktop"], nav.tabs button').forEach(el => el.classList.remove('active'));
 
         // 4. Activate button in new tab bar
-        const newTabButton = $(`.tab-bar button[data-tab="${tabId}"]`);
+        const newTabButton = $(`.tab-bar button[data-nav="desktop"][data-tab="${tabId}"]`);
         if (newTabButton) {
             newTabButton.classList.add('active');
         }
@@ -621,6 +621,5 @@
 
     console.log('[Navigation] Module loaded - use window.Navigation for navigation API');
 })();
-
 
 

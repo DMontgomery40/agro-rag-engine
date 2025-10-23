@@ -28,11 +28,34 @@
 
     const SECRET_MASK = '••••••••••••••••';
 
+    function setReposLoadingState(state, detail) {
+        const section = document.getElementById('repos-section');
+        if (!section) return;
+        if (state === 'loaded') {
+            section.dataset.state = 'loaded';
+            return;
+        }
+        const isError = state === 'error';
+        const title = isError ? 'Failed to load repositories' : 'Loading repositories…';
+        const message = detail || (isError ? 'Unable to refresh repository metadata.' : 'Fetching latest repository metadata and .env overrides…');
+        const progressAttrs = isError ? 'value="1" max="1"' : 'max="1"';
+        const panel = `
+            <div role="status" aria-live="polite" style="background: var(--card-bg); border: 1px solid var(--line); border-radius: 6px; padding: 12px;">
+                <div style="font-weight:600; color:${isError ? 'var(--err)' : 'var(--fg)'};">${title}</div>
+                <progress ${progressAttrs} style="width:100%; height:8px; margin-top:8px;"></progress>
+                <div class="small" style="margin-top:8px; color:${isError ? 'var(--err)' : 'var(--fg-muted)'};">${message}</div>
+            </div>
+        `;
+        section.innerHTML = panel;
+        section.dataset.state = state;
+    }
+
     /**
      * Load configuration from API and populate form
      */
     async function loadConfig() {
         try {
+            setReposLoadingState('loading');
             try { await fetch(api('/api/env/reload'), { method: 'POST' }); } catch {}
             const r = await fetch(api('/api/config'));
             const d = await r.json();
@@ -56,7 +79,11 @@
             if (window.Theme?.initThemeFromEnv) {
                 window.Theme.initThemeFromEnv(d.env || {});
             }
+            const reposSection = document.getElementById('repos-section');
+            if (reposSection) reposSection.dataset.state = 'loaded';
+            return true;
         } catch (e) {
+            state.config = null;
             const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to load configuration', {
                 message: e.message,
                 causes: [
@@ -77,6 +104,8 @@
                 ]
             }) : `Failed to load config: ${e.message}`;
             console.error('[config.js] Failed to load config:', msg);
+            setReposLoadingState('error', e.message);
+            return false;
         }
     }
 

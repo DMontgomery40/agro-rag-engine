@@ -65,12 +65,14 @@
           });
         });
       }
+      return { cards, last };
     }catch(error){
       console.error('Error loading cards:', error);
       const cardsContainer = document.getElementById('cards-viewer');
       if (cardsContainer) {
         cardsContainer.innerHTML = `<div style="text-align: center; padding: 24px; color: var(--err);">Error loading cards: ${error.message}</div>`;
       }
+      throw error;
     }
   }
 
@@ -82,6 +84,73 @@
     notification.innerHTML = `<div style="display:flex;align-items:center;gap:8px;"><span style="color:var(--accent);">📍</span><span>Navigate to: <strong style="color:var(--link);">${filePath}:${lineNumber}</strong></span></div>`;
     document.body.appendChild(notification);
     setTimeout(() => notification.remove(), 3000);
+  }
+
+  function getDataQualityLoadingElements() {
+    const panel = document.getElementById('data-quality-loading');
+    if (!panel) return null;
+    return {
+      panel,
+      label: document.getElementById('data-quality-loading-label'),
+      percent: document.getElementById('data-quality-loading-percent'),
+      bar: document.getElementById('data-quality-loading-bar'),
+      detail: document.getElementById('data-quality-loading-step')
+    };
+  }
+
+  function updateDataQualityLoading(completed, total, label, detail) {
+    const els = getDataQualityLoadingElements();
+    if (!els || !els.panel || !els.label || !els.percent || !els.bar || !els.detail) return;
+    const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+    els.panel.style.display = 'block';
+    if (els.panel.dataset.status !== 'error') {
+      els.panel.dataset.status = 'loading';
+    }
+    els.label.textContent = label;
+    const clampedPct = Math.min(100, Math.max(0, pct));
+    els.percent.textContent = `${clampedPct}%`;
+    els.bar.style.width = `${clampedPct}%`;
+    els.bar.style.background = 'linear-gradient(90deg, var(--accent) 0%, var(--link) 100%)';
+    els.detail.textContent = detail || label;
+    els.detail.style.color = 'var(--fg-muted)';
+  }
+
+  function completeDataQualityLoading(total, summary) {
+    const els = getDataQualityLoadingElements();
+    if (!els) return;
+    updateDataQualityLoading(total, total, 'Data Quality Ready', summary || 'All data synchronized.');
+    els.panel.dataset.status = 'done';
+    if (els.bar) {
+      els.bar.style.background = 'linear-gradient(90deg, var(--ok) 0%, var(--accent) 100%)';
+      els.bar.style.width = '100%';
+    }
+    if (els.percent) els.percent.textContent = '100%';
+    if (els.detail) {
+      els.detail.textContent = summary || 'All resources synchronized.';
+      els.detail.style.color = 'var(--fg-muted)';
+    }
+    setTimeout(() => {
+      if (els.panel.dataset.status === 'done') {
+        els.panel.style.display = 'none';
+      }
+    }, 1200);
+  }
+
+  function failDataQualityLoading(total, completed, message) {
+    const els = getDataQualityLoadingElements();
+    if (!els) return;
+    const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+    els.panel.style.display = 'block';
+    els.panel.dataset.status = 'error';
+    els.label.textContent = 'Data Quality Load Failed';
+    const clampedPct = Math.min(100, Math.max(0, pct));
+    els.percent.textContent = `${clampedPct}%`;
+    els.bar.style.width = `${clampedPct}%`;
+    els.bar.style.background = 'var(--err)';
+    if (els.detail) {
+      els.detail.textContent = message || 'Unable to complete loading.';
+      els.detail.style.color = 'var(--err)';
+    }
   }
 
   async function refresh(){ await load(); }
@@ -195,9 +264,11 @@
   }
 
   // Initialization function for data quality view
-  window.initCards = function() {
+  window.initCards = function(options = {}) {
     console.log('[cards.js] Initializing cards for rag-data-quality view');
-    load();
+    if (!options || options.skipLoad !== true) {
+      load();
+    }
     bind();
   };
 
@@ -206,14 +277,123 @@
     window.Navigation.registerView({
       id: 'rag-data-quality',
       title: 'Data Quality',
-      mount: () => {
+      mount: async () => {
         console.log('[cards.js] Mounted rag-data-quality view');
-        // Initialize cards (primary)
-        if (typeof window.initCards === 'function') window.initCards();
-        // Initialize cards builder
-        if (typeof window.initCardsBuilder === 'function') window.initCardsBuilder();
-        // Initialize keywords
-        if (typeof window.initKeywords === 'function') window.initKeywords();
+        const totalSteps = 4;
+        let completedSteps = 0;
+        const summaryParts = [];
+
+        const runStep = async (label, startDetail, action, summarize) => {
+          updateDataQualityLoading(completedSteps, totalSteps, label, startDetail);
+          const result = await action();
+          completedSteps += 1;
+          const detail = summarize ? summarize(result) : startDetail;
+          updateDataQualityLoading(completedSteps, totalSteps, label, detail);
+          return result;
+        };
+
+        try {
+          const configState = await runStep(
+            'Syncing configuration',
+            'Fetching latest environment & repositories…',
+            async () => {
+              if (!window.Config?.loadConfig) {
+                throw new Error('Configuration module unavailable');
+              }
+              const success = await window.Config.loadConfig();
+              if (!success) {
+                throw new Error('Configuration refresh failed (see console for details)');
+              }
+              return (window.CoreUtils && window.CoreUtils.state && window.CoreUtils.state.config) ? window.CoreUtils.state.config : {};
+            },
+            (cfg) => {
+              const repoCount = Array.isArray(cfg?.repos) ? cfg.repos.length : 0;
+              const activeRepo = cfg?.env?.REPO || cfg?.default_repo || '—';
+              summaryParts.push(`repos ${repoCount}`);
+              return `${repoCount} repositories • active: ${activeRepo}`;
+            }
+          );
+
+          await runStep(
+            'Preparing cards builder',
+            'Syncing repository selector…',
+            async () => {
+              if (!window.CardsBuilder?.populateRepoSelect) {
+                throw new Error('Cards builder module unavailable');
+              }
+              return await window.CardsBuilder.populateRepoSelect(configState);
+            },
+            (summary) => {
+              if (!summary) return 'Cards builder ready';
+              const repoCount = Array.isArray(summary.repos) ? summary.repos.length : 0;
+              const selected = summary.selected || '—';
+              const keywordCount = summary.prefills?.keywords ?? 0;
+              const excludeCount = summary.prefills?.exclude_paths ?? 0;
+              const pieces = [
+                `${repoCount} options`,
+                `selected: ${selected}`
+              ];
+              if (excludeCount > 0) pieces.push(`excluded paths: ${excludeCount}`);
+              if (keywordCount > 0) pieces.push(`prefilled keywords: ${keywordCount}`);
+              return pieces.join(' • ');
+            }
+          );
+
+          await runStep(
+            'Loading keywords',
+            'Fetching discriminative keywords…',
+            async () => {
+              if (!window.Keywords?.loadKeywords) {
+                throw new Error('Keywords module unavailable');
+              }
+              const data = await window.Keywords.loadKeywords();
+              if (!data || !Array.isArray(data.keywords)) {
+                throw new Error('Keyword catalog missing or invalid');
+              }
+              return data;
+            },
+            (data) => {
+              const count = Array.isArray(data.keywords) ? data.keywords.length : 0;
+              summaryParts.push(`keywords ${count}`);
+              return `${count} keywords loaded`;
+            }
+          );
+
+          await runStep(
+            'Loading semantic cards',
+            'Fetching cards catalog…',
+            async () => {
+              const data = await load();
+              if (!data || !Array.isArray(data.cards)) {
+                throw new Error('Cards dataset missing or invalid');
+              }
+              return data;
+            },
+            (data) => {
+              const count = Array.isArray(data.cards) ? data.cards.length : 0;
+              summaryParts.push(`cards ${count}`);
+              return `${count} cards ready`;
+            }
+          );
+
+          const summary = summaryParts.join(' • ');
+          completeDataQualityLoading(totalSteps, summary);
+          console.log('[cards.js] Data Quality resources loaded:', {
+            repos: summaryParts.find(p => p.startsWith('repos')),
+            keywords: summaryParts.find(p => p.startsWith('keywords')) || 'keywords 0',
+            cards: summaryParts.find(p => p.startsWith('cards')) || 'cards 0'
+          });
+        } catch (err) {
+          console.error('[cards.js] Data Quality initialization failed:', err);
+          failDataQualityLoading(totalSteps, completedSteps, err.message || 'Failed to prepare data quality view');
+          if (window.UXFeedback?.toast) {
+            window.UXFeedback.toast(`Data Quality failed: ${err.message}`, 'error');
+          }
+        } finally {
+          if (typeof window.initCards === 'function') window.initCards({ skipLoad: true });
+          if (typeof window.initCardsBuilder === 'function') window.initCardsBuilder(false);
+          if (typeof window.initKeywords === 'function') window.initKeywords({ skipLoad: true });
+        }
       },
       unmount: () => {
         console.log('[cards.js] Unmounted from rag-data-quality');
@@ -233,4 +413,3 @@
 
   console.log('[cards.js] Module loaded (PRIMARY for rag-data-quality, coordinates cards_builder.js + keywords.js)');
 })();
-

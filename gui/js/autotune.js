@@ -40,7 +40,8 @@
       console.error('[Autotune] Refresh failed:', e);
       console.warn('[Autotune] Tips to resolve:');
       console.warn('  • Verify backend is running (check Infrastructure tab)');
-      console.warn('  • Check server logs: docker logs agro-api');
+      console.warn('  • Check server logs: docker compose -f docker-compose.services.yml logs -f api');
+      console.warn('  • Or inspect container directly: docker logs agro-api');
       console.warn('  • Refresh the page (Ctrl+F5) to retry');
     }
   }
