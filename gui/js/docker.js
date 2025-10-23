@@ -6,10 +6,195 @@
 
     const { api, $, state } = window.CoreUtils || {};
 
+    const AGRO_CONTAINER_NAMES = new Set([
+        'agro-api',
+        'agro-grafana',
+        'agro-prometheus',
+        'agro-promtail',
+        'agro-alertmanager',
+        'agro-openvscode',
+        'rag-redis',
+        'rag-service-mcp-http',
+        'rag-service-node',
+        'qdrant'
+    ]);
+    const AGRO_CONTAINER_PREFIXES = ['agro-', 'rag-', 'qdrant', 'redis', 'grafana', 'prometheus', 'promtail', 'alertmanager'];
+
+    const SERVICE_CARD_CONFIG = {
+        qdrant: {
+            displayName: 'Qdrant',
+            names: ['qdrant'],
+            statusSelector: '#qdrant-status',
+            restartButton: '#btn-qdrant-restart'
+        },
+        redis: {
+            displayName: 'Redis',
+            names: ['rag-redis', 'redis', 'agro-redis'],
+            statusSelector: '#redis-status',
+            restartButton: '#btn-redis-restart'
+        },
+        prometheus: {
+            displayName: 'Prometheus',
+            names: ['agro-prometheus', 'prometheus'],
+            statusSelector: '#prometheus-status'
+        },
+        grafana: {
+            displayName: 'Grafana',
+            names: ['agro-grafana', 'grafana'],
+            statusSelector: '#grafana-status'
+        }
+    };
+
+    let dockerTerminal = null;
+
     if (!api || !$ || !state) {
         console.error('[docker.js] CoreUtils not loaded!');
         return;
     }
+
+    function ensureDockerTerminal() {
+        if (!window.LiveTerminal) {
+            console.warn('[docker.js] LiveTerminal not available yet');
+            return null;
+        }
+        if (!dockerTerminal) {
+            dockerTerminal = new window.LiveTerminal('docker-terminal-container');
+            dockerTerminal.setTitle('Docker Operations');
+            dockerTerminal.hide();
+        }
+        return dockerTerminal;
+    }
+
+    function dockerLog(lines, { clear = false } = {}) {
+        const terminal = ensureDockerTerminal();
+        if (!terminal || !lines || !lines.length) return;
+        if (clear) terminal.clear();
+        terminal.show();
+        lines.forEach(line => terminal.appendLine(line));
+    }
+
+    function dockerProgress(percent, label) {
+        const terminal = ensureDockerTerminal();
+        if (!terminal) return;
+        terminal.updateProgress(Math.min(Math.max(percent, 0), 100), label);
+    }
+
+    function escapeAttr(text) {
+        return String(text || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+
+    function isAgroContainer(container) {
+        if (!container) return false;
+        const name = (container.name || '').toLowerCase();
+        const image = (container.image || '').toLowerCase();
+        if (AGRO_CONTAINER_NAMES.has(name)) return true;
+        return AGRO_CONTAINER_PREFIXES.some(prefix => name.startsWith(prefix) || image.includes(prefix));
+    }
+
+    function renderContainerCard(container, scope) {
+        const normalizedScope = scope || 'all';
+        const cardId = `${normalizedScope}-${container.id}`;
+        const logsToggleId = `btn-logs-${cardId}`;
+        const logsContainerId = `logs-${cardId}`;
+        const logsContentId = `logs-content-${cardId}`;
+
+        const stateValue = (container.state || '').toLowerCase();
+        const isRunning = stateValue === 'running';
+        const isPaused = stateValue === 'paused';
+        const isExited = stateValue === 'exited';
+
+        let statusColor = 'var(--fg-muted)';
+        let statusIcon = '○';
+        if (isRunning) { statusColor = 'var(--ok)'; statusIcon = '●'; }
+        else if (isPaused) { statusColor = 'var(--warn)'; statusIcon = '⏸'; }
+        else if (isExited) { statusColor = 'var(--err)'; statusIcon = '■'; }
+
+        const safeName = escapeHtml(container.name || container.id);
+        const safeImage = escapeHtml(container.image || '');
+        const safePorts = escapeHtml(container.ports || '');
+        const statusText = escapeHtml(container.status || stateValue);
+
+        let controlsHtml = '';
+        if (isRunning) {
+            controlsHtml = `
+                <button class="small-button" onclick="window.Docker.pauseContainer('${normalizedScope}', '${container.id}', '${escapeAttr(container.name)}')"
+                    style="flex: 1; background: var(--bg-elev1); color: var(--warn); border: 1px solid var(--warn); padding: 6px; font-size: 10px;">
+                    ⏸ Pause
+                </button>
+                <button class="small-button" onclick="window.Docker.stopContainer('${normalizedScope}', '${container.id}', '${escapeAttr(container.name)}')"
+                    style="flex: 1; background: var(--bg-elev1); color: var(--err); border: 1px solid var(--err); padding: 6px; font-size: 10px;">
+                    ■ Stop
+                </button>`;
+        } else if (isPaused) {
+            controlsHtml = `
+                <button class="small-button" onclick="window.Docker.unpauseContainer('${normalizedScope}', '${container.id}', '${escapeAttr(container.name)}')"
+                    style="flex: 1; background: var(--bg-elev1); color: var(--ok); border: 1px solid var(--ok); padding: 6px; font-size: 10px;">
+                    ▶ Unpause
+                </button>
+                <button class="small-button" onclick="window.Docker.stopContainer('${normalizedScope}', '${container.id}', '${escapeAttr(container.name)}')"
+                    style="flex: 1; background: var(--bg-elev1); color: var(--err); border: 1px solid var(--err); padding: 6px; font-size: 10px;">
+                    ■ Stop
+                </button>`;
+        } else {
+            controlsHtml = `
+                <button class="small-button" onclick="window.Docker.startContainer('${normalizedScope}', '${container.id}', '${escapeAttr(container.name)}')"
+                    style="flex: 1; background: var(--bg-elev1); color: var(--ok); border: 1px solid var(--ok); padding: 6px; font-size: 10px;">
+                    ▶ Start
+                </button>
+                <button class="small-button" onclick="window.Docker.removeContainer('${normalizedScope}', '${container.id}', '${escapeAttr(container.name)}')"
+                    style="flex: 1; background: var(--bg-elev1); color: var(--err); border: 1px solid var(--err); padding: 6px; font-size: 10px;">
+                    🗑 Remove
+                </button>`;
+        }
+
+        return `
+            <div style="background: var(--card-bg); border: 1px solid var(--line); border-radius: 6px; padding: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <div>
+                        <div style="font-size: 14px; font-weight: 600; color: var(--fg);">${safeName}</div>
+                        <div style="font-size: 11px; color: var(--fg-muted);">${safeImage}</div>
+                    </div>
+                    <div style="font-size: 18px; color: ${statusColor}; font-weight: 700;">${statusIcon} ${statusText}</div>
+                </div>
+                <div style="font-size: 11px; color: var(--fg-muted); margin-bottom: 12px;">${safePorts || 'No ports exposed'}</div>
+                <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
+                    ${controlsHtml}
+                    <button class="small-button" onclick="window.Docker.toggleLogs('${normalizedScope}', '${container.id}')"
+                        id="${logsToggleId}"
+                        style="flex: 1; background: var(--bg-elev1); color: var(--link); border: 1px solid var(--link); padding: 6px; font-size: 10px;">
+                        📄 Logs ▼
+                    </button>
+                </div>
+                <div id="${logsContainerId}" style="display: none; margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px;">
+                    <div style="background: var(--code-bg); border: 1px solid var(--line); border-radius: 4px; padding: 12px; max-height: 400px; overflow-y: auto; font-family: 'SF Mono', Consolas, monospace; font-size: 11px; line-height: 1.4;">
+                        <div id="${logsContentId}" style="color: var(--code-fg);">
+                            Loading logs...
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                        <button class="small-button" onclick="window.Docker.refreshLogs('${normalizedScope}', '${container.id}')"
+                            style="flex: 1; background: var(--bg-elev1); color: var(--link); border: 1px solid var(--link); padding: 6px; font-size: 10px;">
+                            ↻ Refresh Logs
+                        </button>
+                        <button class="small-button" onclick="window.Docker.downloadLogs('${container.id}', '${escapeAttr(container.name)}')"
+                            style="flex: 1; background: var(--bg-elev1); color: var(--ok); border: 1px solid var(--ok); padding: 6px; font-size: 10px;">
+                            ⬇ Download Full Logs
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderContainerGrid(gridEl, containers, scope) {
+        if (!gridEl) return;
+        if (!containers || containers.length === 0) {
+            gridEl.innerHTML = '<div style="color: var(--fg-muted); padding: 16px;">No containers found</div>';
+            return;
+        }
+        gridEl.innerHTML = containers.map(container => renderContainerCard(container, scope)).join('');
+    }
+
 
     /**
      * Check Docker status
@@ -21,6 +206,15 @@
         try {
             const response = await fetch(api('/api/docker/status'));
             const data = await response.json();
+
+            if (!data.running && Array.isArray(state.docker?.containers)) {
+                const anyRunning = state.docker.containers.some(c => (c.state || '').toLowerCase() === 'running');
+                if (anyRunning) {
+                    data.running = true;
+                    data.runtime = data.runtime && data.runtime !== 'Unknown' ? data.runtime : 'Docker (detected via containers)';
+                    data.containers_count = state.docker.containers.length;
+                }
+            }
 
             let html = `
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
@@ -863,4 +1057,3 @@
 
     console.log('[docker.js] Module loaded (coordination with mcp_server.js for infrastructure view)');
 })();
-

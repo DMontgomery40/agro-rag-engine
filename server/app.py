@@ -3845,7 +3845,13 @@ def docker_containers_all() -> Dict[str, Any]:
     import subprocess
     try:
         result = subprocess.run(
-            ["docker", "ps", "-a", "--format", "{{.ID}}|{{.Names}}|{{.Image}}|{{.State}}|{{.Status}}|{{.Ports}}"],
+            [
+                "docker",
+                "ps",
+                "-a",
+                "--format",
+                "{{.ID}}|{{.Names}}|{{.Image}}|{{.State}}|{{.Status}}|{{.Ports}}|{{.Label \"com.docker.compose.project\"}}|{{.Label \"com.docker.compose.service\"}}|{{.CreatedAt}}|{{.RunningFor}}",
+            ],
             capture_output=True,
             text=True,
             timeout=10
@@ -3856,14 +3862,48 @@ def docker_containers_all() -> Dict[str, Any]:
                 if not line:
                     continue
                 parts = line.split('|')
-                if len(parts) >= 5:
+                if len(parts) >= 6:
+                    container_id = parts[0]
+                    name = parts[1]
+                    image = parts[2]
+                    state = (parts[3] or "").lower()
+                    status = parts[4]
+                    ports = parts[5] if len(parts) > 5 else ""
+                    compose_project = parts[6] if len(parts) > 6 else ""
+                    compose_service = parts[7] if len(parts) > 7 else ""
+                    created_at = parts[8] if len(parts) > 8 else ""
+                    running_for = parts[9] if len(parts) > 9 else ""
+
+                    name_lower = name.lower()
+                    image_lower = image.lower()
+                    compose_project_lower = compose_project.lower() if compose_project else ""
+                    compose_service_lower = compose_service.lower() if compose_service else ""
+
+                    agro_managed = (
+                        compose_project_lower in {"agro", "agro-rag-engine", "rag-service"} or
+                        compose_project_lower.startswith(("agro", "rag")) or
+                        compose_service_lower in {
+                            "api", "grafana", "prometheus", "promtail", "alertmanager",
+                            "openvscode", "redis", "qdrant", "mcp-http", "mcp-node"
+                        } or
+                        name_lower.startswith(("agro-", "rag-", "qdrant", "redis", "grafana", "prometheus", "promtail", "alertmanager")) or
+                        image_lower.startswith(("agro", "rag")) or
+                        "agro" in image_lower
+                    )
+
                     containers.append({
-                        "id": parts[0],
-                        "name": parts[1],
-                        "image": parts[2],
-                        "state": parts[3].lower(),
-                        "status": parts[4],
-                        "ports": parts[5] if len(parts) > 5 else ""
+                        "id": container_id,
+                        "short_id": container_id[:12],
+                        "name": name,
+                        "image": image,
+                        "state": state,
+                        "status": status,
+                        "ports": ports,
+                        "compose_project": compose_project or None,
+                        "compose_service": compose_service or None,
+                        "created_at": created_at,
+                        "running_for": running_for,
+                        "agro_managed": agro_managed
                     })
             return {"containers": containers}
         return {"containers": [], "error": "Failed to list containers"}
@@ -4029,6 +4069,25 @@ def docker_container_remove(container_id: str) -> Dict[str, Any]:
     try:
         result = subprocess.run(
             ["docker", "rm", "-f", container_id],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        return {
+            "success": result.returncode == 0,
+            "output": result.stdout,
+            "error": result.stderr if result.returncode != 0 else None
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/docker/container/{container_id}/restart")
+def docker_container_restart(container_id: str) -> Dict[str, Any]:
+    """Restart a container."""
+    import subprocess
+    try:
+        result = subprocess.run(
+            ["docker", "restart", container_id],
             capture_output=True,
             text=True,
             timeout=30

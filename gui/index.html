@@ -4466,19 +4466,30 @@
                     </div>
                 </div>
 
-                <!-- Running Containers (from settings-docker) -->
+                <!-- AGRO Containers -->
                 <div class="settings-section" style="border-left: 3px solid var(--accent);">
                     <h3>
-                        <span style="color: var(--accent);">●</span> All Containers
+                        <span style="color: var(--accent);">●</span> AGRO Containers
+                    </h3>
+                    <p class="small" style="color: var(--fg-muted); margin-bottom: 12px;">Core containers managed by <code>docker-compose.services.yml</code>.</p>
+                    <div id="agro-containers-grid" style="display: grid; gap: 12px; margin-bottom: 16px;"></div>
+                </div>
+
+                <!-- All Containers (user + AGRO) -->
+                <div class="settings-section" style="border-left: 3px solid var(--link);">
+                    <h3>
+                        <span style="color: var(--link);">●</span> All Containers
                         <button class="small-button" id="btn-docker-refresh-containers" style="float: right; padding: 4px 12px; font-size: 11px;">
                             ↻ Refresh
                         </button>
                     </h3>
-
+                    <p class="small" style="color: var(--fg-muted); margin-bottom: 12px;">Every Docker container detected on this host (including AGRO and user projects).</p>
                     <div id="docker-containers-grid" style="display: grid; gap: 12px; margin-bottom: 16px;">
-                        <!-- Container cards populated by JS -->
+                        <div style="color: var(--fg-muted); padding: 16px;">Loading containers...</div>
                     </div>
                 </div>
+
+                <div id="docker-terminal-container"></div>
 
                 <!-- Docker Settings (from settings-docker) -->
                 <div class="settings-section" style="border-left: 3px solid var(--link);">
