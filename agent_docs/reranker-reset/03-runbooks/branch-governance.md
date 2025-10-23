@@ -1,5 +1,7 @@
 # Branch Governance & Controls
 
+> **Reminder:** enforce [`AGENTS.md`](../../AGENTS.md) before following any procedure here. Sandbox mode, approval policies, and testing rules there remain in force.
+
 ## Branch Strategy
 
 - `planning/reranker-reset`: documentation, ADRs, runbooks. No runtime code changes.
@@ -20,12 +22,14 @@
 - Reference ADR ID.
 - Include smoke + Playwright evidence.
 - Confirm no absolute paths/env leaks.
+- State the Codex/Claude profile used (see `tooling/`).
 
 ## Agent Guardrails
 
 - Codex CLI: run with `--profile reranker-reset`. See `tooling/codex-cli.md`.
 - Claude Code: require `.claude/settings.json` from repo. See `tooling/claude-code.md`.
 - Pre-push hooks (future): block merges if docs/changelog missing.
+- When exceptional access is needed, record the deviation and resolution in `02-decision-log.md`.
 
 ## Incident Handling
 

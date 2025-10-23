@@ -1,5 +1,7 @@
 # Vision & Scope
 
+> **Always enforce [`AGENTS.md`](../AGENTS.md).** Every agent must follow the global rules (sandbox, approvals, test mandates) before acting on the steps below.
+
 ## Why This Reset Exists
 
 Current reranker behavior diverges from SBERT expectations: double-loaded cross encoders, stale datasets with absolute paths, out-of-date training scripts, and UI copy that doesn’t reflect reality. We’re standardizing on a truthful, maintainable cross-encoder pipeline.
@@ -32,3 +34,11 @@ Current reranker behavior diverges from SBERT expectations: double-loaded cross 
 3. Training rewrite (Trainer, dataset cleanup, evaluation).
 4. GUI alignment (terminology, controls, Playwright coverage).
 5. Stabilization (regression eval, monitoring, merge back to `development`).
+
+## Reference Materials (keep handy)
+
+- [SBERT CrossEncoder Training Overview](https://www.sbert.net/docs/cross_encoder/training_overview.html)
+- [SBERT CrossEncoder Loss Overview](https://www.sbert.net/docs/cross_encoder/loss_overview.html)
+- [Sentence-Transformers `CrossEncoderTrainer` docs](https://www.sbert.net/docs/package_reference/cross_encoder/trainer.html)
+- [Hugging Face `datasets` quickstart](https://huggingface.co/docs/datasets/v2.19.0/en/quickstart)
+- [Prometheus Histogram best practices](https://prometheus.io/docs/practices/histograms/)

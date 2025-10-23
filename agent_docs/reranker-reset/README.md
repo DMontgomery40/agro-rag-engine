@@ -1,5 +1,7 @@
 # Reranker Reset Program
 
+> **Agents: mandatory reminder** — before acting on anything in this folder, re-read the policies in [`AGENTS.md`](../AGENTS.md). Every workflow and guardrail below assumes those instructions are followed verbatim.
+
 This directory is the source of truth for the cross-encoder/reranker consolidation effort. Everything that follows in code must trace back to an explicit item in these docs.
 
 ## Document Map
@@ -12,6 +14,7 @@ This directory is the source of truth for the cross-encoder/reranker consolidati
 - `03-runbooks/training.md` — canonical procedure for mining, training, evaluating, and promoting models.
 - `tooling/codex-cli.md` — locked-down Codex CLI profile expectations.
 - `tooling/claude-code.md` — required Claude Code settings/permissions.
+- `04-deep-dive.md` — exhaustive dependency analysis, research answers, and risk register.
 
 ## Working Rules
 
@@ -20,6 +23,7 @@ This directory is the source of truth for the cross-encoder/reranker consolidati
 3. **Agent guardrails.** Codex CLI and Claude Code must run under the profiles captured in `tooling/`, including sandbox/approval settings and path restrictions.
 4. **Mandatory smoke tests.** Every milestone requires `/api/reranker/smoketest` and Playwright GUI suites relevant to reranker tabs.
 5. **Decision log is the single source.** No off-repo memory—this folder is the plan.
+6. **External references live here.** When we rely on third-party behaviour (SBERT, HuggingFace datasets, Prometheus), cite the exact docs so tomorrow’s agent can re-ground.
 
 ## Next Actions Checklist
 
