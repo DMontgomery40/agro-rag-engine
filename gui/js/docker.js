@@ -93,10 +93,11 @@
 
     function renderContainerCard(container, scope) {
         const normalizedScope = scope || 'all';
-        const cardId = `${normalizedScope}-${container.id}`;
-        const logsToggleId = `btn-logs-${cardId}`;
-        const logsContainerId = `logs-${cardId}`;
-        const logsContentId = `logs-content-${cardId}`;
+        const containerId = container.id || container.name || 'container';
+        const safeDomId = domSafeId(containerId);
+        const logsToggleId = `btn-logs-${normalizedScope}-${safeDomId}`;
+        const logsContainerId = `logs-${normalizedScope}-${safeDomId}`;
+        const logsContentId = `logs-content-${normalizedScope}-${safeDomId}`;
 
         const stateValue = (container.state || '').toLowerCase();
         const isRunning = stateValue === 'running';
@@ -109,61 +110,92 @@
         else if (isPaused) { statusColor = 'var(--warn)'; statusIcon = '⏸'; }
         else if (isExited) { statusColor = 'var(--err)'; statusIcon = '■'; }
 
-        const safeName = escapeHtml(container.name || container.id);
+        const safeName = escapeHtml(container.name || containerId);
         const safeImage = escapeHtml(container.image || '');
-        const safePorts = escapeHtml(container.ports || '');
-        const statusText = escapeHtml(container.status || stateValue);
+        const safePorts = escapeHtml(container.ports || 'No ports exposed');
+        const statusText = escapeHtml(container.status || stateValue || 'unknown');
+        const runningFor = escapeHtml(container.running_for || '');
 
-        let controlsHtml = '';
+        const badges = [];
+        if (container.agro_managed) badges.push('<span style="background: var(--accent); color: var(--accent-contrast); border-radius: 999px; padding: 2px 6px; font-size: 10px;">AGRO</span>');
+        if (container.compose_service) badges.push(`<span style="background: var(--bg-elev1); color: var(--fg-muted); border-radius: 999px; padding: 2px 6px; font-size: 10px;">${escapeHtml(container.compose_service)}</span>`);
+        const badgesHtml = badges.length ? `<div style="display:flex; gap:6px; margin-top:4px;">${badges.join('')}</div>` : '';
+
+        const detailLines = [];
+        if (container.compose_project) detailLines.push(`Project: ${escapeHtml(container.compose_project)}`);
+        if (container.compose_service) detailLines.push(`Service: ${escapeHtml(container.compose_service)}`);
+        if (runningFor) detailLines.push(`Up ${runningFor}`);
+        const detailHtml = detailLines.length ? `<div style="font-size: 10px; color: var(--fg-muted); margin-top: 4px;">${detailLines.join(' • ')}</div>` : '';
+
+        const controlButtons = [];
         if (isRunning) {
-            controlsHtml = `
-                <button class="small-button" onclick="window.Docker.pauseContainer('${normalizedScope}', '${container.id}', '${escapeAttr(container.name)}')"
+            controlButtons.push(`
+                <button class="small-button" onclick="window.Docker.pauseContainer('${normalizedScope}', '${containerId}', '${escapeAttr(container.name)}')"
                     style="flex: 1; background: var(--bg-elev1); color: var(--warn); border: 1px solid var(--warn); padding: 6px; font-size: 10px;">
                     ⏸ Pause
-                </button>
-                <button class="small-button" onclick="window.Docker.stopContainer('${normalizedScope}', '${container.id}', '${escapeAttr(container.name)}')"
+                </button>`);
+            controlButtons.push(`
+                <button class="small-button" onclick="window.Docker.stopContainer('${normalizedScope}', '${containerId}', '${escapeAttr(container.name)}')"
                     style="flex: 1; background: var(--bg-elev1); color: var(--err); border: 1px solid var(--err); padding: 6px; font-size: 10px;">
                     ■ Stop
-                </button>`;
+                </button>`);
+            controlButtons.push(`
+                <button class="small-button" onclick="window.Docker.restartContainer('${normalizedScope}', '${containerId}', '${escapeAttr(container.name)}')"
+                    style="flex: 1; background: var(--bg-elev1); color: var(--warn); border: 1px solid var(--warn); padding: 6px; font-size: 10px;">
+                    ↻ Restart
+                </button>`);
         } else if (isPaused) {
-            controlsHtml = `
-                <button class="small-button" onclick="window.Docker.unpauseContainer('${normalizedScope}', '${container.id}', '${escapeAttr(container.name)}')"
+            controlButtons.push(`
+                <button class="small-button" onclick="window.Docker.unpauseContainer('${normalizedScope}', '${containerId}', '${escapeAttr(container.name)}')"
                     style="flex: 1; background: var(--bg-elev1); color: var(--ok); border: 1px solid var(--ok); padding: 6px; font-size: 10px;">
                     ▶ Unpause
-                </button>
-                <button class="small-button" onclick="window.Docker.stopContainer('${normalizedScope}', '${container.id}', '${escapeAttr(container.name)}')"
+                </button>`);
+            controlButtons.push(`
+                <button class="small-button" onclick="window.Docker.stopContainer('${normalizedScope}', '${containerId}', '${escapeAttr(container.name)}')"
                     style="flex: 1; background: var(--bg-elev1); color: var(--err); border: 1px solid var(--err); padding: 6px; font-size: 10px;">
                     ■ Stop
-                </button>`;
+                </button>`);
+            controlButtons.push(`
+                <button class="small-button" onclick="window.Docker.restartContainer('${normalizedScope}', '${containerId}', '${escapeAttr(container.name)}')"
+                    style="flex: 1; background: var(--bg-elev1); color: var(--warn); border: 1px solid var(--warn); padding: 6px; font-size: 10px;">
+                    ↻ Restart
+                </button>`);
         } else {
-            controlsHtml = `
-                <button class="small-button" onclick="window.Docker.startContainer('${normalizedScope}', '${container.id}', '${escapeAttr(container.name)}')"
+            controlButtons.push(`
+                <button class="small-button" onclick="window.Docker.startContainer('${normalizedScope}', '${containerId}', '${escapeAttr(container.name)}')"
                     style="flex: 1; background: var(--bg-elev1); color: var(--ok); border: 1px solid var(--ok); padding: 6px; font-size: 10px;">
                     ▶ Start
-                </button>
-                <button class="small-button" onclick="window.Docker.removeContainer('${normalizedScope}', '${container.id}', '${escapeAttr(container.name)}')"
+                </button>`);
+            controlButtons.push(`
+                <button class="small-button" onclick="window.Docker.removeContainer('${normalizedScope}', '${containerId}', '${escapeAttr(container.name)}')"
                     style="flex: 1; background: var(--bg-elev1); color: var(--err); border: 1px solid var(--err); padding: 6px; font-size: 10px;">
                     🗑 Remove
-                </button>`;
+                </button>`);
         }
+
+        controlButtons.push(`
+            <button class="small-button" onclick="window.Docker.toggleLogs('${normalizedScope}', '${containerId}')"
+                id="${logsToggleId}"
+                style="flex: 1; background: var(--bg-elev1); color: var(--link); border: 1px solid var(--link); padding: 6px; font-size: 10px;">
+                📄 Logs ▼
+            </button>`);
+
+        const controlsHtml = controlButtons.join('');
 
         return `
             <div style="background: var(--card-bg); border: 1px solid var(--line); border-radius: 6px; padding: 16px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 12px;">
+                    <div style="flex:1;">
                         <div style="font-size: 14px; font-weight: 600; color: var(--fg);">${safeName}</div>
                         <div style="font-size: 11px; color: var(--fg-muted);">${safeImage}</div>
+                        ${badgesHtml}
+                        ${detailHtml}
                     </div>
                     <div style="font-size: 18px; color: ${statusColor}; font-weight: 700;">${statusIcon} ${statusText}</div>
                 </div>
-                <div style="font-size: 11px; color: var(--fg-muted); margin-bottom: 12px;">${safePorts || 'No ports exposed'}</div>
+                <div style="font-size: 11px; color: var(--fg-muted); margin-bottom: 12px; font-family: 'SF Mono', monospace;">${safePorts}</div>
                 <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
                     ${controlsHtml}
-                    <button class="small-button" onclick="window.Docker.toggleLogs('${normalizedScope}', '${container.id}')"
-                        id="${logsToggleId}"
-                        style="flex: 1; background: var(--bg-elev1); color: var(--link); border: 1px solid var(--link); padding: 6px; font-size: 10px;">
-                        📄 Logs ▼
-                    </button>
                 </div>
                 <div id="${logsContainerId}" style="display: none; margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px;">
                     <div style="background: var(--code-bg); border: 1px solid var(--line); border-radius: 4px; padding: 12px; max-height: 400px; overflow-y: auto; font-family: 'SF Mono', Consolas, monospace; font-size: 11px; line-height: 1.4;">
@@ -172,11 +204,11 @@
                         </div>
                     </div>
                     <div style="display: flex; gap: 8px; margin-top: 8px;">
-                        <button class="small-button" onclick="window.Docker.refreshLogs('${normalizedScope}', '${container.id}')"
+                        <button class="small-button" onclick="window.Docker.refreshLogs('${normalizedScope}', '${containerId}')"
                             style="flex: 1; background: var(--bg-elev1); color: var(--link); border: 1px solid var(--link); padding: 6px; font-size: 10px;">
                             ↻ Refresh Logs
                         </button>
-                        <button class="small-button" onclick="window.Docker.downloadLogs('${container.id}', '${escapeAttr(container.name)}')"
+                        <button class="small-button" onclick="window.Docker.downloadLogs('${containerId}', '${escapeAttr(container.name)}')"
                             style="flex: 1; background: var(--bg-elev1); color: var(--ok); border: 1px solid var(--ok); padding: 6px; font-size: 10px;">
                             ⬇ Download Full Logs
                         </button>
@@ -189,10 +221,156 @@
     function renderContainerGrid(gridEl, containers, scope) {
         if (!gridEl) return;
         if (!containers || containers.length === 0) {
-            gridEl.innerHTML = '<div style="color: var(--fg-muted); padding: 16px;">No containers found</div>';
+            const message = scope === 'agro' ? 'No AGRO containers found' : 'No containers found';
+            gridEl.innerHTML = `<div style="color: var(--fg-muted); padding: 16px;">${message}</div>`;
             return;
         }
         gridEl.innerHTML = containers.map(container => renderContainerCard(container, scope)).join('');
+    }
+
+    function normalizeScopeArgs(scopeOrId, maybeId, maybeName) {
+        if (maybeName !== undefined) {
+            return {
+                scope: scopeOrId || 'all',
+                containerId: maybeId,
+                label: maybeName || maybeId
+            };
+        }
+        if (maybeId !== undefined) {
+            return {
+                scope: 'all',
+                containerId: scopeOrId,
+                label: maybeId || scopeOrId
+            };
+        }
+        return {
+            scope: 'all',
+            containerId: scopeOrId,
+            label: scopeOrId
+        };
+    }
+
+    function getContainerById(containerId) {
+        if (!containerId) return null;
+        const map = state.docker?.containerMap || {};
+        return map[containerId] || map[containerId.slice(0, 12)] || null;
+    }
+
+    function domSafeId(value) {
+        return (value || '').replace(/[^a-zA-Z0-9_.-]+/g, '_');
+    }
+
+    function containerMatchesConfig(container, cfg) {
+        if (!cfg || !container) return false;
+        const nameLower = (container.name || '').toLowerCase();
+        const serviceLower = (container.compose_service || '').toLowerCase();
+        const projectLower = (container.compose_project || '').toLowerCase();
+        return cfg.names.some(raw => {
+            const target = raw.toLowerCase();
+            return (
+                nameLower === target ||
+                serviceLower === target ||
+                projectLower === target ||
+                nameLower.startsWith(`${target}-`) ||
+                serviceLower.startsWith(`${target}-`)
+            );
+        });
+    }
+
+    function getServiceContainers(serviceKey) {
+        const cfg = SERVICE_CARD_CONFIG[serviceKey];
+        if (!cfg) return [];
+        const containers = state.docker?.containers || [];
+        return containers.filter(container => containerMatchesConfig(container, cfg));
+    }
+
+    function updateServiceStatusFromContainers(containers) {
+        Object.entries(SERVICE_CARD_CONFIG).forEach(([key, cfg]) => {
+            const statusEl = cfg.statusSelector ? $(cfg.statusSelector) : null;
+            const matchingContainers = (containers || []).filter(container => containerMatchesConfig(container, cfg));
+            const running = matchingContainers.some(container => (container.state || '').toLowerCase() === 'running');
+
+            if (statusEl) {
+                if (matchingContainers.length === 0) {
+                    statusEl.innerHTML = '<span style="color: var(--err);">✗ Not Found</span>';
+                } else if (running) {
+                    statusEl.innerHTML = '<span style="color: var(--accent);">✓ Running</span>';
+                } else {
+                    const stateText = escapeHtml(matchingContainers[0].state || 'stopped');
+                    statusEl.innerHTML = `<span style="color: var(--warn);">⚠ ${stateText}</span>`;
+                }
+            }
+
+            if (cfg.restartButton) {
+                const btn = $(cfg.restartButton);
+                if (btn) {
+                    btn.disabled = matchingContainers.length === 0;
+                    btn.dataset.serviceKey = key;
+                }
+            }
+        });
+    }
+
+    const ACTION_LABELS = {
+        pause: 'Pause',
+        unpause: 'Unpause',
+        stop: 'Stop',
+        start: 'Start',
+        remove: 'Remove',
+        restart: 'Restart'
+    };
+
+    async function runContainerAction(action, scopeOrId, maybeId, maybeName) {
+        const { scope, containerId, label } = normalizeScopeArgs(scopeOrId, maybeId, maybeName);
+        const actionLabel = ACTION_LABELS[action] || action;
+        const container = getContainerById(containerId) || {};
+        const displayName = label || container.name || containerId;
+
+        dockerLog([`▶ ${actionLabel} ${displayName}`]);
+        dockerProgress(20, `${actionLabel} ${displayName}`);
+
+        try {
+            const response = await fetch(api(`/api/docker/container/${containerId}/${action}`), { method: 'POST' });
+            const data = await response.json();
+            if (!data.success) {
+                throw new Error(data.error || 'Unknown error');
+            }
+            if (data.output) {
+                data.output.split('\n').filter(Boolean).forEach(line => dockerLog([line]));
+            }
+            dockerProgress(100, `${actionLabel} ${displayName}`);
+            if (window.UXFeedback?.toast) {
+                window.UXFeedback.toast(`✓ ${actionLabel} ${displayName}`, 'success');
+            }
+            await listContainers();
+            await checkDockerStatus();
+            await checkInfraStatus();
+        } catch (error) {
+            dockerProgress(100, `${actionLabel} failed`);
+            dockerLog([`✗ ${actionLabel} ${displayName} failed: ${error.message}`]);
+            if (window.UXFeedback?.toast) {
+                window.UXFeedback.toast(`✗ ${actionLabel} ${displayName}`, 'error');
+            }
+        }
+    }
+
+    async function restartService(serviceKey) {
+        const cfg = SERVICE_CARD_CONFIG[serviceKey];
+        if (!cfg) return;
+        const containers = getServiceContainers(serviceKey);
+        if (!containers.length) {
+            dockerLog([`⚠ No containers found for ${cfg.displayName}`]);
+            if (window.UXFeedback?.toast) {
+                window.UXFeedback.toast(`No containers found for ${cfg.displayName}`, 'warn');
+            }
+            return;
+        }
+
+        for (const container of containers) {
+            await runContainerAction('restart', 'agro', container.id, container.name);
+        }
+        await listContainers();
+        await checkInfraStatus();
     }
 
 
@@ -206,6 +384,9 @@
         try {
             const response = await fetch(api('/api/docker/status'));
             const data = await response.json();
+
+            state.docker = state.docker || {};
+            state.docker.status = data;
 
             if (!data.running && Array.isArray(state.docker?.containers)) {
                 const anyRunning = state.docker.containers.some(c => (c.state || '').toLowerCase() === 'running');
@@ -271,301 +452,81 @@
      * List Docker containers
      */
     async function listContainers() {
-        const grid = $('#docker-containers-grid');
-        if (!grid) return;
+        const agroGrid = $('#agro-containers-grid');
+        const allGrid = $('#docker-containers-grid');
 
         try {
             const response = await fetch(api('/api/docker/containers/all'));
             const data = await response.json();
+            const containers = Array.isArray(data.containers) ? data.containers : [];
 
-            if (!data.containers || data.containers.length === 0) {
-                grid.innerHTML = '<div style="color: var(--fg-muted); padding: 16px;">No containers found</div>';
-                return;
-            }
-
-            let html = '';
-            data.containers.forEach(container => {
-                const isRunning = container.state === 'running';
-                const isPaused = container.state === 'paused';
-                const isExited = container.state === 'exited';
-                
-                let statusColor = 'var(--fg-muted)';
-                let statusIcon = '○';
-                if (isRunning) { statusColor = 'var(--ok)'; statusIcon = '●'; }
-                else if (isPaused) { statusColor = 'var(--warn)'; statusIcon = '⏸'; }
-                else if (isExited) { statusColor = 'var(--err)'; statusIcon = '■'; }
-
-                html += `
-                    <div style="background: var(--card-bg); border: 1px solid var(--line); border-radius: 6px; padding: 16px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <div style="font-weight: 600; color: var(--fg);">${container.name}</div>
-                            <div style="font-size: 10px; color: ${statusColor};">${statusIcon} ${container.state.toUpperCase()}</div>
-                        </div>
-                        <div style="font-size: 11px; color: var(--fg-muted); font-family: 'SF Mono', monospace; margin-bottom: 8px;">
-                            ${container.image}
-                        </div>
-                        ${container.ports ? `<div style="font-size: 10px; color: var(--link); margin-bottom: 8px;">${container.ports}</div>` : ''}
-                        
-                        <div style="display: flex; gap: 4px; margin-top: 12px;">
-                            ${isRunning ? `
-                                <button class="small-button" onclick="window.Docker.pauseContainer('${container.id}')" 
-                                    style="flex: 1; background: var(--bg-elev1); color: var(--warn); border: 1px solid var(--warn); padding: 6px; font-size: 10px;">
-                                    ⏸ Pause
-                                </button>
-                                <button class="small-button" onclick="window.Docker.stopContainer('${container.id}')" 
-                                    style="flex: 1; background: var(--bg-elev1); color: var(--err); border: 1px solid var(--err); padding: 6px; font-size: 10px;">
-                                    ■ Stop
-                                </button>
-                            ` : ''}
-                            ${isPaused ? `
-                                <button class="small-button" onclick="window.Docker.unpauseContainer('${container.id}')" 
-                                    style="flex: 1; background: var(--bg-elev1); color: var(--ok); border: 1px solid var(--ok); padding: 6px; font-size: 10px;">
-                                    ▶ Unpause
-                                </button>
-                                <button class="small-button" onclick="window.Docker.stopContainer('${container.id}')" 
-                                    style="flex: 1; background: var(--bg-elev1); color: var(--err); border: 1px solid var(--err); padding: 6px; font-size: 10px;">
-                                    ■ Stop
-                                </button>
-                            ` : ''}
-                            ${isExited ? `
-                                <button class="small-button" onclick="window.Docker.startContainer('${container.id}')" 
-                                    style="flex: 1; background: var(--bg-elev1); color: var(--ok); border: 1px solid var(--ok); padding: 6px; font-size: 10px;">
-                                    ▶ Start
-                                </button>
-                                <button class="small-button" onclick="window.Docker.removeContainer('${container.id}')" 
-                                    style="flex: 1; background: var(--bg-elev1); color: var(--err); border: 1px solid var(--err); padding: 6px; font-size: 10px;">
-                                    🗑 Remove
-                                </button>
-                            ` : ''}
-                            <button class="small-button" onclick="window.Docker.toggleLogs('${container.id}', '${container.name}')" 
-                                id="btn-logs-${container.id}"
-                                style="flex: 1; background: var(--bg-elev1); color: var(--link); border: 1px solid var(--link, var(--link)); padding: 6px; font-size: 10px;">
-                                📄 Logs ▼
-                            </button>
-                        </div>
-
-                        <!-- Collapsible Logs Section -->
-                        <div id="logs-${container.id}" style="display: none; margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px;">
-                            <div style="background: var(--code-bg); border: 1px solid var(--line); border-radius: 4px; padding: 12px; max-height: 400px; overflow-y: auto; font-family: 'SF Mono', Consolas, monospace; font-size: 11px; line-height: 1.4;">
-                                <div id="logs-content-${container.id}" style="color: var(--code-fg);">
-                                    Loading logs...
-                                </div>
-                            </div>
-                            <div style="display: flex; gap: 8px; margin-top: 8px;">
-                                <button class="small-button" onclick="window.Docker.refreshLogs('${container.id}')" 
-                                    style="flex: 1; background: var(--bg-elev1); color: var(--link); border: 1px solid var(--link, var(--link)); padding: 6px; font-size: 10px;">
-                                    ↻ Refresh Logs
-                                </button>
-                                <button class="small-button" onclick="window.Docker.downloadLogs('${container.id}', '${container.name}')" 
-                                    style="flex: 1; background: var(--bg-elev1); color: var(--ok); border: 1px solid var(--ok); padding: 6px; font-size: 10px;">
-                                    ⬇ Download Full Logs
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
+            state.docker = state.docker || {};
+            state.docker.containers = containers;
+            state.docker.containerMap = {};
+            containers.forEach(container => {
+                const id = container.id || '';
+                if (id) {
+                    state.docker.containerMap[id] = container;
+                    state.docker.containerMap[id.slice(0, 12)] = container;
+                    state.docker.containerMap[domSafeId(id)] = container;
+                }
+                if (container.name) {
+                    state.docker.containerMap[container.name] = container;
+                }
             });
 
-            grid.innerHTML = html;
+            if (agroGrid) {
+                renderContainerGrid(agroGrid, containers.filter(isAgroContainer), 'agro');
+            }
+
+            if (allGrid) {
+                renderContainerGrid(allGrid, containers, 'all');
+            }
+
+            updateServiceStatusFromContainers(containers);
+            return containers;
         } catch (e) {
-            const errorHtml = window.ErrorHelpers ? window.ErrorHelpers.createHelpfulError({
-                title: 'Failed to list Docker containers',
-                message: e.message,
-                causes: [
-                    'Backend server is not responding',
-                    'Docker daemon connection lost',
-                    'Invalid Docker API response format',
-                    'Insufficient permissions to list containers'
-                ],
-                fixes: [
-                    'Check backend server status: Infrastructure > Services',
-                    'Verify Docker is running: "docker ps" in terminal',
-                    'Refresh this page to retry',
-                    'Check user permissions: may need sudo or docker group'
-                ],
-                links: [
-                    ['Docker Container Commands', 'https://docs.docker.com/engine/reference/commandline/ps/'],
-                    ['Docker Permissions', 'https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user'],
-                    ['Backend Logs', '/docs/DEBUGGING.md#backend-logs']
-                ]
-            }) : '<div style="color: var(--err); padding: 16px;">Failed to list containers: ' + e.message + '</div>';
-            grid.innerHTML = errorHtml;
+            const message = escapeHtml(e.message || 'Unknown error');
+            if (agroGrid) {
+                agroGrid.innerHTML = `<div style="color: var(--err); padding: 16px;">Failed to load AGRO containers: ${message}</div>`;
+            }
+            if (allGrid) {
+                allGrid.innerHTML = `<div style="color: var(--err); padding: 16px;">Failed to list containers: ${message}</div>`;
+            }
             console.error('[docker] Container list failed:', e);
+            updateServiceStatusFromContainers([]);
+            return [];
         }
     }
 
     /**
      * Container control functions
      */
-    async function pauseContainer(containerId) {
-        try {
-            const r = await fetch(api(`/api/docker/container/${containerId}/pause`), { method: 'POST' });
-            const d = await r.json();
-            if (d.success) {
-                if (window.showStatus) window.showStatus('✓ Container paused', 'success');
-                await listContainers();
-            } else throw new Error(d.error);
-        } catch (e) {
-            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to pause container', {
-                message: e.message,
-                causes: [
-                    'Backend server not responding to pause request',
-                    'Container does not support pause operation',
-                    'Docker daemon connection lost',
-                    'Container already paused'
-                ],
-                fixes: [
-                    'Verify server is running (check Infrastructure > Services)',
-                    'Confirm container is in running state before pausing',
-                    'Try pausing again after waiting a moment',
-                    'Check Docker logs for permission issues'
-                ],
-                links: [
-                    ['Docker Pause Command', 'https://docs.docker.com/engine/reference/commandline/pause/'],
-                    ['Container States', 'https://docs.docker.com/engine/reference/api/docker_remote_api_v1.24/#pause-a-container'],
-                    ['Server Health', '/api/health']
-                ]
-            }) : `Failed to pause container: ${e.message}`;
-            if (window.showStatus) window.showStatus(msg, 'error');
-            else alert(msg);
-        }
+    async function pauseContainer(scopeOrId, maybeId, maybeName) {
+        await runContainerAction('pause', scopeOrId, maybeId, maybeName);
     }
 
-    async function unpauseContainer(containerId) {
-        try {
-            const r = await fetch(api(`/api/docker/container/${containerId}/unpause`), { method: 'POST' });
-            const d = await r.json();
-            if (d.success) {
-                if (window.showStatus) window.showStatus('✓ Container resumed', 'success');
-                await listContainers();
-            } else throw new Error(d.error);
-        } catch (e) {
-            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to resume container', {
-                message: e.message,
-                causes: [
-                    'Backend server not responding to unpause request',
-                    'Container is not in paused state',
-                    'Docker daemon connection lost',
-                    'Container was removed while paused'
-                ],
-                fixes: [
-                    'Verify server is running (check Infrastructure > Services)',
-                    'Confirm container is in paused state before resuming',
-                    'Refresh container list to see current state',
-                    'Try again after checking Docker daemon status'
-                ],
-                links: [
-                    ['Docker Unpause Command', 'https://docs.docker.com/engine/reference/commandline/unpause/'],
-                    ['Container Lifecycle', 'https://docs.docker.com/engine/reference/api/docker_remote_api_v1.24/#unpause-a-container'],
-                    ['Troubleshooting', '/docs/INFRASTRUCTURE.md#container-management']
-                ]
-            }) : `Failed to resume container: ${e.message}`;
-            if (window.showStatus) window.showStatus(msg, 'error');
-            else alert(msg);
-        }
+    async function unpauseContainer(scopeOrId, maybeId, maybeName) {
+        await runContainerAction('unpause', scopeOrId, maybeId, maybeName);
     }
 
-    async function stopContainer(containerId) {
-        try {
-            const r = await fetch(api(`/api/docker/container/${containerId}/stop`), { method: 'POST' });
-            const d = await r.json();
-            if (d.success) {
-                if (window.showStatus) window.showStatus('✓ Container stopped', 'success');
-                await listContainers();
-            } else throw new Error(d.error);
-        } catch (e) {
-            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to stop container', {
-                message: e.message,
-                causes: [
-                    'Backend API endpoint not accessible',
-                    'Container is already stopped',
-                    'Docker daemon is not responding',
-                    'Insufficient permissions to stop container'
-                ],
-                fixes: [
-                    'Check that backend server is running (Infrastructure > Services)',
-                    'Verify the container is currently running',
-                    'Wait 10 seconds and retry (Docker needs time)',
-                    'Check Docker permission settings'
-                ],
-                links: [
-                    ['Docker Stop Reference', 'https://docs.docker.com/engine/reference/commandline/stop/'],
-                    ['Container Management', 'https://docs.docker.com/engine/containers/'],
-                    ['API Documentation', '/docs/API.md#docker-endpoints']
-                ]
-            }) : `Failed to stop container: ${e.message}`;
-            if (window.showStatus) window.showStatus(msg, 'error');
-            else alert(msg);
-        }
+    async function stopContainer(scopeOrId, maybeId, maybeName) {
+        await runContainerAction('stop', scopeOrId, maybeId, maybeName);
     }
 
-    async function startContainer(containerId) {
-        try {
-            const r = await fetch(api(`/api/docker/container/${containerId}/start`), { method: 'POST' });
-            const d = await r.json();
-            if (d.success) {
-                if (window.showStatus) window.showStatus('✓ Container started', 'success');
-                await listContainers();
-            } else throw new Error(d.error);
-        } catch (e) {
-            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to start container', {
-                message: e.message,
-                causes: [
-                    'Backend server is not running or not accessible',
-                    'Container is already running',
-                    'Required Docker image is missing or corrupted',
-                    'Port binding conflict (another service using the port)'
-                ],
-                fixes: [
-                    'Check server status: Infrastructure > Services tab',
-                    'Verify container is not already running',
-                    'Check available disk space for container startup',
-                    'Check for port conflicts with other services (e.g., Qdrant, Redis)'
-                ],
-                links: [
-                    ['Docker Start Reference', 'https://docs.docker.com/engine/reference/commandline/start/'],
-                    ['Port Binding Issues', 'https://docs.docker.com/config/containers/container-networking/'],
-                    ['Troubleshooting Guide', '/docs/INFRASTRUCTURE.md#service-startup']
-                ]
-            }) : `Failed to start container: ${e.message}`;
-            if (window.showStatus) window.showStatus(msg, 'error');
-            else alert(msg);
-        }
+    async function startContainer(scopeOrId, maybeId, maybeName) {
+        await runContainerAction('start', scopeOrId, maybeId, maybeName);
     }
 
-    async function removeContainer(containerId) {
-        if (!confirm('WARNING: This will permanently delete the container. Are you sure?')) return;
-        try {
-            const r = await fetch(api(`/api/docker/container/${containerId}/remove`), { method: 'POST' });
-            const d = await r.json();
-            if (d.success) {
-                if (window.showStatus) window.showStatus('✓ Container removed', 'success');
-                await listContainers();
-            } else throw new Error(d.error);
-        } catch (e) {
-            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to remove container', {
-                message: e.message,
-                causes: [
-                    'Container is still running (must stop before removing)',
-                    'Backend API not accessible',
-                    'Insufficient permissions to remove container',
-                    'Container has mounted volumes that need cleanup'
-                ],
-                fixes: [
-                    'Stop the container first, then try removing again',
-                    'Verify backend server is running (Infrastructure > Services)',
-                    'Check Docker permissions for your user',
-                    'Remove mounted volumes separately if needed'
-                ],
-                links: [
-                    ['Docker Remove Reference', 'https://docs.docker.com/engine/reference/commandline/rm/'],
-                    ['Container Volumes', 'https://docs.docker.com/storage/volumes/'],
-                    ['Cleanup Guide', '/docs/MAINTENANCE.md#container-cleanup']
-                ]
-            }) : `Failed to remove container: ${e.message}`;
-            if (window.showStatus) window.showStatus(msg, 'error');
-            else alert(msg);
-        }
+    async function removeContainer(scopeOrId, maybeId, maybeName) {
+        const { containerId, label } = normalizeScopeArgs(scopeOrId, maybeId, maybeName);
+        const displayName = label || containerId;
+        if (!confirm(`WARNING: This will permanently delete ${displayName}. Continue?`)) return;
+        await runContainerAction('remove', scopeOrId, maybeId, maybeName);
+    }
+
+    async function restartContainer(scopeOrId, maybeId, maybeName) {
+        await runContainerAction('restart', scopeOrId, maybeId, maybeName);
     }
 
     /**
@@ -646,18 +607,20 @@
     /**
      * Toggle logs visibility
      */
-    async function toggleLogs(containerId, containerName) {
-        const logsDiv = $(`#logs-${containerId}`);
-        const btn = $(`#btn-logs-${containerId}`);
-        
+    async function toggleLogs(scopeOrId, maybeId) {
+        const { scope, containerId } = normalizeScopeArgs(scopeOrId, maybeId);
+        const safeId = domSafeId(containerId);
+        const logsDiv = $(`#logs-${scope}-${safeId}`);
+        const btn = $(`#btn-logs-${scope}-${safeId}`);
+
         if (!logsDiv) return;
-        
+
         if (logsDiv.style.display === 'none') {
             // Show logs
             logsDiv.style.display = 'block';
             if (btn) btn.innerHTML = '📄 Logs ▲';
             // Load logs
-            await refreshLogs(containerId);
+            await refreshLogs(scope, containerId);
         } else {
             // Hide logs
             logsDiv.style.display = 'none';
@@ -668,20 +631,29 @@
     /**
      * Refresh logs for a container
      */
-    async function refreshLogs(containerId) {
-        const contentDiv = $(`#logs-content-${containerId}`);
+    async function refreshLogs(scopeOrId, maybeId) {
+        const { scope, containerId } = normalizeScopeArgs(scopeOrId, maybeId);
+        const safeId = domSafeId(containerId);
+        const contentDiv = $(`#logs-content-${scope}-${safeId}`);
         if (!contentDiv) return;
-        
+
+        const container = getContainerById(containerId);
+        const displayName = container?.name || containerId;
+        dockerLog([`▶ Fetching logs for ${displayName}`]);
+
         contentDiv.innerHTML = '<span style="color: var(--warn);">Loading logs...</span>';
-        
+
         try {
             const r = await fetch(api(`/api/docker/container/${containerId}/logs`));
             const d = await r.json();
             
             if (d.success) {
                 contentDiv.innerHTML = formatLogs(d.logs);
-                // Auto-scroll to bottom
-                contentDiv.parentElement.scrollTop = contentDiv.parentElement.scrollHeight;
+                const scrollContainer = contentDiv.parentElement;
+                if (scrollContainer) {
+                    scrollContainer.scrollTop = scrollContainer.scrollHeight;
+                }
+                dockerLog([`✓ Logs streamed for ${displayName}`]);
             } else {
                 throw new Error(d.error);
             }
@@ -708,6 +680,7 @@
                 ]
             }) : `<span style="color: var(--err);">Failed to load logs: ${escapeHtml(e.message)}</span>`;
             contentDiv.innerHTML = errorMsg;
+            dockerLog([`✗ Failed to load logs for ${displayName}: ${e.message}`]);
         }
     }
 
@@ -715,23 +688,27 @@
      * Download full logs
      */
     async function downloadLogs(containerId, containerName) {
+        const container = getContainerById(containerId);
+        const displayName = container?.name || containerName || containerId;
+        dockerLog([`▶ Download logs for ${displayName}`]);
         try {
             const r = await fetch(api(`/api/docker/container/${containerId}/logs?tail=1000`));
             const d = await r.json();
             
             if (d.success) {
-                // Create blob and download
                 const blob = new Blob([d.logs], { type: 'text/plain' });
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
+                const safeName = domSafeId(displayName || 'container');
+                const timestamp = new Date().toISOString().slice(0,19).replace(/:/g,'-');
                 a.href = url;
-                a.download = `${containerName}-${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.log`;
+                a.download = `${safeName}-${timestamp}.log`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 window.URL.revokeObjectURL(url);
-                
                 if (window.showStatus) window.showStatus('Logs downloaded', 'success');
+                dockerLog([`✓ Logs downloaded for ${displayName}`]);
             } else {
                 throw new Error(d.error);
             }
@@ -756,6 +733,7 @@
                     ['Docker Log Drivers', 'https://docs.docker.com/config/containers/logging/']
                 ]
             }) : `Failed to download logs: ${e.message}`;
+            dockerLog([`✗ Log download failed for ${displayName}: ${e.message}`]);
             if (window.showStatus) window.showStatus(msg, 'error');
             else alert(msg);
         }
@@ -764,50 +742,29 @@
     /**
      * Check infrastructure service status
      */
-    async function checkInfraStatus() {
-        // Check Qdrant
-        try {
-            const qdrantStatus = $('#qdrant-status');
-            const r = await fetch('http://127.0.0.1:6333/collections', { mode: 'no-cors' });
-            if (qdrantStatus) qdrantStatus.innerHTML = '<span style="color: var(--accent);">✓ Running</span>';
-        } catch {
-            const qdrantStatus = $('#qdrant-status');
-            if (qdrantStatus) qdrantStatus.innerHTML = '<span style="color: var(--err);">✗ Not Running</span>';
+    async function checkInfraStatus(forceRefresh = false) {
+        if (forceRefresh || !state.docker?.containers) {
+            await listContainers();
+        } else {
+            updateServiceStatusFromContainers(state.docker?.containers || []);
         }
 
-        // Check Redis
-        try {
-            const response = await fetch(api('/api/docker/redis/ping'));
-            const data = await response.json();
-            const redisStatus = $('#redis-status');
-            if (redisStatus) {
-                redisStatus.innerHTML = data.success ? 
-                    '<span style="color: var(--accent);">✓ Running</span>' : 
-                    '<span style="color: var(--err);">✗ Not Running</span>';
+        // Redis health ping (optional)
+        const redisContainers = getServiceContainers('redis');
+        const redisStatus = $('#redis-status');
+        const redisRunning = redisContainers.some(c => (c.state || '').toLowerCase() === 'running');
+        if (redisRunning && redisStatus) {
+            try {
+                const response = await fetch(api('/api/docker/redis/ping'));
+                const data = await response.json();
+                if (data.success) {
+                    redisStatus.innerHTML = '<span style="color: var(--accent);">✓ Running (PONG)</span>';
+                } else {
+                    redisStatus.innerHTML = '<span style="color: var(--warn);">⚠ Running (no PONG)</span>';
+                }
+            } catch (e) {
+                redisStatus.innerHTML = '<span style="color: var(--warn);">⚠ Running (ping failed)</span>';
             }
-        } catch {
-            const redisStatus = $('#redis-status');
-            if (redisStatus) redisStatus.innerHTML = '<span style="color: var(--err);">✗ Not Running</span>';
-        }
-
-        // Check Prometheus
-        try {
-            await fetch('http://127.0.0.1:9090/-/ready', { mode: 'no-cors' });
-            const prometheusStatus = $('#prometheus-status');
-            if (prometheusStatus) prometheusStatus.innerHTML = '<span style="color: var(--accent);">✓ Running</span>';
-        } catch {
-            const prometheusStatus = $('#prometheus-status');
-            if (prometheusStatus) prometheusStatus.innerHTML = '<span style="color: var(--err);">✗ Not Running</span>';
-        }
-
-        // Check Grafana
-        try {
-            await fetch('http://127.0.0.1:3000/api/health', { mode: 'no-cors' });
-            const grafanaStatus = $('#grafana-status');
-            if (grafanaStatus) grafanaStatus.innerHTML = '<span style="color: var(--accent);">✓ Running</span>';
-        } catch {
-            const grafanaStatus = $('#grafana-status');
-            if (grafanaStatus) grafanaStatus.innerHTML = '<span style="color: var(--err);">✗ Not Running</span>';
         }
     }
 
@@ -819,22 +776,32 @@
         if (btn) btn.disabled = true;
 
         try {
+            dockerLog(['▶ Start infrastructure']);
+            dockerProgress(15, 'Starting infrastructure');
+
             const response = await fetch(api('/api/docker/infra/up'), { method: 'POST' });
             const data = await response.json();
 
-            if (data.success) {
-                if (window.showStatus) {
-                    window.showStatus('Infrastructure started successfully', 'success');
-                } else {
-                    alert('Infrastructure started!');
-                }
-                await checkInfraStatus();
-                await checkDockerStatus();
-                await listContainers();
-            } else {
+            if (!data.success) {
                 throw new Error(data.error || 'Failed to start infrastructure');
             }
+
+            if (data.output) {
+                data.output.split('\n').filter(Boolean).forEach(line => dockerLog([line]));
+            }
+
+            dockerProgress(100, 'Infrastructure running');
+            if (window.showStatus) window.showStatus('Infrastructure started successfully', 'success');
+            if (window.UXFeedback?.toast) {
+                window.UXFeedback.toast('✓ Infrastructure started', 'success');
+            }
+
+            await listContainers();
+            await checkInfraStatus();
+            await checkDockerStatus();
         } catch (e) {
+            dockerProgress(100, 'Infrastructure start failed');
+            dockerLog([`✗ Infrastructure start failed: ${e.message}`]);
             const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to start infrastructure', {
                 message: e.message,
                 causes: [
@@ -854,11 +821,7 @@
                     ['Docker Compose Documentation', 'https://docs.docker.com/compose/']
                 ]
             }) : `Failed to start infrastructure: ${e.message}`;
-            if (window.showStatus) {
-                window.showStatus(msg, 'error');
-            } else {
-                alert(msg);
-            }
+            if (window.showStatus) window.showStatus(msg, 'error');
         } finally {
             if (btn) btn.disabled = false;
         }
@@ -872,22 +835,32 @@
         if (btn) btn.disabled = true;
 
         try {
+            dockerLog(['▶ Stop infrastructure']);
+            dockerProgress(15, 'Stopping infrastructure');
+
             const response = await fetch(api('/api/docker/infra/down'), { method: 'POST' });
             const data = await response.json();
 
-            if (data.success) {
-                if (window.showStatus) {
-                    window.showStatus('Infrastructure stopped', 'success');
-                } else {
-                    alert('Infrastructure stopped!');
-                }
-                await checkInfraStatus();
-                await checkDockerStatus();
-                await listContainers();
-            } else {
+            if (!data.success) {
                 throw new Error(data.error || 'Failed to stop infrastructure');
             }
+
+            if (data.output) {
+                data.output.split('\n').filter(Boolean).forEach(line => dockerLog([line]));
+            }
+
+            dockerProgress(100, 'Infrastructure stopped');
+            if (window.showStatus) window.showStatus('Infrastructure stopped', 'success');
+            if (window.UXFeedback?.toast) {
+                window.UXFeedback.toast('✓ Infrastructure stopped', 'success');
+            }
+
+            await listContainers();
+            await checkInfraStatus();
+            await checkDockerStatus();
         } catch (e) {
+            dockerProgress(100, 'Infrastructure stop failed');
+            dockerLog([`✗ Infrastructure stop failed: ${e.message}`]);
             const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to stop infrastructure', {
                 message: e.message,
                 causes: [
@@ -907,11 +880,7 @@
                     ['Redis Documentation', 'https://redis.io/docs/']
                 ]
             }) : `Failed to stop infrastructure: ${e.message}`;
-            if (window.showStatus) {
-                window.showStatus(msg, 'error');
-            } else {
-                alert(msg);
-            }
+            if (window.showStatus) window.showStatus(msg, 'error');
         } finally {
             if (btn) btn.disabled = false;
         }
@@ -921,6 +890,9 @@
      * Initialize Docker UI
      */
     function initDocker() {
+        state.docker = state.docker || {};
+        ensureDockerTerminal();
+
         // Bind buttons
         const btnDockerRefresh = $('#btn-docker-refresh');
         const btnContainersRefresh = $('#btn-docker-refresh-containers');
@@ -929,8 +901,7 @@
 
         if (btnDockerRefresh) btnDockerRefresh.addEventListener('click', () => {
             checkDockerStatus();
-            listContainers();
-            checkInfraStatus();
+            listContainers().then(() => checkInfraStatus());
         });
         
         if (btnContainersRefresh) btnContainersRefresh.addEventListener('click', listContainers);
@@ -945,6 +916,22 @@
         if (btnQdrantOpen) btnQdrantOpen.addEventListener('click', () => window.open('http://127.0.0.1:6333/dashboard', '_blank'));
         if (btnPrometheusOpen) btnPrometheusOpen.addEventListener('click', () => window.open('http://127.0.0.1:9090', '_blank'));
         if (btnGrafanaOpen) btnGrafanaOpen.addEventListener('click', () => window.open('http://127.0.0.1:3000', '_blank'));
+
+        Object.entries(SERVICE_CARD_CONFIG).forEach(([key, cfg]) => {
+            if (!cfg.restartButton) return;
+            const btn = $(cfg.restartButton);
+            if (btn && !btn.dataset.bound) {
+                btn.dataset.bound = '1';
+                btn.addEventListener('click', async () => {
+                    btn.disabled = true;
+                    try {
+                        await restartService(key);
+                    } finally {
+                        btn.disabled = false;
+                    }
+                });
+            }
+        });
 
         // Redis ping
         const btnRedisPing = $('#btn-redis-ping');
@@ -1017,8 +1004,7 @@
 
         // Initial load
         checkDockerStatus();
-        listContainers();
-        checkInfraStatus();
+        listContainers().then(() => checkInfraStatus());
 
         console.log('[docker] Initialized');
     }
@@ -1035,7 +1021,9 @@
         unpauseContainer,
         stopContainer,
         startContainer,
+        restartContainer,
         removeContainer,
+        restartService,
         toggleLogs,
         refreshLogs,
         downloadLogs

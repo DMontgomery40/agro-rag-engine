@@ -24,6 +24,12 @@
 - Update changelog/decision log and monitoring gauges.
 - Push metrics to Prometheus using helpers in `server/metrics.py` (histograms/gauges for reranker margin, winners). Ensure evaluation script invokes `record_canary`.
 
+## Shared Loader Toggle
+
+- Set `AGRO_RERANKER_SHARED_LOADER=1` to enable shared configuration for retrieval/API (feature flag).
+- After toggling, run `pytest tests/unit/test_reranker_config.py` and `pytest tests/smoke/test_reranker_default_model.py` to confirm parity.
+- Revert to `0` if regressions appear; document findings in the decision log.
+
 ## Rollback
 
 - Keep previous model snapshots.

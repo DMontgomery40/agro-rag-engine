@@ -52,3 +52,12 @@ def test_reranker_default_paths():
     r_mod = importlib.import_module("retrieval.rerank")
     importlib.reload(r_mod)
     assert getattr(r_mod, "DEFAULT_MODEL", None) == "cross-encoder/ms-marco-MiniLM-L-12-v2"
+
+    # Shared loader flag should honor AGRO_RERANKER_MODEL_PATH when enabled
+    os.environ['AGRO_RERANKER_SHARED_LOADER'] = '1'
+    os.environ['AGRO_RERANKER_MODEL_PATH'] = 'cross-encoder/custom-shared'
+    importlib.reload(r_mod)
+    assert getattr(r_mod, "DEFAULT_MODEL", None) == "cross-encoder/custom-shared"
+
+    os.environ.pop('AGRO_RERANKER_SHARED_LOADER', None)
+    os.environ.pop('AGRO_RERANKER_MODEL_PATH', None)

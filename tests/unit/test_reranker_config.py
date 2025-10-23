@@ -13,6 +13,7 @@ from reranker.config import (
     as_env,
     load_settings,
     resolve_model_target,
+    shared_loader_enabled,
 )
 
 
@@ -92,3 +93,10 @@ def test_as_env_serialises_dataclass(monkeypatch):
     assert env["alpha"] == "0.55"
     assert env["enabled"] in {"0", "1"}
     assert "source_env" in env
+
+
+def test_shared_loader_flag(monkeypatch):
+    monkeypatch.setenv("AGRO_RERANKER_SHARED_LOADER", "1")
+    assert shared_loader_enabled() is True
+    monkeypatch.setenv("AGRO_RERANKER_SHARED_LOADER", "0")
+    assert shared_loader_enabled() is False

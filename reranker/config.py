@@ -157,3 +157,8 @@ def as_env(settings: RerankerSettings) -> Dict[str, str]:
         else:
             out[key] = str(value)
     return out
+
+
+def shared_loader_enabled() -> bool:
+    """Feature flag guard for shared reranker config."""
+    return _env_bool("AGRO_RERANKER_SHARED_LOADER", "0")

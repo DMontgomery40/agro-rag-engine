@@ -61,6 +61,7 @@ _Last updated: 2025-10-23_
 | `AGRO_RERANKER_RELOAD_ON_CHANGE`, `AGRO_RERANKER_RELOAD_PERIOD_SEC` | Hot reload | Unifying loaders needs to respect these semantics or deprecate with migration. |
 | `AGRO_RERANKER_MINE_MODE`, `AGRO_RERANKER_MINE_RESET`, `AGRO_TRIPLETS_PATH` | Mining script + UI selects | Tests assert presence of selects. |
 | Logging envs (`AGRO_LOG_PATH`, `AGRO_RERANKER_MINE_MODE`) | Mining + telemetry | Changing log shape requires migration plan. |
+| `AGRO_RERANKER_SHARED_LOADER` | Retrieval & API | Feature flag to enable shared config loader. Defaults to `0` until Phase 2 completes. |
 
 ## 4. UI Coupling
 
@@ -169,6 +170,8 @@ Historical docs and smoke tests assume triplets share `doc_id` semantics with qu
 - `/api/reranker/cron/setup` and `/api/reranker/cron/remove` inside `server/app.py` mutate the **system crontab** (via `crontab -l` updates). They install commands that run `scripts/mine_triplets.py && scripts/train_reranker.py && scripts/eval_reranker.py`. Refactors must either maintain CLI parity or migrate the cron payload.
 - Internal docs replicate those cron lines; see `internal_docs.md/reranker-phase2.md` and `internal_docs.md/reranker-implementation-notes.md`.
 - No GitHub workflow currently runs these scripts. CI references to reranker code appear only in doc guard and Playwright suites.
+
+- Shared loader implementation lives in `reranker/config.py`; retrieval path now honors the flag (`AGRO_RERANKER_SHARED_LOADER`). Phase 2 (API loader) pending.
 
 ## 9. Breakage Forecast (when refactoring)
 

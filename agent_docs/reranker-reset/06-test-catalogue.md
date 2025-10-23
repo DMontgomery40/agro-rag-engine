@@ -10,7 +10,7 @@ This catalogue enumerates every automated check that exercises reranker function
 
 | ID | Type | Path | Coverage summary | Notes |
 |----|------|------|------------------|-------|
-| T1 | Smoke (pytest) | `tests/smoke/test_reranker_default_model.py` | Verifies default env resolution for `server.reranker` and `retrieval.rerank`. | Stubs heavy deps; must be extended for shared loader flag. |
+| T1 | Smoke (pytest) | `tests/smoke/test_reranker_default_model.py` | Verifies default env resolution for `server.reranker` and `retrieval.rerank`; toggles shared loader flag. | Stubs heavy deps while checking both legacy and shared loader paths. |
 | T2 | Smoke (pytest) | `tests/smoke/test_miner.py` | Runs `scripts/mine_triplets.py` end-to-end with temporary log file; asserts dedup + `AGRO_LOG_PATH` override. | Writes to `data/training/triplets.jsonl`; clean up in fixtures before refactors. |
 | T3 | Smoke (pytest) | `tests/smoke/test_chat_ui_fixes.py` | Ensures reranker scripts load order in GUI bundle. | Indirect, but fail-fast if reranker JS missing. |
 | T4 | Smoke (pytest) | `tests/smoke/test_complete_restoration.spec.ts` (Playwright) | Confirms Learning Ranker UI elements restored after layout fixes. | `.spec.ts` wrapper executed via Playwright CLI. |
@@ -34,7 +34,7 @@ This catalogue enumerates every automated check that exercises reranker function
 ## 3. Update workflow
 
 1. When altering GUI selectors, update relevant Playwright specs first (T5–T9) to prevent ADA regressions.
-2. Before enabling shared loader flag, extend T1 to compare legacy vs shared outputs and document expectations in commit message.
+2. When adjusting shared loader behaviour, ensure T1 continues to pass in both legacy (`0`) and shared (`1`) flag modes; document expectations in the change summary.
 3. Schema migrations should include fixtures for T2 and new API-level tests, ensuring `AGRO_LOG_PATH`/`AGRO_TRIPLETS_PATH` placeholders stay aligned.
 4. After each major change, run smoke (`pytest tests/smoke`) and Playwright suites (`pnpm playwright test --config=playwright.gui.config.ts`) to provide tangible proof of compliance.
 

@@ -1,9 +1,16 @@
 
 import math
 import os
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+
 from rerankers import Reranker  # type: ignore[import-untyped]
-from typing import Optional
+
+from reranker.config import (
+    load_settings,
+    resolve_model_target,
+    shared_loader_enabled,
+    RerankerSettings,
+)
 
 try:
     from dotenv import load_dotenv
@@ -14,11 +21,17 @@ except Exception:
 _HF_PIPE = None
 _RERANKER = None
 
-# Default local/HF cross-encoder model for reranking
-# Upgraded to MiniLM-L-12-v2 per request
-DEFAULT_MODEL = os.getenv('RERANKER_MODEL', 'cross-encoder/ms-marco-MiniLM-L-12-v2')
-# Note: Backend/model can change at runtime via GUI. Read env at call-time in rerank_results.
-COHERE_MODEL = os.getenv('COHERE_RERANK_MODEL', 'rerank-3.5')
+_SHARED_LOADER = shared_loader_enabled()
+if _SHARED_LOADER:
+    _BOOT_SETTINGS = load_settings()
+    DEFAULT_MODEL = resolve_model_target(_BOOT_SETTINGS)
+    COHERE_MODEL = _BOOT_SETTINGS.cohere_model
+else:
+    # Default local/HF cross-encoder model for reranking
+    # Upgraded to MiniLM-L-12-v2 per request
+    DEFAULT_MODEL = os.getenv('RERANKER_MODEL', 'cross-encoder/ms-marco-MiniLM-L-12-v2')
+    # Note: Backend/model can change at runtime via GUI. Read env at call-time in rerank_results.
+    COHERE_MODEL = os.getenv('COHERE_RERANK_MODEL', 'rerank-3.5')
 
 def _sigmoid(x: float) -> float:
     try:
@@ -51,33 +64,88 @@ def _maybe_init_hf_pipeline(model_name: str) -> Optional[Any]:
         _HF_PIPE = None
     return _HF_PIPE
 
-def get_reranker() -> Reranker:
-    global _RERANKER
+_RERANKER_MODEL_ID: Optional[str] = None
+
+
+def _load_settings_if_enabled() -> Optional[RerankerSettings]:
+    if not shared_loader_enabled():
+        return None
+    return load_settings()
+
+
+def get_reranker() -> Optional[Reranker]:
+    global _RERANKER, _RERANKER_MODEL_ID
+
+    settings = _load_settings_if_enabled()
+    if settings:
+        model_name = resolve_model_target(settings)
+        max_length = settings.max_length
+    else:
+        model_name = os.getenv('RERANKER_MODEL', DEFAULT_MODEL)
+        try:
+            max_length = int(os.getenv('AGRO_RERANKER_MAXLEN', '512') or '512')
+        except Exception:
+            max_length = 512
+
+    if _RERANKER is not None and _RERANKER_MODEL_ID != model_name:
+        _RERANKER = None
+
     if _RERANKER is None:
-        model_name = DEFAULT_MODEL
         if _maybe_init_hf_pipeline(model_name):
+            _RERANKER_MODEL_ID = model_name
             return None
         os.environ.setdefault('TRANSFORMERS_TRUST_REMOTE_CODE', '1')
-        _RERANKER = Reranker(model_name, model_type='cross-encoder', trust_remote_code=True)
+        _RERANKER = Reranker(model_name, model_type='cross-encoder', trust_remote_code=True, max_length=max_length)
+        _RERANKER_MODEL_ID = model_name
     return _RERANKER
 
-def rerank_results(query: str, results: List[Dict], top_k: int = 10, trace: Any = None) -> List[Dict]:
+
+def rerank_results(query: str, results: List[Dict[str, Any]], top_k: int = 10, trace: Any = None) -> List[Dict[str, Any]]:
     if not results:
         return []
-    # Read backend dynamically to respect GUI updates without server restart
-    backend = (os.getenv('RERANK_BACKEND', 'local') or 'local').lower()
-    # DEBUG: print(f"🔧 Reranker backend: {backend}")
-    if backend in ('none', 'off', 'disabled'):
+
+    settings = _load_settings_if_enabled()
+
+    if settings:
+        backend = settings.backend
+        enabled = settings.enabled and backend not in ("none", "off", "disabled")
+        model_name = resolve_model_target(settings)
+        metrics_label = settings.metrics_label
+        snippet_local = settings.snippet_chars
+        snippet_cohere = settings.snippet_chars
+        cohere_model = settings.cohere_model or COHERE_MODEL
+        cohere_top_n = settings.top_n_cloud
+        cohere_key_present = settings.cohere_api_key_present
+    else:
+        backend = (os.getenv('RERANK_BACKEND', 'local') or 'local').lower()
+        enabled = backend not in ('none', 'off', 'disabled')
+        model_name = os.getenv('RERANKER_MODEL', DEFAULT_MODEL)
+        metrics_label = f"cohere:{COHERE_MODEL}" if backend == 'cohere' else f"local:{model_name}"
+        try:
+            snippet_local = int(os.getenv('RERANK_INPUT_SNIPPET_CHARS', '600') or '600')
+        except Exception:
+            snippet_local = 600
+        try:
+            snippet_cohere = int(os.getenv('RERANK_INPUT_SNIPPET_CHARS', '700') or '700')
+        except Exception:
+            snippet_cohere = 700
+        cohere_model = os.getenv('COHERE_RERANK_MODEL', COHERE_MODEL)
+        try:
+            cohere_top_n = int(os.getenv('COHERE_RERANK_TOP_N', '50') or '50')
+        except Exception:
+            cohere_top_n = 50
+        cohere_key_present = bool(os.getenv('COHERE_API_KEY'))
+
+    if not enabled:
         for i, r in enumerate(results):
             r['rerank_score'] = float(1.0 - (i * 0.01))
         return results[:top_k]
-    # Model names read dynamically with import-time defaults as fallback
-    model_name = os.getenv('RERANKER_MODEL', DEFAULT_MODEL)
+
     # --- tracing: record input set size
     try:
         if trace is not None and hasattr(trace, 'add'):
             trace.add('reranker.rank', {
-                'model': model_name,
+                'model': metrics_label,
                 'input_topN': len(results or []),
                 'output_topK': int(top_k),
             })
@@ -90,7 +158,9 @@ def rerank_results(query: str, results: List[Dict], top_k: int = 10, trace: Any 
             import cohere
             # DEBUG: print(f"  → Getting API key...")
             api_key = os.getenv('COHERE_API_KEY')
-            if not api_key:
+            if settings and not cohere_key_present:
+                raise RuntimeError('COHERE_API_KEY not set')
+            if not settings and not api_key:
                 raise RuntimeError('COHERE_API_KEY not set')
             # DEBUG: print(f"  → Creating client...")
             client = cohere.Client(api_key=api_key)
@@ -99,22 +169,19 @@ def rerank_results(query: str, results: List[Dict], top_k: int = 10, trace: Any 
             for r in results:
                 file_ctx = r.get('file_path', '')
                 # default snippet: 700 for cohere, configurable via env
-                try:
-                    snip_len = int(os.getenv('RERANK_INPUT_SNIPPET_CHARS', '700') or '700')
-                except Exception:
-                    snip_len = 700
+                snip_len = snippet_cohere
                 code_snip = (r.get('code') or r.get('text') or '')[:snip_len]
                 docs.append(f"{file_ctx}\n\n{code_snip}")
             # Limit reranking to top 50 documents (configurable via env) to reduce token usage
-            max_rerank = int(os.getenv('COHERE_RERANK_TOP_N', '50') or '50')
-            rerank_top_n = min(len(docs), max_rerank)
+            rerank_top_n = min(len(docs), cohere_top_n)
 
             # Instrument Cohere API call
             import time
             from server.api_tracker import track_api_call, APIProvider
 
             start = time.time()
-            rr = client.rerank(model=os.getenv('COHERE_RERANK_MODEL', COHERE_MODEL), query=query, documents=docs, top_n=rerank_top_n)
+            model_id = cohere_model
+            rr = client.rerank(model=model_id, query=query, documents=docs, top_n=rerank_top_n)
             duration_ms = (time.time() - start) * 1000
 
             # Calculate cost - Cohere rerank is ~$0.002 per 1k searches
@@ -144,7 +211,7 @@ def rerank_results(query: str, results: List[Dict], top_k: int = 10, trace: Any 
             try:
                 if trace is not None and hasattr(trace, 'add'):
                     trace.add('reranker.rank', {
-                        'model': f'cohere:{COHERE_MODEL}',
+                        'model': metrics_label,
                         'scores': [
                             {
                                 'path': r.get('file_path'),
@@ -163,10 +230,7 @@ def rerank_results(query: str, results: List[Dict], top_k: int = 10, trace: Any 
     if pipe is not None:
         pairs = []
         for r in results:
-            try:
-                snip_len = int(os.getenv('RERANK_INPUT_SNIPPET_CHARS', '600') or '600')
-            except Exception:
-                snip_len = 600
+            snip_len = snippet_local
             code_snip = (r.get('code') or r.get('text') or '')[:snip_len]
             pairs.append({'text': query, 'text_pair': code_snip})
         try:
@@ -191,7 +255,7 @@ def rerank_results(query: str, results: List[Dict], top_k: int = 10, trace: Any 
             try:
                 if trace is not None and hasattr(trace, 'add'):
                     trace.add('reranker.rank', {
-                        'model': f'hf:{model_name}',
+                        'model': metrics_label,
                         'scores': [
                             {
                                 'path': r.get('file_path'),
@@ -209,7 +273,7 @@ def rerank_results(query: str, results: List[Dict], top_k: int = 10, trace: Any 
     docs = []
     for r in results:
         file_ctx = r.get('file_path', '')
-        code_snip = (r.get('code') or r.get('text') or '')[:600]
+        code_snip = (r.get('code') or r.get('text') or '')[:snippet_local]
         docs.append(f"{file_ctx}\n\n{code_snip}")
     rr = get_reranker()
     if rr is None and _maybe_init_hf_pipeline(model_name) is not None:
@@ -235,7 +299,7 @@ def rerank_results(query: str, results: List[Dict], top_k: int = 10, trace: Any 
     try:
         if trace is not None and hasattr(trace, 'add'):
             trace.add('reranker.rank', {
-                'model': f'local:{model_name}',
+                'model': metrics_label,
                 'scores': [
                     {
                         'path': r.get('file_path'),

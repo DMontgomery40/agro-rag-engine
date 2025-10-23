@@ -60,10 +60,10 @@ Out of scope for this phase:
 
 1. **Phase 0 – Foundations** ✅ (2025-10-24)
    - Implemented shared config loader (`reranker/config.py`) with unit coverage (`tests/unit/test_reranker_config.py`).
-   - TODO: Document flag usage in `agent_docs/reranker-reset/03-runbooks/training.md` before enabling in the field.
-2. **Phase 1 – Retrieval opt-in**
-   - Update `retrieval/rerank.py` to call `load_settings()` when `AGRO_RERANKER_SHARED_LOADER=1`.
-   - Compare old vs new rerank outputs in smoke test (tolerance ±1e-6).
+   - Training runbook now documents how to toggle `AGRO_RERANKER_SHARED_LOADER` and the required validation steps.
+2. **Phase 1 – Retrieval opt-in** ✅ (2025-10-24)
+   - `retrieval/rerank.py` now reads consolidated settings when `AGRO_RERANKER_SHARED_LOADER=1`, covering backend selection, snippet limits, and trace labels.
+   - Smoke test `tests/smoke/test_reranker_default_model.py` toggles the flag to ensure imports honor the shared model path.
 3. **Phase 2 – API opt-in**
    - Swap `server/reranker.py` + `/api/reranker/info` to use loader under flag.
    - Ensure `_RERANKER_STATUS` messages include loader-derived backend.
@@ -77,7 +77,7 @@ Out of scope for this phase:
 ## 6. Testing Strategy
 
 - **Unit**: Parametrized tests covering conflicting env combinations (only `RERANKER_MODEL`, only `AGRO_RERANKER_MODEL_PATH`, both set differently, invalid values).
-- **Smoke**: Extend `tests/smoke/test_reranker_default_model.py` to toggle flag and verify resolved settings.
+- **Smoke**: `tests/smoke/test_reranker_default_model.py` toggles the flag and verifies shared loader defaults.
 - **Integration**: New pytest case hitting `/search` and `/api/reranker/info` with flag on, using stubbed CrossEncoder to avoid GPU dependency.
 - **Playwright**: Ensure info panel reflects backend label derived from loader (update `tests/gui/reranker_info.spec.ts` once Phase 2 lands).
 - **Performance**: Capture timing before/after to confirm loader caching does not add latency (`time.monotonic()` snapshots around load).
