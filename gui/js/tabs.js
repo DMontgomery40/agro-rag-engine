@@ -240,11 +240,11 @@
                 if (parentWrap) parentWrap.classList.add('active');
                 // Then collapse any section-subtab within the same parent tab container
                 if (parentWrap) parentWrap.querySelectorAll('.section-subtab').forEach(el => el.classList.remove('active'));
-                const target = document.getElementById(`tab-${subtab}`);
+                const target = document.getElementById(`tab-${parent}-${subtab}`);
                 if (target) {
                     target.classList.add('active');
                 } else {
-                    console.warn(`[tabs.js] Subtab target not found: #tab-${subtab}`);
+                    console.warn(`[tabs.js] Subtab target not found: #tab-${parent}-${subtab}`);
                 }
 
                 // Update button states for this parent group

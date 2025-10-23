@@ -1,0 +1,17 @@
+name: docs-sync
+
+on:
+  pull_request:
+    branches:
+      - planning/reranker-reset
+      - spike/reranker-refactor
+
+jobs:
+  doc-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: git fetch --no-tags --depth=200 origin "${{ github.base_ref }}"
+      - run: python scripts/reranker_doc_guard.py "origin/${{ github.base_ref }}"

@@ -61,6 +61,24 @@
   <section title="Agent Docs Location">
     <p>***All agent-created .md files must go in /agent_docs/, please don't clutter root unnessarily***</p>
   </section>
+  <section title="Bug Documentation (MANDATORY)">
+    <p>***When you fix a bug that the user VERIFIES as fixed, you MUST document it in agent_docs/bug-resolution.md***</p>
+    <ul>
+      <li>This prevents repeat bugs across different agents and sessions</li>
+      <li>ONLY add entries AFTER user confirms the fix works</li>
+      <li>Include: symptoms, root cause, fix applied, files changed, prevention tips</li>
+      <li>Follow the template in agent_docs/bug-resolution.md</li>
+      <li>Many bugs are repeated by different agents - documentation prevents this</li>
+    </ul>
+    <section title="Common Repeat Bugs to Watch For">
+      <ul>
+        <li><b>Boolean .env values</b>: NEVER use True/true/False/false - always use 1 or 0</li>
+        <li><b>Subtab navigation</b>: data-subtab names must match ID construction pattern</li>
+        <li><b>Absolute paths</b>: Never hardcode /Users/... paths, use relative or env vars</li>
+        <li>Check agent_docs/bug-resolution.md for full list before starting work</li>
+      </ul>
+    </section>
+  </section>
   <section title="RAG Server Usage">
     <p>Use the RAG server (API or MCP)</p>
     <p>Prefer `rag_search` for retrieval and `rag_answer` for full answers; it saves tokens and context.</p>
@@ -148,6 +166,23 @@ markdown version
   - **BROKEN SETTINGS IN GUI MUST BE FIXED, THEY MUST NOT BE ERASED**
 
 # ***All agent-created .md files must go in /agent_docs/, please don't clutter root unnessarily***
+
+# Bug Documentation (MANDATORY)
+
+***When you fix a bug that the user VERIFIES as fixed, you MUST document it in agent_docs/bug-resolution.md***
+
+  - This prevents repeat bugs across different agents and sessions
+  - ONLY add entries AFTER user confirms the fix works
+  - Include: symptoms, root cause, fix applied, files changed, prevention tips
+  - Follow the template in agent_docs/bug-resolution.md
+  - Many bugs are repeated by different agents - documentation prevents this
+
+## Common Repeat Bugs to Watch For
+
+  - **Boolean .env values**: NEVER use True/true/False/false - always use 1 or 0
+  - **Subtab navigation**: data-subtab names must match ID construction pattern
+  - **Absolute paths**: Never hardcode /Users/... paths, use relative or env vars
+  - Check agent_docs/bug-resolution.md for full list before starting work
 
 # Use the RAG server (API or MCP)
 Prefer `rag_search` for retrieval and `rag_answer` for full answers; it saves tokens and context.

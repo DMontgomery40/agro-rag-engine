@@ -356,7 +356,7 @@
                     $('#tab-chat-ui')?.classList.add('active');
                     try {
                         $(`${showBarSel} button.active`)?.classList.remove('active');
-                        $(`${showBarSel} button[data-subtab="chat-ui"]`)?.classList.add('active');
+                        $(`${showBarSel} button[data-subtab="ui"]`)?.classList.add('active');
                     } catch {}
                 } else if (domTabId === 'grafana') {
                     // Default Grafana to Dashboard
@@ -490,10 +490,15 @@
         
         window.NavigationViews[config.id] = config;
 
+        const combinedActiveId = (navState.currentTab && navState.currentSubtab)
+            ? `${navState.currentTab}-${navState.currentSubtab}`
+            : null;
+
         // If this view is currently active, mount it
-        if (navState.currentTab === config.id || 
-            navState.currentSubtab === config.id) {
-            if (config.mount) {
+        if (config.mount) {
+            if (navState.currentTab === config.id ||
+                navState.currentSubtab === config.id ||
+                combinedActiveId === config.id) {
                 config.mount();
             }
         }
@@ -616,8 +621,6 @@
 
     console.log('[Navigation] Module loaded - use window.Navigation for navigation API');
 })();
-
-
 
 
 

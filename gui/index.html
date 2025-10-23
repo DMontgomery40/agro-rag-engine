@@ -380,6 +380,8 @@
             gap: 12px;
             flex: 1;
             min-height: 0;
+            padding: 24px;
+            overflow-y: auto;
         }
 
         /* Fullscreen subtab variant (e.g., for Grafana dashboard) */
@@ -1102,11 +1104,9 @@
                 border-right: none;
             }
 
-            /* Sidepanel: stacked below */
+            /* Sidepanel: hidden in mobile mode */
             .sidepanel {
-                grid-column: 1; /* Reset to column 1 for single-column mobile layout */
-                border-top: 1px solid var(--line);
-                max-height: 60vh;
+                display: none;
             }
 
             .resize-handle {
@@ -1271,7 +1271,6 @@
         }
 
         .mobile-nav-drawer {
-            display: none; /* HIDDEN - causes layout issues, use .tab-bar instead */
             position: fixed;
             top: 0;
             left: -100%;
@@ -1330,7 +1329,6 @@
         }
 
         .mobile-nav-overlay {
-            display: none; /* HIDDEN - not needed, causes layout issues */
             position: fixed;
             top: 0;
             left: 0;
@@ -2289,8 +2287,8 @@
                 <button class="subtab-btn active" data-subtab="overview-dash">Overview</button>
             </div>
             <div id="chat-subtabs" class="subtab-bar" style="display:none;">
-                <button class="subtab-btn active" data-subtab="chat-ui" data-parent="chat">Interface</button>
-                <button class="subtab-btn" data-subtab="chat-settings" data-parent="chat">Settings</button>
+                <button class="subtab-btn active" data-subtab="ui" data-parent="chat">Interface</button>
+                <button class="subtab-btn" data-subtab="settings" data-parent="chat">Settings</button>
             </div>
             <div id="vscode-subtabs" class="subtab-bar" style="display:none;">
                 <button class="subtab-btn active" data-subtab="editor">Editor</button>
@@ -5439,6 +5437,7 @@
                         </div>
                     </div>
                 </div>
+                </div> <!-- Close #tab-chat-ui -->
 
                 <!-- Chat Settings -->
                 <div id="tab-chat-settings" class="section-subtab">
