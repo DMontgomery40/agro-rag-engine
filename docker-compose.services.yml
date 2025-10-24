@@ -25,7 +25,11 @@ services:
       - ./out:/app/out
       - ./data:/app/data
       - ./gui:/app/gui
+      - ./web:/app/web
       - ./server:/app/server
+      - ./scripts:/app/scripts
+      - ./reranker:/app/reranker
+      - /var/run/docker.sock:/var/run/docker.sock
     profiles: ["api"]
 
   mcp-http:
