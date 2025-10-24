@@ -117,6 +117,11 @@ async def set_cache_headers(request: Request, call_next):
 if GUI_DIR.exists():
     app.mount("/gui", StaticFiles(directory=str(GUI_DIR), html=True), name="gui")
 
+# Serve new React app at /web if built (web/dist)
+WEB_DIST = ROOT / "web" / "dist"
+if WEB_DIST.exists():
+    app.mount("/web", StaticFiles(directory=str(WEB_DIST), html=True), name="web")
+
 # Serve local docs and repo files for in-GUI links
 if DOCS_DIR.exists():
     app.mount("/docs", StaticFiles(directory=str(DOCS_DIR), html=True), name="docs")
@@ -124,6 +129,9 @@ app.mount("/files", StaticFiles(directory=str(files_root()), html=True), name="f
 
 @app.get("/", include_in_schema=False)
 def serve_index():
+    # Optional cutover: prefer new /web app
+    if os.getenv("GUI_CUTOVER", "0").strip().lower() in {"1","true","yes","on"} and WEB_DIST.exists():
+        return RedirectResponse(url="/web")
     idx = GUI_DIR / "index.html"
     if idx.exists():
         response = FileResponse(str(idx))
@@ -132,7 +140,10 @@ def serve_index():
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
         return response
-    return {"ok": True, "message": "GUI assets not found; use /health, /search, /answer"}
+    # fallback to docs or JSON 404
+    if DOCS_DIR.exists():
+        return RedirectResponse(url="/docs")
+    return JSONResponse({"error": "No GUI available"}, status_code=404)
 
 @app.get("/health")
 def health():
