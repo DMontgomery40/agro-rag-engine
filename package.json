@@ -9,7 +9,6 @@
     "test:gui:headed": "playwright test --config=playwright.gui.config.ts --headed"
   },
   "devDependencies": {
-    "@playwright/test": "^1.48.2"
+    "@playwright/test": "^1.56.1"
   }
 }
-
