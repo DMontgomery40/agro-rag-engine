@@ -1,18 +1,16 @@
-# UI Project Docs
+# UI Docs
 
-## Current Work
-- **Instructions**: `INSTRUCTIONS_FOR_LEAD_FRONT.md` (build + test for Slice 1)
+## 📋 Current Work
+See: `current/SLICE_2_ASSIGNMENT.md` - **Build Config Management UI**
 
-## References
-- Plan: `ui_migration_to_vite_react_ts_tailwind.md`
-- Runbook: `../runbooks/ui_migration_runbook.md`
-- UX & IA: `ux_ia_and_navigation.md`
-- Design Tokens: `design_tokens.md`
-- Model Catalog & Prices: `../model_catalog_price_updater.md`
-- ALL_KNOBS Manifest: `../all_knobs_manifest.md`
+## 📚 Reference Plans
+- `ui_migration_to_vite_react_ts_tailwind.md` - Overall UI refactor strategy (in parent dir)
+- `current/design_tokens.md` - Tailwind/CSS token integration
+- `ux_ia_and_navigation.md` - Navigation architecture (in parent dir)
 
-## Notes
-- VSCode and Grafana are top‑bar quick actions (inline vs new window).
-- Sidebar + contextual tabs with deep links. Dashboard shows Pipeline Summary.
-- "Semantic Boosts" replaces the old "Semantic Boosts" label in the UI (backend routes remain `/api/cards/*`).
-- React scaffold complete, just needs build + Playwright test!
+## 📖 History
+See: `history/` - Past instructions, completed slices
+
+---
+
+**Quick start**: Read `current/SLICE_2_ASSIGNMENT.md` for your active task.

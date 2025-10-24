@@ -17,6 +17,7 @@ services:
       - GIT_BRANCH=${GIT_BRANCH}
     ports:
       - "8012:8012"
+    command: ["uvicorn", "server.asgi:create_app", "--factory", "--host", "0.0.0.0", "--port", "8012", "--timeout-keep-alive", "120", "--log-level", "debug", "--reload"]
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

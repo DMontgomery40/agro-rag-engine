@@ -1,18 +1,17 @@
-# Backend Project Docs
+# Backend Docs
 
-## Current Work
-- **Next Steps**: `BACKEND_AGENT_NEXT_STEPS.md` (what to do now)
-- **Instructions**: `INSTRUCTIONS_FOR_BACKEND_AGENT.md` (cleanup for Slice 1)
+## 📋 Current Work
+See: `current/SLICE_4_ASSIGNMENT.md` - **Extract Docker & MCP endpoints**
 
-## References
-- Plan: `backend_modularization_plan.md`
-- Runbook: `../runbooks/backend_decomposition_runbook.md`
-- Search/RAG Extraction: `search_rag_extraction_guide.md` (reference - already done!)
-- Cloud‑Ready Blueprint: `../cloud_ready_architecture.md`
-- Feature Inventory: `../feature_inventory_and_mapping.md`
+**Completed**: Slice 3 (Cost & Profiles) - see `history/SLICE_3_COMPLETE.md`
 
-## Notes
-- App factory (`server/asgi.py`), routers/services extraction.
-- Additive `GET /api/pipeline/summary` for Dashboard.
-- Strict no absolute paths; SettingsRegistry as the source of truth.
-- Slice 1 + Slice 2 (search/RAG) extraction complete!
+## 📚 Reference Plans
+- `backend_modularization_plan.md` - Overall backend refactor strategy (in parent dir)
+- `../runbooks/backend_decomposition_runbook.md` - Step-by-step execution
+
+## 📖 History
+See: `history/` - Past instructions, completed slices, incident reports
+
+---
+
+**Quick start**: Read `current/SLICE_3_ASSIGNMENT.md` for your active task.

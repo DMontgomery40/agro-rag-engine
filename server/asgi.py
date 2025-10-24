@@ -75,6 +75,32 @@ def create_app() -> FastAPI:
         app.mount("/gui", StaticFiles(directory=str(GUI_DIR), html=True), name="gui")
     if WEB_DIST.exists():
         app.mount("/web", StaticFiles(directory=str(WEB_DIST), html=True), name="web")
+        @app.get("/web/config", include_in_schema=False)
+        @app.get("/web/search", include_in_schema=False)
+        def web_spa_top():  # type: ignore[unused-ignore]
+            idx = WEB_DIST / "index.html"
+            if idx.exists():
+                resp = FileResponse(str(idx))
+                resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+                resp.headers["Pragma"] = "no-cache"
+                resp.headers["Expires"] = "0"
+                return resp
+            return JSONResponse({"error": "Web UI not built"}, status_code=404)
+        # SPA fallback for nested routes under /web
+        @app.get("/web/{rest_of_path:path}", include_in_schema=False)
+        def web_spa(rest_of_path: str):  # type: ignore[unused-ignore]
+            # Serve asset files directly if present
+            p = WEB_DIST / rest_of_path
+            if p.is_file():
+                return FileResponse(str(p))
+            idx = WEB_DIST / "index.html"
+            if idx.exists():
+                resp = FileResponse(str(idx))
+                resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+                resp.headers["Pragma"] = "no-cache"
+                resp.headers["Expires"] = "0"
+                return resp
+            return JSONResponse({"error": "Web UI not built"}, status_code=404)
     if DOCS_DIR.exists():
         app.mount("/docs", StaticFiles(directory=str(DOCS_DIR), html=True), name="docs")
     app.mount("/files", StaticFiles(directory=str(files_root()), html=True), name="files")

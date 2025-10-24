@@ -5,23 +5,38 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Background colors
         bg: 'var(--bg)',
-        fg: 'var(--fg)',
-        muted: 'var(--fg-muted)',
+        bgElev1: 'var(--bg-elev1)',
+        bgElev2: 'var(--bg-elev2)',
         panel: 'var(--panel)',
         panelBg: 'var(--panel-bg)',
-        codeBg: 'var(--code-bg)',
         cardBg: 'var(--card-bg)',
-        bgElev2: 'var(--bg-elev2)',
+        chipBg: 'var(--chip-bg)',
         inputBg: 'var(--input-bg)',
+        codeBg: 'var(--code-bg)',
+        
+        // Text colors
+        fg: 'var(--fg)',
+        muted: 'var(--fg-muted)',
+        codeFg: 'var(--code-fg)',
+        
+        // Border/line
         line: 'var(--line)',
         ring: 'var(--ring)',
-        accent: 'var(--accent)',
+        
+        // Brand colors
+        accent: 'var(--accent)',           // NEON GREEN #00ff88
         accentContrast: 'var(--accent-contrast)',
         link: 'var(--link)',
+        onLink: 'var(--on-link)',
+        
+        // Status colors
         ok: 'var(--ok)',
         warn: 'var(--warn)',
-        err: 'var(--err)'
+        err: 'var(--err)',
+        onWarn: 'var(--on-warn)',
+        onErr: 'var(--on-err)'
       },
       fontFamily: {
         sans: ['var(--font-sans)'],

@@ -102,11 +102,28 @@ ROOT = repo_root()
 GUI_DIR = gui_dir()
 DOCS_DIR = docs_dir()
 
-# Middleware to prevent caching of GUI assets - ensures users always get latest
+# Request ID + JSON 500 handler + prevent caching of GUI assets
+import uuid
+
+REQUEST_ID_HEADER = "X-Request-ID"
+
 @app.middleware("http")
-async def set_cache_headers(request: Request, call_next):
-    response = await call_next(request)
-    # Disable caching for all GUI assets to ensure fresh content
+async def request_id_and_cache(request: Request, call_next):
+    req_id = request.headers.get(REQUEST_ID_HEADER) or uuid.uuid4().hex
+    try:
+        response = await call_next(request)
+    except HTTPException as he:
+        # Let FastAPI handle HTTPExceptions
+        raise he
+    except Exception:
+        logging.getLogger("agro.api").exception("Unhandled exception | request_id=%s", req_id)
+        return JSONResponse({"error": "Internal Server Error", "request_id": req_id}, status_code=500)
+    # Attach request id header
+    try:
+        response.headers[REQUEST_ID_HEADER] = req_id
+    except Exception:
+        pass
+    # Disable caching for GUI assets to ensure fresh content
     if request.url.path.startswith("/gui/") or request.url.path == "/gui":
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
@@ -157,6 +174,102 @@ def health():
 @app.get("/api/health")
 def api_health():
     return health()
+
+# Pipeline Summary (for new Dashboard)
+@app.get("/api/pipeline/summary")
+def pipeline_summary():
+    import subprocess
+    import requests
+    from common.config_loader import load_repos
+
+    def _bool_env(name: str, default: str = "0") -> bool:
+        v = (os.getenv(name, default) or default).strip().lower()
+        return v in {"1", "true", "yes", "on"}
+
+    repo_cfg = load_repos()
+    repo_name = os.getenv("REPO") or repo_cfg.get("default_repo") or "local"
+    repo_mode = "repo" if repo_name and repo_name != "local" else "local"
+
+    branch = os.getenv("GIT_BRANCH") or None
+    if not branch:
+        try:
+            out = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=str(ROOT))
+            branch = out.decode().strip()
+        except Exception:
+            branch = None
+
+    retrieval_mode = "bm25" if (os.getenv("SKIP_DENSE", "0").strip() == "1") else "hybrid"
+    top_k = int(os.getenv("FINAL_K", os.getenv("LANGGRAPH_FINAL_K", "10") or 10))
+
+    rr_enabled = _bool_env("AGRO_RERANKER_ENABLED", "0")
+    rr_backend = (os.getenv("RERANK_BACKEND", "").strip().lower() or None)
+    rr_provider = None
+    rr_model = None
+    if rr_backend:
+        if rr_backend in {"cohere", "voyage"}:
+            rr_provider = rr_backend
+            rr_model = os.getenv("COHERE_RERANK_MODEL") if rr_backend == "cohere" else os.getenv("VOYAGE_RERANK_MODEL")
+        elif rr_backend in {"hf", "local"}:
+            rr_provider = rr_backend
+            rr_model = os.getenv("RERANK_MODEL") or os.getenv("BAAI_RERANK_MODEL")
+        elif rr_backend == "learning":
+            rr_provider = "learning"
+            rr_model = os.getenv("AGRO_LEARNING_RERANKER_MODEL", "cross-encoder-agro")
+
+    enrich_enabled = _bool_env("ENRICH_CODE_CHUNKS", "0")
+    enrich_backend = (os.getenv("ENRICH_BACKEND", "").strip().lower() or None)
+    enrich_model = os.getenv("ENRICH_MODEL") or os.getenv("ENRICH_MODEL_OLLAMA")
+
+    gen_model = os.getenv("GEN_MODEL") or os.getenv("ENRICH_MODEL") or None
+    gen_provider = None
+    if gen_model:
+        ml = gen_model.lower()
+        if "gpt-" in ml:
+            gen_provider = "openai"
+        elif ":" in gen_model:
+            gen_provider = "ollama"
+        elif "mlx-" in ml or "mlx" in ml:
+            gen_provider = "mlx"
+
+    def _qdrant_health() -> str:
+        base = (os.getenv("QDRANT_URL") or "").rstrip("/") or "http://127.0.0.1:6333"
+        url = f"{base}/collections"
+        try:
+            r = requests.get(url, timeout=1.5)
+            return "ok" if r.status_code == 200 else "fail"
+        except Exception:
+            return "fail"
+
+    def _redis_health() -> str:
+        u = os.getenv("REDIS_URL") or ""
+        try:
+            if u.startswith("redis://"):
+                host_port = u.split("redis://", 1)[1].split("/", 1)[0]
+                host, port = host_port.split(":", 1)
+                with __import__('socket').create_connection((host, int(port)), timeout=1.0):
+                    return "ok"
+        except Exception:
+            return "fail"
+        return "unknown"
+
+    def _llm_health() -> str:
+        base = (os.getenv("OLLAMA_URL") or "").rstrip("/")
+        if base:
+            try:
+                r = requests.get(f"{base}/api/tags", timeout=1.5)
+                return "ok" if r.status_code == 200 else "fail"
+            except Exception:
+                return "fail"
+        return "unknown"
+
+    return {
+        "repo": {"name": repo_name, "mode": repo_mode, "branch": branch},
+        "retrieval": {"mode": retrieval_mode, "top_k": top_k},
+        "reranker": {"enabled": rr_enabled, "backend": rr_backend, "provider": rr_provider, "model": rr_model},
+        "enrichment": {"enabled": enrich_enabled, "backend": enrich_backend, "model": enrich_model},
+        "generation": {"provider": gen_provider, "model": gen_model},
+        "health": {"qdrant": _qdrant_health(), "redis": _redis_health(), "llm": _llm_health()},
+    }
 
 @app.get("/health/langsmith")
 def health_langsmith() -> Dict[str, Any]:
