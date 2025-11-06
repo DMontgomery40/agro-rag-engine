@@ -36,6 +36,95 @@ function App() {
     }
   }, [status]);
 
+  // Load legacy modules for backward compatibility with existing tabs
+  // This ensures window.* globals are available for tabs that haven't been refactored yet
+  useEffect(() => {
+    const loadModules = async () => {
+      console.log('[App] DOM ready, loading legacy modules...');
+
+      try {
+        // Load in dependency order
+        // 1. Core utilities (must load first)
+        await import('./modules/fetch-shim.js');
+        await import('./modules/core-utils.js');
+        await import('./modules/api-base-override.js');
+
+        // 2. UI helpers and theme (needed by many modules)
+        await import('./modules/ui-helpers.js');
+        await import('./modules/theme.js');
+
+        // 3. Test instrumentation (for debugging)
+        await import('./modules/test-instrumentation.js');
+
+        // 4. Navigation and tabs (core UI structure)
+        await import('./modules/navigation.js');
+        await import('./modules/tabs.js');
+        await import('./modules/rag-navigation.js');
+
+        // 5. Search and tooltips (UI enhancements)
+        await import('./modules/search.js');
+        await import('./modules/tooltips.js');
+
+        // 6. Configuration and health (backend integration)
+        await import('./modules/config.js');
+        await import('./modules/health.js');
+
+        // 7. Feature modules (order doesn't matter as much)
+        await Promise.all([
+          import('./modules/git-hooks.js'),
+          import('./modules/keywords.js'),
+          import('./modules/autotune.js'),
+          import('./modules/editor.js'),
+          import('./modules/editor-settings.js'),
+          import('./modules/secrets.js'),
+          import('./modules/model_flows.js'),
+          import('./modules/index_status.js'),
+          import('./modules/mcp_rag.js'),
+          import('./modules/mcp_server.js'),
+          import('./modules/index_profiles.js'),
+          import('./modules/indexing.js'),
+          import('./modules/simple_index.js'),
+          import('./modules/docker.js'),
+          import('./modules/grafana.js'),
+          import('./modules/vscode.js'),
+          import('./modules/onboarding.js'),
+          import('./modules/index-display.js'),
+          import('./modules/cards.js'),
+          import('./modules/cards_builder.js'),
+          import('./modules/storage-calculator-template.js'),
+          import('./modules/storage-calculator.js'),
+          import('./modules/profile_logic.js'),
+          import('./modules/profile_renderer.js'),
+          import('./modules/autoprofile_v2.js'),
+          import('./modules/golden_questions.js'),
+          import('./modules/eval_runner.js'),
+          import('./modules/eval_history.js'),
+          import('./modules/chat.js'),
+          import('./modules/error-helpers.js'),
+          import('./modules/layout_fix.js'),
+          import('./modules/live-terminal.js'),
+          import('./modules/reranker.js'),
+          import('./modules/trace.js'),
+          import('./modules/alerts.js'),
+          import('./modules/ux-feedback.js')
+        ]);
+
+        // 8. Main app coordinator (must load last)
+        await import('./modules/app.js');
+
+        console.log('[App] All legacy modules loaded successfully');
+
+        // Dispatch a custom event so modules know React is ready
+        window.dispatchEvent(new Event('react-ready'));
+      } catch (err) {
+        console.error('[App] Error loading modules:', err);
+      }
+    };
+
+    // Give React a tick to render before loading modules
+    setTimeout(loadModules, 100);
+  }, []);
+
   return (
     <>
       {/* Topbar */}
