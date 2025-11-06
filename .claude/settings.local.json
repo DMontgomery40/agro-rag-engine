@@ -1,0 +1,52 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git lfs install --force)",
+      "Bash(git push origin development)",
+      "Bash(git filter-repo --path models/cross-encoder-agro/model.safetensors --path models/cross-encoder-agro.baseline/model.safetensors --invert-paths --force)",
+      "Bash(brew install bfg)",
+      "Bash(git filter-branch --tree-filter 'rm -f models/cross-encoder-agro/model.safetensors models/cross-encoder-agro.baseline/model.safetensors' -- --all)",
+      "Bash(git push --force-with-lease origin development)",
+      "Bash(curl -s http://127.0.0.1:8012/health)",
+      "Bash(curl -s http://127.0.0.1:6333/health)",
+      "Bash(git rev-parse --abbrev-ref HEAD)",
+      "Bash(python3 /Users/davidmontgomery/agro-rag-engine/tests/test_discriminative_keywords.py)",
+      "Bash(python tests/smoke_test_rag.py)",
+      "Bash(python tests/test_discriminative_keywords.py)",
+      "Bash(python tests/test_discriminative_api.py)",
+      "Bash(python tests/test_rag_issues.py)",
+      "Bash(python tests/test_keyword_boost_effectiveness.py)",
+      "Bash(git add -A)",
+      "Bash(git reset HEAD evaluation_dataset.json data/logs/queries.jsonl data/tracking/api_calls.jsonl README.md)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfix: Clean up RAG debug output and add comprehensive testing\n\n## Changes\n\n### Code Cleanup\n- Remove debug prints from hybrid_search.py (RRF debug output)\n- Remove debug prints from rerank.py (Cohere API debug output)\n- Commented out instead of removed for easy re-enabling if needed\n- Reduces production log noise while maintaining debuggability\n\n### New Test Files\n- test_rag_issues.py: Comprehensive RAG system diagnostics\n  * Duplicate detection\n  * Score consistency verification\n  * Negative score detection\n  * Hydration verification\n  * Score distribution analysis\n  * API vs internal function consistency\n\n- test_discriminative_keywords.py: Unit tests for keyword boosting\n  * Keyword loading verification\n  * Feature bonus calculation tests\n  * Legacy hardcoded boost compatibility\n\n- test_keyword_boost_effectiveness.py: Integration tests\n  * Retrieval keyword boosting validation\n  * Semantic keyword boosting validation\n  * Infrastructure keyword boosting validation\n  * Score differentiation verification\n\n### Documentation\n- agent_docs/RAG_TESTING_REPORT.md: Comprehensive testing report\n\n## Test Results\n- All 18 tests passing ✅\n- No critical issues detected\n- Discriminative keyword boosting confirmed effective\n- Score consistency verified\n- API endpoints responsive\n\n🤖 Generated with Claude Code\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(curl:*)",
+      "Bash(docker exec:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker inspect:*)",
+      "Bash(docker restart:*)",
+      "Bash(git show-ref:*)",
+      "Bash(git show:*)",
+      "Read(//private/tmp/**)",
+      "Bash(find:*)"
+    ],
+    "deny": [],
+    "ask": []
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "rag-service"
+  ],
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/scripts/install_pkgs.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
