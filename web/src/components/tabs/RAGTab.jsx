@@ -332,7 +332,7 @@ export default function RAGTab() {
                                         <span className="help-icon">?</span>
                                         <div className="tooltip-bubble">
                                             <span className="tt-title">Dense Vector Candidates</span>
-                                            Number of candidates to retrieve from Qdrant vector search before fusion. Higher = better recall for semantic matches but slower. Should be >= Final K. Default: 75. Range: 20-200.
+                                            Number of candidates to retrieve from Qdrant vector search before fusion. Higher = better recall for semantic matches but slower. Should be &gt;= Final K. Default: 75. Range: 20-200.
                                             <div className="tt-badges">
                                                 <span className="tt-badge info">Semantic Search</span>
                                             </div>
@@ -355,7 +355,7 @@ export default function RAGTab() {
                                         <span className="help-icon">?</span>
                                         <div className="tooltip-bubble">
                                             <span className="tt-title">Sparse BM25 Candidates</span>
-                                            Number of candidates to retrieve from BM25 keyword search before fusion. Higher = better recall for exact matches but slower. Should be >= Final K. Default: 75. Range: 20-200.
+                                            Number of candidates to retrieve from BM25 keyword search before fusion. Higher = better recall for exact matches but slower. Should be &gt;= Final K. Default: 75. Range: 20-200.
                                             <div className="tt-badges">
                                                 <span className="tt-badge info">Keyword Search</span>
                                             </div>
