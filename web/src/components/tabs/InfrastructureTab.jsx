@@ -177,7 +177,7 @@ export default function InfrastructureTab() {
                     <div className="input-row">
                         <div className="input-group full-width">
                             <label>Enable</label>
-                            <input type="text" readonly value="export AUTO_INDEX=1" onclick="this.select();document.execCommand('copy');" />
+                            <input type="text" readOnly value="export AUTO_INDEX=1" onClick={(e) => { e.target.select(); document.execCommand('copy'); }} />
                         </div>
                     </div>
                 </div>
@@ -301,7 +301,7 @@ export default function InfrastructureTab() {
                         <div className="input-group">
                             <label>Out Dir Base</label>
                             <input type="text" name="OUT_DIR_BASE" placeholder="./out.noindex or ./out" />
-                            <p className="small" style="color: var(--fg-muted);">
+                            <p className="small" style={{color: 'var(--fg-muted)'}}>
                                 Primary storage location for all indexed data. This is the <strong>single source</strong> for this setting.
                             </p>
                         </div>

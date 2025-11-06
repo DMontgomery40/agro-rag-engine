@@ -37,26 +37,26 @@ export default function DashboardTab() {
                         {/* Right: Quick Actions */}
                         <div>
                             <h3 style={{fontSize: '14px', marginBottom: '16px', color: 'var(--warn)', display: 'flex', alignItems: 'center', gap: '8px'}}>
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                     <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
                                 </svg>
                                 Quick Actions
                             </h3>
                             <div style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '16px'}}>
                                 <button className="action-btn" id="btn-generate-keywords" data-action="generate-keywords">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                         <path d="M12 2l2.39 4.85L20 8l-4 3.9.95 5.54L12 15.77 7.05 17.45 8 11.9 4 8l5.61-1.15L12 2z"></path>
                                     </svg>
                                     <span>Generate Keywords</span>
                                 </button>
                                 <button className="action-btn" id="dash-change-repo" data-action="change-repo">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                         <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
                                     </svg>
                                     <span>Change Repo</span>
                                 </button>
                                 <button className="action-btn" id="dash-index-start" data-action="index">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
                                         <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
                                         <line x1="12" y1="22.08" x2="12" y2="12"></line>
@@ -64,7 +64,7 @@ export default function DashboardTab() {
                                     <span>Run Indexer</span>
                                 </button>
                                 <button className="action-btn" id="dash-reload-config" data-action="reload">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                         <polyline points="23 4 23 10 17 10"></polyline>
                                         <polyline points="1 20 1 14 7 14"></polyline>
                                         <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
@@ -72,7 +72,7 @@ export default function DashboardTab() {
                                     <span>Reload Config</span>
                                 </button>
                                 <button className="action-btn" id="dash-cards-refresh" data-action="refresh">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                         <polyline points="1 4 1 10 7 10"></polyline>
                                         <polyline points="23 20 23 14 17 14"></polyline>
                                         <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"></path>
@@ -128,16 +128,16 @@ export default function DashboardTab() {
                                     <span style={{fontSize: '12px', color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600'}}>Quick Options</span>
                                 </div>
                                 <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
-                                    <button className="small-button" style={{background: 'var(--bg-elev2)', border: '1px solid var(--line)', color: 'var(--fg-muted)'}} onclick="document.getElementById('budget').value=0;document.getElementById('btn-wizard-oneclick').click();">
+                                    <button className="small-button" style={{background: 'var(--bg-elev2)', border: '1px solid var(--line)', color: 'var(--fg-muted)'}} onClick={() => { document.getElementById('budget').value=0; document.getElementById('btn-wizard-oneclick').click(); }}>
                                         Free Tier (Local Only)
                                     </button>
-                                    <button className="small-button" style={{background: 'var(--bg-elev2)', border: '1px solid var(--line)', color: 'var(--fg-muted)'}} onclick="document.getElementById('budget').value=10;document.getElementById('btn-wizard-oneclick').click();">
+                                    <button className="small-button" style={{background: 'var(--bg-elev2)', border: '1px solid var(--line)', color: 'var(--fg-muted)'}} onClick={() => { document.getElementById('budget').value=10; document.getElementById('btn-wizard-oneclick').click(); }}>
                                         Starter ($10/mo)
                                     </button>
-                                    <button className="small-button" style={{background: 'var(--bg-elev2)', border: '1px solid var(--line)', color: 'var(--fg-muted)'}} onclick="document.getElementById('budget').value=50;document.getElementById('btn-wizard-oneclick').click();">
+                                    <button className="small-button" style={{background: 'var(--bg-elev2)', border: '1px solid var(--line)', color: 'var(--fg-muted)'}} onClick={() => { document.getElementById('budget').value=50; document.getElementById('btn-wizard-oneclick').click(); }}>
                                         Professional ($50/mo)
                                     </button>
-                                    <button className="small-button" style={{background: 'var(--bg-elev2)', border: '1px solid var(--line)', color: 'var(--fg-muted)'}} onclick="document.getElementById('budget').value=200;document.getElementById('btn-wizard-oneclick').click();">
+                                    <button className="small-button" style={{background: 'var(--bg-elev2)', border: '1px solid var(--line)', color: 'var(--fg-muted)'}} onClick={() => { document.getElementById('budget').value=200; document.getElementById('btn-wizard-oneclick').click(); }}>
                                         Enterprise ($200/mo)
                                     </button>
                                 </div>
@@ -145,7 +145,7 @@ export default function DashboardTab() {
 
                             {/* Advanced (v2) */}
                             <div style={{marginTop: '12px', background: 'var(--card-bg)', border: '1px solid var(--line)', borderRadius: '8px', padding: '16px'}}>
-                                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', cursor: 'pointer'}} onclick="this.nextElementSibling.style.display = (this.nextElementSibling.style.display==='none'?'block':'none');">
+                                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', cursor: 'pointer'}} onClick={(e) => { e.currentTarget.nextElementSibling.style.display = (e.currentTarget.nextElementSibling.style.display==='none'?'block':'none'); }}>
                                     <span style={{fontSize: '12px', color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600'}}>Advanced (v2)</span>
                                     <span style={{fontSize: '12px', color: 'var(--fg-muted)'}}>toggle</span>
                                 </div>
@@ -243,7 +243,7 @@ export default function DashboardTab() {
                         {/* Right: Results Panel */}
                         <div id="profile-results-panel" style={{background: 'var(--card-bg)', border: '1px solid var(--line)', borderRadius: '8px', padding: '24px', minHeight: '500px'}}>
                             <div id="profile-placeholder" style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--fg-muted)', textAlign: 'center'}}>
-                                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style={{marginBottom: '16px', opacity: '0.3'}}>
+                                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{marginBottom: '16px', opacity: '0.3'}}>
                                     <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                                     <path d="M9 12h6m-6 4h6"/>
                                 </svg>

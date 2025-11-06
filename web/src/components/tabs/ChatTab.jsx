@@ -20,7 +20,7 @@ export default function ChatTab() {
                                 {/* History Button with Dropdown */}
                                 <div style={{position: 'relative'}}>
                                     <button id="chat-history" style={{background: 'var(--bg-elev2)', color: 'var(--accent)', border: '1px solid var(--accent)', padding: '6px 12px', borderRadius: '4px', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px'}}>
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                             <circle cx="12" cy="12" r="10"></circle>
                                             <polyline points="12 6 12 12 16 14"></polyline>
                                         </svg>
@@ -44,7 +44,7 @@ export default function ChatTab() {
                         {/* Chat Messages */}
                         <div id="chat-messages" style={{flex: '1', overflowY: 'auto', padding: '16px', background: 'var(--card-bg)'}}>
                             <div style={{textAlign: 'center', color: 'var(--fg-muted)', padding: '40px 20px'}}>
-                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style={{opacity: '0.3', marginBottom: '12px'}}>
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{opacity: '0.3', marginBottom: '12px'}}>
                                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                                 </svg>
                                 <div>Start a conversation with your codebase</div>
