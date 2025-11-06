@@ -1,5 +1,6 @@
 /* Import existing CSS from GUI */
 @import './styles/tokens.css';
+@import './styles/inline-gui-styles.css'; /* Critical: Inline styles from /gui/index.html */
 @import './styles/style.css';
 @import './styles/micro-interactions.css';
 @import './styles/storage-calculator.css';

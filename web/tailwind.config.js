@@ -4,6 +4,9 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  corePlugins: {
+    preflight: false, // Disable Tailwind's base reset to preserve custom CSS
+  },
   theme: {
     extend: {},
   },
