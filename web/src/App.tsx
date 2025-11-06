@@ -72,6 +72,7 @@ function App() {
         // 7. Feature modules (order doesn't matter as much)
         await Promise.all([
           import('./modules/git-hooks.js'),
+          import('./modules/git-commit-meta.js'),
           import('./modules/keywords.js'),
           import('./modules/autotune.js'),
           import('./modules/editor.js'),
@@ -91,6 +92,7 @@ function App() {
           import('./modules/index-display.js'),
           import('./modules/cards.js'),
           import('./modules/cards_builder.js'),
+          import('./modules/cost_logic.js'),
           import('./modules/storage-calculator-template.js'),
           import('./modules/storage-calculator.js'),
           import('./modules/profile_logic.js'),
@@ -106,7 +108,9 @@ function App() {
           import('./modules/reranker.js'),
           import('./modules/trace.js'),
           import('./modules/alerts.js'),
-          import('./modules/ux-feedback.js')
+          import('./modules/ux-feedback.js'),
+          import('./modules/langsmith.js'),
+          import('./modules/dino.js')
         ]);
 
         // 8. Main app coordinator (must load last)

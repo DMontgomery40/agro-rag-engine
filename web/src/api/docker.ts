@@ -24,20 +24,24 @@ export const dockerApi = {
    * Start a container by ID
    */
   async startContainer(id: string): Promise<void> {
-    await apiClient.post(api(`/api/docker/containers/${id}/start`));
+    await apiClient.post(api(`/api/docker/container/${id}/start`));
   },
 
   /**
    * Stop a container by ID
    */
   async stopContainer(id: string): Promise<void> {
-    await apiClient.post(api(`/api/docker/containers/${id}/stop`));
+    await apiClient.post(api(`/api/docker/container/${id}/stop`));
   },
 
   /**
    * Restart a container by ID
+   * Implemented as stop + start since backend doesn't have a restart endpoint
    */
   async restartContainer(id: string): Promise<void> {
-    await apiClient.post(api(`/api/docker/containers/${id}/restart`));
+    await apiClient.post(api(`/api/docker/container/${id}/stop`));
+    // Wait a moment for container to stop
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    await apiClient.post(api(`/api/docker/container/${id}/start`));
   },
 };
