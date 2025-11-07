@@ -140,9 +140,12 @@
             window.updateWizardSummary();
         }
 
-        // Populate repos metadata editor
-        const reposSection = $('#repos-section');
-        if (reposSection) {
+        // Populate repos metadata editor (deferred until element exists)
+        window.populateReposSection = function(data) {
+            const reposSection = $('#repos-section');
+            if (!reposSection) {
+                return false; // Element doesn't exist yet
+            }
             reposSection.innerHTML = '';
             (data.repos || []).forEach((repo) => {
                 const div = document.createElement('div');
@@ -414,6 +417,17 @@
                 setRepoKws((repo.keywords||[]));
                 if (state.keywordsCatalog) paintSource();
             });
+            return true;
+        };
+
+        // Try to populate repos section immediately, or retry until element exists
+        if (!window.populateReposSection(data)) {
+            let retries = 0;
+            const retryPopulate = setInterval(() => {
+                if (window.populateReposSection(data) || ++retries > 50) {
+                    clearInterval(retryPopulate);
+                }
+            }, 100);
         }
 
         // Attach tooltips after DOM is populated

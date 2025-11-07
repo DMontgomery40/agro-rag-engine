@@ -27,7 +27,18 @@
       "Bash(git show-ref:*)",
       "Bash(git show:*)",
       "Read(//private/tmp/**)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npm --version)",
+      "Bash(docker:*)",
+      "Bash(python3:*)",
+      "Bash(npm run dev:*)",
+      "mcp__chrome-devtools__new_page",
+      "mcp__chrome-devtools__list_pages",
+      "Bash(npm run build:*)",
+      "Bash(npm ls:*)",
+      "Bash(npm install:*)",
+      "Bash(npx playwright test:*)",
+      "Bash(node -c:*)"
     ],
     "deny": [],
     "ask": []
