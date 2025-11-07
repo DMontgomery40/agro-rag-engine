@@ -134,3 +134,48 @@ export interface QueryResult {
   query: string;
   duration: number;
 }
+
+// Search Types
+export interface SearchResult {
+  file_path: string;
+  start_line: number;
+  end_line: number;
+  language: string;
+  rerank_score: number;
+  repo?: string;
+  label?: string;
+  title?: string;
+  name?: string;
+  element?: HTMLElement;
+}
+
+export interface SettingSearchItem {
+  label: string;
+  title: string;
+  name: string;
+  placeholder: string;
+  element: HTMLElement;
+  content: string;
+}
+
+// Tooltip Types
+export interface TooltipLink {
+  text: string;
+  href: string;
+}
+
+export interface TooltipBadge {
+  text: string;
+  className: string;
+}
+
+export interface TooltipData {
+  title: string;
+  body: string;
+  links?: TooltipLink[];
+  badges?: TooltipBadge[];
+}
+
+export interface TooltipMap {
+  [settingKey: string]: string;
+}
