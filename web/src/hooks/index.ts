@@ -19,3 +19,9 @@ export { useUIHelpers } from './useUIHelpers';
 // Navigation hooks (React Router integration)
 export { useNavigation } from './useNavigation';
 export { useTabs } from './useTabs';
+
+// RAG backend service hooks (converted from legacy modules)
+export { useReranker } from './useReranker';
+export { useIndexing } from './useIndexing';
+export { useKeywords } from './useKeywords';
+export { useMCPRag } from './useMCPRag';

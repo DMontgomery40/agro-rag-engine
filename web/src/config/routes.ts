@@ -7,7 +7,7 @@ import Docker from '../pages/Docker';
 import ChatTab from '../components/tabs/ChatTab';
 import VSCodeTab from '../components/tabs/VSCodeTab';
 import GrafanaTab from '../components/tabs/GrafanaTab';
-import RAGTab from '../components/tabs/RAGTab';
+import RAGTab from '../components/tabs/RAGTab.tsx';
 import ProfilesTab from '../components/tabs/ProfilesTab';
 import InfrastructureTab from '../components/tabs/InfrastructureTab';
 import AdminTab from '../components/tabs/AdminTab';
