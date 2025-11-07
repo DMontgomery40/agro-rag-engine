@@ -10,7 +10,9 @@ echo "==================================================================="
 echo ""
 
 echo "Starting backend server..."
-cd /home/user/agro-rag-engine
+# Resolve repo root relative to this script; avoid hard-coded absolute paths
+REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
+cd "$REPO_ROOT"
 pkill -f "uvicorn.*8012" || true
 python3 -m uvicorn server.app:app --host 127.0.0.1 --port 8012 > /tmp/backend.log 2>&1 &
 BACKEND_PID=$!
@@ -34,7 +36,12 @@ done
 
 echo ""
 echo "Starting frontend server..."
-cd /home/user/agro-rag-engine/web
+cd "$REPO_ROOT/web"
+# Ensure frontend dependencies are installed (react-router-dom, zustand, etc.)
+if [ ! -d node_modules/react-router-dom ] || [ ! -d node_modules/zustand ]; then
+    echo "Installing web dependencies..."
+    npm install >/tmp/frontend.npm.install.log 2>&1 || { echo "npm install failed"; cat /tmp/frontend.npm.install.log; exit 1; }
+fi
 pkill -f "vite.*3000" || true
 npm run dev > /tmp/frontend.log 2>&1 &
 FRONTEND_PID=$!
@@ -63,7 +70,7 @@ echo "INSTALLING PLAYWRIGHT"
 echo "==================================================================="
 echo ""
 
-cd /home/user/agro-rag-engine/web
+cd "$REPO_ROOT/web"
 if ! npx playwright --version > /dev/null 2>&1; then
     echo "Installing Playwright..."
     npm install -D @playwright/test
