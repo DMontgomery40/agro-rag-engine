@@ -247,11 +247,14 @@ function App() {
 
         {/* Sidepanel */}
         <div className="sidepanel" id="sidepanel">
-          <div className="sidepanel-section">
-            <h4>Quick Actions</h4>
-            <button className="small-button" onClick={checkHealth}>
-              Check Health
-            </button>
+          <div className="sidepanel-header">
+            <h3 className="sidepanel-title" id="sidepanel-title">Apply Changes</h3>
+          </div>
+          <div id="sidepanel-content" style={{flex: 1, overflowY: 'auto', padding: '20px'}}>
+            {/* Side panel content - managed by existing JS modules */}
+          </div>
+          <div className="sidepanel-footer">
+            <button id="btn-apply" className="btn-apply">Apply Changes</button>
           </div>
         </div>
       </div>
