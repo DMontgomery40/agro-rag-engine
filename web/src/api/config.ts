@@ -1,5 +1,5 @@
 import { apiClient, api } from './client';
-import type { AppConfig, EnvConfig } from '@/types';
+import type { AppConfig, EnvConfig, ConfigUpdate, KeywordCatalog } from '@/types';
 
 export const configApi = {
   /**
@@ -22,5 +22,34 @@ export const configApi = {
    */
   async saveEnv(env: Partial<EnvConfig>): Promise<void> {
     await apiClient.post(api('/api/env/save'), { env });
+  },
+
+  /**
+   * Save full configuration (env + repos)
+   */
+  async saveConfig(update: ConfigUpdate): Promise<void> {
+    await apiClient.post(api('/api/config'), update);
+  },
+
+  /**
+   * Load keywords catalog
+   */
+  async loadKeywords(): Promise<KeywordCatalog> {
+    const { data } = await apiClient.get<KeywordCatalog>(api('/api/keywords'));
+    return data;
+  },
+
+  /**
+   * Add a new keyword
+   */
+  async addKeyword(keyword: string, category?: string): Promise<void> {
+    await apiClient.post(api('/api/keywords/add'), { keyword, category });
+  },
+
+  /**
+   * Delete a keyword
+   */
+  async deleteKeyword(keyword: string): Promise<void> {
+    await apiClient.post(api('/api/keywords/delete'), { keyword });
   },
 };
