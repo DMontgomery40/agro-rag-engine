@@ -45,12 +45,38 @@ export interface Repository {
   name: string;
   path: string;
   default?: boolean;
+  keywords?: string[];
+  path_boosts?: string[];
+  layer_bonuses?: Record<string, number>;
+}
+
+export interface KeywordCatalog {
+  keywords: string[];
+  discriminative?: string[];
+  semantic?: string[];
+  llm?: string[];
+  repos?: string[];
 }
 
 export interface AppConfig {
   env: EnvConfig;
   repos: Repository[];
   default_repo?: string;
+}
+
+export interface ConfigUpdate {
+  env?: Partial<EnvConfig>;
+  repos?: Repository[];
+}
+
+// Error Helper Types
+export interface ErrorHelperOptions {
+  title?: string;
+  message?: string;
+  causes?: string[];
+  fixes?: string[];
+  links?: Array<[string, string]>;
+  context?: string;
 }
 
 // RAG Pipeline Types
