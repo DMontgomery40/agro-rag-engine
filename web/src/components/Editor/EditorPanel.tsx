@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useVSCodeEmbed } from '@/hooks/useVSCodeEmbed';
 
 /**
@@ -11,34 +10,13 @@ export default function EditorPanel() {
     iframeUrl,
     statusMessage,
     statusColor,
+    copyButtonText,
+    isRestarting,
+    checkHealth,
     openInWindow,
     copyUrl,
     restart
   } = useVSCodeEmbed();
-
-  const [copyButtonText, setCopyButtonText] = useState('📋 Copy URL');
-  const [isRestarting, setIsRestarting] = useState(false);
-
-  const handleCopyUrl = async () => {
-    const success = await copyUrl();
-    if (success) {
-      setCopyButtonText('✓ Copied!');
-      setTimeout(() => {
-        setCopyButtonText('📋 Copy URL');
-      }, 2000);
-    }
-  };
-
-  const handleRestart = async () => {
-    setIsRestarting(true);
-    try {
-      await restart();
-    } finally {
-      setTimeout(() => {
-        setIsRestarting(false);
-      }, 1000);
-    }
-  };
 
   const getBadgeStyle = () => {
     return {
@@ -94,7 +72,7 @@ export default function EditorPanel() {
             🗗 Open in Window
           </button>
           <button
-            onClick={handleCopyUrl}
+            onClick={copyUrl}
             className="small-button"
             style={{
               background: 'var(--bg-elev2)',
@@ -105,7 +83,7 @@ export default function EditorPanel() {
             {copyButtonText}
           </button>
           <button
-            onClick={handleRestart}
+            onClick={restart}
             disabled={isRestarting}
             className="small-button"
             style={{
@@ -116,7 +94,7 @@ export default function EditorPanel() {
               opacity: isRestarting ? 0.6 : 1
             }}
           >
-            {isRestarting ? '⏳ Restarting...' : '↻ Restart'}
+            {isRestarting ? 'Restarting...' : 'Restart'}
           </button>
         </div>
       </div>
@@ -137,9 +115,46 @@ export default function EditorPanel() {
             <span style={{ fontSize: '24px' }}>⚠️</span>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 600, marginBottom: '4px' }}>Editor Unavailable</div>
-              <div style={{ fontSize: '12px', color: 'var(--fg-muted)' }}>
+              <div style={{ fontSize: '12px', color: 'var(--fg-muted)', marginBottom: '8px' }}>
                 {getBannerMessage()}
               </div>
+
+              {/* Troubleshooting steps */}
+              {!isEnabled && (
+                <div style={{ fontSize: '12px', marginTop: '8px' }}>
+                  <div style={{ fontWeight: 600, marginBottom: '4px' }}>To enable:</div>
+                  <ol style={{ margin: '4px 0', paddingLeft: '20px' }}>
+                    <li>Go to the Misc tab</li>
+                    <li>Enable the editor setting</li>
+                    <li>Click the Restart button above</li>
+                  </ol>
+                </div>
+              )}
+
+              {isEnabled && (
+                <div style={{ fontSize: '12px', marginTop: '8px' }}>
+                  <div style={{ fontWeight: 600, marginBottom: '4px' }}>Troubleshooting:</div>
+                  <ul style={{ margin: '4px 0 8px 0', paddingLeft: '20px' }}>
+                    <li>Try clicking the Restart button above</li>
+                    <li>Check if Docker is running</li>
+                    <li>Wait a few moments for the service to start</li>
+                    <li>Check browser console for detailed error messages</li>
+                  </ul>
+                  <button
+                    onClick={checkHealth}
+                    className="small-button"
+                    style={{
+                      background: 'var(--accent)',
+                      color: 'var(--accent-contrast)',
+                      border: 'none',
+                      padding: '4px 12px',
+                      fontSize: '11px'
+                    }}
+                  >
+                    Check Status Now
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

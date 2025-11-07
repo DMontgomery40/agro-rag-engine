@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Chat Interface', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:5173');
+    await page.goto('http://localhost:3001');
     await page.waitForLoadState('networkidle');
   });
 
@@ -82,7 +82,8 @@ test.describe('Chat Interface', () => {
     const dropdown = page.locator('#history-dropdown');
     await expect(dropdown).toBeVisible();
 
-    // Check for export and clear options
+    // Check for import, export and clear options
+    await expect(page.locator('button:has-text("Import History")')).toBeVisible();
     await expect(page.locator('button:has-text("Export History")')).toBeVisible();
     await expect(page.locator('button:has-text("Clear History")')).toBeVisible();
   });

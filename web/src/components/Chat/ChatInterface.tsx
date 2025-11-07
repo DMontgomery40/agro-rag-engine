@@ -21,6 +21,7 @@ export default function ChatInterface({ onShowSettings }: ChatInterfaceProps) {
     clearMessages,
     clearHistory,
     exportHistory,
+    importHistory,
     stopStreaming,
     getStorageStats
   } = useChat();
@@ -29,7 +30,9 @@ export default function ChatInterface({ onShowSettings }: ChatInterfaceProps) {
   const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
   const [showTraceDetails, setShowTraceDetails] = useState(false);
   const [copyNotification, setCopyNotification] = useState(false);
+  const [importNotification, setImportNotification] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-resize textarea
   const autoResize = () => {
@@ -80,6 +83,30 @@ export default function ChatInterface({ onShowSettings }: ChatInterfaceProps) {
   const handleExportHistory = () => {
     exportHistory();
     setShowHistoryDropdown(false);
+  };
+
+  const handleImportHistory = () => {
+    fileInputRef.current?.click();
+    setShowHistoryDropdown(false);
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const result = await importHistory(file);
+
+    setImportNotification({
+      type: result.success ? 'success' : 'error',
+      text: result.message
+    });
+
+    setTimeout(() => setImportNotification(null), 3000);
+
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleCopyMessage = () => {
@@ -192,6 +219,29 @@ export default function ChatInterface({ onShowSettings }: ChatInterfaceProps) {
                 }}
               >
                 <button
+                  onClick={handleImportHistory}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    textAlign: 'left',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--fg)',
+                    padding: '8px 12px',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--bg-elev1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'none';
+                  }}
+                >
+                  Import History
+                </button>
+                <button
                   onClick={handleExportHistory}
                   style={{
                     display: 'block',
@@ -294,6 +344,7 @@ export default function ChatInterface({ onShowSettings }: ChatInterfaceProps) {
       <MessageList
         messages={messages}
         autoScroll={settings.autoScroll}
+        traceData={traceData}
         onCopyMessage={handleCopyMessage}
       />
 
@@ -410,6 +461,15 @@ export default function ChatInterface({ onShowSettings }: ChatInterfaceProps) {
         )}
       </div>
 
+      {/* Hidden file input for importing */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json"
+        onChange={handleFileChange}
+        style={{ display: 'none' }}
+      />
+
       {/* Copy notification */}
       {copyNotification && (
         <div
@@ -428,6 +488,27 @@ export default function ChatInterface({ onShowSettings }: ChatInterfaceProps) {
           }}
         >
           ✓ Copied to clipboard
+        </div>
+      )}
+
+      {/* Import notification */}
+      {importNotification && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '20px',
+            right: '20px',
+            background: importNotification.type === 'success' ? 'var(--ok)' : 'var(--err)',
+            color: 'white',
+            padding: '12px 16px',
+            borderRadius: '6px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+            fontSize: '13px',
+            animation: 'fadeIn 0.2s',
+            zIndex: 9999
+          }}
+        >
+          {importNotification.type === 'success' ? '✓' : '✗'} {importNotification.text}
         </div>
       )}
     </div>
