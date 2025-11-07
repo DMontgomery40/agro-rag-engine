@@ -85,6 +85,23 @@ export function useChat() {
     }
   }, []);
 
+  // Cross-tab localStorage sync
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'agro_chat_settings' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          setSettings({ ...DEFAULT_SETTINGS, ...parsed });
+        } catch (err) {
+          console.warn('Failed to sync settings from another tab:', err);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   // Load chat history from localStorage on mount
   useEffect(() => {
     if (!settings.historyEnabled || !settings.showHistoryOnLoad) return;
@@ -315,6 +332,72 @@ export function useChat() {
     }
   }, []);
 
+  // Import chat history
+  const importHistory = useCallback((file: File) => {
+    return new Promise<{ success: boolean; message: string; count?: number }>((resolve) => {
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        try {
+          const content = e.target?.result as string;
+          const history = JSON.parse(content);
+
+          // Validate JSON structure
+          if (!Array.isArray(history)) {
+            resolve({ success: false, message: 'Invalid history file: expected array' });
+            return;
+          }
+
+          // Validate messages
+          const validMessages = history
+            .filter((m: any) => m && typeof m.content === 'string' && (m.role === 'user' || m.role === 'assistant'))
+            .map((m: any) => ({
+              id: m.id || `msg-${Date.now()}-${Math.random()}`,
+              role: m.role,
+              content: m.content,
+              timestamp: m.timestamp || Date.now(),
+              repo: m.repo,
+              eventId: m.eventId,
+              confidence: m.confidence
+            }));
+
+          if (validMessages.length === 0) {
+            resolve({ success: false, message: 'No valid messages found in file' });
+            return;
+          }
+
+          // Save to localStorage
+          localStorage.setItem('agro_chat_history', JSON.stringify(validMessages));
+
+          // Load into current state
+          setMessages(validMessages.map((m: any) => ({
+            ...m,
+            isLoading: false,
+            isError: false
+          })));
+
+          resolve({
+            success: true,
+            message: `Successfully imported ${validMessages.length} messages`,
+            count: validMessages.length
+          });
+        } catch (err: any) {
+          console.error('Failed to import chat history:', err);
+          resolve({
+            success: false,
+            message: `Import failed: ${err.message || 'Invalid JSON'}`
+          });
+        }
+      };
+
+      reader.onerror = () => {
+        resolve({ success: false, message: 'Failed to read file' });
+      };
+
+      reader.readAsText(file);
+    });
+  }, []);
+
   // Update settings
   const updateSettings = useCallback((updates: Partial<ChatSettings>) => {
     const newSettings = { ...settings, ...updates };
@@ -367,6 +450,7 @@ export function useChat() {
     clearMessages,
     clearHistory,
     exportHistory,
+    importHistory,
     stopStreaming,
     getStorageStats
   };

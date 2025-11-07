@@ -1,0 +1,70 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - heading "AGRO Another Good RAG Option" [level=1] [ref=e4]:
+      - generic [ref=e5]: AGRO
+      - generic [ref=e6]: Another Good RAG Option
+    - generic [ref=e7]:
+      - searchbox "Search settings (Ctrl+K)" [ref=e8]
+      - combobox "Theme Mode" [ref=e9]:
+        - option "Auto" [selected]
+        - option "Dark"
+        - option "Light"
+      - button "Health" [ref=e10] [cursor=pointer]
+      - generic [ref=e11]: OK @ 2:46:14 AM
+  - generic [ref=e12]:
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - link "🚀 Get Started" [ref=e16] [cursor=pointer]:
+          - /url: /start
+        - link "📊 Dashboard" [ref=e17] [cursor=pointer]:
+          - /url: /dashboard
+        - link "💬 Chat" [active] [ref=e18] [cursor=pointer]:
+          - /url: /chat
+        - link "📝 VS Code" [ref=e19] [cursor=pointer]:
+          - /url: /vscode
+        - link "📈 Grafana" [ref=e20] [cursor=pointer]:
+          - /url: /grafana
+        - link "🧠 RAG" [ref=e21] [cursor=pointer]:
+          - /url: /rag
+        - link "💾 Profiles" [ref=e22] [cursor=pointer]:
+          - /url: /profiles
+        - link "🔧 Infrastructure" [ref=e23] [cursor=pointer]:
+          - /url: /infrastructure
+        - link "⚙️ Admin" [ref=e24] [cursor=pointer]:
+          - /url: /admin
+        - link "🐳 Docker" [ref=e25] [cursor=pointer]:
+          - /url: /docker
+      - generic [ref=e29]:
+        - generic [ref=e30]:
+          - generic [ref=e31]:
+            - heading "● RAG Chat" [level=3] [ref=e32]:
+              - generic [ref=e33]: ●
+              - text: RAG Chat
+            - paragraph [ref=e34]: Ask questions about your codebase
+          - generic [ref=e35]:
+            - combobox [ref=e36]:
+              - option "Auto-detect repo" [selected]
+              - option "agro"
+              - option
+            - button "History" [ref=e38] [cursor=pointer]:
+              - img [ref=e39]
+              - text: History
+            - button "Clear" [ref=e42] [cursor=pointer]
+        - generic [ref=e44]:
+          - img [ref=e45]
+          - generic [ref=e47]: Start a conversation with your codebase
+          - generic [ref=e48]: "Try: \"Where is OAuth token validated?\" or \"How do we handle API errors?\""
+        - generic [ref=e49]:
+          - generic [ref=e50]:
+            - textbox "Ask a question about your codebase..." [ref=e51]
+            - button "Send" [ref=e52] [cursor=pointer]
+          - generic [ref=e53]: Press Ctrl+Enter to send • Citations will appear as clickable file links
+          - group [ref=e54]:
+            - generic "Routing Trace" [ref=e55] [cursor=pointer]
+    - generic [ref=e56]:
+      - heading "Apply Changes" [level=3] [ref=e58]
+      - button "Apply changes" [disabled] [ref=e61]: Apply Changes
+```

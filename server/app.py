@@ -43,6 +43,7 @@ import os, json, sys
 from typing import Any, Dict
 from collections import Counter, defaultdict
 from pathlib import Path as _Path
+from datetime import datetime
 import subprocess
 
 app = FastAPI(title="AGRO RAG + GUI")
@@ -3454,6 +3455,36 @@ def eval_baseline_compare() -> Dict[str, Any]:
         "improvements": improvements,
         "has_regressions": len(regressions) > 0
     }
+
+@app.post("/api/feedback")
+def submit_feedback(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Submit user feedback for evaluation system."""
+    rating = payload.get("rating")
+    comment = payload.get("comment", "")
+    timestamp = payload.get("timestamp")
+    context = payload.get("context", "evaluation")
+
+    if not rating or rating < 1 or rating > 5:
+        raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
+
+    # Ensure feedback directory exists
+    feedback_dir = Path("data/evals/feedback")
+    feedback_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create feedback entry
+    feedback_entry = {
+        "rating": rating,
+        "comment": comment,
+        "timestamp": timestamp or datetime.now().isoformat(),
+        "context": context
+    }
+
+    # Save to feedback log file
+    feedback_file = feedback_dir / "feedback_log.jsonl"
+    with open(feedback_file, "a") as f:
+        f.write(json.dumps(feedback_entry) + "\n")
+
+    return {"ok": True, "success": True, "message": "Feedback submitted successfully"}
 
 # =============================
 # Docker Management API

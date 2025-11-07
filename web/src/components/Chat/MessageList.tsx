@@ -1,17 +1,19 @@
-import { useEffect, useRef } from 'react';
-import { ChatMessage } from '@/hooks/useChat';
+import { useEffect, useRef, useState } from 'react';
+import { ChatMessage, TraceData } from '@/hooks/useChat';
 
 interface MessageListProps {
   messages: ChatMessage[];
   autoScroll: boolean;
+  traceData?: TraceData | null;
   onCopyMessage?: (content: string) => void;
 }
 
 /**
  * Message list component that displays chat messages with auto-scroll
  */
-export default function MessageList({ messages, autoScroll, onCopyMessage }: MessageListProps) {
+export default function MessageList({ messages, autoScroll, traceData, onCopyMessage }: MessageListProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [showTraceDetails, setShowTraceDetails] = useState(false);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -221,6 +223,191 @@ export default function MessageList({ messages, autoScroll, onCopyMessage }: Mes
           </div>
         );
       })}
+
+      {/* Trace Data Viewer */}
+      {traceData && (
+        <div
+          style={{
+            marginTop: '16px',
+            padding: '12px',
+            background: 'var(--bg-elev1)',
+            border: '1px solid var(--line)',
+            borderRadius: '6px'
+          }}
+        >
+          <div
+            onClick={() => setShowTraceDetails(!showTraceDetails)}
+            style={{
+              cursor: 'pointer',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: showTraceDetails ? '12px' : '0'
+            }}
+          >
+            <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--fg-muted)' }}>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '6px' }}
+              >
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 16 16 12 12 8"></polyline>
+                <line x1="8" y1="12" x2="16" y2="12"></line>
+              </svg>
+              Trace Data
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--fg-muted)' }}>
+              {showTraceDetails ? 'Click to hide' : 'Click to expand'}
+            </div>
+          </div>
+
+          {showTraceDetails && (
+            <div>
+              {/* Query Type */}
+              {traceData.query_type && (
+                <div style={{ marginBottom: '8px' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--fg-muted)', marginBottom: '4px' }}>
+                    Query Type:
+                  </div>
+                  <div
+                    style={{
+                      display: 'inline-block',
+                      background: 'var(--card-bg)',
+                      color: 'var(--accent)',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      fontFamily: "'SF Mono', monospace"
+                    }}
+                  >
+                    {traceData.query_type}
+                  </div>
+                </div>
+              )}
+
+              {/* Routes */}
+              {traceData.routes && traceData.routes.length > 0 && (
+                <div style={{ marginBottom: '8px' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--fg-muted)', marginBottom: '4px' }}>
+                    Routes Used:
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {traceData.routes.map((route, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          background: 'var(--card-bg)',
+                          color: 'var(--link)',
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontFamily: "'SF Mono', monospace"
+                        }}
+                      >
+                        {route}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Timing */}
+              {traceData.timing && Object.keys(traceData.timing).length > 0 && (
+                <div style={{ marginBottom: '8px' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--fg-muted)', marginBottom: '4px' }}>
+                    Timing (ms):
+                  </div>
+                  <div
+                    style={{
+                      background: 'var(--card-bg)',
+                      border: '1px solid var(--line)',
+                      borderRadius: '4px',
+                      padding: '8px',
+                      fontSize: '11px',
+                      fontFamily: "'SF Mono', monospace"
+                    }}
+                  >
+                    {Object.entries(traceData.timing).map(([key, value], idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          marginBottom: idx < Object.keys(traceData.timing!).length - 1 ? '4px' : '0'
+                        }}
+                      >
+                        <span style={{ color: 'var(--fg-muted)' }}>{key}:</span>
+                        <span style={{ color: 'var(--fg)', fontWeight: '600' }}>{value.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Sources */}
+              {traceData.sources && traceData.sources.length > 0 && (
+                <div>
+                  <div style={{ fontSize: '11px', color: 'var(--fg-muted)', marginBottom: '4px' }}>
+                    Sources Retrieved ({traceData.sources.length}):
+                  </div>
+                  <div
+                    style={{
+                      background: 'var(--card-bg)',
+                      border: '1px solid var(--line)',
+                      borderRadius: '4px',
+                      padding: '8px',
+                      maxHeight: '150px',
+                      overflowY: 'auto'
+                    }}
+                  >
+                    {traceData.sources.map((source, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          marginBottom: idx < traceData.sources!.length - 1 ? '8px' : '0',
+                          paddingBottom: idx < traceData.sources!.length - 1 ? '8px' : '0',
+                          borderBottom: idx < traceData.sources!.length - 1 ? '1px solid var(--line)' : 'none'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                          <span
+                            style={{
+                              fontSize: '12px',
+                              fontFamily: "'SF Mono', monospace",
+                              color: 'var(--link)',
+                              cursor: 'pointer'
+                            }}
+                            onClick={() => {
+                              const filePath = source.file + (source.lines ? source.lines : '');
+                              window.open(`vscode://file/${filePath}`, '_self');
+                            }}
+                          >
+                            {source.file}{source.lines}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              color: 'var(--fg-muted)',
+                              fontFamily: "'SF Mono', monospace"
+                            }}
+                          >
+                            {(source.score * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
