@@ -41,6 +41,8 @@ function App() {
   useEffect(() => {
     const loadModules = async () => {
       console.log('[App] DOM ready, loading legacy modules...');
+      console.log('[App] MODULES DISABLED FOR DEBUGGING');
+      return; // TEMP: Skip all module loading to test if React works
 
       try {
         // Load in dependency order
