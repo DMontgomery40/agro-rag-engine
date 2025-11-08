@@ -40,7 +40,7 @@ html, :root, [data-theme="dark"] {
   --bg-elev1: #FFFFFF;
   --bg-elev2: #F1F3F7;
   --panel: #FFFFFF;
-  --line: #CBD5E1;
+  --line: #94A3B8;
 
   --fg: #0F1220;
   --fg-muted: #475569;
@@ -58,7 +58,7 @@ html, :root, [data-theme="dark"] {
 
   --chip-bg: #EEF2F7;
   --input-bg: #FFFFFF;
-  --card-bg: #FFFFFF;
+  --card-bg: #F8FAFC;         /* Subtle off-white, easier on eyes */
   --panel-bg: #FFFFFF;
 
   --code-bg: #F5F7FA;

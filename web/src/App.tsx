@@ -2,6 +2,8 @@ import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useHealthStore } from '@/stores';
 
+// CSS imports handled in index.css (imported via main.tsx)
+
 // Pages
 import Dashboard from './pages/Dashboard';
 import Docker from './pages/Docker';
@@ -18,6 +20,14 @@ import AdminTab from './components/tabs/AdminTab';
 function App() {
   const [healthDisplay, setHealthDisplay] = useState('—');
   const { status, checkHealth } = useHealthStore();
+
+  // Initialize theme on mount
+  useEffect(() => {
+    // Set default theme (dark) immediately if not already set
+    if (!document.documentElement.hasAttribute('data-theme')) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  }, []);
 
   useEffect(() => {
     // Initial health check

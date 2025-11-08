@@ -4,6 +4,7 @@
 @import './styles/style.css';
 @import './styles/micro-interactions.css';
 @import './styles/storage-calculator.css';
+@import './styles/dashboard.css';
 @import './styles/main.css';
 
 @tailwind base;

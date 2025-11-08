@@ -1,11 +1,17 @@
 import { useEffect } from 'react';
 import { useHealthStore, useDockerStore } from '@/stores';
-import { HealthStatusCard } from '@/components/HealthStatusCard';
-import { DockerStatusCard } from '@/components/DockerStatusCard';
+import SystemStatus from '@/components/Dashboard/SystemStatus';
+import QuickActions from '@/components/Dashboard/QuickActions';
 
+/**
+ * Dashboard Tab Content - Team 1 Foundation
+ *
+ * Renders inside App.tsx tab structure (no standalone header needed)
+ * Layout: System Status (left) + Quick Actions (right) + placeholders for Teams 2 & 3
+ */
 export default function Dashboard() {
-  const { status: healthStatus, loading: healthLoading, error: healthError, checkHealth } = useHealthStore();
-  const { status: dockerStatus, loading: dockerLoading, error: dockerError, fetchStatus: fetchDocker } = useDockerStore();
+  const { checkHealth } = useHealthStore();
+  const { fetchStatus: fetchDocker } = useDockerStore();
 
   useEffect(() => {
     // Initial fetch
@@ -23,55 +29,57 @@ export default function Dashboard() {
   }, [checkHealth, fetchDocker]);
 
   return (
-    <div className="dashboard-container">
-      <div className="dashboard-header">
-        <h2>System Dashboard</h2>
-        <p className="text-muted">Monitor system health and infrastructure status</p>
+    <>
+      {/* Sub-tabs */}
+      <div className="subtab-bar">
+        <button className="subtab active">Overview</button>
       </div>
 
-      <div className="dashboard-grid">
-        <HealthStatusCard
-          status={healthStatus}
-          loading={healthLoading}
-          error={healthError}
-          onRefresh={checkHealth}
-        />
+      {/* Tab Content */}
+      <div className="tab-content active" id="tab-dashboard" style={{ paddingTop: 0 }}>
+        {/* Main Dashboard Content - System Status + Quick Actions */}
+        <div className="settings-section" style={{
+          borderLeft: '3px solid var(--accent)'
+        }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '300px 1fr',
+            gap: '24px',
+            alignItems: 'start'
+          }}>
+            {/* Left: System Status (Sub-Agent 3) */}
+            <SystemStatus />
 
-        <DockerStatusCard
-          status={dockerStatus}
-          loading={dockerLoading}
-          error={dockerError}
-          onRefresh={fetchDocker}
-        />
+            {/* Right: Quick Actions (Sub-Agent 4) */}
+            <QuickActions />
+          </div>
+        </div>
+
+        {/* Placeholder sections for Teams 2 & 3 */}
+        <div id="index-display-container" className="settings-section" style={{
+          borderLeft: '3px solid var(--accent)'
+        }}>
+          <p style={{ color: 'var(--fg-muted)', fontSize: '14px' }}>
+            [Team 2 will add Index Display here]
+          </p>
+        </div>
+
+        <div id="auto-profile-container" className="settings-section" style={{
+          borderLeft: '3px solid var(--accent)'
+        }}>
+          <p style={{ color: 'var(--fg-muted)', fontSize: '14px' }}>
+            [Team 3 will add Auto-Profile Wizard here]
+          </p>
+        </div>
+
+        <div id="monitoring-logs-container" className="settings-section" style={{
+          borderLeft: '3px solid var(--accent)'
+        }}>
+          <p style={{ color: 'var(--fg-muted)', fontSize: '14px' }}>
+            [Team 3 will add Monitoring Logs here]
+          </p>
+        </div>
       </div>
-
-      <style jsx>{`
-        .dashboard-container {
-          padding: 24px;
-        }
-
-        .dashboard-header {
-          margin-bottom: 24px;
-        }
-
-        .dashboard-header h2 {
-          font-size: 24px;
-          font-weight: 700;
-          color: var(--fg);
-          margin-bottom: 8px;
-        }
-
-        .dashboard-header .text-muted {
-          color: var(--fg-muted);
-          font-size: 14px;
-        }
-
-        .dashboard-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-          gap: 20px;
-        }
-      `}</style>
-    </div>
+    </>
   );
 }

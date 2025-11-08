@@ -1,6 +1,4 @@
-:root {
-  --bg: var(--bg); --fg: var(--fg); --muted: var(--fg-muted); --accent: var(--accent); --panel: var(--panel); --line: var(--line);
-}
+/* CSS variables now defined in tokens.css - no need to redefine here */
 /* Light theme handled by tokens.css via [data-theme="light"] */
 * { box-sizing: border-box; }
 html, body { height: 100%; }
