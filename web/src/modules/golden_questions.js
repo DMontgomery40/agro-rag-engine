@@ -439,6 +439,11 @@ async function runAllGoldenTests() {
     }
 }
 
+// Stub for legacy compatibility (function doesn't exist)
+function bindGoldenQuestions() {
+    // No-op: Event listeners are bound in DOMContentLoaded handler
+}
+
 // Initialization function for rag-evaluate view (PRIMARY module)
 window.initGoldenQuestions = function() {
     console.log('[golden_questions.js] Initializing golden questions for rag-evaluate view');

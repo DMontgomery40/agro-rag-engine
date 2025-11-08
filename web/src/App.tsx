@@ -1,33 +1,21 @@
-import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useHealthStore } from '@/stores';
 
-// CSS imports handled in index.css (imported via main.tsx)
+// Navigation components
+import { TabBar } from './components/Navigation/TabBar';
+import { TabRouter } from './components/Navigation/TabRouter';
 
-// Pages
-import Dashboard from './pages/Dashboard';
-import Docker from './pages/Docker';
-
-// Placeholder components for other tabs (to be refactored)
-import ChatTab from './components/tabs/ChatTab';
-import VSCodeTab from './components/tabs/VSCodeTab';
-import GrafanaTab from './components/tabs/GrafanaTab';
-import RAGTab from './components/tabs/RAGTab';
-import ProfilesTab from './components/tabs/ProfilesTab';
-import InfrastructureTab from './components/tabs/InfrastructureTab';
-import AdminTab from './components/tabs/AdminTab';
+// Hooks
+import { useAppInit, useModuleLoader, useApplyButton } from '@/hooks';
 
 function App() {
   const [healthDisplay, setHealthDisplay] = useState('—');
   const { status, checkHealth } = useHealthStore();
 
-  // Initialize theme on mount
-  useEffect(() => {
-    // Set default theme (dark) immediately if not already set
-    if (!document.documentElement.hasAttribute('data-theme')) {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    }
-  }, []);
+  // Initialize hooks
+  const { isInitialized, initError } = useAppInit();
+  const { modulesLoaded, loadError, loadProgress } = useModuleLoader();
+  const { handleApply, isDirty, isSaving, saveError } = useApplyButton();
 
   useEffect(() => {
     // Initial health check
@@ -66,10 +54,8 @@ function App() {
         // 3. Test instrumentation (for debugging)
         await import('./modules/test-instrumentation.js');
 
-        // 4. Navigation and tabs (core UI structure)
-        await import('./modules/navigation.js');
-        await import('./modules/tabs.js');
-        await import('./modules/rag-navigation.js');
+        // 4. Navigation and tabs - REMOVED, now using React Router
+        // Legacy navigation modules replaced by TabBar/TabRouter components
 
         // 5. Search and tooltips (UI enhancements)
         await import('./modules/search.js');
@@ -139,6 +125,40 @@ function App() {
     setTimeout(loadModules, 100);
   }, []);
 
+  // Show loading screen while modules are loading
+  if (!modulesLoaded || !isInitialized) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        background: 'var(--bg)',
+        color: 'var(--fg)'
+      }}>
+        <div style={{
+          width: '48px',
+          height: '48px',
+          border: '3px solid var(--line)',
+          borderTopColor: 'var(--accent)',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          marginBottom: '16px'
+        }}></div>
+        <div style={{ fontSize: '14px', color: 'var(--fg-muted)' }}>
+          {loadProgress || 'Loading application...'}
+        </div>
+        {(loadError || initError) && (
+          <div style={{ color: 'var(--err)', fontSize: '12px', marginTop: '12px', maxWidth: '400px', textAlign: 'center' }}>
+            {loadError || initError}
+          </div>
+        )}
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
   return (
     <>
       {/* Topbar */}
@@ -182,77 +202,11 @@ function App() {
       <div className="layout">
         <div className="resize-handle"></div>
         <div className="content">
-          {/* Tab Bar - Using NavLink for proper routing */}
-          <div className="tab-bar">
-            <NavLink
-              to="/dashboard"
-              className={({ isActive }) => isActive ? 'active' : ''}
-            >
-              📊 Dashboard
-            </NavLink>
-            <NavLink
-              to="/docker"
-              className={({ isActive }) => isActive ? 'active' : ''}
-            >
-              🐳 Docker
-            </NavLink>
-            <NavLink
-              to="/chat"
-              className={({ isActive }) => isActive ? 'active' : ''}
-            >
-              💬 Chat
-            </NavLink>
-            <NavLink
-              to="/vscode"
-              className={({ isActive }) => isActive ? 'active promoted-tab' : 'promoted-tab'}
-            >
-              📝 VS Code
-            </NavLink>
-            <NavLink
-              to="/grafana"
-              className={({ isActive }) => isActive ? 'active promoted-tab' : 'promoted-tab'}
-            >
-              📈 Grafana
-            </NavLink>
-            <NavLink
-              to="/rag"
-              className={({ isActive }) => isActive ? 'active' : ''}
-            >
-              🧠 RAG
-            </NavLink>
-            <NavLink
-              to="/profiles"
-              className={({ isActive }) => isActive ? 'active' : ''}
-            >
-              💾 Profiles
-            </NavLink>
-            <NavLink
-              to="/infrastructure"
-              className={({ isActive }) => isActive ? 'active' : ''}
-            >
-              🔧 Infrastructure
-            </NavLink>
-            <NavLink
-              to="/admin"
-              className={({ isActive }) => isActive ? 'active' : ''}
-            >
-              ⚙️ Admin
-            </NavLink>
-          </div>
+          {/* Tab Bar - React Router navigation */}
+          <TabBar />
 
-          {/* Routes */}
-          <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/docker" element={<Docker />} />
-            <Route path="/chat" element={<div className="tab-content active"><ChatTab /></div>} />
-            <Route path="/vscode" element={<div className="tab-content active"><VSCodeTab /></div>} />
-            <Route path="/grafana" element={<div className="tab-content active" style={{ padding: 0 }}><GrafanaTab /></div>} />
-            <Route path="/rag" element={<div className="tab-content active"><RAGTab /></div>} />
-            <Route path="/profiles" element={<div className="tab-content active"><ProfilesTab /></div>} />
-            <Route path="/infrastructure" element={<div className="tab-content active"><InfrastructureTab /></div>} />
-            <Route path="/admin" element={<div className="tab-content active"><AdminTab /></div>} />
-          </Routes>
+          {/* Routes - All tab routing */}
+          <TabRouter />
         </div>
 
         {/* Sidepanel */}
@@ -264,7 +218,20 @@ function App() {
             {/* Side panel content - managed by existing JS modules */}
           </div>
           <div className="sidepanel-footer">
-            <button id="btn-apply" className="btn-apply">Apply Changes</button>
+            <button
+              id="btn-apply"
+              className={`btn-apply ${isDirty ? 'dirty' : ''}`}
+              onClick={handleApply}
+              disabled={!isDirty || isSaving}
+              aria-label={isSaving ? 'Saving changes...' : 'Apply changes'}
+            >
+              {isSaving ? 'Applying...' : 'Apply Changes'}
+            </button>
+            {saveError && (
+              <div style={{ color: 'var(--err)', fontSize: '11px', marginTop: '8px' }}>
+                {saveError}
+              </div>
+            )}
           </div>
         </div>
       </div>
