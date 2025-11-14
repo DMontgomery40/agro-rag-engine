@@ -1,0 +1,401 @@
+// AGRO - Git Integration Subtab Component
+// Git hooks and commit metadata configuration
+
+import { useState } from 'react';
+
+export function GitIntegrationSubtab() {
+  const [agentName, setAgentName] = useState('');
+  const [agentEmail, setAgentEmail] = useState('');
+  const [chatSession, setChatSession] = useState('');
+  const [trailerKey, setTrailerKey] = useState('Chat-Session');
+  const [setGitUser, setSetGitUser] = useState(false);
+  const [appendTrailer, setAppendTrailer] = useState(true);
+  const [enableTemplate, setEnableTemplate] = useState(false);
+  const [installHook, setInstallHook] = useState(true);
+  const [hooksStatus, setHooksStatus] = useState('Not checked');
+
+  const [repoUrl, setRepoUrl] = useState('');
+  const [branch, setBranch] = useState('main');
+  const [commitHooks, setCommitHooks] = useState({
+    preCommit: false,
+    postCommit: false,
+    prePush: false
+  });
+
+  async function installGitHooks() {
+    alert('Installing git hooks... This would run the installation script');
+    setHooksStatus('Installed successfully');
+  }
+
+  async function saveCommitMetadata() {
+    const config = {
+      agentName,
+      agentEmail,
+      chatSession,
+      trailerKey,
+      setGitUser,
+      appendTrailer,
+      enableTemplate,
+      installHook
+    };
+
+    alert(`Commit metadata saved!\n${JSON.stringify(config, null, 2)}`);
+  }
+
+  async function handlePull() {
+    alert('Git pull would be executed here');
+  }
+
+  async function handlePush() {
+    if (confirm('Are you sure you want to push to the remote repository?')) {
+      alert('Git push would be executed here');
+    }
+  }
+
+  return (
+    <div className="settings-section">
+      <h2>Git Integration</h2>
+
+      {/* Git Hooks */}
+      <div
+        style={{
+          background: 'var(--bg-elev2)',
+          border: '1px solid var(--line)',
+          borderRadius: '6px',
+          padding: '20px',
+          marginBottom: '20px'
+        }}
+      >
+        <h3 style={{ marginTop: 0 }}>Git Hooks (Auto-Index)</h3>
+        <p className="small" style={{ marginBottom: '16px' }}>
+          Install local git hooks to auto-run BM25 indexing on branch changes and commits.
+          Enable it with AUTO_INDEX=1.
+        </p>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>Status</label>
+            <div
+              style={{
+                padding: '8px',
+                background: 'var(--code-bg)',
+                border: '1px solid var(--line)',
+                borderRadius: '4px',
+                fontFamily: 'monospace',
+                fontSize: '12px'
+              }}
+            >
+              {hooksStatus}
+            </div>
+          </div>
+          <div className="input-group">
+            <label>Install Hooks</label>
+            <button
+              className="small-button"
+              onClick={installGitHooks}
+              style={{
+                background: 'var(--accent)',
+                color: 'var(--accent-contrast)',
+                fontWeight: '600'
+              }}
+            >
+              Install
+            </button>
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>Enable Auto-Index</label>
+            <input
+              type="text"
+              readOnly
+              value="export AUTO_INDEX=1"
+              onClick={(e) => {
+                (e.target as HTMLInputElement).select();
+                navigator.clipboard.writeText('export AUTO_INDEX=1');
+                alert('Copied to clipboard!');
+              }}
+              style={{
+                width: '100%',
+                padding: '8px',
+                background: 'var(--code-bg)',
+                border: '1px solid var(--line)',
+                borderRadius: '4px',
+                color: 'var(--fg)',
+                fontFamily: 'monospace',
+                cursor: 'pointer'
+              }}
+            />
+            <p className="small" style={{ color: 'var(--fg-muted)', marginTop: '4px' }}>
+              Click to copy command to clipboard
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Commit Metadata */}
+      <div
+        style={{
+          background: 'var(--bg-elev2)',
+          border: '1px solid var(--line)',
+          borderRadius: '6px',
+          padding: '20px',
+          marginBottom: '20px'
+        }}
+      >
+        <h3 style={{ marginTop: 0 }}>Commit Metadata (Agent/Session Signing)</h3>
+        <p className="small" style={{ marginBottom: '16px' }}>
+          Append a Chat Session trailer to every commit and optionally set git user info.
+          This helps trace changes to a local chat session ID.
+        </p>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>Agent Name</label>
+            <input
+              type="text"
+              value={agentName}
+              onChange={(e) => setAgentName(e.target.value)}
+              placeholder="Codex Agent"
+              style={{
+                width: '100%',
+                padding: '8px',
+                background: 'var(--input-bg)',
+                border: '1px solid var(--line)',
+                borderRadius: '4px',
+                color: 'var(--fg)'
+              }}
+            />
+          </div>
+          <div className="input-group">
+            <label>Agent Email</label>
+            <input
+              type="email"
+              value={agentEmail}
+              onChange={(e) => setAgentEmail(e.target.value)}
+              placeholder="agent@example.com"
+              style={{
+                width: '100%',
+                padding: '8px',
+                background: 'var(--input-bg)',
+                border: '1px solid var(--line)',
+                borderRadius: '4px',
+                color: 'var(--fg)'
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>Chat Session ID</label>
+            <input
+              type="text"
+              value={chatSession}
+              onChange={(e) => setChatSession(e.target.value)}
+              placeholder="paste your local chat session id"
+              style={{
+                width: '100%',
+                padding: '8px',
+                background: 'var(--input-bg)',
+                border: '1px solid var(--line)',
+                borderRadius: '4px',
+                color: 'var(--fg)'
+              }}
+            />
+          </div>
+          <div className="input-group">
+            <label>Trailer Key</label>
+            <input
+              type="text"
+              value={trailerKey}
+              onChange={(e) => setTrailerKey(e.target.value)}
+              placeholder="Chat-Session"
+              style={{
+                width: '100%',
+                padding: '8px',
+                background: 'var(--input-bg)',
+                border: '1px solid var(--line)',
+                borderRadius: '4px',
+                color: 'var(--fg)'
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <input
+                type="checkbox"
+                checked={setGitUser}
+                onChange={(e) => setSetGitUser(e.target.checked)}
+              />
+              <span>Set git user.name/email</span>
+            </label>
+          </div>
+          <div className="input-group">
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <input
+                type="checkbox"
+                checked={appendTrailer}
+                onChange={(e) => setAppendTrailer(e.target.checked)}
+              />
+              <span>Append session trailer via hook</span>
+            </label>
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <input
+                type="checkbox"
+                checked={enableTemplate}
+                onChange={(e) => setEnableTemplate(e.target.checked)}
+              />
+              <span>Use commit template</span>
+            </label>
+          </div>
+          <div className="input-group">
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <input
+                type="checkbox"
+                checked={installHook}
+                onChange={(e) => setInstallHook(e.target.checked)}
+              />
+              <span>Install/refresh prepare-commit-msg hook</span>
+            </label>
+          </div>
+        </div>
+
+        <button
+          className="small-button"
+          onClick={saveCommitMetadata}
+          style={{
+            width: '100%',
+            background: 'var(--accent)',
+            color: 'var(--accent-contrast)',
+            fontWeight: '600',
+            marginTop: '12px'
+          }}
+        >
+          Save Commit Metadata
+        </button>
+      </div>
+
+      {/* Repository Management */}
+      <div
+        style={{
+          background: 'var(--bg-elev2)',
+          border: '1px solid var(--line)',
+          borderRadius: '6px',
+          padding: '20px',
+          marginBottom: '20px'
+        }}
+      >
+        <h3 style={{ marginTop: 0 }}>Repository Management</h3>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>Repository URL</label>
+            <input
+              type="text"
+              value={repoUrl}
+              onChange={(e) => setRepoUrl(e.target.value)}
+              placeholder="https://github.com/user/repo.git"
+              style={{
+                width: '100%',
+                padding: '8px',
+                background: 'var(--input-bg)',
+                border: '1px solid var(--line)',
+                borderRadius: '4px',
+                color: 'var(--fg)'
+              }}
+            />
+          </div>
+          <div className="input-group">
+            <label>Branch</label>
+            <select
+              value={branch}
+              onChange={(e) => setBranch(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px',
+                background: 'var(--input-bg)',
+                border: '1px solid var(--line)',
+                borderRadius: '4px',
+                color: 'var(--fg)'
+              }}
+            >
+              <option value="main">main</option>
+              <option value="master">master</option>
+              <option value="development">development</option>
+              <option value="staging">staging</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>Commit Hooks</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  type="checkbox"
+                  checked={commitHooks.preCommit}
+                  onChange={(e) => setCommitHooks(prev => ({ ...prev, preCommit: e.target.checked }))}
+                />
+                <span>Pre-commit hook</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  type="checkbox"
+                  checked={commitHooks.postCommit}
+                  onChange={(e) => setCommitHooks(prev => ({ ...prev, postCommit: e.target.checked }))}
+                />
+                <span>Post-commit hook</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  type="checkbox"
+                  checked={commitHooks.prePush}
+                  onChange={(e) => setCommitHooks(prev => ({ ...prev, prePush: e.target.checked }))}
+                />
+                <span>Pre-push hook</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+          <button
+            className="small-button"
+            onClick={handlePull}
+            style={{
+              flex: '1',
+              background: 'var(--link)',
+              color: 'var(--accent-contrast)',
+              fontWeight: '600'
+            }}
+          >
+            Pull
+          </button>
+          <button
+            className="small-button"
+            onClick={handlePush}
+            style={{
+              flex: '1',
+              background: 'var(--warn)',
+              color: 'var(--accent-contrast)',
+              fontWeight: '600'
+            }}
+          >
+            Push
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
