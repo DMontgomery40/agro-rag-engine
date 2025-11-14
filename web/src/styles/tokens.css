@@ -1,12 +1,7 @@
 /* Theme tokens for AGRO GUI: dark + light palettes */
-/* Copied from gui/css/tokens.css to preserve cyberpunk aesthetic */
+/* Default to dark to preserve current visuals */
 
-:root {
-  --font-sans: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-}
-
-/* Dark theme (default) - CYBERPUNK AESTHETIC */
+/* Dark (current) */
 html, :root, [data-theme="dark"] {
   --bg: #0a0a0a;
   --bg-elev1: #111111;
@@ -17,10 +12,10 @@ html, :root, [data-theme="dark"] {
   --fg: #ffffff;
   --fg-muted: #9fb1c7;
 
-  --accent: #00ff88;           /* NEON GREEN - brand color */
+  --accent: #00ff88;           /* brand green used across GUI */
   --accent-contrast: #000000;
   --link: #5b9dff;             /* informational blue */
-  --on-link: #ffffff;
+  --on-link: #ffffff;          /* readable text on link backgrounds */
 
   --ok: #00ff88;
   --warn: #ffaa00;
@@ -36,10 +31,10 @@ html, :root, [data-theme="dark"] {
   --code-bg: #0f0f0f;
   --code-fg: #dddddd;
 
-  --ring: rgba(0, 255, 136, 0.18);  /* green glow for focus states */
+  --ring: rgba(0, 255, 136, 0.18);
 }
 
-/* Light theme */
+/* Light */
 [data-theme="light"] {
   --bg: #F7F8FB;
   --bg-elev1: #FFFFFF;
@@ -80,4 +75,3 @@ body { background: var(--bg); color: var(--fg); }
 .panel { background: var(--panel-bg); border-color: var(--line); }
 .card { background: var(--card-bg); border-color: var(--line); }
 .code { background: var(--code-bg); color: var(--code-fg); }
-
