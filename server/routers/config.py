@@ -1,5 +1,5 @@
 from typing import Any, Dict, Optional
-from fastapi import APIRouter, UploadFile, File, Form
+from fastapi import APIRouter, UploadFile, File, Form, Query
 from server.services import config_store as cfg
 
 
@@ -27,8 +27,8 @@ async def api_secrets_ingest(
 
 
 @router.get("/api/config")
-def get_config() -> Dict[str, Any]:
-    return cfg.get_config()
+def get_config(unmask: bool = Query(default=False)) -> Dict[str, Any]:
+    return cfg.get_config(unmask=bool(unmask))
 
 
 @router.post("/api/config")

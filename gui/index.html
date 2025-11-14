@@ -3511,6 +3511,9 @@
                                     <div>Device: <span id="reranker-info-device-ext">—</span></div>
                                     <div>Alpha: <span id="reranker-info-alpha-ext">—</span> • TopN: <span id="reranker-info-topn-ext">—</span> • Batch: <span id="reranker-info-batch-ext">—</span> • MaxLen: <span id="reranker-info-maxlen-ext">—</span></div>
                                 </div>
+                                <div id="rerank-none-warning" style="display:none; margin-top:8px; padding:8px; border-radius:6px; background: rgba(255, 170, 0, 0.1); border:1px dashed var(--warn); color: var(--warn); font-size:12px;">
+                                    ⚠️ No reranker is effectively enabled. Searches will use raw BM25/vector fusion. Configure <strong>Rerank Backend</strong> or <strong>Cohere API Key</strong>.
+                                </div>
                             </div>
                         </div>
                         <div class="input-row">
@@ -4463,6 +4466,20 @@
 
                     <div id="docker-status-display" style="margin-bottom: 16px;">
                         <!-- Populated by JS -->
+                    </div>
+
+                    <!-- Runtime Mode Toggle (Infrastructure) -->
+                    <div class="input-row" style="margin-top: 8px;">
+                        <div class="input-group">
+                            <label>Runtime Mode (DEV_LOCAL_UVICORN)</label>
+                            <select name="DEV_LOCAL_UVICORN" id="infra-runtime-mode">
+                                <option value="0">Docker (default)</option>
+                                <option value="1">Local uvicorn (dev-only)</option>
+                            </select>
+                            <div class="small" style="color: var(--fg-muted); margin-top: 6px;">
+                                Switch to Local uvicorn for development. In dev launcher, this scales Docker API to 0 and starts uvicorn on your host.
+                            </div>
+                        </div>
                     </div>
                 </div>
 

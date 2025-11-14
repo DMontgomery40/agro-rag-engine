@@ -28,6 +28,52 @@
 
     const SECRET_MASK = '••••••••••••••••';
 
+    function attachSecretReveal(data) {
+        const env = (data && data.env) || {};
+        const containerSelector = '.input-group';
+        SECRET_FIELDS.forEach((k) => {
+            const field = document.querySelector(`[name="${k}"]`);
+            if (!field) return;
+            if (field.dataset.revealAttached === '1') return;
+            // Create toggle button
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'small-button';
+            btn.textContent = '👁️ Show';
+            btn.style.marginLeft = '6px';
+            btn.addEventListener('click', async () => {
+                try {
+                    if (field.type === 'password') {
+                        // Fetch unmasked env to populate the real value
+                        const r = await fetch(api('/api/config?unmask=1'));
+                        const d = await r.json();
+                        const real = (d.env && d.env[k]) || '';
+                        if (real) field.value = real;
+                        field.type = 'text';
+                        btn.textContent = '🙈 Hide';
+                        field.dataset.revealed = '1';
+                    } else {
+                        // Re-mask
+                        field.type = 'password';
+                        if (env[k]) {
+                            field.value = SECRET_MASK;
+                        } else {
+                            field.value = '';
+                        }
+                        btn.textContent = '👁️ Show';
+                        field.dataset.revealed = '0';
+                    }
+                } catch (e) {
+                    console.warn('[config.js] Failed to toggle secret:', k, e);
+                }
+            });
+            // Insert after input
+            const wrap = field.closest(containerSelector) || field.parentElement;
+            if (wrap) wrap.appendChild(btn);
+            field.dataset.revealAttached = '1';
+        });
+    }
+
     function setReposLoadingState(state, detail) {
         const section = document.getElementById('repos-section');
         if (!section) return;
@@ -150,6 +196,30 @@
                 field.value = v;
             }
         });
+
+        // Runtime Mode select (Infrastructure) - env population above already sets it
+        // Reranker effective state banner
+        try {
+            const eff = data.hints && data.hints.rerank_backend;
+            const warn = document.getElementById('rerank-none-warning');
+            if (warn) {
+                if (eff && eff.backend === 'none') {
+                    warn.style.display = 'block';
+                } else {
+                    warn.style.display = 'none';
+                }
+            }
+            // Default RERANK_BACKEND select to effective if env unset
+            const rrSel = document.querySelector('[name="RERANK_BACKEND"]');
+            if (rrSel && (!env.RERANK_BACKEND || String(env.RERANK_BACKEND).trim() === '')) {
+                if (eff && eff.backend) {
+                    rrSel.value = eff.backend;
+                }
+            }
+        } catch {}
+
+        // Secret reveal toggles
+        attachSecretReveal(data);
 
         // Populate repo select
         const repoSelect = $('#repo-select');

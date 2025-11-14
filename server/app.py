@@ -44,6 +44,7 @@ from server.index_stats import get_index_stats as _get_index_stats
 from typing import cast
 from server.feedback import router as feedback_router
 from server.reranker_info import router as reranker_info_router
+from server.reranker_info import reranker_available_options as _rr_available_options
 from server.alerts import router as alerts_router, monitoring_router
 from server.telemetry import log_query_event
 from server.reranker import rerank_candidates, get_reranker_info
@@ -93,6 +94,14 @@ def get_graph():
     return _graph
 
 CFG = {"configurable": {"thread_id": "http"}}
+
+# Log a warning if no reranker is effectively enabled (per policy)
+try:
+    _eff = _effective_rerank_backend()
+    if _eff.get("backend") == "none":
+        print("[warn] No reranker effectively enabled (RERANK_BACKEND=none or unavailable). GUI will reflect this state.")
+except Exception:
+    pass
 
 class Answer(BaseModel):
     answer: str
@@ -174,6 +183,53 @@ def health():
 @app.get("/api/health")
 def api_health():
     return health()
+
+# Explicitly expose reranker availability in monolithic app to avoid router drift
+@app.get("/api/reranker/available")
+def reranker_available():
+    return _rr_available_options()
+
+# --------- Reranker backend resolution helpers ---------
+import time as _time
+def _effective_rerank_backend() -> dict:
+    """
+    Determine the effective rerank backend following user policy:
+      1) 'local' if CE trained in the last week (model dir mtime < 7 days)
+      2) else 'cohere' if COHERE_API_KEY present
+      3) else 'local' if local CE present
+      4) else 'none'
+
+    Returns a dict with backend and reason.
+    """
+    backend_env = (os.getenv("RERANK_BACKEND", "").strip().lower() or "")
+    now = _time.time()
+    try:
+        info = get_reranker_info()
+    except Exception:
+        info = {}
+
+    # If explicitly set and valid, respect it but still expose reason
+    explicit = backend_env in {"cohere", "local", "hf", "none"}
+
+    model_mtime = float(info.get("model_dir_mtime") or 0.0)
+    model_recent = (now - model_mtime) <= (7 * 24 * 3600) if model_mtime > 0 else False
+    cohere_present = bool((os.getenv("COHERE_API_KEY", "") or "").strip())
+    local_path = (
+        info.get("resolved_path")
+        or info.get("path")
+        or os.getenv("AGRO_RERANKER_MODEL_PATH", "models/cross-encoder-agro")
+    )
+    local_present = bool(str(local_path)) and os.path.exists(str(local_path))
+
+    if explicit:
+        return {"backend": backend_env, "reason": "explicit_env"}
+    if model_recent:
+        return {"backend": "local", "reason": "recent_local_model"}
+    if cohere_present:
+        return {"backend": "cohere", "reason": "cohere_key_present"}
+    if local_present:
+        return {"backend": "local", "reason": "local_model_present"}
+    return {"backend": "none", "reason": "no_reranker_available"}
 
 # Pipeline Summary (for new Dashboard)
 @app.get("/api/pipeline/summary")
@@ -265,7 +321,13 @@ def pipeline_summary():
     return {
         "repo": {"name": repo_name, "mode": repo_mode, "branch": branch},
         "retrieval": {"mode": retrieval_mode, "top_k": top_k},
-        "reranker": {"enabled": rr_enabled, "backend": rr_backend, "provider": rr_provider, "model": rr_model},
+        "reranker": {
+            "enabled": rr_enabled,
+            "backend": rr_backend,
+            "effective": _effective_rerank_backend(),
+            "provider": rr_provider,
+            "model": rr_model
+        },
         "enrichment": {"enabled": enrich_enabled, "backend": enrich_backend, "model": enrich_model},
         "generation": {"provider": gen_provider, "model": gen_model},
         "health": {"qdrant": _qdrant_health(), "redis": _redis_health(), "llm": _llm_health()},
@@ -934,7 +996,7 @@ async def api_secrets_ingest(
     return {"ok": True, "applied": sorted(applied.keys()), "persisted": saved}
 
 @app.get("/api/config")
-def get_config() -> Dict[str, Any]:
+def get_config(request: Request) -> Dict[str, Any]:
     cfg = load_repos()
     # return a broad env snapshot for the GUI; rely on client to pick what it needs
     env: Dict[str, Any] = {}
@@ -947,18 +1009,22 @@ def get_config() -> Dict[str, Any]:
         'OAUTH_TOKEN', 'GRAFANA_API_KEY'
     }
 
+    # Support optional unmask for local/dev accessibility needs
+    unmask = str(request.query_params.get("unmask", "0")).strip().lower() in {"1", "true", "yes", "on"}
     for k, v in os.environ.items():
-        # Mask secret fields for security
-        if k in SECRET_FIELDS and v:
-            env[k] = '••••••••••••••••'  # Return mask indicator
+        if k in SECRET_FIELDS and v and not unmask:
+            env[k] = '••••••••••••••••'
         else:
             env[k] = v
 
     repos = cfg.get("repos", [])
+    # Provide rerank backend hint per policy
+    eff = _effective_rerank_backend()
     return {
         "env": env,
         "default_repo": cfg.get("default_repo"),
         "repos": repos,
+        "hints": {"rerank_backend": eff},
     }
 
 @app.post("/api/config")

@@ -82,15 +82,48 @@ def secrets_ingest(text: str, persist: bool) -> Dict[str, Any]:
     return {"ok": True, "applied": sorted(applied.keys()), "persisted": saved}
 
 
-def get_config() -> Dict[str, Any]:
+def _effective_rerank_backend() -> Dict[str, Any]:
+    try:
+        from server.reranker import get_reranker_info
+    except Exception:
+        get_reranker_info = lambda: {}
+    import time
+    backend_env = (os.getenv("RERANK_BACKEND", "").strip().lower() or "")
+    now = time.time()
+    try:
+        info = get_reranker_info()
+    except Exception:
+        info = {}
+    explicit = backend_env in {"cohere", "local", "hf", "none"}
+    mtime = float(info.get("model_dir_mtime") or 0.0)
+    recent = (now - mtime) <= (7 * 24 * 3600) if mtime > 0 else False
+    cohere = bool((os.getenv("COHERE_API_KEY", "") or "").strip())
+    path = info.get("resolved_path") or info.get("path") or os.getenv("AGRO_RERANKER_MODEL_PATH", "models/cross-encoder-agro")
+    local_present = bool(str(path)) and os.path.exists(str(path))
+    if explicit:
+        return {"backend": backend_env, "reason": "explicit_env"}
+    if recent:
+        return {"backend": "local", "reason": "recent_local_model"}
+    if cohere:
+        return {"backend": "cohere", "reason": "cohere_key_present"}
+    if local_present:
+        return {"backend": "local", "reason": "local_model_present"}
+    return {"backend": "none", "reason": "no_reranker_available"}
+
+
+def get_config(unmask: bool = False) -> Dict[str, Any]:
     cfg = load_repos()
     env: Dict[str, Any] = {}
     for k, v in os.environ.items():
-        env[k] = '••••••••••••••••' if k in SECRET_FIELDS and v else v
+        if (not unmask) and (k in SECRET_FIELDS) and v:
+            env[k] = '••••••••••••••••'
+        else:
+            env[k] = v
     return {
         "env": env,
         "default_repo": cfg.get("default_repo"),
         "repos": cfg.get("repos", []),
+        "hints": {"rerank_backend": _effective_rerank_backend()},
     }
 
 
