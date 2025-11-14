@@ -68,16 +68,35 @@
 
 ---
 
+## Module Differences Detected
+
+### 4. Some /web/src/modules/*.js differ from /gui/js/*.js
+**Status:** REVIEW NEEDED  
+**Issue:** Some modules were modified in React version:
+- `onboarding.js` - differs from `/gui` version
+- `chat.js` - differs from `/gui` version  
+- `core-utils.js` - differs from `/gui` version
+- `storage-calculator.js` - ✅ matches
+- `reranker.js` - ✅ matches
+
+**Action Required:**
+- [ ] Compare diffs to see if changes are improvements or regressions
+- [ ] Test affected features (onboarding wizard, chat) to verify they work
+- [ ] If regressions found, restore from `/gui/js/`
+
+---
+
 ## Next Steps (After Current Migration)
 
 1. Test each RAG subtab in browser with actual server
 2. Fix DataQualitySubtab TODOs
-3. Add LiveTerminal if needed for better UX
-4. Integrate feedback buttons into Chat component
-5. Run Playwright smoke tests
-6. Get user verification with screenshots
+3. Verify module differences don't break functionality
+4. Add LiveTerminal if needed for better UX
+5. Integrate feedback buttons into Chat component
+6. Run Playwright smoke tests
+7. Get user verification with screenshots
 
 ---
 
-**Last Updated:** 2025-01-06 (Step 2 complete)
+**Last Updated:** 2025-01-06 (Major migration commit 7a5fd0c)
 
