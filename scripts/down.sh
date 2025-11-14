@@ -4,22 +4,11 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-# Stop embedded editor if running
-if [[ -f "$ROOT_DIR/scripts/editor_down.sh" ]]; then
-  echo "[down] Stopping embedded editor..."
-  bash "$ROOT_DIR/scripts/editor_down.sh" || true
-fi
+echo "[down] Stopping and removing Docker stack (agro project) ..."
+docker compose down -v || true
 
-echo "[down] Stopping MCP server ..."
-pkill -f "server.mcp.server" 2>/dev/null || true
-
-echo "[down] Stopping API ..."
-docker compose -f "$ROOT_DIR/docker-compose.services.yml" down api || true
-
-echo "[down] Stopping infra (Qdrant + Redis) ..."
-(
-  cd "$ROOT_DIR/infra"
-  docker compose down
-)
+echo "[down] Pruning dangling worktrees (no delete of external dirs) ..."
+git worktree prune || true
 
 echo "[down] Done."
+
