@@ -37,11 +37,8 @@ ensure_docker() {
 
 ensure_docker
 
-echo "[up] Starting infra (Qdrant + Redis + Prometheus + Grafana) ..."
-(
-  cd "$ROOT_DIR/infra"
-  docker compose up -d
-)
+echo "[up] Starting full stack (DB/Cache/Observability/API/Editor/MCP) ..."
+docker compose up -d
 
 echo "[up] Verifying Qdrant ..."
 curl -s http://127.0.0.1:6333/collections >/dev/null || echo "[warn] Qdrant not reachable yet"
@@ -65,15 +62,9 @@ else
   echo "[warn] Grafana not ready yet (check 'docker logs agro-grafana')"
 fi
 
-echo "[up] Starting MCP server in background ..."
-if pgrep -f "server.mcp.server" >/dev/null; then
-  echo "[up] MCP already running."
-else
-  nohup bash -lc ". .venv/bin/activate && python -m server.mcp.server" >/tmp/mcp_server.log 2>&1 &
-  sleep 1
-fi
+echo "[up] MCP service available at http://127.0.0.1:8013 (via Docker)"
 
-echo "[up] Done. Logs: /tmp/mcp_server.log"
+echo "[up] Done."
 
 # --- Optional: Start local Ollama (Qwen 3) if available ---
 if command -v ollama >/dev/null 2>&1; then
@@ -91,8 +82,4 @@ else
   echo "[up] Ollama not installed (skipping local Qwen)."
 fi
 
-# Start embedded editor if enabled
-if [[ -f "$ROOT_DIR/scripts/editor_up.sh" ]]; then
-  echo "[up] Starting embedded editor..."
-  bash "$ROOT_DIR/scripts/editor_up.sh" || echo "[up] Editor startup failed (non-fatal)"
-fi
+# Editor now runs via Docker Compose as service 'editor'.

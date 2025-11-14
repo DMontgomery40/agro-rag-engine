@@ -1,9 +1,175 @@
-# Convenience wrapper: delegates to infra/docker-compose.yml
-# This allows running `docker compose ps` from the repo root
-# Note: Use COMPOSE_PROJECT_NAME=infra or run from infra/ directory
+name: agro
 
-name: infra
+services:
+  # ----------- Vector DB + Cache -----------
+  qdrant:
+    image: qdrant/qdrant:v1.15.5
+    container_name: qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    environment:
+      - QDRANT__STORAGE__USE_MMAP=false
+      - QDRANT__STORAGE__ON_DISK_PERSISTENCE=true
+    volumes:
+      - ./data/qdrant:/qdrant/storage
 
-include:
-  - infra/docker-compose.yml
+  redis:
+    image: redis/redis-stack:7.2.0-v10
+    container_name: rag-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    environment:
+      - REDIS_ARGS=--save ""
 
+  # ----------- Observability -----------
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: agro-alertmanager
+    restart: unless-stopped
+    volumes:
+      - ./infra/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    ports:
+      - "9093:9093"
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: agro-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./infra/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/prometheus-alert-rules.yml:/etc/prometheus/prometheus-alert-rules.yml:ro
+      - prom_data:/prometheus
+    ports:
+      - "9090:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - alertmanager
+
+  loki:
+    image: grafana/loki:latest
+    container_name: agro-loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./infra/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: agro-promtail
+    restart: unless-stopped
+    volumes:
+      - ./infra/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/log:/var/log:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: agro-grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Editor
+      - GF_USERS_DEFAULT_THEME=dark
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=Trenton2023
+      - GF_SECURITY_COOKIE_SAMESITE=disabled
+      - GF_INSTALL_PLUGINS=yesoreyeram-infinity-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+      - loki
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # ----------- API + MCP Services -----------
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rag-service-api
+    environment:
+      - QDRANT_URL=${QDRANT_URL:-http://qdrant:6333}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GEN_MODEL=${GEN_MODEL:-qwen3-coder:30b}
+      - OLLAMA_URL=${OLLAMA_URL:-}
+      - OAUTH_ENABLED=${OAUTH_ENABLED:-false}
+      - OAUTH_TOKEN=${OAUTH_TOKEN:-}
+    depends_on:
+      - qdrant
+      - redis
+    ports:
+      - "8012:8012"
+
+  mcp-http:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rag-service-mcp-http
+    command: python -m server.mcp.http
+    environment:
+      - QDRANT_URL=${QDRANT_URL:-http://qdrant:6333}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+    ports:
+      - "8013:8013"
+    depends_on:
+      - api
+
+  mcp-node:
+    build:
+      context: .
+      dockerfile: Dockerfile.node
+    container_name: rag-service-node
+    environment:
+      - RAG_API_URL=${RAG_API_URL:-http://api:8012}
+      - PORT=8014
+    ports:
+      - "8014:8014"
+    depends_on:
+      - api
+
+  # ----------- Embedded Editor (code-server) -----------
+  editor:
+    image: codercom/code-server:latest
+    container_name: agro-openvscode
+    restart: unless-stopped
+    ports:
+      - "4440:8080"
+    environment:
+      - PASSWORD=${EDITOR_PASSWORD:-}
+    command: ["--auth", "none", "--bind-addr", "0.0.0.0:8080", "/home/workspace"]
+    volumes:
+      - ./:/home/workspace
+      - ./.editor_data/code-server-config:/home/coder/.config/code-server
+      - ./.editor_data/Code:/home/coder/.config/Code
+      - ./.editor_data/code-server-data:/home/coder/.local/share/code-server
+      - ./.editor_data/openvscode:/home/.openvscode-server
+
+volumes:
+  prom_data:
+  alertmanager_data:
+  grafana_data:
+  loki_data:

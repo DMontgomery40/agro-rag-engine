@@ -19,6 +19,7 @@ if [ -f "$ROOT_DIR/.env" ]; then
   set +a
 fi
 
+<<<<<<< HEAD
 # 1) Optional infra stack
 if [[ "${DEV_WITH_INFRA:-0}" == "1" ]]; then
   log "DEV_WITH_INFRA=1 → bringing up infra stack ..."
@@ -28,21 +29,49 @@ else
 fi
 
 # 2) Host/port (allow overrides via env or .env)
+=======
+log "Bringing up full Docker stack (default) ..."
+bash "$ROOT_DIR/scripts/up.sh"
+>>>>>>> 1d13175 (chore(stack): unify Docker Compose; make Docker default; uvicorn dev-only; add editor service; add GUI smoke configs; add RAG React subtabs + panels (additive, no legacy disruption))
 HOST="${UVICORN_HOST:-${HOST:-127.0.0.1}}"
 PORT="${UVICORN_PORT:-${PORT:-8012}}"
 OPEN_BROWSER="${OPEN_BROWSER:-1}"
 
-# 3) Ensure Docker is running
-if ! docker info >/dev/null 2>&1; then
-  log "Docker daemon not reachable. Start Docker Desktop/Colima."
-  exit 1
+<<<<<<< HEAD
+# Dev-only override: allow local uvicorn instead of Docker
+if [[ "${DEV_LOCAL_UVICORN:-0}" = "1" ]]; then
+  if [ ! -f "$ROOT_DIR/.venv/bin/uvicorn" ]; then
+    log "Venv or uvicorn missing — running setup.sh"
+    bash "$ROOT_DIR/scripts/setup.sh"
+  fi
+  . "$ROOT_DIR/.venv/bin/activate"
+  if pgrep -f "uvicorn .*server\.app:app" >/dev/null; then
+    log "Uvicorn already running."
+  else
+    log "Starting uvicorn locally on $HOST:$PORT (DEV_LOCAL_UVICORN=1) ..."
+    nohup uvicorn server.app:app --host "$HOST" --port "$PORT" > /tmp/uvicorn_server.log 2>&1 &
+    sleep 1
+  fi
+fi
+=======
+# Dev-only override: allow local uvicorn instead of Docker
+if [[ "${DEV_LOCAL_UVICORN:-0}" = "1" ]]; then
+  if [ ! -f "$ROOT_DIR/.venv/bin/uvicorn" ]; then
+    log "Venv or uvicorn missing — running setup.sh"
+    bash "$ROOT_DIR/scripts/setup.sh"
+  fi
+  . "$ROOT_DIR/.venv/bin/activate"
+  if pgrep -f "uvicorn .*server\.app:app" >/dev/null; then
+    log "Uvicorn already running."
+  else
+    log "Starting uvicorn locally on $HOST:$PORT (DEV_LOCAL_UVICORN=1) ..."
+    nohup uvicorn server.app:app --host "$HOST" --port "$PORT" > /tmp/uvicorn_server.log 2>&1 &
+    sleep 1
+  fi
 fi
 
-# 4) Start API container (docker-compose.services.yml)
-log "Starting API container via docker compose (docker-compose.services.yml) ..."
-docker compose -f "$ROOT_DIR/docker-compose.services.yml" up -d api
-
-# 5) Wait for health
+# Wait for health (Docker API or local uvicorn)
+>>>>>>> 1d13175 (chore(stack): unify Docker Compose; make Docker default; uvicorn dev-only; add editor service; add GUI smoke configs; add RAG React subtabs + panels (additive, no legacy disruption))
 URL="http://$HOST:$PORT/health"
 for i in $(seq 1 60); do
   if curl -fsS "$URL" >/dev/null 2>&1; then
@@ -67,6 +96,8 @@ else
   log "GUI: http://$HOST:$PORT/"
 fi
 
-log "Done. View API logs:"
-log "  docker compose -f \"$ROOT_DIR/docker-compose.services.yml\" logs -f api"
-log "  or docker logs agro-api"
+<<<<<<< HEAD
+log "Done."
+=======
+log "Done."
+>>>>>>> 1d13175 (chore(stack): unify Docker Compose; make Docker default; uvicorn dev-only; add editor service; add GUI smoke configs; add RAG React subtabs + panels (additive, no legacy disruption))

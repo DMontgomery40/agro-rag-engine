@@ -6,7 +6,8 @@
     "test:e2e": "playwright test",
     "test:ui": "playwright test --ui",
     "test:gui": "playwright test --config=playwright.gui.config.ts",
-    "test:gui:headed": "playwright test --config=playwright.gui.config.ts --headed"
+    "test:gui:headed": "playwright test --config=playwright.gui.config.ts --headed",
+    "test:smoke:static": "playwright test -c playwright.static-gui.config.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1"

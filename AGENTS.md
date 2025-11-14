@@ -1,3 +1,20 @@
+# Playwright Verification Policy (Updated)
+
+You must verify work with Playwright (IF GUI) — or at least a backend smoke test in `/tests` — before reporting results. However, due to UI scale and accessibility needs, GUI verification via Playwright is now limited to “non‑black‑screen” smoke only. Deep visual/content correctness requires human review.
+
+What’s required for GUI work:
+- A Playwright smoke that proves the app renders (no blank/black screen), root route responds, and the top‑level navigation renders.
+- Do not rely on Playwright to assert deep page content beyond structure/visibility (e.g., whether all sub‑sections render far below the fold). Those require human screenshots/feedback.
+
+What’s required for backend‑only work:
+- A minimal smoke test under `/tests/` that exercises the new or changed endpoint(s) and returns sane responses.
+
+Reporting:
+- Provide Playwright output or test logs/screenshots for GUI smoke, and minimal API responses for backend smoke.
+- Where deeper UI validation is required, explicitly request human screenshots and record the feedback.
+
+This update does not reduce the bar for functionality. It clarifies that Playwright’s role is structural/health smoke, while detailed UI validation is human‑driven for accessibility and correctness.
+
 # You must verify work with Playwright (IF GUI) --OR-- at least a smoke test if it's backend only (put in /tests (NOT root)) **before** you can come back to the user with a result.  ***This is non-negotiable and mandator***
 
   - Do not come back with a response of 'done', 'complete', 'success', etc, without actual tangible proof that what you have done or created works
@@ -43,6 +60,17 @@
   - **BROKEN SETTINGS IN GUI MUST BE FIXED, THEY MUST NOT BE ERASED**
 
 # ***All agent-created .md files must go in /agent_docs/, please don't clutter root unnessarily***
+
+# Cascading AGENTS.md (Scope and Overrides)
+
+- AGENTS.md files may be placed at multiple directory levels. The scope of an AGENTS.md file is the entire directory tree rooted at the folder that contains it.
+- More deeply nested AGENTS.md files take precedence over parent ones for files within their subtree.
+- Use `AGENTS.override.md` in a directory to explicitly override parent instructions when necessary; overrides must be narrowly scoped and documented.
+- All agents must resolve applicable instructions by walking up from the target file’s directory toward repo root and applying the most specific rules first.
+
+During the React migration, prefer these scopes:
+- `gui/` remains the canonical user‑facing UI during consolidation; do not break it.
+- `web/` houses the React/Vite app. Treat UI work here as opt‑in and gated by the Playwright “non‑black‑screen” smoke + human review.
 
 # Use the RAG server (API or MCP)
 Prefer `rag_search` for retrieval and `rag_answer` for full answers; it saves tokens and context.
