@@ -133,6 +133,28 @@ export function LearningRankerSubtab() {
     return () => clearInterval(interval);
   }, [fetchStatus, fetchRerankerInfo]);
 
+  // Initialize LiveTerminal for streaming logs (matches /gui/js/reranker.js initRerankerTerminal)
+  useEffect(() => {
+    const initTerminal = () => {
+      const w = window as any;
+      if (w.LiveTerminal && !w._rerankerTerminal) {
+        try {
+          w._rerankerTerminal = new w.LiveTerminal('reranker-terminal-container');
+          console.log('[LearningRanker] Live terminal initialized');
+        } catch (e) {
+          console.warn('[LearningRanker] Failed to init terminal:', e);
+        }
+      }
+    };
+
+    // Try immediate init
+    initTerminal();
+
+    // Also try after a delay in case LiveTerminal loads late
+    const timeout = setTimeout(initTerminal, 1000);
+    return () => clearTimeout(timeout);
+  }, []);
+
   // Training workflow handlers
   const handleMineTriplets = async () => {
     setCurrentTask('Mining triplets from query logs...');
@@ -440,6 +462,9 @@ export function LearningRankerSubtab() {
           <div style={{ fontSize: '12px', color: 'var(--fg-muted)', marginBottom: '4px' }}>Current Task:</div>
           <div style={{ fontSize: '14px', fontFamily: "'SF Mono', monospace", color: 'var(--fg-muted)' }}>{currentTask}</div>
         </div>
+
+        {/* Live Terminal - matches /gui line 3611 */}
+        <div id="reranker-terminal-container" style={{ marginTop: '16px' }}></div>
       </div>
 
       {/* Settings */}
