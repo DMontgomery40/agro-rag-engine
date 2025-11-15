@@ -236,3 +236,36 @@ print(results)
 - Stay on your current branch unless explicitly instructed to switch.
 - Open PRs from `development` → `staging`, and from `staging` → `main` only.
 - Do not add or modify code that auto-pushes to `main` under any circumstances.
+
+# **CRITICAL: Architecture Audit Coordination Rule**
+
+***After EVERY code change (frontend OR backend), you MUST immediately update `agent_docs/___ARCHITECTURE_COMPLETE_AUDIT___.md`***
+
+  - This is a LIVING DOCUMENT that tracks ALL architectural state
+  - Add what you changed: file names, line numbers, exact changes
+  - Update dependency information if imports changed
+  - Mark issues as FIXED when you resolve them
+  - Add new issues when you discover them
+  - This is how multiple agents COORDINATE their work
+  - Without this, agents work blind and break each other's code
+  - **THIS IS MANDATORY** - not optional, not "when you remember"
+  - Update the audit IMMEDIATELY after each edit, before moving to next task
+
+## Why This Matters
+
+  - Frontend and backend agents work simultaneously
+  - They need to know what the other has done
+  - The audit is the SINGLE SOURCE OF TRUTH
+  - Example: Backend adds endpoint → updates audit → Frontend sees it's ready
+  - Example: Frontend adds UI → updates audit → Backend knows what endpoint to add
+  - Without coordination: Duplicate work, conflicts, broken features
+
+## How to Update the Audit
+
+  1. Find the relevant section (use grep or search)
+  2. Add a timestamped entry under "CHANGES LOG"
+  3. Update file line counts if significant changes
+  4. Mark TODOs/issues as resolved
+  5. Add new findings if you discover problems
+  6. Commit the audit WITH your code changes (same commit)
+

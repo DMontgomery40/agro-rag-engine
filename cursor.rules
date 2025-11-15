@@ -44,6 +44,16 @@
 
 # ***All agent-created .md files must go in /agent_docs/, please don't clutter root unnessarily***
 
+# **CRITICAL: Update Architecture Audit After EVERY Change**
+
+  - **MANDATORY RULE:** After EVERY code change (frontend OR backend), immediately update `agent_docs/___ARCHITECTURE_COMPLETE_AUDIT___.md`
+  - Add what you changed, which files, which line numbers
+  - Update dependencies if imports changed
+  - Mark issues as FIXED when resolved
+  - This is how frontend and backend agents COORDINATE
+  - If you don't update the audit, the other agent won't know what you did
+  - THIS IS NOT OPTIONAL - it's required for team coordination
+
 # Use the RAG server (API or MCP)
 Prefer `rag_search` for retrieval and `rag_answer` for full answers; it saves tokens and context.
 After `/answer`, please rate via `/feedback` (1–5) to improve quality.

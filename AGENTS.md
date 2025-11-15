@@ -124,3 +124,71 @@ print(results)
 - Stay on your current branch unless explicitly instructed to switch.
 - Open PRs from `development` → `staging`, and from `staging` → `main` only.
 - Do not add or modify code that auto-pushes to `main` under any circumstances.
+
+---
+
+# MANDATORY: Architecture Audit Coordination (CRITICAL FOR MULTI-AGENT WORK)
+
+**Every agent MUST update the architecture audit after EVERY change.**
+
+## The Rule
+
+After ANY code modification:
+1. Open: `agent_docs/___ARCHITECTURE_COMPLETE_AUDIT___.md`
+2. Add your change to the CHANGES LOG section
+3. Include: timestamp, file name, line numbers, what changed
+4. Update dependencies if you changed imports
+5. Mark issues as FIXED
+6. Commit audit WITH your code changes
+
+## Why This Exists
+
+Multiple agents work on this codebase simultaneously:
+- Frontend agent works on React UI
+- Backend agent works on FastAPI endpoints  
+- Other agents work on specific features
+
+**Without the audit:**
+- Agents duplicate work
+- Agents break each other's code
+- No one knows what's been done
+- Chaos
+
+**With the audit:**
+- Every agent knows current state
+- Can see what others have done
+- Can coordinate on shared work
+- Clean collaboration
+
+## Example Update
+
+You just fixed hardcoded embedding model. Immediately add:
+
+```markdown
+## 2025-11-14 15:30 - Backend Agent - Embedding Model Fix
+
+**Files Modified:**
+- indexer/index_repo.py line 401
+- retrieval/hybrid_search.py line 473
+
+**Changes:**
+- Reads EMBEDDING_MODEL env var before calling embed functions
+- Default: 'text-embedding-3-large'
+- Tested: ✅ Works with custom models
+
+**Impact:**
+- Frontend Dashboard now shows actual configured model
+- Users can set EMBEDDING_MODEL in config
+- No more hardcoding
+```
+
+## Enforcement
+
+This rule is MANDATORY, not optional.
+Violations:
+- Your work may be reverted
+- Other agents can't use your changes
+- User has to manually document your work
+
+**ALWAYS update the audit. ALWAYS.**
+
