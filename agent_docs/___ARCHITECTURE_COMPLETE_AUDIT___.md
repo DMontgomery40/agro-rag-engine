@@ -1693,3 +1693,36 @@ Add useEffect to load from /api/config on mount.
 
 ---
 
+
+## 2025-11-14 - Onboarding Help Panel Added
+
+**New File:** web/src/components/Onboarding/HelpPanel.tsx (200 lines)
+
+**What it does:**
+- Mini chat interface on right side of onboarding
+- Question input (#onboard-help-input)
+- Ask button (#onboard-help-send)
+- Results display (#onboard-help-results)
+- 3 quick question pills (hover effects)
+- Link to full chat
+
+**Backend Integration:**
+- ✅ Calls /api/chat with question
+- ✅ Shows answer in results
+- ✅ Loading states
+- ✅ Error handling
+
+**Polish:**
+- Pill hover effects (color + border change)
+- Smooth transitions (0.2s ease)
+- Keyboard support (Enter to ask)
+- ARIA labels
+
+**File Modified:** web/src/components/Onboarding/Wizard.tsx
+- Added HelpPanel import
+- Rendered after navigation footer
+
+**Testing:** Open /start tab, type question in help panel, verify it calls backend
+
+---
+

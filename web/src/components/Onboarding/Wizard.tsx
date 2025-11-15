@@ -5,6 +5,7 @@ import { SourceStep } from './SourceStep';
 import { IndexStep } from './IndexStep';
 import { QuestionsStep } from './QuestionsStep';
 import { TuneStep } from './TuneStep';
+import { HelpPanel } from './HelpPanel';
 
 export function Wizard() {
   const { state, setStep, nextStep, prevStep, setProjectDraft } = useOnboarding();
@@ -130,6 +131,9 @@ export function Wizard() {
           {step === maxStep ? 'Done' : 'Next →'}
         </button>
       </div>
+
+      {/* Help Panel - Always visible on side */}
+      <HelpPanel />
     </div>
   );
 }
