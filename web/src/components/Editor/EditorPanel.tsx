@@ -43,8 +43,9 @@ export default function EditorPanel() {
   };
 
   return (
-    <div className="settings-section">
-      {/* Header */}
+    <div id="tab-vscode" className="tab-content" style={{ padding: 0 }}>
+      <div className="settings-section">
+        {/* Header */}
       <div
         style={{
           display: 'flex',
@@ -186,10 +187,11 @@ export default function EditorPanel() {
         />
       </div>
 
-      {/* Description */}
-      <p className="small" style={{ color: 'var(--fg-muted)', marginTop: '12px' }}>
-        Full VS Code experience running in your browser. Changes are saved to the workspace automatically.
-      </p>
+        {/* Description */}
+        <p className="small" style={{ color: 'var(--fg-muted)', marginTop: '12px' }}>
+          Full VS Code experience running in your browser. Changes are saved to the workspace automatically.
+        </p>
+      </div>
     </div>
   );
 }

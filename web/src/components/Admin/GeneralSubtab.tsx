@@ -299,7 +299,9 @@ export function GeneralSubtab() {
           <div className="input-group">
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <input
+                name="EDITOR_ENABLED"
                 type="checkbox"
+                value="1"
                 checked={config.EDITOR_ENABLED === '1'}
                 onChange={(e) => updateConfig('EDITOR_ENABLED', e.target.checked ? '1' : '0')}
               />
@@ -312,7 +314,9 @@ export function GeneralSubtab() {
           <div className="input-group">
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <input
+                name="EDITOR_EMBED_ENABLED"
                 type="checkbox"
+                value="1"
                 checked={config.EDITOR_EMBED_ENABLED === '1'}
                 onChange={(e) => updateConfig('EDITOR_EMBED_ENABLED', e.target.checked ? '1' : '0')}
               />
@@ -328,6 +332,7 @@ export function GeneralSubtab() {
           <div className="input-group">
             <label>Editor Port</label>
             <input
+              name="EDITOR_PORT"
               type="number"
               value={config.EDITOR_PORT || ''}
               onChange={(e) => updateConfig('EDITOR_PORT', e.target.value)}
@@ -350,6 +355,7 @@ export function GeneralSubtab() {
           <div className="input-group">
             <label>Bind Mode</label>
             <select
+              name="EDITOR_BIND"
               value={config.EDITOR_BIND || 'local'}
               onChange={(e) => updateConfig('EDITOR_BIND', e.target.value)}
               style={{
