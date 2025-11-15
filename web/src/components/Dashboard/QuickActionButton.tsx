@@ -26,7 +26,6 @@ export function QuickActionButton({ id, icon, label, onClick, dataAction }: Quic
       }}
       onMouseDown={() => setIsActive(true)}
       onMouseUp={() => setIsActive(false)}
-      onMouseLeave={() => setIsActive(false)}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -61,6 +60,7 @@ export function QuickActionButton({ id, icon, label, onClick, dataAction }: Quic
         }
       }}
       onMouseLeave={(e) => {
+        setIsActive(false);
         e.currentTarget.style.background = 'var(--panel)';
         e.currentTarget.style.borderColor = 'var(--line)';
         e.currentTarget.style.color = 'var(--fg-muted)';
