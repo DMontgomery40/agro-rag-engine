@@ -9,6 +9,7 @@ import './styles/style.css'
 import './styles/global.css'
 import './styles/micro-interactions.css'
 import './styles/storage-calculator.css'
+import './styles/slider-polish.css' // Range input polish for onboarding sliders
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
