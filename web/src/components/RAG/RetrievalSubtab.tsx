@@ -240,6 +240,7 @@ export function RetrievalSubtab() {
             </label>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
               <input
+                name="MQ_REWRITES"
                 type="range"
                 min="1"
                 max="6"
@@ -253,6 +254,7 @@ export function RetrievalSubtab() {
                 style={{ flex: 1 }}
               />
               <input
+                name="MQ_REWRITES"
                 type="number"
                 min="1"
                 max="6"
@@ -299,6 +301,7 @@ export function RetrievalSubtab() {
             </label>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
               <input
+                name="FINAL_K"
                 type="range"
                 min="1"
                 max="100"
@@ -312,6 +315,7 @@ export function RetrievalSubtab() {
                 style={{ flex: 1 }}
               />
               <input
+                name="FINAL_K"
                 type="number"
                 min="1"
                 max="100"
@@ -357,6 +361,7 @@ export function RetrievalSubtab() {
               </span>
             </label>
             <select
+              name="USE_SEMANTIC_SYNONYMS"
               value={useSemanticSynonyms ? 'ON' : 'OFF'}
               onChange={(e) => {
                 const val = e.target.value === 'ON';
@@ -402,6 +407,7 @@ export function RetrievalSubtab() {
             </label>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
               <input
+                name="TOPK_DENSE"
                 type="range"
                 min="1"
                 max="200"
@@ -415,6 +421,7 @@ export function RetrievalSubtab() {
                 style={{ flex: 1 }}
               />
               <input
+                name="TOPK_DENSE"
                 type="number"
                 min="1"
                 max="200"
@@ -451,6 +458,7 @@ export function RetrievalSubtab() {
               VECTOR BACKEND
             </label>
             <input
+              name="VECTOR_BACKEND"
               type="text"
               value={vectorBackend}
               onChange={(e) => {
@@ -493,6 +501,7 @@ export function RetrievalSubtab() {
             </label>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
               <input
+                name="TOPK_SPARSE"
                 type="range"
                 min="1"
                 max="200"
@@ -506,6 +515,7 @@ export function RetrievalSubtab() {
                 style={{ flex: 1 }}
               />
               <input
+                name="TOPK_SPARSE"
                 type="number"
                 min="1"
                 max="200"
@@ -551,6 +561,7 @@ export function RetrievalSubtab() {
               </span>
             </label>
             <select
+              name="HYDRATION_MODE"
               value={hydrationMode}
               onChange={(e) => {
                 setHydrationMode(e.target.value);
@@ -596,6 +607,7 @@ export function RetrievalSubtab() {
             </label>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
               <input
+                name="HYDRATION_MAX_CHARS"
                 type="range"
                 min="0"
                 max="10000"
@@ -609,6 +621,7 @@ export function RetrievalSubtab() {
                 style={{ flex: 1 }}
               />
               <input
+                name="HYDRATION_MAX_CHARS"
                 type="number"
                 min="0"
                 max="10000"
@@ -655,6 +668,7 @@ export function RetrievalSubtab() {
               </span>
             </label>
             <select
+              name="VENDOR_MODE"
               value={vendorMode}
               onChange={(e) => {
                 setVendorMode(e.target.value);
