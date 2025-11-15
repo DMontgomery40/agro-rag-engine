@@ -135,6 +135,26 @@ export function IndexingSubtab() {
 
   return (
     <div id="tab-rag-indexing" className="rag-subtab-content">
+      {/* Repo/Branch Display - matches /gui */}
+      <div style={{ padding: '16px 24px', background: 'var(--panel)', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span style={{ color: 'var(--fg-muted)', fontSize: '13px', fontFamily: "'SF Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.5px' }}>Current Repo:</span>
+          <select 
+            id="indexing-repo-selector" 
+            value={selectedRepo}
+            onChange={(e) => setSelectedRepo(e.target.value)}
+            style={{ background: 'var(--ok)', color: '#000', border: 'none', padding: '6px 12px', borderRadius: '4px', fontSize: '14px', fontWeight: 700, fontFamily: "'SF Mono', monospace", cursor: 'pointer' }}
+          >
+            {repos.map(repo => (
+              <option key={repo} value={repo}>{repo}</option>
+            ))}
+          </select>
+        </div>
+        <div style={{ color: 'var(--fg-muted)', fontSize: '11px', fontFamily: "'SF Mono', monospace" }}>
+          <span style={{ color: 'var(--fg-muted)' }}>Branch:</span> <span id="indexing-branch-display" style={{ color: 'var(--link)', fontWeight: 600 }}>development</span>
+        </div>
+      </div>
+
       {/* ONE SIMPLE INDEX BUTTON */}
       <div className="settings-section" style={{ borderLeft: '3px solid var(--ok)', padding: '32px' }}>
         <h2 style={{ margin: '0 0 24px 0', fontSize: '24px', fontWeight: 700 }}>
