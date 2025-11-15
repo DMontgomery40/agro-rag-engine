@@ -5,6 +5,9 @@
  * All components are fully accessible with ARIA labels and support theming.
  */
 
+// Button
+export { Button } from './Button';
+
 // Progress indicators
 export { ProgressBar } from './ProgressBar';
 export type { ProgressBarProps } from './ProgressBar';

@@ -2,7 +2,7 @@
 // Converted from legacy navigation.js TAB_REGISTRY and NEW_TABS
 
 import { ReactNode, ComponentType } from 'react';
-import Dashboard from '../pages/Dashboard';
+import { Dashboard } from '../pages/Dashboard';
 import Docker from '../pages/Docker';
 import ChatTab from '../components/tabs/ChatTab';
 import VSCodeTab from '../components/tabs/VSCodeTab';
