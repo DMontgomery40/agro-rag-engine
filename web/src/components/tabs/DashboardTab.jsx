@@ -1,7 +1,7 @@
 export default function DashboardTab() {
   return (
-    <>
-                {/* Compact Status + Quick Actions */}
+    <div id="tab-dashboard" className="tab-content active">
+      {/* Compact Status + Quick Actions */}
                 <div className="settings-section" style={{background: 'var(--panel)', borderLeft: '3px solid var(--accent)'}}>
                     <div style={{display: 'grid', gridTemplateColumns: '300px 1fr', gap: '24px', alignItems: 'start'}}>
                         {/* Left: Status Overview */}
@@ -271,6 +271,6 @@ export default function DashboardTab() {
                         </div>
                     </div>
                 </div>
-    </>
-  )
+    </div>
+  );
 }

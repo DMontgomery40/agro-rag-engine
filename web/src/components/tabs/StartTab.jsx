@@ -1,5 +1,9 @@
 import { Wizard } from '../Onboarding/Wizard';
 
 export default function StartTab() {
-  return <Wizard />;
+  return (
+    <div id="tab-start" className="tab-content">
+      <Wizard />
+    </div>
+  );
 }

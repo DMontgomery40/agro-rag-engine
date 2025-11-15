@@ -1,7 +1,7 @@
 export default function ProfilesTab() {
   return (
-    <>
-                <div id="tab-profiles-budget" className="section-subtab active">
+    <div id="tab-profiles" className="tab-content">
+      <div id="tab-profiles-budget" className="section-subtab active">
                 {/* Budget Calculator & Cost Tracking (from analytics-cost) */}
                 <div className="settings-section" style={{borderLeft: '3px solid var(--warn)'}}>
                     <h3>⚠️ Cost & Token Burn Alerts</h3>
@@ -83,6 +83,6 @@ export default function ProfilesTab() {
                         <button className="small-button" id="btn-open-admin-integrations" style={{background: 'var(--link)', color: 'var(--accent-contrast)', fontWeight:600}}>Open Admin → Integrations</button>
                     </div>
                 </div>
-    </>
-  )
+    </div>
+  );
 }

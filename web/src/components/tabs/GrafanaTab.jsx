@@ -1,7 +1,7 @@
 export default function GrafanaTab() {
   return (
-    <>
-                <div id="tab-grafana-config" className="section-subtab" style={{padding: '24px'}}>
+    <div id="tab-grafana" className="tab-content" style={{padding: 0}}>
+      <div id="tab-grafana-config" className="section-subtab" style={{padding: '24px'}}>
                     <div className="settings-section">
                         <h3 id="grafana-config-anchor">Grafana Metrics Dashboard</h3>
                         <p className="small">Configure and embed your live Grafana dashboard powered by Prometheus.</p>
@@ -79,6 +79,6 @@ export default function GrafanaTab() {
                         <iframe id="grafana-iframe" style={{width:'100%', height:'100%', border:0, background: 'var(--bg)', display: 'block'}}></iframe>
                     </div>
                 </div>
-    </>
-  )
+    </div>
+  );
 }
