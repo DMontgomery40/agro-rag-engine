@@ -928,6 +928,45 @@ VSCodeTab.tsx is tiny wrapper (180 bytes) → EditorPanel
 
 **Priority:** CRITICAL (accessibility violation)
 
+**FIXED 2025-11-15 by Backend Agent:**
+
+**Changes Made:**
+1. ✅ `indexer/index_repo.py` line 195: `embed_texts()` function signature now accepts `model: str` parameter
+   - Changed from: `def embed_texts(client: OpenAI, texts: List[str], batch: int = 64)`
+   - Changed to: `def embed_texts(client: OpenAI, texts: List[str], model: str = 'text-embedding-3-large', batch: int = 64)`
+   - Function now uses `model` parameter instead of hardcoded value
+
+2. ✅ `indexer/index_repo.py` line 232: `embed_texts_voyage()` function signature now accepts `model: str` parameter
+   - Changed from: `def embed_texts_voyage(texts: List[str], batch: int = 128, output_dimension: int = 512)`
+   - Changed to: `def embed_texts_voyage(texts: List[str], model: str = 'voyage-code-3', batch: int = 128, output_dimension: int = 512)`
+   - Removed internal `os.getenv('VOYAGE_MODEL')` call, now uses parameter
+
+3. ✅ `indexer/index_repo.py` lines 380-381: Caller now passes model from env
+   - Added: `voyage_model = os.getenv('VOYAGE_MODEL', 'voyage-code-3')`
+   - Passes to function: `embed_texts_voyage(texts, model=voyage_model, ...)`
+
+4. ✅ `indexer/index_repo.py` lines 401-402: Already correct!
+   - Reads: `embedding_model = os.getenv('EMBEDDING_MODEL', 'text-embedding-3-large')`
+   - Passes to: `cache.embed_texts(client, texts, hashes, model=embedding_model, batch=64)`
+
+5. ✅ `retrieval/hybrid_search.py` line 474: Already correct!
+   - Uses: `embedding_model = os.getenv('EMBEDDING_MODEL', 'text-embedding-3-large')`
+   - This is appropriate for this function as it's a router that selects providers
+
+6. ✅ `common/metadata.py` line 3: Added missing `import os`
+   - Line 25 was using `os.getenv()` without import
+
+7. ✅ `requirements.txt` line 38: Added `docker>=6.1.0`
+   - Required by existing `/api/docker/*` endpoints in server/app.py
+
+**Architecture Pattern Established:**
+- Functions accept model as PARAMETER (not reading env internally)
+- Callers read from env/config at the CALL SITE
+- This allows flexibility: env vars, config files, or explicit values
+
+**Tested:** ✅ All modified files import correctly
+**Remaining Work:** GUI dropdowns for model selection (frontend work)
+
 ---
 
 ### Issue 5: Missing Backend Endpoints

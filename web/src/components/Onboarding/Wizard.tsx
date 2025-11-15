@@ -28,8 +28,10 @@ export function Wizard() {
 
   return (
     <div className="ob-container">
-      {/* Progress indicator */}
-      <div className="ob-progress-dots">
+      {/* Main wizard column */}
+      <div>
+        {/* Progress indicator */}
+        <div className="ob-progress-dots">
         {Array.from({ length: maxStep }, (_, i) => {
           const stepNum = i + 1;
           const isActive = stepNum === step;
@@ -108,31 +110,32 @@ export function Wizard() {
         <TuneStep />
       </div>
 
-      {/* Navigation footer */}
-      <div className="ob-footer">
-        <button
-          id="onboard-back"
-          className="ob-nav-btn"
-          onClick={handleBack}
-          disabled={step === 1}
-          style={{ display: step === 1 ? 'none' : 'block' }}
-          aria-label="Go to previous step"
-        >
-          ← Back
-        </button>
-        <button
-          id="onboard-next"
-          className="ob-nav-btn ob-nav-primary"
-          onClick={handleNext}
-          disabled={step === maxStep}
-          style={{ display: step === 1 || step === maxStep ? 'none' : 'block' }}
-          aria-label={step === maxStep ? 'Complete wizard' : 'Go to next step'}
-        >
-          {step === maxStep ? 'Done' : 'Next →'}
-        </button>
+        {/* Navigation footer */}
+        <div className="ob-footer">
+          <button
+            id="onboard-back"
+            className="ob-nav-btn"
+            onClick={handleBack}
+            disabled={step === 1}
+            style={{ display: step === 1 ? 'none' : 'block' }}
+            aria-label="Go to previous step"
+          >
+            ← Back
+          </button>
+          <button
+            id="onboard-next"
+            className="ob-nav-btn ob-nav-primary"
+            onClick={handleNext}
+            disabled={step === maxStep}
+            style={{ display: step === 1 || step === maxStep ? 'none' : 'block' }}
+            aria-label={step === maxStep ? 'Complete wizard' : 'Go to next step'}
+          >
+            {step === maxStep ? 'Done' : 'Next →'}
+          </button>
+        </div>
       </div>
 
-      {/* Help Panel - Always visible on side */}
+      {/* Help Panel - Right column in grid */}
       <HelpPanel />
     </div>
   );
