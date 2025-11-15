@@ -26,7 +26,7 @@ export function IndexingSubtab() {
   const [includeDense, setIncludeDense] = useState(true);
   const [simpleOutput, setSimpleOutput] = useState('');
 
-  // Load available repositories
+  // Load available repositories and git branch
   useEffect(() => {
     const loadRepos = async () => {
       try {
@@ -43,7 +43,24 @@ export function IndexingSubtab() {
         console.error('Error loading repos:', error);
       }
     };
+    
+    const loadBranch = async () => {
+      try {
+        const response = await fetch(api('/config'));
+        if (response.ok) {
+          const data = await response.json();
+          const branchDisplay = document.getElementById('indexing-branch-display');
+          if (branchDisplay && data.git_branch) {
+            branchDisplay.textContent = data.git_branch;
+          }
+        }
+      } catch (error) {
+        console.error('Error loading branch:', error);
+      }
+    };
+    
     loadRepos();
+    loadBranch();
   }, [api]);
 
   const handleStartIndexing = async () => {
@@ -151,7 +168,7 @@ export function IndexingSubtab() {
           </select>
         </div>
         <div style={{ color: 'var(--fg-muted)', fontSize: '11px', fontFamily: "'SF Mono', monospace" }}>
-          <span style={{ color: 'var(--fg-muted)' }}>Branch:</span> <span id="indexing-branch-display" style={{ color: 'var(--link)', fontWeight: 600 }}>development</span>
+          <span style={{ color: 'var(--fg-muted)' }}>Branch:</span> <span id="indexing-branch-display" style={{ color: 'var(--link)', fontWeight: 600 }}>—</span>
         </div>
       </div>
 

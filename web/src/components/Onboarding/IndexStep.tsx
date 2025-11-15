@@ -81,19 +81,28 @@ export const IndexStep: React.FC = () => {
         </div>
       )}
 
-      {/* Index log */}
-      {indexing.log.length > 0 && (
-        <div
-          id="onboard-index-log"
-          className="ob-log"
-          role="log"
-          aria-label="Indexing process log"
-        >
-          {indexing.log.map((line, idx) => (
-            <div key={idx}>{line}</div>
-          ))}
-        </div>
-      )}
+      {/* Index log - LiveTerminal will populate this */}
+      <div
+        id="onboard-index-log"
+        className="ob-log"
+        role="log"
+        aria-label="Indexing process log"
+        style={{
+          minHeight: indexing.running ? '200px' : '0',
+          maxHeight: '400px',
+          overflow: 'auto',
+          transition: 'min-height 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      >
+        {/* LiveTerminal will inject content here, or show fallback */}
+        {indexing.log.length > 0 && !window.LiveTerminal && (
+          <div style={{ fontFamily: "'SF Mono', monospace", fontSize: '11px', color: 'var(--fg-muted)' }}>
+            {indexing.log.map((line, idx) => (
+              <div key={idx}>{line}</div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Info tooltip */}
       <div className="ob-info-box">

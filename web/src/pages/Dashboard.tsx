@@ -11,6 +11,22 @@ import { AutoProfilePanel } from '../components/Dashboard/AutoProfilePanel';
 import { MonitoringLogsPanel } from '../components/Dashboard/MonitoringLogsPanel';
 
 export function Dashboard() {
+  const [gitBranch, setGitBranch] = React.useState('—');
+
+  // Load git branch from backend
+  useEffect(() => {
+    const loadBranch = async () => {
+      try {
+        const response = await fetch('/api/config');
+        const data = await response.json();
+        setGitBranch(data.git_branch || 'development');
+      } catch (e) {
+        console.error('[Dashboard] Failed to load branch:', e);
+      }
+    };
+    loadBranch();
+  }, []);
+
   // Initialize dashboard LiveTerminal
   useEffect(() => {
     const initTerminal = () => {
@@ -78,7 +94,7 @@ export function Dashboard() {
           <span style={{ color: 'var(--fg-muted)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             BRANCH:
           </span>{' '}
-          <span style={{ color: 'var(--link)', fontSize: '11px', fontWeight: 600 }}>LIGHT-MODE</span>
+          <span style={{ color: 'var(--link)', fontSize: '11px', fontWeight: 600 }}>{gitBranch}</span>
         </div>
         <div style={{ color: 'var(--fg-muted)', fontSize: '11px', fontFamily: "'Monaco', 'Courier New', monospace" }}>
           {new Date().toLocaleString()}

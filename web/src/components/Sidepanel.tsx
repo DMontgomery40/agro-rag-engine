@@ -18,7 +18,7 @@ export function Sidepanel() {
   // Auto-Tune state
   const [autoTuneEnabled, setAutoTuneEnabled] = useState(false);
   const [autoTuneMode, setAutoTuneMode] = useState('--');
-  const [autoTuneLastRun, setAutoTuneLastRun] = useState('10/15/2025, 2:13:31 AM');
+  const [autoTuneLastRun, setAutoTuneLastRun] = useState('—');
 
   // Storage state
   const [storageUsed, setStorageUsed] = useState(0);
@@ -29,53 +29,169 @@ export function Sidepanel() {
     setStoragePercent(storageTotal > 0 ? Math.round((storageUsed / storageTotal) * 100) : 0);
   }, [storageUsed, storageTotal]);
 
-  const handleCalculateCost = () => {
-    console.log('Calculate Cost clicked', {
-      provider: costProvider,
-      model: costModel,
-      embeddingModel: costEmbeddingModel,
-      requestsPerDay: costRequestsPerDay,
-    });
-    // TODO: Wire to backend cost calculation API
-    setDailyCost('$2.50');
-    setMonthlyCost('$75.00');
+  const handleCalculateCost = async () => {
+    try {
+      const response = await fetch('/api/cost/estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat: {
+            provider: costProvider,
+            model: costModel,
+            requests_per_day: costRequestsPerDay,
+          },
+          embed: {
+            provider: 'openai',
+            model: costEmbeddingModel,
+          },
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setDailyCost(`$${(data.daily_cost || 0).toFixed(2)}`);
+        setMonthlyCost(`$${(data.monthly_cost || 0).toFixed(2)}`);
+      } else {
+        console.error('[Sidepanel] Cost estimate failed');
+        setDailyCost('Error');
+        setMonthlyCost('Error');
+      }
+    } catch (e) {
+      console.error('[Sidepanel] Cost estimate error:', e);
+      setDailyCost('Error');
+      setMonthlyCost('Error');
+    }
   };
 
-  const handleApplyProfile = () => {
-    console.log('Apply Profile clicked', { profile: selectedProfile });
-    // TODO: Wire to backend profile API
+  const handleApplyProfile = async () => {
+    try {
+      const response = await fetch('/api/profiles/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profile_name: selectedProfile }),
+      });
+
+      if (response.ok) {
+        alert('Profile applied successfully');
+      } else {
+        alert('Failed to apply profile');
+      }
+    } catch (e) {
+      console.error('[Sidepanel] Apply profile error:', e);
+      alert('Error applying profile');
+    }
   };
 
-  const handleSaveProfile = () => {
-    console.log('Save Current Profile clicked');
-    // TODO: Wire to backend save profile API
+  const handleSaveProfile = async () => {
+    const profileName = prompt('Enter profile name:');
+    if (!profileName) return;
+
+    try {
+      const response = await fetch('/api/profiles/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: profileName,
+          config: {}, // Current config would be gathered from state
+        }),
+      });
+
+      if (response.ok) {
+        alert('Profile saved successfully');
+      } else {
+        alert('Failed to save profile');
+      }
+    } catch (e) {
+      console.error('[Sidepanel] Save profile error:', e);
+      alert('Error saving profile');
+    }
   };
 
-  const handleAutoTuneToggle = () => {
+  const handleAutoTuneToggle = async () => {
     const newValue = !autoTuneEnabled;
     setAutoTuneEnabled(newValue);
-    console.log('Auto-Tune toggled', { enabled: newValue });
-    // TODO: Wire to backend auto-tune toggle API
+
+    try {
+      await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ AUTOTUNE_ENABLED: newValue ? '1' : '0' }),
+      });
+    } catch (e) {
+      console.error('[Sidepanel] Auto-tune toggle error:', e);
+    }
   };
 
-  const handleAutoTuneRunNow = () => {
-    console.log('Auto-Tune Run Now clicked');
-    // TODO: Wire to backend auto-tune run API
+  const handleAutoTuneRunNow = async () => {
+    try {
+      const response = await fetch('/api/autotune/run', { method: 'POST' });
+      if (response.ok) {
+        const data = await response.json();
+        setAutoTuneMode(data.mode || 'Balanced');
+        setAutoTuneLastRun(new Date().toLocaleString());
+        alert('Auto-tune completed');
+      }
+    } catch (e) {
+      console.error('[Sidepanel] Auto-tune run error:', e);
+      alert('Auto-tune failed');
+    }
   };
 
-  const handleRefreshStatus = () => {
-    console.log('Refresh Auto-Tune Status clicked');
-    // TODO: Wire to backend status refresh API
+  const handleRefreshStatus = async () => {
+    try {
+      const response = await fetch('/api/autotune/status');
+      if (response.ok) {
+        const data = await response.json();
+        setAutoTuneMode(data.current_mode || '--');
+        if (data.last_run) {
+          setAutoTuneLastRun(new Date(data.last_run).toLocaleString());
+        }
+      }
+    } catch (e) {
+      console.error('[Sidepanel] Refresh status error:', e);
+    }
   };
 
-  const handleCleanUpStorage = () => {
-    console.log('Clean Up Storage clicked');
-    // TODO: Wire to backend cleanup API
+  const handleCleanUpStorage = async () => {
+    if (!confirm('Clean up storage (remove old indexes, caches)?')) return;
+    
+    try {
+      const response = await fetch('/api/storage/cleanup', { method: 'POST' });
+      if (response.ok) {
+        const data = await response.json();
+        alert(`Cleaned up ${data.bytes_freed || 0} bytes`);
+        // Refresh storage display
+        handleRefreshStatus();
+      } else {
+        alert('Cleanup failed');
+      }
+    } catch (e) {
+      console.error('[Sidepanel] Cleanup error:', e);
+      alert('Storage cleanup not available');
+    }
   };
 
-  const handleApplyChanges = () => {
-    console.log('Apply Changes clicked');
-    // TODO: Wire to backend apply changes API
+  const handleApplyChanges = async () => {
+    try {
+      // This would gather all current sidepanel state and save to config
+      const response = await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          // Gather all relevant config from state
+          AUTOTUNE_ENABLED: autoTuneEnabled ? '1' : '0',
+        }),
+      });
+
+      if (response.ok) {
+        alert('Changes applied successfully');
+      } else {
+        alert('Failed to apply changes');
+      }
+    } catch (e) {
+      console.error('[Sidepanel] Apply changes error:', e);
+      alert('Error applying changes');
+    }
   };
 
   return (
