@@ -77,16 +77,29 @@ export function EmbeddingConfigPanel() {
           >
             MODEL
           </span>
-          <span
+          <a
+            href="/rag?subtab=retrieval"
             style={{
               color: 'var(--link)',
               fontSize: '14px',
               fontWeight: 600,
               fontFamily: "'Monaco', 'Courier New', monospace",
+              textDecoration: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
             }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--accent)';
+              e.currentTarget.style.textDecoration = 'underline';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--link)';
+              e.currentTarget.style.textDecoration = 'none';
+            }}
+            title="Click to configure in RAG → Retrieval"
           >
             {config.model}
-          </span>
+          </a>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -100,16 +113,29 @@ export function EmbeddingConfigPanel() {
           >
             DIMENSIONS
           </span>
-          <span
+          <a
+            href="/rag?subtab=retrieval"
             style={{
               color: 'var(--link)',
               fontSize: '14px',
               fontWeight: 600,
               fontFamily: "'Monaco', 'Courier New', monospace",
+              textDecoration: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
             }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--accent)';
+              e.currentTarget.style.textDecoration = 'underline';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--link)';
+              e.currentTarget.style.textDecoration = 'none';
+            }}
+            title="Click to configure in RAG → Retrieval"
           >
             {config.dimensions}
-          </span>
+          </a>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -123,13 +149,26 @@ export function EmbeddingConfigPanel() {
           >
             PRECISION
           </span>
-          <span
+          <a
+            href="/rag?subtab=retrieval"
             style={{
               color: 'var(--link)',
               fontSize: '14px',
               fontWeight: 600,
               fontFamily: "'Monaco', 'Courier New', monospace",
+              textDecoration: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
             }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--accent)';
+              e.currentTarget.style.textDecoration = 'underline';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--link)';
+              e.currentTarget.style.textDecoration = 'none';
+            }}
+            title="Click to configure in RAG → Retrieval"
           >
             {config.precision}
           </span>
