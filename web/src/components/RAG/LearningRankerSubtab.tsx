@@ -463,7 +463,7 @@ export function LearningRankerSubtab() {
 
         <div style={{ marginTop: '16px', padding: '12px', background: 'var(--card-bg)', borderRadius: '6px', borderLeft: '3px solid var(--link)' }}>
           <div style={{ fontSize: '12px', color: 'var(--fg-muted)', marginBottom: '4px' }}>Current Task:</div>
-          <div style={{ fontSize: '14px', fontFamily: "'SF Mono', monospace", color: 'var(--fg-muted)' }}>{currentTask}</div>
+          <div id="reranker-status" style={{ fontSize: '14px', fontFamily: "'SF Mono', monospace", color: 'var(--fg-muted)' }}>{currentTask}</div>
         </div>
 
         {/* Live Terminal - matches /gui line 3611 */}
@@ -551,7 +551,7 @@ export function LearningRankerSubtab() {
             >
               Current Reranker (Server)
             </div>
-            <div className="mono" style={{ fontSize: '12px', lineHeight: 1.6 }}>
+            <div id="reranker-info-panel" className="mono" style={{ fontSize: '12px', lineHeight: 1.6 }}>
               <div>Enabled: <span>{rerankerInfo.enabled}</span></div>
               <div>Model Path: <span>{rerankerInfo.path}</span></div>
               <div>Device: <span>{rerankerInfo.device}</span></div>
@@ -605,6 +605,7 @@ export function LearningRankerSubtab() {
           <div className="input-group">
             <label>Training Epochs</label>
             <input
+              id="reranker-epochs"
               type="number"
               value={epochs}
               min="1"
@@ -615,6 +616,7 @@ export function LearningRankerSubtab() {
           <div className="input-group">
             <label>Training Batch Size</label>
             <input
+              id="reranker-batch"
               type="number"
               value={trainBatch}
               min="1"
@@ -629,7 +631,7 @@ export function LearningRankerSubtab() {
       {/* Evaluation Results */}
       <div className="settings-section" style={{ borderLeft: '3px solid var(--warn)' }}>
         <h3>📊 Evaluation Metrics</h3>
-        <div style={{ background: 'var(--card-bg)', borderRadius: '6px', padding: '16px', minHeight: '120px' }}>
+        <div id="reranker-metrics-display" style={{ background: 'var(--card-bg)', borderRadius: '6px', padding: '16px', minHeight: '120px' }}>
           {Object.keys(metrics).length > 0 ? (
             <div style={{ fontFamily: "'SF Mono', monospace", fontSize: '13px' }}>
               <div>MRR: {metrics.mrr?.toFixed(4) || 'N/A'}</div>
@@ -648,6 +650,7 @@ export function LearningRankerSubtab() {
         <div className="input-row" style={{ marginTop: '16px' }}>
           <div className="input-group">
             <button
+              id="reranker-save-baseline"
               onClick={handleSaveBaseline}
               style={{
                 background: 'var(--link)',
@@ -665,6 +668,7 @@ export function LearningRankerSubtab() {
           </div>
           <div className="input-group">
             <button
+              id="reranker-compare-baseline"
               onClick={handleCompareBaseline}
               style={{
                 background: 'var(--warn)',
@@ -682,6 +686,7 @@ export function LearningRankerSubtab() {
           </div>
           <div className="input-group">
             <button
+              id="reranker-rollback"
               onClick={handleRollback}
               style={{
                 background: 'var(--err)',
@@ -706,6 +711,7 @@ export function LearningRankerSubtab() {
         <div className="input-row">
           <div className="input-group">
             <button
+              id="reranker-view-logs"
               onClick={handleViewLogs}
               style={{
                 background: 'var(--bg-elev1)',
@@ -722,6 +728,7 @@ export function LearningRankerSubtab() {
           </div>
           <div className="input-group">
             <button
+              id="reranker-download-logs"
               onClick={handleDownloadLogs}
               style={{
                 background: 'var(--bg-elev1)',
@@ -738,6 +745,7 @@ export function LearningRankerSubtab() {
           </div>
           <div className="input-group">
             <button
+              id="reranker-clear-logs"
               onClick={handleClearLogs}
               style={{
                 background: 'var(--err)',
@@ -755,6 +763,7 @@ export function LearningRankerSubtab() {
         </div>
         {isLogsVisible && (
           <div
+            id="reranker-logs-viewer"
             style={{
               marginTop: '16px',
               background: 'var(--card-bg)',
@@ -780,11 +789,12 @@ export function LearningRankerSubtab() {
         <div className="input-row">
           <div className="input-group">
             <label>Nightly Training Time</label>
-            <input type="time" value={cronTime} onChange={(e) => setCronTime(e.target.value)} />
+            <input id="reranker-cron-time" type="time" value={cronTime} onChange={(e) => setCronTime(e.target.value)} />
           </div>
           <div className="input-group">
             <label>&nbsp;</label>
             <button
+              id="reranker-setup-cron"
               onClick={handleSetupCron}
               style={{
                 background: 'var(--link)',
@@ -804,6 +814,7 @@ export function LearningRankerSubtab() {
 
         <div style={{ marginTop: '8px' }}>
           <button
+            id="reranker-remove-cron"
             onClick={handleRemoveCron}
             style={{
               background: 'var(--err)',
@@ -821,7 +832,7 @@ export function LearningRankerSubtab() {
         </div>
 
         {cronStatus && (
-          <div style={{ marginTop: '12px', padding: '8px', background: 'var(--card-bg)', borderRadius: '4px', fontSize: '12px', color: 'var(--fg-muted)' }}>
+          <div id="reranker-cron-status" style={{ marginTop: '12px', padding: '8px', background: 'var(--card-bg)', borderRadius: '4px', fontSize: '12px', color: 'var(--fg-muted)' }}>
             {cronStatus}
           </div>
         )}
@@ -835,6 +846,7 @@ export function LearningRankerSubtab() {
           <div className="input-group">
             <label>Test Query</label>
             <input
+              id="reranker-test-query"
               type="text"
               placeholder="Where is OAuth validated?"
               value={testQuery}
@@ -844,6 +856,7 @@ export function LearningRankerSubtab() {
           <div className="input-group">
             <label>&nbsp;</label>
             <button
+              id="reranker-smoke-test"
               onClick={handleSmokeTest}
               style={{
                 background: 'var(--accent)',
@@ -862,6 +875,7 @@ export function LearningRankerSubtab() {
         </div>
         {isSmokeVisible && (
           <div
+            id="reranker-smoke-result"
             style={{
               marginTop: '16px',
               background: 'var(--card-bg)',
@@ -884,6 +898,7 @@ export function LearningRankerSubtab() {
           <div className="input-group">
             <label>Total Cost (Last 24h)</label>
             <div
+              id="reranker-cost-24h"
               style={{
                 padding: '8px',
                 background: 'var(--card-bg)',
@@ -899,6 +914,7 @@ export function LearningRankerSubtab() {
           <div className="input-group">
             <label>Avg Cost per Query</label>
             <div
+              id="reranker-cost-avg"
               style={{
                 padding: '8px',
                 background: 'var(--card-bg)',
@@ -934,6 +950,7 @@ export function LearningRankerSubtab() {
         <h3>⚠️ No-Hit Queries</h3>
         <p className="small">Queries that returned no relevant results. Consider reindexing or adding these terms to your corpus.</p>
         <div
+          id="reranker-nohits-list"
           style={{
             background: 'var(--card-bg)',
             border: '1px solid var(--line)',
