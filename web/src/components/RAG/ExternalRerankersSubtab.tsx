@@ -108,7 +108,7 @@ export function ExternalRerankersSubtab() {
   }, [api]);
 
   return (
-    <div className="rag-subtab-content">
+    <div id="tab-rag-external-rerankers" className="rag-subtab-content">
       <div className="settings-section" style={{ borderLeft: '3px solid var(--link)' }}>
         <h3>
           <span className="accent-pink">●</span> Reranking
@@ -172,14 +172,30 @@ export function ExternalRerankersSubtab() {
             >
               Current Reranker (Server)
             </div>
-            <div className="mono" style={{ fontSize: '12px', lineHeight: 1.6 }}>
-              <div>Enabled: <span>{rerankerInfo.enabled}</span></div>
-              <div>Model Path: <span>{rerankerInfo.path}</span></div>
-              <div>Device: <span>{rerankerInfo.device}</span></div>
+            <div id="reranker-info-panel-ext" className="mono" style={{ fontSize: '12px', lineHeight: 1.6 }}>
+              <div>Enabled: <span id="reranker-info-enabled-ext">{rerankerInfo.enabled}</span></div>
+              <div>Model Path: <span id="reranker-info-path-ext">{rerankerInfo.path}</span></div>
+              <div>Device: <span id="reranker-info-device-ext">{rerankerInfo.device}</span></div>
               <div>
-                Alpha: <span>{rerankerInfo.alpha}</span> • TopN: <span>{rerankerInfo.topn}</span> • Batch: <span>{rerankerInfo.batch}</span> • MaxLen: <span>{rerankerInfo.maxlen}</span>
+                Alpha: <span id="reranker-info-alpha-ext">{rerankerInfo.alpha}</span> • TopN: <span id="reranker-info-topn-ext">{rerankerInfo.topn}</span> • Batch: <span id="reranker-info-batch-ext">{rerankerInfo.batch}</span> • MaxLen: <span id="reranker-info-maxlen-ext">{rerankerInfo.maxlen}</span>
               </div>
             </div>
+            {rerankBackend === 'none' && (
+              <div 
+                id="rerank-none-warning" 
+                style={{ 
+                  marginTop: '8px', 
+                  padding: '8px', 
+                  borderRadius: '6px', 
+                  background: 'rgba(255, 170, 0, 0.1)', 
+                  border: '1px dashed var(--warn)', 
+                  color: 'var(--warn)', 
+                  fontSize: '12px' 
+                }}
+              >
+                ⚠️ No reranker is effectively enabled. Searches will use raw BM25/vector fusion. Configure <strong>Rerank Backend</strong> or <strong>Cohere API Key</strong>.
+              </div>
+            )}
           </div>
         </div>
 
@@ -445,3 +461,4 @@ export function ExternalRerankersSubtab() {
     </div>
   );
 }
+
