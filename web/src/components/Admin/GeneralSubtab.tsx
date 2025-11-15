@@ -99,6 +99,8 @@ export function GeneralSubtab() {
           <div className="input-group">
             <label>Theme Mode</label>
             <select
+              id="misc-theme-mode"
+              name="THEME_MODE"
               value={config.THEME_MODE || 'auto'}
               onChange={(e) => updateConfig('THEME_MODE', e.target.value)}
               style={{
@@ -137,6 +139,7 @@ export function GeneralSubtab() {
           <div className="input-group">
             <label>Edition (AGRO_EDITION)</label>
             <input
+              name="AGRO_EDITION"
               type="text"
               value={config.AGRO_EDITION || ''}
               onChange={(e) => updateConfig('AGRO_EDITION', e.target.value)}
@@ -154,6 +157,7 @@ export function GeneralSubtab() {
           <div className="input-group">
             <label>Thread ID</label>
             <input
+              name="THREAD_ID"
               type="text"
               value={config.THREAD_ID || ''}
               onChange={(e) => updateConfig('THREAD_ID', e.target.value)}
@@ -174,6 +178,7 @@ export function GeneralSubtab() {
           <div className="input-group">
             <label>Serve Host</label>
             <input
+              name="HOST"
               type="text"
               value={config.HOST || ''}
               onChange={(e) => updateConfig('HOST', e.target.value)}
@@ -191,6 +196,7 @@ export function GeneralSubtab() {
           <div className="input-group">
             <label>Serve Port</label>
             <input
+              name="PORT"
               type="number"
               value={config.PORT || ''}
               onChange={(e) => updateConfig('PORT', e.target.value)}
@@ -211,6 +217,7 @@ export function GeneralSubtab() {
           <div className="input-group">
             <label>Open Browser on Start</label>
             <select
+              name="OPEN_BROWSER"
               value={config.OPEN_BROWSER || '1'}
               onChange={(e) => updateConfig('OPEN_BROWSER', e.target.value)}
               style={{
@@ -229,6 +236,7 @@ export function GeneralSubtab() {
           <div className="input-group">
             <label>AGRO Path</label>
             <input
+              name="agro_PATH"
               type="text"
               value={config.agro_PATH || ''}
               onChange={(e) => updateConfig('agro_PATH', e.target.value)}
@@ -249,6 +257,7 @@ export function GeneralSubtab() {
           <div className="input-group">
             <label>Netlify API Key</label>
             <input
+              name="NETLIFY_API_KEY"
               type="password"
               value={config.NETLIFY_API_KEY || ''}
               onChange={(e) => updateConfig('NETLIFY_API_KEY', e.target.value)}
@@ -266,6 +275,7 @@ export function GeneralSubtab() {
           <div className="input-group">
             <label>Netlify Domains</label>
             <input
+              name="NETLIFY_DOMAINS"
               type="text"
               value={config.NETLIFY_DOMAINS || ''}
               onChange={(e) => updateConfig('NETLIFY_DOMAINS', e.target.value)}
