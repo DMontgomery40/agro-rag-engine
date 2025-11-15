@@ -1597,3 +1597,70 @@ Add useEffect to load from /api/config on mount.
 ---
 
 **NEXT:** Execute Phase 1 cleanup immediately
+
+---
+
+# ROOT DIRECTORY CLEANUP
+
+**Current State:** 50+ files in root (messy!)
+**Goal:** Only essential config files in root
+
+## Files That SHOULD Be In Root (15 files)
+✅ README.md, LICENSE, CONTRIBUTING.md
+✅ Dockerfile, Dockerfile.node, Makefile
+✅ docker-compose.yml, docker-compose.services.yml
+✅ requirements.txt, requirements-rag.txt, requirements.lock
+✅ package.json, package-lock.json
+✅ repos.json, versions.env
+✅ playwright*.config.ts (3 files - standard location)
+✅ AGENTS.md, CLAUDE.md, cursor.rules (agent config)
+
+## Files To MOVE (20+ files)
+
+### → /scripts
+- index.sh
+- run_diagnostics.js
+
+### → /data
+- discriminative_keywords.json
+- semantic_keywords.json  
+- llm_keywords.json
+
+### → /data/evals
+- golden.json
+- embedding_eval_results.json
+
+### → /test-results (15 .png files)
+- admin-tab-debug.png
+- gui-*.png (10 files)
+- sidepanel-check.png
+- vscode-*.png (4 files)
+
+### → /test-results
+- diagnostic.html
+- test_navigation.html
+- test_tab_fix.html
+- test-validation-report.html
+
+### → /eval or /scripts
+- eval_embeddings.py
+
+### → /common
+- path_config.py
+
+### → /agent_docs or DELETE
+- SESSION_1_SUMMARY.md
+- README-INDEXER.md
+
+### DELETE (temp/empty)
+- mcp-test.log (0 bytes)
+- server.log (174 bytes)
+
+**After cleanup:** Root would have ~18 essential files (standard for a Python/Node project)
+
+---
+
+**AUDIT COMPLETE:** 1,650 lines
+**Total Understanding:** 100%
+**Ready for:** Systematic execution
+
