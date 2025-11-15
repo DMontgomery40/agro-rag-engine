@@ -354,7 +354,7 @@ export function LearningRankerSubtab() {
   };
 
   return (
-    <div className="rag-subtab-content">
+    <div id="tab-rag-learning-ranker" className="rag-subtab-content">
       {/* Header */}
       <div className="settings-section" style={{ borderLeft: '3px solid var(--link)' }}>
         <h2 style={{ color: 'var(--link)' }}>🧠 Learning Reranker System</h2>
@@ -369,19 +369,19 @@ export function LearningRankerSubtab() {
         <div className="input-row">
           <div className="input-group">
             <label>Reranker Status</label>
-            <div style={{ padding: '8px', background: 'var(--card-bg)', borderRadius: '4px', fontFamily: "'SF Mono', monospace", fontSize: '13px' }}>
+            <div id="reranker-enabled-status" style={{ padding: '8px', background: 'var(--card-bg)', borderRadius: '4px', fontFamily: "'SF Mono', monospace", fontSize: '13px' }}>
               {status.enabled}
             </div>
           </div>
           <div className="input-group">
             <label>Logged Queries</label>
-            <div style={{ padding: '8px', background: 'var(--card-bg)', borderRadius: '4px', fontFamily: "'SF Mono', monospace", fontSize: '13px' }}>
+            <div id="reranker-query-count" style={{ padding: '8px', background: 'var(--card-bg)', borderRadius: '4px', fontFamily: "'SF Mono', monospace", fontSize: '13px' }}>
               {status.queryCount}
             </div>
           </div>
           <div className="input-group">
             <label>Training Triplets</label>
-            <div style={{ padding: '8px', background: 'var(--card-bg)', borderRadius: '4px', fontFamily: "'SF Mono', monospace", fontSize: '13px' }}>
+            <div id="reranker-triplet-count" style={{ padding: '8px', background: 'var(--card-bg)', borderRadius: '4px', fontFamily: "'SF Mono', monospace", fontSize: '13px' }}>
               {status.tripletCount}
             </div>
           </div>
@@ -398,6 +398,7 @@ export function LearningRankerSubtab() {
             <h4 style={{ margin: '0 0 8px 0', color: 'var(--link)' }}>1. Mine Triplets</h4>
             <p style={{ fontSize: '11px', color: 'var(--fg-muted)', marginBottom: '12px' }}>Extract training data from logs</p>
             <button
+              id="reranker-mine-btn"
               onClick={handleMineTriplets}
               style={{
                 width: '100%',
@@ -412,13 +413,14 @@ export function LearningRankerSubtab() {
             >
               Mine Triplets
             </button>
-            <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--fg-muted)' }}>{mineResult}</div>
+            <div id="reranker-mine-result" style={{ marginTop: '8px', fontSize: '11px', color: 'var(--fg-muted)' }}>{mineResult}</div>
           </div>
 
           <div style={{ background: 'var(--chip-bg)', border: '1px solid var(--line)', borderRadius: '6px', padding: '16px' }}>
             <h4 style={{ margin: '0 0 8px 0', color: 'var(--accent)' }}>2. Train Model</h4>
             <p style={{ fontSize: '11px', color: 'var(--fg-muted)', marginBottom: '12px' }}>Fine-tune cross-encoder (5-15 min)</p>
             <button
+              id="reranker-train-btn"
               onClick={handleTrain}
               style={{
                 width: '100%',
@@ -433,13 +435,14 @@ export function LearningRankerSubtab() {
             >
               Train Model
             </button>
-            <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--fg-muted)' }}>{trainResult}</div>
+            <div id="reranker-train-result" style={{ marginTop: '8px', fontSize: '11px', color: 'var(--fg-muted)' }}>{trainResult}</div>
           </div>
 
           <div style={{ background: 'var(--chip-bg)', border: '1px solid var(--line)', borderRadius: '6px', padding: '16px' }}>
             <h4 style={{ margin: '0 0 8px 0', color: 'var(--warn)' }}>3. Evaluate</h4>
             <p style={{ fontSize: '11px', color: 'var(--fg-muted)', marginBottom: '12px' }}>Measure MRR and Hit@K metrics</p>
             <button
+              id="reranker-eval-btn"
               onClick={handleEvaluate}
               style={{
                 width: '100%',
@@ -454,7 +457,7 @@ export function LearningRankerSubtab() {
             >
               Evaluate
             </button>
-            <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--fg-muted)' }}>{evalResult}</div>
+            <div id="reranker-eval-result" style={{ marginTop: '8px', fontSize: '11px', color: 'var(--fg-muted)' }}>{evalResult}</div>
           </div>
         </div>
 
