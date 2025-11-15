@@ -438,8 +438,9 @@ def _get_embedding(text: str, kind: str = "query") -> list[float]:
         from server.api_tracker import track_api_call, APIProvider
 
         vo = _lazy_import_voyage()
+        voyage_model = os.getenv('VOYAGE_MODEL', 'voyage-code-3')
         start = time.time()
-        out = vo.embed([text], model="voyage-code-3", input_type=kind, output_dimension=512)
+        out = vo.embed([text], model=voyage_model, input_type=kind, output_dimension=512)
         duration_ms = (time.time() - start) * 1000
 
         # Voyage pricing: ~$0.00012 per 1k tokens for voyage-code-3
@@ -470,7 +471,7 @@ def _get_embedding(text: str, kind: str = "query") -> list[float]:
     from server.api_tracker import track_api_call, APIProvider
 
     client = _lazy_import_openai()
-    embedding_model = "text-embedding-3-large"
+    embedding_model = os.getenv('EMBEDDING_MODEL', 'text-embedding-3-large')
 
     start = time.time()
     resp = client.embeddings.create(input=text, model=embedding_model)

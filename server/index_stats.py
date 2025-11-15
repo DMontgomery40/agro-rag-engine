@@ -2,7 +2,7 @@ import os
 import json
 from pathlib import Path
 from typing import Any, Dict, List
-from path_config import repo_root, data_dir
+from common.paths import repo_root, data_dir
 
 
 def _read_json(path: Path, default: Any) -> Any:

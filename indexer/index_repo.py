@@ -195,9 +195,10 @@ def _clip_for_openai(text: str, enc, max_tokens: int = 8000) -> str:
 def embed_texts(client: OpenAI, texts: List[str], batch: int = 64) -> List[List[float]]:
     embs = []
     enc = tiktoken.get_encoding('cl100k_base')
+    embedding_model = os.getenv('EMBEDDING_MODEL', 'text-embedding-3-large')
     for i in range(0, len(texts), batch):
         sub = [_clip_for_openai(t, enc) for t in texts[i:i+batch]]
-        r = client.embeddings.create(model='text-embedding-3-large', input=sub)
+        r = client.embeddings.create(model=embedding_model, input=sub)
         for d in r.data:
             embs.append(d.embedding)
     return embs
@@ -232,10 +233,11 @@ def embed_texts_mxbai(texts: List[str], dim: int = 512, batch: int = 128) -> Lis
 def embed_texts_voyage(texts: List[str], batch: int = 128, output_dimension: int = 512) -> List[List[float]]:
     import voyageai  # type: ignore
     client = voyageai.Client(api_key=os.getenv('VOYAGE_API_KEY'))
+    voyage_model = os.getenv('VOYAGE_MODEL', 'voyage-code-3')
     out: List[List[float]] = []
     for i in range(0, len(texts), batch):
         sub = texts[i:i+batch]
-        r = client.embed(sub, model='voyage-code-3', input_type='document', output_dimension=output_dimension)
+        r = client.embed(sub, model=voyage_model, input_type='document', output_dimension=output_dimension)
         out.extend(r.embeddings)
     return out
 
@@ -397,7 +399,8 @@ def main() -> None:
             try:
                 cache = EmbeddingCache(OUTDIR)
                 hashes = [c['hash'] for c in chunks]
-                embs = cache.embed_texts(client, texts, hashes, model='text-embedding-3-large', batch=64)
+                embedding_model = os.getenv('EMBEDDING_MODEL', 'text-embedding-3-large')
+                embs = cache.embed_texts(client, texts, hashes, model=embedding_model, batch=64)
                 pruned = cache.prune(set(hashes))
                 if pruned > 0:
                     print(f'Pruned {pruned} orphaned embeddings from cache.')
