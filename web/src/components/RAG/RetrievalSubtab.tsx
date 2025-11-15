@@ -91,6 +91,111 @@ export function RetrievalSubtab() {
 
   return (
     <div id="tab-rag-retrieval" className="rag-subtab-content">
+      {/* Generation Models Section - matches /gui */}
+      <div className="settings-section">
+        <h3>Generation Models</h3>
+        <button className="small-button" id="btn-add-gen-model" style={{ marginBottom: '12px' }}>Add Model</button>
+        
+        <div className="input-row">
+          <div className="input-group">
+            <label>Primary Model (GEN_MODEL)</label>
+            <select name="GEN_MODEL" id="gen-model-select" className="model-select" data-component-filter="GEN">
+              <option value="">Select a model...</option>
+            </select>
+          </div>
+          <div className="input-group">
+            <label>OpenAI API Key</label>
+            <input type="password" name="OPENAI_API_KEY" />
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>
+              Default Temperature (GEN_TEMPERATURE)
+              <span className="tooltip-wrap">
+                <span className="help-icon">?</span>
+                <div className="tooltip-bubble">
+                  <span className="tt-title">Default Response Creativity</span>
+                  Sets a global default temperature for generation. 0.0 = deterministic; try 0.2 sometimes, or 0.04 for light variation in docs.
+                </div>
+              </span>
+            </label>
+            <input type="number" name="GEN_TEMPERATURE" defaultValue="0.0" min="0" max="2" step="0.01" />
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>Enrich Model (ENRICH_MODEL)</label>
+            <select name="ENRICH_MODEL" id="enrich-model-select" className="model-select" data-component-filter="GEN">
+              <option value="">Select a model...</option>
+            </select>
+          </div>
+          <div className="input-group">
+            <label>Enrich Model (Ollama)</label>
+            <select name="ENRICH_MODEL_OLLAMA" id="enrich-model-ollama-select" className="model-select">
+              <option value="">Select a model...</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>Anthropic API Key</label>
+            <input type="password" name="ANTHROPIC_API_KEY" />
+          </div>
+          <div className="input-group">
+            <label>Google API Key</label>
+            <input type="password" name="GOOGLE_API_KEY" />
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>Ollama URL</label>
+            <input type="text" name="OLLAMA_URL" placeholder="http://127.0.0.1:11434" />
+          </div>
+          <div className="input-group">
+            <label>OpenAI Base URL (optional)</label>
+            <input type="text" name="OPENAI_BASE_URL" placeholder="For vLLM proxy" />
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>HTTP Override Model</label>
+            <select name="GEN_MODEL_HTTP" id="http-override-model-select">
+              <option value="">None (use global)</option>
+            </select>
+          </div>
+          <div className="input-group">
+            <label>MCP Override Model</label>
+            <select name="GEN_MODEL_MCP" id="mcp-override-model-select">
+              <option value="">None (use global)</option>
+            </select>
+          </div>
+          <div className="input-group">
+            <label>CLI Override Model</label>
+            <select name="GEN_MODEL_CLI" id="cli-override-model-select">
+              <option value="">None (use global)</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>Enrich Backend</label>
+            <select name="ENRICH_BACKEND" id="enrich-backend-select">
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic</option>
+              <option value="google">Google</option>
+              <option value="ollama">Ollama</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       {/* Retrieval Parameters Section */}
       <div className="settings-section" style={{ borderLeft: '3px solid var(--link)' }}>
         <h3>Retrieval Parameters</h3>
@@ -671,6 +776,40 @@ export function RetrievalSubtab() {
               </div>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Routing Trace Section - matches /gui */}
+      <div className="settings-section" style={{ borderLeft: '3px solid var(--accent)' }}>
+        <h3>Routing Trace</h3>
+        <p className="small">View the routing log to see how queries are dispatched through the pipeline.</p>
+        
+        <div className="input-row">
+          <div className="input-group">
+            <button id="btn-trace-latest" className="small-button">View Latest Trace</button>
+          </div>
+          <div className="input-group">
+            <button id="btn-trace-open-ls" className="small-button">Open in LangSmith</button>
+          </div>
+        </div>
+
+        <div
+          id="trace-output"
+          style={{
+            background: 'var(--code-bg)',
+            border: '1px solid var(--line)',
+            borderRadius: '6px',
+            padding: '12px',
+            marginTop: '12px',
+            fontFamily: "'SF Mono', monospace",
+            fontSize: '11px',
+            minHeight: '100px',
+            maxHeight: '400px',
+            overflowY: 'auto',
+            color: 'var(--fg-muted)',
+          }}
+        >
+          Click "View Latest Trace" to see routing log
         </div>
       </div>
     </div>
