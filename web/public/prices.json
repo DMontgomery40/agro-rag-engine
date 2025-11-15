@@ -1,0 +1,575 @@
+{
+  "last_updated": "2025-10-20",
+  "currency": "USD",
+  "models": [
+    {
+      "provider": "openai",
+      "family": "gpt-5",
+      "model": "gpt-5",
+      "unit": "1k_tokens",
+      "input_per_1k": 1.25,
+      "output_per_1k": 10.0,
+      "context": 200000,
+      "notes": "Latest GPT-5 model"
+    },
+    {
+      "provider": "openai",
+      "family": "gpt-5-mini",
+      "model": "gpt-5-mini",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.25,
+      "output_per_1k": 2.0,
+      "context": 200000,
+      "notes": "GPT-5 mini variant"
+    },
+    {
+      "provider": "openai",
+      "family": "gpt-5-nano",
+      "model": "gpt-5-nano",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.05,
+      "output_per_1k": 0.4,
+      "context": 200000,
+      "notes": "GPT-5 nano variant"
+    },
+    {
+      "provider": "openai",
+      "family": "gpt-5-chat-latest",
+      "model": "gpt-5-chat-latest",
+      "unit": "1k_tokens",
+      "input_per_1k": 1.25,
+      "output_per_1k": 10.0,
+      "context": 200000,
+      "notes": "Latest GPT-5 chat model"
+    },
+    {
+      "provider": "openai",
+      "family": "gpt-5-codex",
+      "model": "gpt-5-codex",
+      "unit": "1k_tokens",
+      "input_per_1k": 1.25,
+      "output_per_1k": 10.0,
+      "context": 200000,
+      "notes": "GPT-5 codex variant"
+    },
+    {
+      "provider": "openai",
+      "family": "gpt-5-pro",
+      "model": "gpt-5-pro",
+      "unit": "1k_tokens",
+      "input_per_1k": 15.0,
+      "output_per_1k": 120.0,
+      "context": 200000,
+      "notes": "GPT-5 pro variant"
+    },
+    {
+      "provider": "openai",
+      "family": "gpt-4.1",
+      "model": "gpt-4.1",
+      "unit": "1k_tokens",
+      "input_per_1k": 2.0,
+      "output_per_1k": 8.0,
+      "context": 128000,
+      "notes": "GPT-4.1 model"
+    },
+    {
+      "provider": "openai",
+      "family": "gpt-4.1-mini",
+      "model": "gpt-4.1-mini",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.4,
+      "output_per_1k": 1.6,
+      "context": 128000,
+      "notes": "GPT-4.1 mini variant"
+    },
+    {
+      "provider": "openai",
+      "family": "gpt-4.1-nano",
+      "model": "gpt-4.1-nano",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.1,
+      "output_per_1k": 0.4,
+      "context": 128000,
+      "notes": "GPT-4.1 nano variant"
+    },
+    {
+      "provider": "openai",
+      "family": "gpt-4o",
+      "model": "gpt-4o",
+      "unit": "1k_tokens",
+      "input_per_1k": 2.5,
+      "output_per_1k": 10.0,
+      "context": 128000,
+      "notes": "GPT-4o model"
+    },
+    {
+      "provider": "openai",
+      "family": "gpt-4o-2024-05-13",
+      "model": "gpt-4o-2024-05-13",
+      "unit": "1k_tokens",
+      "input_per_1k": 5.0,
+      "output_per_1k": 15.0,
+      "context": 128000,
+      "notes": "GPT-4o snapshot from 2024-05-13"
+    },
+    {
+      "provider": "openai",
+      "family": "gpt-4o-mini",
+      "model": "gpt-4o-mini",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.15,
+      "output_per_1k": 0.6,
+      "context": 128000,
+      "notes": "GPT-4o mini variant"
+    },
+    {
+      "provider": "openai",
+      "family": "text-embedding-3-small",
+      "model": "text-embedding-3-small",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.02,
+      "dimensions": 1536,
+      "notes": "Small embeddings model"
+    },
+    {
+      "provider": "openai",
+      "family": "text-embedding-3-large",
+      "model": "text-embedding-3-large",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.13,
+      "dimensions": 3072,
+      "notes": "Large embeddings model"
+    },
+    {
+      "provider": "anthropic",
+      "family": "claude-3.5-sonnet",
+      "model": "claude-3.5-sonnet",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.003,
+      "output_per_1k": 0.015,
+      "context": 200000,
+      "notes": "Claude 3.5 Sonnet"
+    },
+    {
+      "provider": "anthropic",
+      "family": "claude-3.5-haiku",
+      "model": "claude-3.5-haiku",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.0008,
+      "output_per_1k": 0.004,
+      "context": 200000,
+      "notes": "Claude 3.5 Haiku"
+    },
+    {
+      "provider": "anthropic",
+      "family": "claude-3-opus",
+      "model": "claude-3-opus",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.015,
+      "output_per_1k": 0.075,
+      "context": 200000,
+      "notes": "Claude 3 Opus"
+    },
+    {
+      "provider": "anthropic",
+      "family": "claude-3-sonnet",
+      "model": "claude-3-sonnet",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.003,
+      "output_per_1k": 0.015,
+      "context": 200000,
+      "notes": "Claude 3 Sonnet"
+    },
+    {
+      "provider": "anthropic",
+      "family": "claude-3-haiku",
+      "model": "claude-3-haiku",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.00025,
+      "output_per_1k": 0.00125,
+      "context": 200000,
+      "notes": "Claude 3 Haiku"
+    },
+    {
+      "provider": "google",
+      "family": "gemini-2.5-pro",
+      "model": "gemini-2.5-pro",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.00125,
+      "output_per_1k": 0.005,
+      "context": 100000,
+      "notes": "Gemini 2.5 Pro"
+    },
+    {
+      "provider": "google",
+      "family": "gemini-2.5-flash",
+      "model": "gemini-2.5-flash",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.000075,
+      "output_per_1k": 0.0003,
+      "context": 1000000,
+      "notes": "Gemini 2.5 Flash"
+    },
+    {
+      "provider": "google",
+      "family": "gemini-1.5-pro",
+      "model": "gemini-1.5-pro",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.0035,
+      "output_per_1k": 0.0105,
+      "context": 2000000,
+      "notes": "Gemini 1.5 Pro"
+    },
+    {
+      "provider": "google",
+      "family": "gemini-1.5-flash",
+      "model": "gemini-1.5-flash",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.000075,
+      "output_per_1k": 0.0003,
+      "context": 1000000,
+      "notes": "Gemini 1.5 Flash"
+    },
+    {
+      "provider": "google",
+      "family": "gemini-embedding-001",
+      "model": "gemini-embedding-001",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.00015,
+      "dimensions": 3072,
+      "notes": "Gemini embeddings"
+    },
+    {
+      "provider": "cohere",
+      "family": "command-xlarge-r-plus",
+      "model": "command-xlarge-r-plus",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.0025,
+      "output_per_1k": 0.01,
+      "context": 128000,
+      "notes": "Command R+"
+    },
+    {
+      "provider": "cohere",
+      "family": "command-xlarge-r",
+      "model": "command-xlarge-r",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.0005,
+      "output_per_1k": 0.0015,
+      "context": 128000,
+      "notes": "Command R"
+    },
+    {
+      "provider": "cohere",
+      "family": "command-light",
+      "model": "command-light",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.0003,
+      "output_per_1k": 0.0006,
+      "context": 128000,
+      "notes": "Command Light"
+    },
+    {
+      "provider": "cohere",
+      "family": "embed-english-v3.0",
+      "model": "embed-english-v3.0",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.0005,
+      "dimensions": 1024,
+      "notes": "English embeddings v3.0"
+    },
+    {
+      "provider": "cohere",
+      "family": "embed-multilingual-v3.0",
+      "model": "embed-multilingual-v3.0",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.0005,
+      "dimensions": 1024,
+      "notes": "Multilingual embeddings v3.0"
+    },
+    {
+      "provider": "cohere",
+      "family": "rerank-english-v3.0",
+      "model": "rerank-english-v3.0",
+      "unit": "request",
+      "rerank_per_1k": 2.0,
+      "notes": "English reranker v3.0"
+    },
+    {
+      "provider": "cohere",
+      "family": "rerank-3.5",
+      "model": "rerank-3.5",
+      "unit": "request",
+      "per_request": 0.002,
+      "notes": "Reranker 3.5"
+    },
+    {
+      "provider": "cohere",
+      "family": "rerank-multilingual-v3.0",
+      "model": "rerank-multilingual-v3.0",
+      "unit": "request",
+      "rerank_per_1k": 2.0,
+      "notes": "Multilingual reranker v3.0"
+    },
+    {
+      "provider": "mistral",
+      "family": "mistral-large-2",
+      "model": "mistral-large-2",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.003,
+      "output_per_1k": 0.009,
+      "context": 32768,
+      "notes": "Mistral Large 2"
+    },
+    {
+      "provider": "mistral",
+      "family": "mixtral-8x22b",
+      "model": "mixtral-8x22b",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.002,
+      "output_per_1k": 0.006,
+      "context": 64000,
+      "notes": "Mixtral 8x22B MOE"
+    },
+    {
+      "provider": "mistral",
+      "family": "mixtral-8x7b",
+      "model": "mixtral-8x7b",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.00027,
+      "output_per_1k": 0.00027,
+      "context": 32768,
+      "notes": "Mixtral 8x7B"
+    },
+    {
+      "provider": "mistral",
+      "family": "mistral-7b",
+      "model": "mistral-7b",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.00025,
+      "output_per_1k": 0.00025,
+      "context": 32768,
+      "notes": "Mistral 7B"
+    },
+    {
+      "provider": "deepseek",
+      "family": "deepseek-reasoner",
+      "model": "deepseek-reasoner",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.00055,
+      "output_per_1k": 0.00219,
+      "context": 16000,
+      "notes": "DeepSeek R1"
+    },
+    {
+      "provider": "deepseek",
+      "family": "deepseek-coder-v2",
+      "model": "deepseek-coder-v2",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.00014,
+      "output_per_1k": 0.00028,
+      "context": 16384,
+      "notes": "DeepSeek Coder v2"
+    },
+    {
+      "provider": "voyage",
+      "family": "voyage-3-large",
+      "model": "voyage-3-large",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.00018,
+      "dimensions": 1024,
+      "notes": "Voyage 3 Large"
+    },
+    {
+      "provider": "voyage",
+      "family": "voyage-code-3",
+      "model": "voyage-code-3",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.00018,
+      "dimensions": 1024,
+      "notes": "Voyage Code 3"
+    },
+    {
+      "provider": "voyage",
+      "family": "voyage-rerank-2",
+      "model": "voyage-rerank-2",
+      "unit": "1k_tokens",
+      "rerank_per_1k": 0.00005,
+      "notes": "Voyage Rerank 2"
+    },
+    {
+      "provider": "voyage",
+      "family": "voyage-rerank-2-lite",
+      "model": "voyage-rerank-2-lite",
+      "unit": "1k_tokens",
+      "rerank_per_1k": 0.00002,
+      "notes": "Voyage Rerank 2 Lite"
+    },
+    {
+      "provider": "jina",
+      "family": "jina-embeddings-v3",
+      "model": "jina-embeddings-v3",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.00018,
+      "dimensions": 768,
+      "notes": "Jina Embeddings v3"
+    },
+    {
+      "provider": "jina",
+      "family": "jina-clip-v2",
+      "model": "jina-clip-v2",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.072,
+      "dimensions": 768,
+      "notes": "Jina CLIP v2"
+    },
+    {
+      "provider": "huggingface",
+      "family": "intfloat/e5-large-v2",
+      "model": "intfloat/e5-large-v2",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.0,
+      "dimensions": 1024,
+      "notes": "E5-large-v2 local"
+    },
+    {
+      "provider": "huggingface",
+      "family": "BAAI/bge-m3",
+      "model": "BAAI/bge-m3",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.0,
+      "dimensions": 1024,
+      "notes": "BGE-M3 local"
+    },
+    {
+      "provider": "huggingface",
+      "family": "BAAI/bge-small-en-v1.5",
+      "model": "BAAI/bge-small-en-v1.5",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.0,
+      "dimensions": 384,
+      "notes": "BGE-small-en local"
+    },
+    {
+      "provider": "huggingface",
+      "family": "BAAI/bge-reranker-v2-m3",
+      "model": "BAAI/bge-reranker-v2-m3",
+      "unit": "1k_tokens",
+      "rerank_per_1k": 0.0,
+      "notes": "BGE-reranker-v2-m3 local"
+    },
+    {
+      "provider": "huggingface",
+      "family": "jinaai/jina-reranker-v3",
+      "model": "jinaai/jina-reranker-v3",
+      "unit": "1k_tokens",
+      "rerank_per_1k": 0.0,
+      "notes": "Jina-reranker-v3 local"
+    },
+    {
+      "provider": "huggingface",
+      "family": "mixedbread-ai/mxbai-rerank-large-v2",
+      "model": "mixedbread-ai/mxbai-rerank-large-v2",
+      "unit": "1k_tokens",
+      "rerank_per_1k": 0.0,
+      "notes": "MXBAI-rerank-v2-large local"
+    },
+    {
+      "provider": "huggingface",
+      "family": "mixedbread-ai/mxbai-embed-large-v1",
+      "model": "mixedbread-ai/mxbai-embed-large-v1",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.0,
+      "dimensions": 768,
+      "notes": "MXBAI-embed-large local"
+    },
+    {
+      "provider": "ollama",
+      "family": "qwen3-coder:30b",
+      "model": "qwen3-coder:30b",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.0,
+      "output_per_1k": 0.0,
+      "context": 256000,
+      "notes": "Qwen3 Coder 30B local"
+    },
+    {
+      "provider": "ollama",
+      "family": "qwen3-coder:14b",
+      "model": "qwen3-coder:14b",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.0,
+      "output_per_1k": 0.0,
+      "context": 256000,
+      "notes": "Qwen3 Coder 14B local"
+    },
+    {
+      "provider": "ollama",
+      "family": "qwen3-coder:7b",
+      "model": "qwen3-coder:7b",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.0,
+      "output_per_1k": 0.0,
+      "context": 256000,
+      "notes": "Qwen3 Coder 7B local"
+    },
+    {
+      "provider": "ollama",
+      "family": "llama3.2:3b",
+      "model": "llama3.2:3b",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.0,
+      "output_per_1k": 0.0,
+      "context": 128000,
+      "notes": "Llama 3.2 3B local"
+    },
+    {
+      "provider": "ollama",
+      "family": "llama3.2:1b",
+      "model": "llama3.2:1b",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.0,
+      "output_per_1k": 0.0,
+      "context": 128000,
+      "notes": "Llama 3.2 1B local"
+    },
+    {
+      "provider": "ollama",
+      "family": "nomic-embed-text",
+      "model": "nomic-embed-text",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.0,
+      "dimensions": 768,
+      "notes": "Nomic embed text local"
+    },
+    {
+      "provider": "local",
+      "family": "deepseek-coder-v3:16b",
+      "model": "deepseek-coder-v3:16b",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.0,
+      "output_per_1k": 0.0,
+      "context": 16000,
+      "notes": "DeepSeek Coder v3 16B local"
+    },
+    {
+      "provider": "local",
+      "family": "deepseek-coder-v3:236b",
+      "model": "deepseek-coder-v3:236b",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.0,
+      "output_per_1k": 0.0,
+      "context": 16000,
+      "notes": "DeepSeek Coder v3 236B local"
+    },
+    {
+      "provider": "local",
+      "family": "NV-Embed-v2",
+      "model": "NV-Embed-v2",
+      "unit": "1k_tokens",
+      "embed_per_1k": 0.0,
+      "dimensions": 1024,
+      "notes": "NV Embed v2 local"
+    }
+  ]
+}
