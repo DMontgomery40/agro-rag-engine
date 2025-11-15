@@ -20,7 +20,8 @@ export function useModuleLoader() {
       // Check if core modules are available
       const w = window as any;
       const coreLoaded = !!w.CoreUtils;
-      const uiLoaded = !!w.Theme && !!w.Tabs && !!w.Search;
+      // Note: w.Tabs removed - using React Router instead of legacy tabs.js
+      const uiLoaded = !!w.Theme && !!w.Search;
       const configLoaded = !!w.Config && !!w.Health;
 
       if (coreLoaded && !modulesLoaded) {
