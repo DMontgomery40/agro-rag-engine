@@ -387,7 +387,7 @@ export function QuickActions() {
         {statusMessage}
       </div>
 
-      {/* Progress Bar */}
+      {/* Progress Bar with Shimmer */}
       <div
         style={{
           marginTop: '12px',
@@ -396,6 +396,7 @@ export function QuickActions() {
           borderRadius: '4px',
           height: '8px',
           overflow: 'hidden',
+          position: 'relative',
         }}
       >
         <div
@@ -404,9 +405,35 @@ export function QuickActions() {
             height: '100%',
             width: `${progress}%`,
             background: 'linear-gradient(90deg, var(--warn) 0%, var(--accent) 100%)',
-            transition: 'width 0.3s ease, opacity 0.3s ease',
+            transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease',
+            position: 'relative',
           }}
-        />
+        >
+          {progress > 0 && progress < 100 && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                height: '100%',
+                width: '30%',
+                background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent)',
+                animation: 'shine 2s infinite',
+              }}
+            />
+          )}
+        </div>
+
+        <style jsx>{`
+          @keyframes shine {
+            0% {
+              transform: translateX(-100%);
+            }
+            100% {
+              transform: translateX(400%);
+            }
+          }
+        `}</style>
       </div>
 
       {/* Live Terminal */}
