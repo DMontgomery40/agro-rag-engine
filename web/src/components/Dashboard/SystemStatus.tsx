@@ -3,7 +3,7 @@
  * Displays real-time status for health, repo, cards, MCP, and autotune
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAPI } from '@/hooks/useAPI';
 
 interface StatusData {

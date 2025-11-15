@@ -1,139 +1,105 @@
-import React, { useEffect, useState } from 'react'
-import { Button } from '../components/ui'
-import { ChevronRight } from '../components/icons/ChevronRight'
+// AGRO - Dashboard Page
+// Complete dashboard matching /gui with all sections, live terminals, and backend data
 
-type Summary = {
-  repo: { name: string; mode: string; branch?: string | null }
-  retrieval: { mode: string; top_k: number }
-  reranker: { enabled: boolean; backend?: string | null; provider?: string | null; model?: string | null }
-  enrichment: { enabled: boolean; backend?: string | null; model?: string | null }
-  generation: { provider?: string | null; model?: string | null }
-  health: { qdrant: string; redis: string; llm: string }
-}
+import React, { useEffect } from 'react';
+import { SystemStatusPanel } from '../components/Dashboard/SystemStatusPanel';
+import { QuickActions } from '../components/Dashboard/QuickActions';
+import { EmbeddingConfigPanel } from '../components/Dashboard/EmbeddingConfigPanel';
+import { IndexingCostsPanel } from '../components/Dashboard/IndexingCostsPanel';
+import { StorageBreakdownPanel } from '../components/Dashboard/StorageBreakdownPanel';
+import { AutoProfilePanel } from '../components/Dashboard/AutoProfilePanel';
+import { MonitoringLogsPanel } from '../components/Dashboard/MonitoringLogsPanel';
 
 export function Dashboard() {
-  const [summary, setSummary] = useState<Summary | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
+  // Initialize dashboard LiveTerminal
   useEffect(() => {
-    fetch('/api/pipeline/summary')
-      .then(async (r) => {
-        if (!r.ok) throw new Error(await r.text())
-        return r.json()
-      })
-      .then((data) => setSummary(data))
-      .catch((e) => setError(typeof e === 'string' ? e : (e?.message || 'Failed to load summary')))
-  }, [])
+    const initTerminal = () => {
+      const w = window as any;
+      if (w.LiveTerminal && !w._dashboardTerminal) {
+        try {
+          w._dashboardTerminal = new w.LiveTerminal('dash-operations-terminal');
+          console.log('[Dashboard] Operations terminal initialized');
+        } catch (e) {
+          console.error('[Dashboard] Failed to init terminal:', e);
+        }
+      }
+    };
 
-  if (error) {
-    return (
-      <div className="max-w-4xl mx-auto p-4">
-        <div className="bg-cardBg border border-line rounded-xl p-4">
-          <h3 className="text-lg font-semibold text-fg mb-2">Pipeline Summary</h3>
-          <div className="text-err">{error}</div>
-        </div>
-      </div>
-    )
-  }
+    // Try immediate init
+    initTerminal();
 
-  if (!summary) {
-    return (
-      <div className="max-w-4xl mx-auto p-4">
-        <div className="bg-cardBg border border-line rounded-xl p-4">
-          <h3 className="text-lg font-semibold text-fg mb-2">Pipeline Summary</h3>
-          <div className="text-muted">Loading...</div>
-        </div>
-      </div>
-    )
-  }
+    // Retry after delay if LiveTerminal loads late
+    const timeout = setTimeout(initTerminal, 1000);
+
+    return () => clearTimeout(timeout);
+  }, []);
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-6">
-      {/* Button Component Demo */}
-      <div className="bg-cardBg border border-line rounded-xl p-6">
-        <h3 className="text-lg font-semibold text-fg mb-4">Button Component Demo</h3>
-        
-        <div className="space-y-4">
-          <div>
-            <div className="text-muted text-sm mb-2">Variants (medium size)</div>
-            <div className="flex flex-wrap gap-3">
-              <Button variant="primary">Primary</Button>
-              <Button variant="secondary">Secondary</Button>
-              <Button variant="ghost">Ghost</Button>
-              <Button variant="primary" disabled>Disabled</Button>
-            </div>
-          </div>
+    <div id="tab-dashboard" className="tab-content active">
+      {/* Compact Status + Quick Actions */}
+      <div
+        className="settings-section"
+        style={{
+          background: 'var(--panel)',
+          borderLeft: '3px solid var(--accent)',
+        }}
+      >
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '300px 1fr',
+            gap: '24px',
+            alignItems: 'start',
+          }}
+        >
+          {/* Left: System Status */}
+          <SystemStatusPanel />
 
-          <div>
-            <div className="text-muted text-sm mb-2">Sizes (primary variant)</div>
-            <div className="flex flex-wrap items-center gap-3">
-              <Button variant="primary" size="sm">Small</Button>
-              <Button variant="primary" size="md">Medium</Button>
-              <Button variant="primary" size="lg">Large</Button>
-            </div>
-          </div>
-
-          <div>
-            <div className="text-muted text-sm mb-2">With Icons</div>
-            <div className="flex flex-wrap gap-3">
-              <Button variant="primary" rightIcon={<ChevronRight />}>Continue</Button>
-              <Button variant="secondary" size="sm" leftIcon={<ChevronRight />}>Back</Button>
-              <Button variant="ghost" rightIcon={<ChevronRight />}>Learn More</Button>
-            </div>
-          </div>
-
-          <div>
-            <div className="text-muted text-sm mb-2">Full Width</div>
-            <Button variant="primary" fullWidth>Full Width Button</Button>
-          </div>
+          {/* Right: Quick Actions */}
+          <QuickActions />
         </div>
       </div>
 
-      {/* Pipeline Summary */}
-      <div className="bg-cardBg border border-line rounded-xl p-4">
-        <h3 className="text-lg font-semibold text-fg mb-4">Pipeline Summary</h3>
-        <div className="grid grid-cols-1 gap-3">
-          <div className="text-fg">
-            <span className="text-muted">Repo:</span>{' '}
-            <span className="font-medium">{summary.repo.name}</span>
-            {summary.repo.branch && <span className="text-muted"> ({summary.repo.branch})</span>}
-          </div>
-          <div className="text-fg">
-            <span className="text-muted">Retrieval:</span>{' '}
-            <span className="font-medium">{summary.retrieval.mode}</span>
-            <span className="text-muted"> (top_k: {summary.retrieval.top_k})</span>
-          </div>
-          <div className="text-fg">
-            <span className="text-muted">Reranker:</span>{' '}
-            <span className="font-medium">
-              {summary.reranker.enabled
-                ? `${summary.reranker.backend || ''} ${summary.reranker.model || ''}`
-                : 'disabled'}
-            </span>
-          </div>
-          <div className="text-fg">
-            <span className="text-muted">Enrichment:</span>{' '}
-            <span className="font-medium">
-              {summary.enrichment.enabled
-                ? `${summary.enrichment.backend || ''} ${summary.enrichment.model || ''}`
-                : 'disabled'}
-            </span>
-          </div>
-          <div className="text-fg">
-            <span className="text-muted">Generation:</span>{' '}
-            <span className="font-medium">{summary.generation.model || '—'}</span>
-          </div>
-          <div className="text-fg">
-            <span className="text-muted">Health:</span>{' '}
-            <span className="font-mono text-sm">
-              qdrant=<span className="text-ok">{summary.health.qdrant}</span>{' '}
-              redis=<span className="text-ok">{summary.health.redis}</span>{' '}
-              llm=<span className="text-ok">{summary.health.llm}</span>
-            </span>
-          </div>
+      {/* agro Repo Info Panel */}
+      <div
+        style={{
+          background: 'var(--card-bg)',
+          border: '1px solid var(--line)',
+          borderRadius: '8px',
+          padding: '20px',
+          marginBottom: '24px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+          <span style={{ color: 'var(--ok)', fontSize: '16px' }}>●</span>
+          <span style={{ color: 'var(--fg)', fontSize: '18px', fontWeight: 600 }}>agro</span>
+        </div>
+        <div style={{ marginBottom: '8px' }}>
+          <span style={{ color: 'var(--fg-muted)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            BRANCH:
+          </span>{' '}
+          <span style={{ color: 'var(--link)', fontSize: '11px', fontWeight: 600 }}>LIGHT-MODE</span>
+        </div>
+        <div style={{ color: 'var(--fg-muted)', fontSize: '11px', fontFamily: "'Monaco', 'Courier New', monospace" }}>
+          {new Date().toLocaleString()}
         </div>
       </div>
+
+      {/* Embedding Configuration */}
+      <EmbeddingConfigPanel />
+
+      {/* Indexing Costs */}
+      <IndexingCostsPanel />
+
+      {/* Storage Requirements */}
+      <StorageBreakdownPanel />
+
+      {/* Auto-Profile */}
+      <AutoProfilePanel />
+
+      {/* Monitoring Logs */}
+      <MonitoringLogsPanel />
     </div>
-  )
+  );
 }
 
