@@ -192,12 +192,9 @@ def _clip_for_openai(text: str, enc, max_tokens: int = 8000) -> str:
         return text
     return enc.decode(toks[:max_tokens])
 
-def embed_texts(client: OpenAI, texts: List[str], model: str = None, batch: int = 64) -> List[List[float]]:
+def embed_texts(client: OpenAI, texts: List[str], model: str = 'text-embedding-3-large', batch: int = 64) -> List[List[float]]:
     embs = []
     enc = tiktoken.get_encoding('cl100k_base')
-    # Read from env if not provided
-    if model is None:
-        model = os.getenv('EMBEDDING_MODEL', 'text-embedding-3-large')
     for i in range(0, len(texts), batch):
         sub = [_clip_for_openai(t, enc) for t in texts[i:i+batch]]
         r = client.embeddings.create(model=model, input=sub)
