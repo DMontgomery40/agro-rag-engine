@@ -2,7 +2,36 @@
 
 **Purpose:** Complete understanding of every file, its location, dependencies, and whether it's in the right place
 **Status:** Living document - MUST be updated with every change
-**Last Updated:** 2025-11-14
+**Last Updated:** 2025-11-15
+
+---
+
+## 🔄 AGENT COORDINATION STATUS (UPDATED 2025-11-15)
+
+### Backend Agent Complete ✅
+- Function signatures refactored (model as parameter)
+- Path consolidation complete (path_config.py deleted)
+- All endpoints verified present in server/app.py
+- Dependencies added (docker package)
+- All imports tested and working
+
+### Frontend Agent TODO 🔨
+**Model Selection UI (CRITICAL - ADA Compliance)**
+- [ ] Create model dropdowns for: OpenAI, Anthropic, Voyage, local models
+- [ ] Use Context7 MCP or provider APIs to get CURRENT model lists
+- [ ] Wire dropdowns to POST `/api/config` (endpoint exists, line 1030)
+- [ ] Verify `/api/config` GET returns: EMBEDDING_MODEL, VOYAGE_MODEL, EMBEDDING_TYPE, EMBEDDING_DIMENSIONS
+- [ ] Location: RAG → Indexing subtab (logical place for embedding config)
+
+**Verify Endpoint Wiring**
+- [ ] Docker buttons → `/api/docker/*` endpoints (14 exist, lines 3998-4301)
+- [ ] Editor buttons → `/api/editor/*` endpoints (3 exist, lines 2405-2535)  
+- [ ] Autotune toggle → `/api/autotune/status` (lines 2763-2768)
+- [ ] Git integration → `/api/git/*` endpoints (4 exist, lines 2800-2876)
+
+**See Issue 4 (line 910) and Issue 5 (line 972) for details**
+
+---
 
 **Audit Goals:**
 1. ✅ What does each file do?
@@ -944,27 +973,50 @@ VSCodeTab.tsx is tiny wrapper (180 bytes) → EditorPanel
 3. ✅ `indexer/index_repo.py` lines 380-381: Caller now passes model from env
    - Added: `voyage_model = os.getenv('VOYAGE_MODEL', 'voyage-code-3')`
    - Passes to function: `embed_texts_voyage(texts, model=voyage_model, ...)`
+   - **Verified:** Code confirmed reading env var and passing to function
 
 4. ✅ `indexer/index_repo.py` lines 401-402: Already correct!
    - Reads: `embedding_model = os.getenv('EMBEDDING_MODEL', 'text-embedding-3-large')`
    - Passes to: `cache.embed_texts(client, texts, hashes, model=embedding_model, batch=64)`
 
-5. ✅ `retrieval/hybrid_search.py` line 474: Already correct!
+5. ✅ `retrieval/hybrid_search.py` lines 441-443: Voyage model configuration verified
+   - Line 441: `voyage_model = os.getenv('VOYAGE_MODEL', 'voyage-code-3')`
+   - Line 443: `vo.embed([text], model=voyage_model, ...)`
+   - **Verified:** Code confirmed reading env var and using in API call
+
+6. ✅ `retrieval/hybrid_search.py` line 474: OpenAI model configuration verified
    - Uses: `embedding_model = os.getenv('EMBEDDING_MODEL', 'text-embedding-3-large')`
    - This is appropriate for this function as it's a router that selects providers
 
-6. ✅ `common/metadata.py` line 3: Added missing `import os`
-   - Line 25 was using `os.getenv()` without import
+7. ✅ `common/metadata.py` line 3: Added missing `import os`
+   - Line 26 was using `os.getenv('ENRICH_DISABLED')` without import
+   - **Verified:** Import added, module loads correctly
 
-7. ✅ `requirements.txt` line 38: Added `docker>=6.1.0`
+8. ✅ `requirements.txt` line 38: Added `docker>=6.1.0`
    - Required by existing `/api/docker/*` endpoints in server/app.py
+   - **Verified:** Package added to requirements
 
 **Architecture Pattern Established:**
 - Functions accept model as PARAMETER (not reading env internally)
 - Callers read from env/config at the CALL SITE
 - This allows flexibility: env vars, config files, or explicit values
 
-**Tested:** ✅ All modified files import correctly
+**Tested:**
+- ✅ common/metadata.py imports correctly (with os import)
+- ✅ indexer/index_repo.py imports correctly (with refactored functions)
+- ✅ retrieval/hybrid_search.py imports correctly (with voyage model config)
+- ✅ server/index_stats.py imports correctly (with common.paths)
+- ✅ embed_texts() signature verified with 'model' parameter
+- ✅ embed_texts_voyage() signature verified with 'model' parameter
+- ✅ Line 401 confirmed reading: `os.getenv('EMBEDDING_MODEL', 'text-embedding-3-large')`
+- ✅ Line 380 confirmed reading: `os.getenv('VOYAGE_MODEL', 'voyage-code-3')`
+- ✅ All 13 Docker endpoints exist and verified
+- ✅ All 3 Editor endpoints exist and verified
+- ✅ All 4 Git endpoints exist and verified
+- ✅ All 2 Autotune endpoints exist and verified (pro feature stubs)
+- ✅ /api/config GET/POST endpoints verified to handle all env vars dynamically
+- ⚠️ Full end-to-end indexing test not run (would require API keys and Qdrant)
+
 **Remaining Work:** GUI dropdowns for model selection (frontend work)
 
 ---
@@ -987,6 +1039,47 @@ VSCodeTab.tsx is tiny wrapper (180 bytes) → EditorPanel
 - Wire all UI buttons to real backends
 
 **Priority:** CRITICAL (broken functionality)
+
+**VERIFIED 2025-11-15 by Backend Agent:**
+
+**Endpoints Status:**
+- ✅ `/api/docker/*` - **13 endpoints EXIST** in server/app.py (lines 3998-4301)
+  - GET: /api/docker/status, /api/docker/containers, /api/docker/containers/all, /api/docker/redis/ping
+  - GET: /api/docker/container/{id}/logs
+  - POST: /api/docker/container/{id}/start, stop, restart, pause, unpause, remove
+  - POST: /api/docker/infra/up, /api/docker/infra/down
+  - **Verified:** All 13 endpoints confirmed present in code
+  - **ACTION NEEDED (Frontend):** Verify UI buttons call these endpoints
+
+- ✅ `/api/editor/*` - **3 endpoints EXIST** in server/app.py (lines 2405, 2524, 2535)
+  - POST: /api/editor/restart
+  - GET: /api/editor/settings
+  - POST: /api/editor/settings
+  - **Verified:** All 3 endpoints confirmed present in code
+  - **ACTION NEEDED (Frontend):** Wire UI buttons to these endpoints
+
+- ✅ `/api/autotune/*` - **2 endpoints EXIST** in server/app.py (lines 2763, 2768)
+  - GET: /api/autotune/status
+  - POST: /api/autotune/status
+  - **Verified:** Both endpoints confirmed present in code
+  - **NOTE:** Marked as "Pro feature stub" - returns basic responses
+  - **ACTION NEEDED (Frontend):** Check if UI expects more endpoints or accepts stubs
+
+- ✅ `/api/git/*` - **4 endpoints EXIST** in server/app.py (lines 2800-2876)
+  - GET: /api/git/hooks/status
+  - POST: /api/git/hooks/install
+  - GET: /api/git/commit-meta
+  - POST: /api/git/commit-meta
+  - **Verified:** All 4 endpoints confirmed present in code
+  - **ACTION NEEDED (Frontend):** Wire GitIntegrationSubtab to these endpoints
+
+- ✅ `/api/config` - **2 endpoints EXIST** in server/app.py (lines 998, 1030)
+  - GET: /api/config - Returns ALL environment variables (including EMBEDDING_MODEL, VOYAGE_MODEL, etc.)
+  - POST: /api/config - Accepts and saves ANY environment variable to .env file
+  - **Verified:** Dynamically handles all env vars, no hardcoded list
+  - **ACTION NEEDED (Frontend):** Create UI dropdowns for model selection that POST to this endpoint
+
+**BACKEND IS COMPLETE** - All endpoints exist. Frontend needs to verify wiring.
 
 ---
 
@@ -1762,6 +1855,63 @@ Add useEffect to load from /api/config on mount.
 - Rendered after navigation footer
 
 **Testing:** Open /start tab, type question in help panel, verify it calls backend
+
+---
+
+
+## 2025-11-14 - Dashboard Verification Findings
+
+**Files Checked:**
+- SystemStatusPanel.tsx
+- QuickActions.tsx
+- Sidepanel.tsx
+
+**Issues Found:**
+
+1. **SystemStatusPanel.tsx - Hardcoded MCP URL**
+   - Line 44: mcp: '0.0.0.0:8013/mcp' (HARDCODED)
+   - FIXED: Now reads MCP_HTTP_HOST, MCP_HTTP_PORT, MCP_HTTP_PATH from config
+   - Also: Repo count now accurate (from config.repos.length)
+
+2. **Sidepanel.tsx - Cost Calculator Incomplete**
+   - Missing element IDs (#cost-provider, #cost-model, etc.)
+   - Model input should have datalist autocomplete
+   - Datalist should populate from /web/public/prices.json
+   - Missing provider selects for embed/rerank
+   - Currently just text inputs (not dropdowns)
+   
+   **What /GUI has:**
+   - Provider select with 6 options
+   - Model input + datalist (autocomplete)
+   - Embed provider select
+   - Embed model input + datalist
+   - Rerank provider select
+   - All populated from gui/prices.json
+   
+   **What React has:**
+   - Text inputs only
+   - Hardcoded initial values
+   - No datalists
+   - No dynamic population
+
+3. **Sidepanel.tsx - Hardcoded Initial Models**
+   - Line 8: costProvider = 'OpenAI' (hardcoded)
+   - Line 9: costModel = 'gpt-4o-mini' (hardcoded)
+   - Line 10: costEmbeddingModel = 'text-embedding-3-small' (hardcoded)
+   - Should: Load from /api/config on mount
+
+**Priority:** CRITICAL
+- Cost calculator is prominently displayed
+- Must work correctly for user trust
+- Needs complete rebuild
+
+**Estimate:** 2-3 hours to properly implement cost calculator with:
+- All element IDs
+- Provider selects
+- Model datalists
+- Dynamic population from prices.json
+- Load current config
+- Proper cost calculation
 
 ---
 

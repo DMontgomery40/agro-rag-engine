@@ -36,12 +36,20 @@ export function SystemStatusPanel() {
       const configResp = await fetch('/api/config');
       const config = await configResp.json();
 
+      // Get repo count
+      const repoCount = config.repos?.length || 1;
+      
+      // Get MCP status from config
+      const mcpHost = config.env?.MCP_HTTP_HOST || '0.0.0.0';
+      const mcpPort = config.env?.MCP_HTTP_PORT || '8013';
+      const mcpPath = config.env?.MCP_HTTP_PATH || '/mcp';
+      
       setStats({
         health: health.status === 'healthy' ? 'healthy (graph ready)' : 'degraded',
-        repo: `${config.env?.REPO || 'agro'} (1 repos)`,
+        repo: `${config.env?.REPO || 'agro'} (${repoCount} repos)`,
         branch: config.git_branch || 'development',
         cards: `${indexData.total_chunks || 0} cards`,
-        mcp: '0.0.0.0:8013/mcp',
+        mcp: `${mcpHost}:${mcpPort}${mcpPath}`,
         autotune: config.env?.AUTOTUNE_ENABLED === '1' ? 'enabled' : 'disabled',
       });
     } catch (e) {
