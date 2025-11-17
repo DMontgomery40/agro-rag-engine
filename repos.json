@@ -52,7 +52,8 @@
         "/scripts",
         "/gui/js",
         "/gui/index.html",
-        "/infra"
+        "/infra",
+        "/web"
       ],
       "layer_bonuses": {
         "gui": {

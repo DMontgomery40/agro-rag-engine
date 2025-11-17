@@ -1,6 +1,6 @@
 export default function VSCodeTab() {
   return (
-    <>
+    <div id="tab-vscode" className="tab-content active">
                 <div className="settings-section">
                     <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
                         <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
@@ -44,6 +44,6 @@ export default function VSCodeTab() {
                         Full VS Code experience running in your browser. Changes are saved to the workspace automatically.
                     </p>
                 </div>
-    </>
+    </div>
   )
 }

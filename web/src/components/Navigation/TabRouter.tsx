@@ -16,15 +16,7 @@ export function TabRouter() {
           : createElement(route.element as any);
 
         return (
-          <Route
-            key={route.path}
-            path={route.path}
-            element={
-              <div className="tab-content active">
-                {element}
-              </div>
-            }
-          />
+          <Route key={route.path} path={route.path} element={element} />
         );
       })}
     </Routes>

@@ -1,6 +1,6 @@
 export default function GrafanaTab() {
   return (
-    <div id="tab-grafana" className="tab-content" style={{padding: 0}}>
+    <div id="tab-grafana" className="tab-content active" style={{padding: 0}}>
       <div id="tab-grafana-config" className="section-subtab" style={{padding: '24px'}}>
                     <div className="settings-section">
                         <h3 id="grafana-config-anchor">Grafana Metrics Dashboard</h3>

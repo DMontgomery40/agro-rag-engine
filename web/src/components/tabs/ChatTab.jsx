@@ -1,6 +1,6 @@
 export default function ChatTab() {
   return (
-    <div id="tab-chat" className="tab-content">
+    <div id="tab-chat" className="tab-content active">
       <div id="tab-chat-ui" className="section-subtab active">
                     <div className="settings-section" style={{borderLeft: '3px solid var(--link)', padding: '0'}}>
                         <div style={{display: 'flex', flexDirection: 'column', height: '70vh'}}>
