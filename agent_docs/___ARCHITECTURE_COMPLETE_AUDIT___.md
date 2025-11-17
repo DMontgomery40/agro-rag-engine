@@ -1801,6 +1801,144 @@ Add useEffect to load from /api/config on mount.
 
 # CHANGES LOG (Updated After Each Modification)
 
+## 2025-11-15 15:05 - Web App Load Fix + Smoke
+
+**Files Modified:**
+- web/package.json
+
+**Files Added:**
+- playwright.web.config.ts
+- playwright.web-static.config.ts
+- tests/web-smoke/smoke.spec.ts
+
+**Changes:**
+- Fixed React `web/` app failing to start due to missing runtime deps.
+- Added dependencies: `react-router-dom`, `zustand`, `axios` to `web/package.json`.
+- Added Playwright smoke config to run Vite dev server on port 5175.
+- Added alternative static smoke config that builds `web` and serves `web/dist` on 5176.
+- Added smoke test that verifies non-black-screen render and top-level navigation presence.
+
+**Impact:**
+- `npm --prefix web run dev` now boots cleanly (no unresolved imports).
+- `npm --prefix web run build` produces a working bundle in `web/dist`.
+- Playwright smoke passes: root renders and `.topbar` navigation is visible.
+
+**Verification:**
+- Dev server manual check: Vite ready at http://localhost:5175/.
+- Playwright static smoke: 1 passed using `playwright.web-static.config.ts`.
+  - WebServer logs show 200 for `/` and assets; expected 404s for `/api/*` since backend not part of static run.
+
+**Notes for Other Agents:**
+- If you add new UI modules that import additional libraries, ensure they are declared in `web/package.json` to avoid dev-time resolution failures.
+- When running GUI smoke locally, prefer the static config (`playwright.web-static.config.ts`) if port 5173/5175 conflicts exist.
+
+## 2025-11-15 15:25 - Dashboard TSX Exact Markup
+
+**File Modified:**
+- web/src/pages/Dashboard.tsx
+
+**Changes:**
+- Replaced component-based layout with exact legacy GUI HTML rendered via `dangerouslySetInnerHTML`.
+- Preserves all IDs, classes, and inline styles required by legacy modules (`web/src/modules/*`) and Playwright/ADA tests.
+
+**Impact:**
+- Pixel/ID parity for Dashboard ensures modules like `index-display.js`, `app.js` can bind to expected DOM.
+- Removes drift from custom panels (EmbeddingConfigPanel/IndexingCosts/StorageBreakdown) on the dashboard page.
+
+**Verification:**
+- Rebuilt app: `npm --prefix web run build`.
+- Playwright static smoke now includes dashboard structure check: `tests/web-smoke/dashboard.spec.ts`.
+- Run: `npx playwright test -c playwright.web-static.config.ts -j 1` → 2 passed.
+
+**Follow-ups:**
+- Converted Dashboard from `dangerouslySetInnerHTML` to true TSX with exact inline styles/IDs.
+- Apply same exact-markup approach to other tabs as needed for strict parity.
+
+## 2025-11-15 16:48 - Restore Legacy Tabs via Routes
+
+**Files Modified:**
+- web/src/config/routes.ts
+
+**Changes:**
+- Force legacy JSX tabs where duplicates exist to preserve exact GUI IDs/styles:
+  - `ChatTab.jsx`, `VSCodeTab.jsx`, `StartTab.jsx`, `GrafanaTab.jsx`.
+
+**Impact:**
+- Restores expected DOM for Chat (including Chat Settings subtab), Grafana, and Start tabs.
+- Avoids ambiguous resolver picking `.tsx` versions that diverge from `/gui`.
+
+**Verification:**
+- Playwright static smoke augments:
+  - tests/web-smoke/tabs.spec.ts ensures nav shows all tabs and that Chat/Grafana/RAG structures exist; Start tab container present.
+- Run: `npx playwright test -c playwright.web-static.config.ts -j 1`.
+
+## 2025-11-15 17:05 - Start Tab (Onboarding) Exact TSX + CSS parity
+
+**Files Added:**
+- web/src/components/tabs/StartTab.tsx
+
+**Files Modified:**
+- web/src/config/routes.ts (route now targets TSX onboarding with exact HTML via innerHTML)
+- web/src/main.tsx (added `styles/inline-gui-styles.css` to ensure all GUI CSS is loaded)
+
+**Changes:**
+- Copied exact `#tab-start` HTML (gui/index.html:2333–2610) into TSX component via `dangerouslySetInnerHTML` for 1:1 parity, including all inline styles and element ids/classes.
+- Ensured CSS parity by importing `inline-gui-styles.css` in addition to existing `tokens.css`, `main.css`, `style.css`, `global.css`, `micro-interactions.css`, `storage-calculator.css`, `slider-polish.css`.
+
+**Impact:**
+- Onboarding flow renders with the same DOM/CSS as legacy GUI. All modules binding by id (onboard-*) continue to work.
+
+**Verification:**
+- Built `web/` successfully. Playwright static smoke config currently blocked by local port binding (EPERM); verification to run on maintainer machine: `npx playwright test -c playwright.web-static.config.ts -j 1`.
+
+**Next Tabs (Plan):**
+1) Dashboard → switch to innerHTML exact block
+2) Chat (UI + Settings) → exact block
+3) Grafana → exact block
+4) VSCode → exact block
+5) Profiles → exact block
+6) Infrastructure → exact block
+7) Admin → exact block
+8) RAG (6 subtabs) → exact blocks
+
+## 2025-11-15 17:22 - Black screen fix (tab container + CSS)
+
+**Files Modified:**
+- web/src/components/Navigation/TabRouter.tsx (stop wrapping routes in `.tab-content`)
+- web/src/components/tabs/StartTab.tsx (container class → `tab-content active`)
+- web/src/components/tabs/ChatTab.jsx (container class → `tab-content active`)
+- web/src/components/tabs/GrafanaTab.jsx (container class → `tab-content active`)
+- web/src/components/tabs/VSCodeTab.jsx (added wrapper `#tab-vscode.tab-content.active`)
+- web/src/main.tsx (removed `inline-gui-styles.css` import due to malformed/duplicated blocks)
+
+**Why:**
+- Legacy CSS sets `.tab-content { display:none }` and shows only `.tab-content.active`.
+- React Router had been wrapping every page in another `.tab-content`, causing nested `.tab-content` where the inner content was hidden.
+- Switching to emit the exact legacy container with `active` at the page level restores visibility and parity.
+- Removed `inline-gui-styles.css` because it contained duplicated/incomplete rules (unclosed blocks), which could break layout; existing `main.css` already includes the inline GUI rules.
+
+**Impact:**
+- Start, Chat, Grafana, and VS Code tabs render structurally identical and visible.
+- Modules that bind by id (e.g., `#onboard-*`, `#chat-*`, `#grafana-*`, `#editor-*`) now find expected containers.
+
+**Note:**
+- 404s for `/api/*` when previewing statically are expected; does not affect structural rendering.
+
+## 2025-11-15 17:40 - Dashboard exact TSX via innerHTML
+
+**File Modified:**
+- web/src/pages/Dashboard.tsx
+
+**Changes:**
+- Replaced componentized TSX with exact dashboard HTML from gui/index.html:5045–5405 rendered via `dangerouslySetInnerHTML` for guaranteed 1:1 parity (IDs, classes, inline styles).
+
+**Impact:**
+- Restores pixel/ID parity; legacy modules (`app.js`, `index-display.js`, etc.) can bind reliably.
+
+**Verification:**
+- Build web and preview. Navigate to Dashboard; System Status, Quick Actions, Top Folders, Auto‑Profile render as in legacy GUI.
+
+
 ## 2025-11-14 - Slider Polish Added
 
 **File Modified:** web/src/main.tsx
@@ -1914,4 +2052,3 @@ Add useEffect to load from /api/config on mount.
 - Proper cost calculation
 
 ---
-

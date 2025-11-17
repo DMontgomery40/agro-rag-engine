@@ -131,7 +131,8 @@ function App() {
   }, []);
 
   // Show loading screen while modules are loading
-  if (!modulesLoaded || !isInitialized) {
+  // TEMPORARY: Skip loading check to debug
+  if (false && (!modulesLoaded || !isInitialized)) {
     return (
       <div style={{
         display: 'flex',

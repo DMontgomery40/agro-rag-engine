@@ -211,7 +211,7 @@ def _load_discriminative_keywords(repo: str) -> List[str]:
             kw_file = root_file
         else:
             # Fallback to data directory
-            from path_config import data_dir
+            from common.paths import data_dir
             kw_file = data_dir() / f"discriminative_keywords_{repo}.json"
             if not kw_file.exists():
                 kw_file = data_dir() / "discriminative_keywords.json"
