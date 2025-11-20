@@ -95,6 +95,17 @@ _RRF_K_DIV = _config_registry.get_int('RRF_K_DIV', 60)
 _CARD_BONUS = _config_registry.get_float('CARD_BONUS', 0.08)
 _FILENAME_BOOST_EXACT = _config_registry.get_float('FILENAME_BOOST_EXACT', 1.5)
 _FILENAME_BOOST_PARTIAL = _config_registry.get_float('FILENAME_BOOST_PARTIAL', 1.2)
+_FINAL_K = _config_registry.get_int('FINAL_K', 10)
+_BM25_WEIGHT = _config_registry.get_float('BM25_WEIGHT', 0.3)
+_VECTOR_WEIGHT = _config_registry.get_float('VECTOR_WEIGHT', 0.7)
+_CARD_SEARCH_ENABLED = _config_registry.get_int('CARD_SEARCH_ENABLED', 1)
+_MULTI_QUERY_M = _config_registry.get_int('MULTI_QUERY_M', 4)
+_QUERY_EXPANSION_ENABLED = _config_registry.get_int('QUERY_EXPANSION_ENABLED', 1)
+_LAYER_BONUS_GUI = _config_registry.get_float('LAYER_BONUS_GUI', 0.15)
+_LAYER_BONUS_RETRIEVAL = _config_registry.get_float('LAYER_BONUS_RETRIEVAL', 0.15)
+_LAYER_BONUS_INDEXER = _config_registry.get_float('LAYER_BONUS_INDEXER', 0.15)
+_VENDOR_PENALTY = _config_registry.get_float('VENDOR_PENALTY', -0.1)
+_FRESHNESS_BONUS = _config_registry.get_float('FRESHNESS_BONUS', 0.05)
 
 
 def reload_config():
@@ -104,10 +115,24 @@ def reload_config():
     This is automatically called when the config registry is reloaded via the API.
     """
     global _RRF_K_DIV, _CARD_BONUS, _FILENAME_BOOST_EXACT, _FILENAME_BOOST_PARTIAL
+    global _FINAL_K, _BM25_WEIGHT, _VECTOR_WEIGHT, _CARD_SEARCH_ENABLED, _MULTI_QUERY_M
+    global _QUERY_EXPANSION_ENABLED, _LAYER_BONUS_GUI, _LAYER_BONUS_RETRIEVAL
+    global _LAYER_BONUS_INDEXER, _VENDOR_PENALTY, _FRESHNESS_BONUS
     _RRF_K_DIV = _config_registry.get_int('RRF_K_DIV', 60)
     _CARD_BONUS = _config_registry.get_float('CARD_BONUS', 0.08)
     _FILENAME_BOOST_EXACT = _config_registry.get_float('FILENAME_BOOST_EXACT', 1.5)
     _FILENAME_BOOST_PARTIAL = _config_registry.get_float('FILENAME_BOOST_PARTIAL', 1.2)
+    _FINAL_K = _config_registry.get_int('FINAL_K', 10)
+    _BM25_WEIGHT = _config_registry.get_float('BM25_WEIGHT', 0.3)
+    _VECTOR_WEIGHT = _config_registry.get_float('VECTOR_WEIGHT', 0.7)
+    _CARD_SEARCH_ENABLED = _config_registry.get_int('CARD_SEARCH_ENABLED', 1)
+    _MULTI_QUERY_M = _config_registry.get_int('MULTI_QUERY_M', 4)
+    _QUERY_EXPANSION_ENABLED = _config_registry.get_int('QUERY_EXPANSION_ENABLED', 1)
+    _LAYER_BONUS_GUI = _config_registry.get_float('LAYER_BONUS_GUI', 0.15)
+    _LAYER_BONUS_RETRIEVAL = _config_registry.get_float('LAYER_BONUS_RETRIEVAL', 0.15)
+    _LAYER_BONUS_INDEXER = _config_registry.get_float('LAYER_BONUS_INDEXER', 0.15)
+    _VENDOR_PENALTY = _config_registry.get_float('VENDOR_PENALTY', -0.1)
+    _FRESHNESS_BONUS = _config_registry.get_float('FRESHNESS_BONUS', 0.05)
 
 
 def _classify_query(q: str) -> str:

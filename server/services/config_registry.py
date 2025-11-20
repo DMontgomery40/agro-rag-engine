@@ -169,6 +169,21 @@ class ConfigRegistry:
             logger.warning(f"Failed to convert {key}={value} to float, using default {default}")
             return default
 
+    def get_str(self, key: str, default: str) -> str:
+        """Get a config value as string.
+
+        Args:
+            key: Configuration key
+            default: Default value if key not found
+
+        Returns:
+            String value
+        """
+        value = self.get(key)
+        if value is None:
+            return default
+        return str(value)
+
     def get_bool(self, key: str, default: bool = False) -> bool:
         """Get a config value as boolean.
 

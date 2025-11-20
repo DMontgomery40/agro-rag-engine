@@ -7,6 +7,21 @@ from typing import Any, Dict, List, Optional
 from contextvars import ContextVar
 
 from common.config_loader import out_dir
+from server.services.config_registry import get_config_registry
+
+# Module-level config caching
+_config_registry = get_config_registry()
+_TRACING_ENABLED = _config_registry.get_int('TRACING_ENABLED', 1)
+_TRACE_SAMPLING_RATE = _config_registry.get_float('TRACE_SAMPLING_RATE', 1.0)
+_LOG_LEVEL = _config_registry.get_str('LOG_LEVEL', 'INFO')
+
+
+def reload_config():
+    """Reload cached config values from registry."""
+    global _TRACING_ENABLED, _TRACE_SAMPLING_RATE, _LOG_LEVEL
+    _TRACING_ENABLED = _config_registry.get_int('TRACING_ENABLED', 1)
+    _TRACE_SAMPLING_RATE = _config_registry.get_float('TRACE_SAMPLING_RATE', 1.0)
+    _LOG_LEVEL = _config_registry.get_str('LOG_LEVEL', 'INFO')
 
 
 _TRACE_VAR: ContextVar[Optional["Trace"]] = ContextVar("agro_trace", default=None)

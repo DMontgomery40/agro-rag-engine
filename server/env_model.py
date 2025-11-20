@@ -6,8 +6,63 @@ try:
 except Exception as e:
     raise RuntimeError("openai>=1.x is required for Responses API") from e
 
-_DEFAULT_MODEL = os.getenv("GEN_MODEL", os.getenv("ENRICH_MODEL", "gpt-4o-mini"))
-_DEFAULT_TEMPERATURE = float(os.getenv("GEN_TEMPERATURE", "0.0") or 0.0)
+# Module-level cached configuration
+try:
+    from server.services.config_registry import get_config_registry
+    _config_registry = get_config_registry()
+except ImportError:
+    _config_registry = None
+
+# Cached generation parameters
+_GEN_MODEL = None
+_GEN_TEMPERATURE = None
+_GEN_MAX_TOKENS = None
+_GEN_TOP_P = None
+_GEN_TIMEOUT = None
+_GEN_RETRY_MAX = None
+_ENRICH_MODEL = None
+_ENRICH_BACKEND = None
+_ENRICH_DISABLED = None
+_OLLAMA_NUM_CTX = None
+
+def _load_cached_config():
+    """Load all generation config values into module-level cache."""
+    global _GEN_MODEL, _GEN_TEMPERATURE, _GEN_MAX_TOKENS, _GEN_TOP_P, _GEN_TIMEOUT
+    global _GEN_RETRY_MAX, _ENRICH_MODEL, _ENRICH_BACKEND, _ENRICH_DISABLED, _OLLAMA_NUM_CTX
+
+    if _config_registry is None:
+        # Fallback to env vars
+        _GEN_MODEL = os.getenv('GEN_MODEL', 'gpt-4o-mini')
+        _GEN_TEMPERATURE = float(os.getenv('GEN_TEMPERATURE', '0.0') or '0.0')
+        _GEN_MAX_TOKENS = int(os.getenv('GEN_MAX_TOKENS', '2048') or '2048')
+        _GEN_TOP_P = float(os.getenv('GEN_TOP_P', '1.0') or '1.0')
+        _GEN_TIMEOUT = int(os.getenv('GEN_TIMEOUT', '60') or '60')
+        _GEN_RETRY_MAX = int(os.getenv('GEN_RETRY_MAX', '2') or '2')
+        _ENRICH_MODEL = os.getenv('ENRICH_MODEL', 'gpt-4o-mini')
+        _ENRICH_BACKEND = os.getenv('ENRICH_BACKEND', 'openai')
+        _ENRICH_DISABLED = int(os.getenv('ENRICH_DISABLED', '0') or '0')
+        _OLLAMA_NUM_CTX = int(os.getenv('OLLAMA_NUM_CTX', '8192') or '8192')
+    else:
+        _GEN_MODEL = _config_registry.get_str('GEN_MODEL', 'gpt-4o-mini')
+        _GEN_TEMPERATURE = _config_registry.get_float('GEN_TEMPERATURE', 0.0)
+        _GEN_MAX_TOKENS = _config_registry.get_int('GEN_MAX_TOKENS', 2048)
+        _GEN_TOP_P = _config_registry.get_float('GEN_TOP_P', 1.0)
+        _GEN_TIMEOUT = _config_registry.get_int('GEN_TIMEOUT', 60)
+        _GEN_RETRY_MAX = _config_registry.get_int('GEN_RETRY_MAX', 2)
+        _ENRICH_MODEL = _config_registry.get_str('ENRICH_MODEL', 'gpt-4o-mini')
+        _ENRICH_BACKEND = _config_registry.get_str('ENRICH_BACKEND', 'openai')
+        _ENRICH_DISABLED = _config_registry.get_int('ENRICH_DISABLED', 0)
+        _OLLAMA_NUM_CTX = _config_registry.get_int('OLLAMA_NUM_CTX', 8192)
+
+def reload_config():
+    """Reload all cached config values from registry."""
+    _load_cached_config()
+
+# Initialize cache on module import
+_load_cached_config()
+
+_DEFAULT_MODEL = _GEN_MODEL
+_DEFAULT_TEMPERATURE = _GEN_TEMPERATURE
 
 _client = None
 _mlx_model = None
@@ -17,7 +72,8 @@ def _get_mlx_model():
     global _mlx_model, _mlx_tokenizer
     if _mlx_model is None:
         from mlx_lm import load
-        model_name = os.getenv("GEN_MODEL", "mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit")
+        # Use cached config value
+        model_name = _GEN_MODEL or "mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit"
         _mlx_model, _mlx_tokenizer = load(model_name)
     return _mlx_model, _mlx_tokenizer
 
@@ -60,12 +116,8 @@ def generate_text(
         "input": user_input,
         "store": store,
     }
-    # Apply temperature from env when supported (Responses API)
-    try:
-        temp = float(os.getenv("GEN_TEMPERATURE", str(_DEFAULT_TEMPERATURE)) or _DEFAULT_TEMPERATURE)
-    except Exception:
-        temp = _DEFAULT_TEMPERATURE
-    # Not all providers honor this, but Responses API does
+    # Use cached temperature value
+    temp = _GEN_TEMPERATURE
     kwargs["temperature"] = temp
     if system_instructions:
         kwargs["instructions"] = system_instructions
@@ -78,7 +130,8 @@ def generate_text(
     if extra:
         kwargs.update(extra)
 
-    ENRICH_BACKEND = os.getenv("ENRICH_BACKEND", "").lower()
+    # Use cached enrich backend
+    ENRICH_BACKEND = (_ENRICH_BACKEND or "").lower()
     is_mlx_model = mdl.startswith("mlx-community/") if mdl else False
     prefer_mlx = (ENRICH_BACKEND == "mlx") or is_mlx_model
 

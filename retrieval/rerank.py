@@ -19,6 +19,69 @@ try:
 except Exception:
     pass
 
+# Module-level cached configuration
+try:
+    from server.services.config_registry import get_config_registry
+    _config_registry = get_config_registry()
+except ImportError:
+    _config_registry = None
+
+# Cached reranking parameters
+_RERANKER_MODEL = None
+_AGRO_RERANKER_ENABLED = None
+_AGRO_RERANKER_ALPHA = None
+_AGRO_RERANKER_TOPN = None
+_AGRO_RERANKER_BATCH = None
+_AGRO_RERANKER_MAXLEN = None
+_AGRO_RERANKER_RELOAD_ON_CHANGE = None
+_AGRO_RERANKER_RELOAD_PERIOD_SEC = None
+_COHERE_RERANK_MODEL = None
+_VOYAGE_RERANK_MODEL = None
+_RERANKER_BACKEND = None
+_RERANKER_TIMEOUT = None
+
+def _load_cached_config():
+    """Load all reranking config values into module-level cache."""
+    global _RERANKER_MODEL, _AGRO_RERANKER_ENABLED, _AGRO_RERANKER_ALPHA, _AGRO_RERANKER_TOPN
+    global _AGRO_RERANKER_BATCH, _AGRO_RERANKER_MAXLEN, _AGRO_RERANKER_RELOAD_ON_CHANGE
+    global _AGRO_RERANKER_RELOAD_PERIOD_SEC, _COHERE_RERANK_MODEL, _VOYAGE_RERANK_MODEL
+    global _RERANKER_BACKEND, _RERANKER_TIMEOUT
+
+    if _config_registry is None:
+        # Fallback to env vars if registry not available
+        _RERANKER_MODEL = os.getenv('RERANKER_MODEL', 'cross-encoder/ms-marco-MiniLM-L-12-v2')
+        _AGRO_RERANKER_ENABLED = int(os.getenv('AGRO_RERANKER_ENABLED', '1') or '1')
+        _AGRO_RERANKER_ALPHA = float(os.getenv('AGRO_RERANKER_ALPHA', '0.7') or '0.7')
+        _AGRO_RERANKER_TOPN = int(os.getenv('AGRO_RERANKER_TOPN', '50') or '50')
+        _AGRO_RERANKER_BATCH = int(os.getenv('AGRO_RERANKER_BATCH', '16') or '16')
+        _AGRO_RERANKER_MAXLEN = int(os.getenv('AGRO_RERANKER_MAXLEN', '512') or '512')
+        _AGRO_RERANKER_RELOAD_ON_CHANGE = int(os.getenv('AGRO_RERANKER_RELOAD_ON_CHANGE', '0') or '0')
+        _AGRO_RERANKER_RELOAD_PERIOD_SEC = int(os.getenv('AGRO_RERANKER_RELOAD_PERIOD_SEC', '60') or '60')
+        _COHERE_RERANK_MODEL = os.getenv('COHERE_RERANK_MODEL', 'rerank-3.5')
+        _VOYAGE_RERANK_MODEL = os.getenv('VOYAGE_RERANK_MODEL', 'rerank-2')
+        _RERANKER_BACKEND = os.getenv('RERANKER_BACKEND', 'local')
+        _RERANKER_TIMEOUT = int(os.getenv('RERANKER_TIMEOUT', '10') or '10')
+    else:
+        _RERANKER_MODEL = _config_registry.get_str('RERANKER_MODEL', 'cross-encoder/ms-marco-MiniLM-L-12-v2')
+        _AGRO_RERANKER_ENABLED = _config_registry.get_int('AGRO_RERANKER_ENABLED', 1)
+        _AGRO_RERANKER_ALPHA = _config_registry.get_float('AGRO_RERANKER_ALPHA', 0.7)
+        _AGRO_RERANKER_TOPN = _config_registry.get_int('AGRO_RERANKER_TOPN', 50)
+        _AGRO_RERANKER_BATCH = _config_registry.get_int('AGRO_RERANKER_BATCH', 16)
+        _AGRO_RERANKER_MAXLEN = _config_registry.get_int('AGRO_RERANKER_MAXLEN', 512)
+        _AGRO_RERANKER_RELOAD_ON_CHANGE = _config_registry.get_int('AGRO_RERANKER_RELOAD_ON_CHANGE', 0)
+        _AGRO_RERANKER_RELOAD_PERIOD_SEC = _config_registry.get_int('AGRO_RERANKER_RELOAD_PERIOD_SEC', 60)
+        _COHERE_RERANK_MODEL = _config_registry.get_str('COHERE_RERANK_MODEL', 'rerank-3.5')
+        _VOYAGE_RERANK_MODEL = _config_registry.get_str('VOYAGE_RERANK_MODEL', 'rerank-2')
+        _RERANKER_BACKEND = _config_registry.get_str('RERANKER_BACKEND', 'local')
+        _RERANKER_TIMEOUT = _config_registry.get_int('RERANKER_TIMEOUT', 10)
+
+def reload_config():
+    """Reload all cached config values from registry."""
+    _load_cached_config()
+
+# Initialize cache on module import
+_load_cached_config()
+
 _HF_PIPE = None
 _RERANKER = None
 
@@ -28,11 +91,9 @@ if _SHARED_LOADER:
     DEFAULT_MODEL = resolve_model_target(_BOOT_SETTINGS)
     COHERE_MODEL = _BOOT_SETTINGS.cohere_model
 else:
-    # Default local/HF cross-encoder model for reranking
-    # Upgraded to MiniLM-L-12-v2 per request
-    DEFAULT_MODEL = os.getenv('RERANKER_MODEL', 'cross-encoder/ms-marco-MiniLM-L-12-v2')
-    # Note: Backend/model can change at runtime via GUI. Read env at call-time in rerank_results.
-    COHERE_MODEL = os.getenv('COHERE_RERANK_MODEL', 'rerank-3.5')
+    # Use cached values from config registry
+    DEFAULT_MODEL = _RERANKER_MODEL
+    COHERE_MODEL = _COHERE_RERANK_MODEL
 
 def _sigmoid(x: float) -> float:
     try:
@@ -82,11 +143,9 @@ def get_reranker() -> Optional[Reranker]:
         model_name = resolve_model_target(settings)
         max_length = settings.max_length
     else:
-        model_name = os.getenv('RERANKER_MODEL', DEFAULT_MODEL)
-        try:
-            max_length = int(os.getenv('AGRO_RERANKER_MAXLEN', '512') or '512')
-        except Exception:
-            max_length = 512
+        # Use cached config values instead of os.getenv
+        model_name = _RERANKER_MODEL or DEFAULT_MODEL
+        max_length = _AGRO_RERANKER_MAXLEN or 512
 
     if _RERANKER is not None and _RERANKER_MODEL_ID != model_name:
         _RERANKER = None

@@ -18,6 +18,35 @@ from typing import List, Dict, Any, Optional
 from pathlib import Path
 from sentence_transformers import CrossEncoder
 
+# Module-level cached configuration
+try:
+    from server.services.config_registry import get_config_registry
+    _config_registry = get_config_registry()
+except ImportError:
+    _config_registry = None
+
+# Cached parameters
+_AGRO_RERANKER_BATCH = None
+_AGRO_RERANKER_MAXLEN = None
+
+def _load_cached_config():
+    """Load reranker config values into module-level cache."""
+    global _AGRO_RERANKER_BATCH, _AGRO_RERANKER_MAXLEN
+
+    if _config_registry is None:
+        _AGRO_RERANKER_BATCH = int(os.getenv('AGRO_RERANKER_BATCH', '16') or '16')
+        _AGRO_RERANKER_MAXLEN = int(os.getenv('AGRO_RERANKER_MAXLEN', '512') or '512')
+    else:
+        _AGRO_RERANKER_BATCH = _config_registry.get_int('AGRO_RERANKER_BATCH', 16)
+        _AGRO_RERANKER_MAXLEN = _config_registry.get_int('AGRO_RERANKER_MAXLEN', 512)
+
+def reload_config():
+    """Reload all cached config values from registry."""
+    _load_cached_config()
+
+# Initialize cache
+_load_cached_config()
+
 _RERANKER: Optional[CrossEncoder] = None
 _RERANKER_PATH: Optional[str] = None
 _RERANKER_MTIME: float = 0.0

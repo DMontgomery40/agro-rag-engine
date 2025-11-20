@@ -13,6 +13,41 @@ from typing import Dict, Any, Optional, Iterator, List
 from common.config_loader import out_dir
 from server.env_model import generate_text
 
+# Module-level cached configuration
+try:
+    from server.services.config_registry import get_config_registry
+    _config_registry = get_config_registry()
+except ImportError:
+    _config_registry = None
+
+# Cached enrichment parameters
+_CARDS_ENRICH_DEFAULT = None
+_CARDS_MAX = None
+_ENRICH_CODE_CHUNKS = None
+_ENRICH_TIMEOUT = None
+
+def _load_cached_config():
+    """Load cards config values into module-level cache."""
+    global _CARDS_ENRICH_DEFAULT, _CARDS_MAX, _ENRICH_CODE_CHUNKS, _ENRICH_TIMEOUT
+
+    if _config_registry is None:
+        _CARDS_ENRICH_DEFAULT = int(os.getenv('CARDS_ENRICH_DEFAULT', '1') or '1')
+        _CARDS_MAX = int(os.getenv('CARDS_MAX', '100') or '100')
+        _ENRICH_CODE_CHUNKS = int(os.getenv('ENRICH_CODE_CHUNKS', '1') or '1')
+        _ENRICH_TIMEOUT = int(os.getenv('ENRICH_TIMEOUT', '30') or '30')
+    else:
+        _CARDS_ENRICH_DEFAULT = _config_registry.get_int('CARDS_ENRICH_DEFAULT', 1)
+        _CARDS_MAX = _config_registry.get_int('CARDS_MAX', 100)
+        _ENRICH_CODE_CHUNKS = _config_registry.get_int('ENRICH_CODE_CHUNKS', 1)
+        _ENRICH_TIMEOUT = _config_registry.get_int('ENRICH_TIMEOUT', 30)
+
+def reload_config():
+    """Reload all cached config values from registry."""
+    _load_cached_config()
+
+# Initialize cache
+_load_cached_config()
+
 
 QUICK_TIPS = [
     "Put repo-specific nouns in Discriminative to improve filename/path hits.",

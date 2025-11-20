@@ -12,6 +12,24 @@ from prometheus_client import (
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
+from server.services.config_registry import get_config_registry
+
+# Module-level config caching
+_config_registry = get_config_registry()
+_METRICS_ENABLED = _config_registry.get_int('METRICS_ENABLED', 1)
+_PROMETHEUS_PORT = _config_registry.get_int('PROMETHEUS_PORT', 9090)
+_ALERT_INCLUDE_RESOLVED = _config_registry.get_int('ALERT_INCLUDE_RESOLVED', 1)
+_ALERT_WEBHOOK_TIMEOUT = _config_registry.get_int('ALERT_WEBHOOK_TIMEOUT', 5)
+
+
+def reload_config():
+    """Reload cached config values from registry."""
+    global _METRICS_ENABLED, _PROMETHEUS_PORT, _ALERT_INCLUDE_RESOLVED, _ALERT_WEBHOOK_TIMEOUT
+    _METRICS_ENABLED = _config_registry.get_int('METRICS_ENABLED', 1)
+    _PROMETHEUS_PORT = _config_registry.get_int('PROMETHEUS_PORT', 9090)
+    _ALERT_INCLUDE_RESOLVED = _config_registry.get_int('ALERT_INCLUDE_RESOLVED', 1)
+    _ALERT_WEBHOOK_TIMEOUT = _config_registry.get_int('ALERT_WEBHOOK_TIMEOUT', 5)
+
 
 # Latency buckets tuned for LLM/RAG (seconds)
 LATENCY_BUCKETS = (0.05, 0.1, 0.25, 0.5, 1, 2, 3, 5, 8, 13, 21, 34, 60)

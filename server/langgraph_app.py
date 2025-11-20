@@ -34,6 +34,26 @@ _config_registry = get_config_registry()
 _MAX_QUERY_REWRITES = _config_registry.get_int('MAX_QUERY_REWRITES', 2)
 _LANGGRAPH_FINAL_K = _config_registry.get_int('LANGGRAPH_FINAL_K', 20)
 _FALLBACK_CONFIDENCE = _config_registry.get_float('FALLBACK_CONFIDENCE', 0.55)
+_CONF_TOP1 = _config_registry.get_float('CONF_TOP1', 0.62)
+_CONF_AVG5 = _config_registry.get_float('CONF_AVG5', 0.55)
+_CONF_ANY = _config_registry.get_float('CONF_ANY', 0.55)
+
+
+def reload_config():
+    """Reload configuration values from the registry.
+
+    Call this function after config changes to update module-level cached values.
+    This is automatically called when the config registry is reloaded via the API.
+    """
+    global _MAX_QUERY_REWRITES, _LANGGRAPH_FINAL_K, _FALLBACK_CONFIDENCE
+    global _CONF_TOP1, _CONF_AVG5, _CONF_ANY
+    _MAX_QUERY_REWRITES = _config_registry.get_int('MAX_QUERY_REWRITES', 2)
+    _LANGGRAPH_FINAL_K = _config_registry.get_int('LANGGRAPH_FINAL_K', 20)
+    _FALLBACK_CONFIDENCE = _config_registry.get_float('FALLBACK_CONFIDENCE', 0.55)
+    _CONF_TOP1 = _config_registry.get_float('CONF_TOP1', 0.62)
+    _CONF_AVG5 = _config_registry.get_float('CONF_AVG5', 0.55)
+    _CONF_ANY = _config_registry.get_float('CONF_ANY', 0.55)
+
 
 class RAGState(TypedDict):
     question: str
@@ -84,12 +104,12 @@ def route_after_retrieval(state:RAGState)->str:
     scores = sorted([float(d.get("rerank_score",0.0) or 0.0) for d in docs], reverse=True)
     top1 = scores[0] if scores else 0.0
     avg5 = (sum(scores[:5])/min(5, len(scores))) if scores else 0.0
-    try:
-        CONF_TOP1 = float(os.getenv('CONF_TOP1', '0.62'))
-        CONF_AVG5 = float(os.getenv('CONF_AVG5', '0.55'))
-        CONF_ANY = float(os.getenv('CONF_ANY', '0.55'))
-    except Exception:
-        CONF_TOP1, CONF_AVG5, CONF_ANY = 0.62, 0.55, 0.55
+
+    # Use cached config values instead of os.getenv
+    CONF_TOP1 = _CONF_TOP1
+    CONF_AVG5 = _CONF_AVG5
+    CONF_ANY = _CONF_ANY
+
     # Decide next step
     if top1 >= CONF_TOP1 or avg5 >= CONF_AVG5 or conf >= CONF_ANY:
         decision = "generate"
