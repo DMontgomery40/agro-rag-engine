@@ -2,8 +2,7 @@
 // This component uses dangerouslySetInnerHTML to render the exact HTML from /gui
 
 export function EvaluateSubtab() {
-  const htmlContent = `                <div id="tab-rag-evaluate" class="rag-subtab-content">
-                    <!-- Golden Questions Manager -->
+  const htmlContent = `                    <!-- Golden Questions Manager -->
                     <div class="settings-section" style="border-left: 3px solid var(--link);">
                         <h3>
                             <span class="accent-blue">●</span> Golden Questions Manager
@@ -323,9 +322,8 @@ export function EvaluateSubtab() {
 
                 <!-- Storage Calculator -->
                 <div id="storage-calculator-container"></div>
-                </div>
 
 `;
-  
+
   return <div dangerouslySetInnerHTML={{ __html: htmlContent }} />;
 }

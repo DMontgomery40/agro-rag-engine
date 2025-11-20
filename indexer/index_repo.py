@@ -4,8 +4,14 @@ import hashlib
 from typing import List, Dict
 from pathlib import Path
 from dotenv import load_dotenv, find_dotenv
+import fnmatch
+import pathlib
+from datetime import datetime
+import time as _time
+import common.qdrant_utils as qdrant_recreate_fallback  # make recreate_collection 404-safe
 from common.config_loader import get_repo_paths, out_dir, exclude_paths
 from common.paths import data_dir
+from common.filtering import _prune_dirs_in_place, _should_index_file, PRUNE_DIRS
 from retrieval.ast_chunker import lang_from_path, collect_files, chunk_code
 import bm25s  # type: ignore
 from bm25s.tokenization import Tokenizer  # type: ignore
@@ -19,15 +25,8 @@ import tiktoken
 def _load_st_model(model_name: str):
     from sentence_transformers import SentenceTransformer  # type: ignore
     return SentenceTransformer(model_name)
-import fnmatch
-import pathlib
-import common.qdrant_utils as qdrant_recreate_fallback  # make recreate_collection 404-safe
-from datetime import datetime
-import time as _time
 
 # --- global safe filters (avoid indexing junk) ---
-from common.filtering import _prune_dirs_in_place, _should_index_file, PRUNE_DIRS
-
 # Patch os.walk to prune noisy dirs and skip junk file types
 _os_walk = os.walk
 def _filtered_os_walk(top, *args, **kwargs):
