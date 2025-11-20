@@ -9,6 +9,9 @@ import time
 from prometheus_client import (
     Counter, Histogram, Gauge, make_asgi_app
 )
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
 
 # Latency buckets tuned for LLM/RAG (seconds)
 LATENCY_BUCKETS = (0.05, 0.1, 0.25, 0.5, 1, 2, 3, 5, 8, 13, 21, 34, 60)
@@ -190,10 +193,6 @@ def record_api_call(provider: str, status_code: int = 200, duration_seconds: flo
 # ---------- FastAPI integration ----------
 # This middleware measures end-to-end request time and increments agro_requests_total.
 # It reads provider/model from response headers that your endpoint sets: X-Provider / X-Model.
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import Response
-
 class MetricsMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         route_path = request.url.path

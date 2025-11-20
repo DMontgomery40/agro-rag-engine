@@ -105,7 +105,8 @@ def eval_baseline_compare() -> Dict[str, Any]:
     for curr_res in curr_results:
         q = curr_res.get("question")
         base_res = next((b for b in base_results if b.get("question") == q), None)
-        if not base_res: continue
+        if not base_res:
+            continue
         
         c_hit = curr_res.get("hit", False)
         b_hit = base_res.get("hit", False)

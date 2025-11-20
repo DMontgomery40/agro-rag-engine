@@ -1,4 +1,5 @@
 rich>=13.0.0
+click>=8.0.0
 # Orchestration & eval
 langgraph==0.6.8
 langgraph-checkpoint-redis==0.1.2
@@ -37,6 +38,7 @@ openai==2.2.0
 fastmcp>=0.3.0
 prometheus-client==0.21.1
 docker>=6.1.0
+requests>=2.31.0
 
 websockets>=15.0
 httpx-ws>=0.6

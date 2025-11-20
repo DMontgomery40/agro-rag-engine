@@ -3,7 +3,6 @@ from typing import Dict, Any, Optional
 from pathlib import Path
 from fastapi import APIRouter, Query
 from server.tracing import latest_trace_path
-from common.paths import repo_root
 import json
 
 router = APIRouter()
@@ -103,11 +102,14 @@ def api_langsmith_runs(
         for r in cl.list_runs(project_name=proj, limit=limit):
             url = getattr(r, 'url', None) or getattr(r, 'dashboard_url', None)
             if share:
-                 try:
+                try:
                     info = cl.share_run(getattr(r, 'id', None) or getattr(r, 'run_id', None))
-                    if isinstance(info, str): url = info
-                    elif isinstance(info, dict): url = info.get('url') or info.get('share_url') or url
-                 except: pass
+                    if isinstance(info, str):
+                        url = info
+                    elif isinstance(info, dict):
+                        url = info.get('url') or info.get('share_url') or url
+                except Exception:
+                    pass
             out.append({
                 "id": str(getattr(r, 'id', '')),
                 "name": getattr(r, 'name', ''),
@@ -120,4 +122,3 @@ def api_langsmith_runs(
         return {"ok": True, "runs": out, "project": proj}
     except Exception as e:
         return {"ok": False, "error": str(e)}
-

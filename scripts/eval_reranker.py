@@ -17,7 +17,8 @@ def load_triplets(path: Path) -> List[Dict[str, Any]]:
     manual edits. We skip blank/whitespace-only lines and any line that fails
     JSON parsing after control-character sanitization.
     """
-    import re, sys
+    import re
+    import sys
     items: List[Dict[str, Any]] = []
     bad = 0
     # Remove ASCII control chars except tab (0x09) from a single line
@@ -101,4 +102,3 @@ def main():
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

@@ -9,7 +9,6 @@ from typing import Dict, List, Any, Optional
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 from enum import Enum
-from collections import defaultdict
 import json
 from pathlib import Path
 

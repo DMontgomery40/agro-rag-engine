@@ -2,7 +2,7 @@ import os
 import tempfile
 import json
 from pathlib import Path
-from typing import Any, Union
+from typing import Any
 
 def atomic_write_text(path: Path, content: str) -> None:
     """Write text to a file atomically to prevent corruption."""
@@ -35,4 +35,3 @@ def read_json(path: Path, default: Any = None) -> Any:
             return json.load(f)
     except Exception:
         return default
-

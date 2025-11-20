@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Any, List
+from typing import Dict, Any
 from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from server.utils import read_json, atomic_write_json
@@ -23,10 +23,12 @@ def golden_list() -> Dict[str, Any]:
 def golden_add(payload: Dict[str, Any]) -> Dict[str, Any]:
     gp = _golden_path()
     data = read_json(gp, [])
-    if not isinstance(data, list): data = []
-    
+    if not isinstance(data, list):
+        data = []
+
     q = str(payload.get("q") or "").strip()
-    if not q: raise HTTPException(status_code=400, detail="Question text required")
+    if not q:
+        raise HTTPException(status_code=400, detail="Question text required")
     
     new_q = {
         "q": q,
@@ -46,9 +48,12 @@ def golden_update(index: int, payload: Dict[str, Any]) -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail="Question not found")
     
     actual_index = questions[index]
-    if "q" in payload: data[actual_index]["q"] = str(payload["q"])
-    if "repo" in payload: data[actual_index]["repo"] = str(payload["repo"])
-    if "expect_paths" in payload: data[actual_index]["expect_paths"] = list(payload["expect_paths"])
+    if "q" in payload:
+        data[actual_index]["q"] = str(payload["q"])
+    if "repo" in payload:
+        data[actual_index]["repo"] = str(payload["repo"])
+    if "expect_paths" in payload:
+        data[actual_index]["expect_paths"] = list(payload["expect_paths"])
     
     atomic_write_json(gp, data)
     return {"ok": True, "index": index, "question": data[actual_index]}
@@ -76,7 +81,11 @@ def golden_test(payload: Dict[str, Any]) -> Dict[str, Any]:
     q = str(payload.get("q") or "").strip()
     repo = str(payload.get("repo") or os.getenv("REPO", "agro"))
     expect_paths = list(payload.get("expect_paths") or [])
-    final_k = int(payload.get("final_k") or os.getenv("EVAL_FINAL_K", "5"))
+    
+    # Handle potential None or string types safely
+    raw_k = payload.get("final_k")
+    final_k = int(raw_k) if raw_k is not None else int(os.getenv("EVAL_FINAL_K", "5"))
+    
     use_multi = payload.get("use_multi", os.getenv("EVAL_MULTI", "1") == "1")
 
     if use_multi:
@@ -93,4 +102,3 @@ def golden_test(payload: Dict[str, Any]) -> Dict[str, Any]:
         "top1_hit": hit, 
         "all_results": docs
     }
-

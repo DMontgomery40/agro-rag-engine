@@ -2,7 +2,6 @@ import logging
 import httpx
 from typing import Any, Dict
 from pathlib import Path
-import json
 import subprocess
 
 from fastapi import APIRouter, Request, Response
@@ -160,8 +159,13 @@ async def editor_proxy(path: str, request: Request):
                 timeout=30.0
             )
             resp_headers = dict(upstream.headers)
-            for h in ["x-frame-options", "content-security-policy", "content-security-policy-report-only"]:
-                if h in resp_headers: del resp_headers[h]
+            for h in [
+                "x-frame-options",
+                "content-security-policy",
+                "content-security-policy-report-only",
+            ]:
+                if h in resp_headers:
+                    del resp_headers[h]
                 
             return Response(content=upstream.content, status_code=upstream.status_code, headers=resp_headers)
         except Exception as e:

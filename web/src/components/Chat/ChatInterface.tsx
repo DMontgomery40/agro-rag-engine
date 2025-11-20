@@ -40,6 +40,26 @@ export function ChatInterface() {
   const [maxTokens, setMaxTokens] = useState(1000);
   const [topP, setTopP] = useState(1);
 
+  // Load configuration for default model
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const res = await fetch(api('/config'));
+        if (res.ok) {
+          const data = await res.json();
+          // Support both structure formats (direct env or nested env)
+          const env = data.env || data;
+          if (env.GEN_MODEL) {
+            setModel(env.GEN_MODEL);
+          }
+        }
+      } catch (e) {
+        console.error('[ChatInterface] Failed to load config:', e);
+      }
+    };
+    loadConfig();
+  }, []);
+
   // Load repositories
   useEffect(() => {
     loadRepositories();

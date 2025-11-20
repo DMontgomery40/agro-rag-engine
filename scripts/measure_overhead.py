@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Measure MCP tool schema overhead - the part sent on EVERY request"""
-import sys, os
+import sys
+import os
 import json
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, ROOT_DIR)
@@ -8,9 +9,13 @@ sys.path.insert(0, ROOT_DIR)
 try:
     import tiktoken
     enc = tiktoken.encoding_for_model("gpt-4o")
-    def count_tokens(text): return len(enc.encode(text))
-except:
-    def count_tokens(text): return len(text) // 4
+
+    def count_tokens(text):
+        return len(enc.encode(text))
+except Exception:
+
+    def count_tokens(text):
+        return len(text) // 4
 
 # Get tool schemas
 from server.mcp.server import MCPServer

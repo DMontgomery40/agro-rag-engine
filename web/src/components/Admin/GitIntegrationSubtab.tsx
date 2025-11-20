@@ -1,9 +1,11 @@
 // AGRO - Git Integration Subtab Component
 // Git hooks and commit metadata configuration
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAPI } from '@/hooks';
 
 export function GitIntegrationSubtab() {
+  const { api } = useAPI();
   const [agentName, setAgentName] = useState('');
   const [agentEmail, setAgentEmail] = useState('');
   const [chatSession, setChatSession] = useState('');
@@ -22,24 +24,84 @@ export function GitIntegrationSubtab() {
     prePush: false
   });
 
+  useEffect(() => {
+    loadStatus();
+    loadMeta();
+  }, []);
+
+  async function loadStatus() {
+    try {
+      const res = await fetch(api('/git/hooks/status'));
+      if (res.ok) {
+        const data = await res.json();
+        if (data.post_commit && data.post_checkout) {
+            setHooksStatus('Installed');
+        } else {
+            setHooksStatus('Not Installed');
+        }
+      }
+    } catch (e) { console.error(e); }
+  }
+
+  async function loadMeta() {
+    try {
+      const res = await fetch(api('/git/commit-meta'));
+      if (res.ok) {
+        const data = await res.json();
+        if (data.meta) {
+            setAgentName(data.meta.agent_name || '');
+            setAgentEmail(data.meta.agent_email || '');
+            setChatSession(data.meta.chat_session_id || '');
+            setTrailerKey(data.meta.trailer_key || 'Chat-Session');
+            setSetGitUser(data.meta.set_git_user || false);
+            setAppendTrailer(data.meta.append_trailer !== false);
+            setEnableTemplate(data.meta.enable_template || false);
+            setInstallHook(data.meta.install_hook !== false);
+        }
+      }
+    } catch (e) { console.error(e); }
+  }
+
   async function installGitHooks() {
-    alert('Installing git hooks... This would run the installation script');
-    setHooksStatus('Installed successfully');
+    try {
+        const res = await fetch(api('/git/hooks/install'), { method: 'POST' });
+        if (res.ok) {
+            setHooksStatus('Installed successfully');
+            alert('Git hooks installed successfully');
+        } else {
+            alert('Failed to install hooks');
+        }
+    } catch (e) {
+        alert('Error installing hooks: ' + e);
+    }
   }
 
   async function saveCommitMetadata() {
     const config = {
-      agentName,
-      agentEmail,
-      chatSession,
-      trailerKey,
-      setGitUser,
-      appendTrailer,
-      enableTemplate,
-      installHook
+      agent_name: agentName,
+      agent_email: agentEmail,
+      chat_session_id: chatSession,
+      trailer_key: trailerKey,
+      set_git_user: setGitUser,
+      append_trailer: appendTrailer,
+      enable_template: enableTemplate,
+      install_hook: installHook
     };
 
-    alert(`Commit metadata saved!\n${JSON.stringify(config, null, 2)}`);
+    try {
+        const res = await fetch(api('/git/commit-meta'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(config)
+        });
+        if (res.ok) {
+            alert('Commit metadata saved!');
+        } else {
+            alert('Failed to save metadata');
+        }
+    } catch (e) {
+        alert('Error saving metadata: ' + e);
+    }
   }
 
   async function handlePull() {

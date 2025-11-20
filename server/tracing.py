@@ -124,8 +124,10 @@ class Trace:
             try:
                 files = sorted([p for p in self._dir().glob('*.json') if p.is_file()], key=lambda p: p.stat().st_mtime, reverse=True)
                 for p in files[keep:]:
-                    try: p.unlink()
-                    except Exception: pass
+                    try:
+                        p.unlink()
+                    except Exception:
+                        pass
             except Exception:
                 pass
             return self.path

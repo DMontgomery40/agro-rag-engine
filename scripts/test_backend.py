@@ -3,7 +3,8 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 import io
 from pathlib import Path
-import json, sys
+import json
+import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 # Provide a lightweight stub for rerankers to avoid import-time type errors

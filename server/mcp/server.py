@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
+# ruff: noqa: E402
 
 """
 MCP server exposing RAG tools for Codex/Claude integration (stdio transport).
@@ -12,8 +13,10 @@ Compatibility: accepts legacy names "rag.answer" and "rag.search" on tools/call.
 import sys
 import json
 import os
-from typing import Dict, Any, List
-import urllib.request, urllib.error, urllib.parse
+from typing import Dict, Any
+import urllib.request
+import urllib.error
+import urllib.parse
 import json as _json
 import requests
 

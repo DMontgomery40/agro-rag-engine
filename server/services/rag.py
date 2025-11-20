@@ -1,6 +1,5 @@
 import logging
 import os
-import time
 from typing import Any, Dict, List, Optional
 
 from fastapi import Request
@@ -109,4 +108,3 @@ def do_chat(payload: Dict[str, Any], request: Optional[Request] = None) -> JSONR
                 os.environ.pop(k, None)
             else:
                 os.environ[k] = v
-

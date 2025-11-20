@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import time
 from pathlib import Path
@@ -50,11 +51,13 @@ def get_keywords() -> Dict[str, Any]:
     manual = extract_terms(manual_raw) if manual_raw else []
 
     def uniq(xs: List[str]) -> List[str]:
-        seen = set(); out: List[str] = []
+        seen = set()
+        out: List[str] = []
         for k in xs:
             k2 = str(k)
             if k2 not in seen:
-                out.append(k2); seen.add(k2)
+                out.append(k2)
+                seen.add(k2)
         return out
 
     return {
@@ -144,4 +147,3 @@ def generate_keywords(body: Dict[str, Any]) -> Dict[str, Any]:
         results["ok"] = False
         results["error"] = str(e)
     return results
-

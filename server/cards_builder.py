@@ -253,9 +253,10 @@ class CardsBuildJob:
                             except Exception:
                                 # Fuzzy parse: try to extract a JSON object substring; else treat as free-text purpose
                                 try:
-                                    start = content.find('{'); end = content.rfind('}')
+                                    start = content.find('{')
+                                    end = content.rfind('}')
                                     if start != -1 and end != -1 and end > start:
-                                        card = json.loads(content[start:end+1])
+                                        card = json.loads(content[start:end + 1])
                                     else:
                                         raise ValueError('no json braces')
                                 except Exception:

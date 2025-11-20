@@ -80,11 +80,34 @@ except Exception:
 # These are third-party packages that work correctly but lack typing information
 from qdrant_client import QdrantClient, models  # Vector database client
 import bm25s  # BM25 sparse retrieval - No type stubs available
-from bm25s.tokenization import Tokenizer  # BM25 tokenization - No type stubs available  
+from bm25s.tokenization import Tokenizer  # BM25 tokenization - No type stubs available
 from Stemmer import Stemmer  # type: ignore[import] - PyStemmer package lacks type stubs
 from .rerank import rerank_results as ce_rerank  # Cross-encoder reranking
 from server.env_model import generate_text  # LLM text generation for query expansion
 from .synonym_expander import expand_query_with_synonyms  # Semantic synonym expansion
+from server.services.config_registry import get_config_registry  # Config registry for tunable params
+
+# Module-level cached configuration values for performance
+# These are loaded once at module import time from the ConfigRegistry
+# Values can be updated by calling reload_config() after config changes
+_config_registry = get_config_registry()
+_RRF_K_DIV = _config_registry.get_int('RRF_K_DIV', 60)
+_CARD_BONUS = _config_registry.get_float('CARD_BONUS', 0.08)
+_FILENAME_BOOST_EXACT = _config_registry.get_float('FILENAME_BOOST_EXACT', 1.5)
+_FILENAME_BOOST_PARTIAL = _config_registry.get_float('FILENAME_BOOST_PARTIAL', 1.2)
+
+
+def reload_config():
+    """Reload configuration values from the registry.
+
+    Call this function after config changes to update module-level cached values.
+    This is automatically called when the config registry is reloaded via the API.
+    """
+    global _RRF_K_DIV, _CARD_BONUS, _FILENAME_BOOST_EXACT, _FILENAME_BOOST_PARTIAL
+    _RRF_K_DIV = _config_registry.get_int('RRF_K_DIV', 60)
+    _CARD_BONUS = _config_registry.get_float('CARD_BONUS', 0.08)
+    _FILENAME_BOOST_EXACT = _config_registry.get_float('FILENAME_BOOST_EXACT', 1.5)
+    _FILENAME_BOOST_PARTIAL = _config_registry.get_float('FILENAME_BOOST_PARTIAL', 1.2)
 
 
 def _classify_query(q: str) -> str:
@@ -290,19 +313,18 @@ def _feature_bonus(query: str, fp: str, code: str) -> float:
 
 def _card_bonus(chunk_id: str, card_chunk_ids: set) -> float:
     """Boost chunks that matched via card-based retrieval.
-    
+
     Card matches indicate semantic relevance beyond keyword matching,
     so they get a scoring bonus.
-    
+
     Args:
         chunk_id: ID of chunk to check
         card_chunk_ids: Set of chunk IDs that matched via cards
-        
+
     Returns:
-        Bonus score (0.08 if matched, 0.0 otherwise)
+        Bonus score (_CARD_BONUS if matched, 0.0 otherwise)
     """
-    """Boost chunks that matched via card-based retrieval."""
-    return 0.08 if str(chunk_id) in card_chunk_ids else 0.0
+    return _CARD_BONUS if str(chunk_id) in card_chunk_ids else 0.0
 
 
 def _path_bonus(fp: str, repo: str | None = None) -> float:
@@ -496,22 +518,27 @@ def _get_embedding(text: str, kind: str = "query") -> list[float]:
     return resp.data[0].embedding
 
 
-def rrf(dense: list, sparse: list, k: int = 10, kdiv: int = 60) -> list:
+def rrf(dense: list, sparse: list, k: int = 10, kdiv: int | None = None) -> list:
     """Reciprocal Rank Fusion - combines multiple ranked lists.
-    
+
     RRF is a simple but effective way to merge results from different
     retrieval methods (dense vectors and sparse BM25) without needing
     to normalize scores.
     
     Args:
         dense: List of document IDs from vector search
-        sparse: List of document IDs from BM25 search  
+        sparse: List of document IDs from BM25 search
         k: Number of results to return
-        kdiv: Constant for rank smoothing (higher = more weight to top ranks)
-        
+        kdiv: Constant for rank smoothing (higher = more weight to top ranks).
+              If None, uses value from config registry (_RRF_K_DIV).
+
     Returns:
         Fused list of top-k document IDs
     """
+    # Use cached config value if kdiv not explicitly provided
+    if kdiv is None:
+        kdiv = _RRF_K_DIV
+
     score: dict = collections.defaultdict(float)
     for rank, pid in enumerate(dense, start=1):
         score[pid] += 1.0 / (kdiv + rank)
@@ -999,15 +1026,15 @@ def _hydrate_docs_inplace(repo: str, docs: list[dict]) -> None:
 
 def _apply_filename_boosts(docs: list[dict], question: str) -> None:
     """Apply smart filename and extension-based scoring.
-    
+
     Boosts results where:
-    - Filename matches query terms (1.5x boost)
-    - Path components match query terms (1.2x boost)
+    - Filename matches query terms (_FILENAME_BOOST_EXACT, default 1.5x)
+    - Path components match query terms (_FILENAME_BOOST_PARTIAL, default 1.2x)
     - Code files over documentation (1.3x for .py, 0.3x for .md)
-    
+
     This significantly improves relevance for queries like
     'hybrid_search.py implementation' or 'index.html styling'.
-    
+
     Args:
         docs: Documents to score (modified in-place)
         question: User's search query
@@ -1018,12 +1045,12 @@ def _apply_filename_boosts(docs: list[dict], question: str) -> None:
         fn = os.path.basename(fp)
         parts = fp.split('/')
         score = float(d.get('rerank_score', 0.0) or 0.0)
-        
-        # Apply boosts for filename/path matches
+
+        # Apply boosts for filename/path matches (use cached config values)
         if any(t and t in fn for t in terms):
-            score *= 1.5
+            score *= _FILENAME_BOOST_EXACT
         if any(t and t in p for t in terms for p in parts):
-            score *= 1.2
+            score *= _FILENAME_BOOST_PARTIAL
         
         # Apply boosts for high-value code files
         if fp.endswith('.py'):

@@ -33,8 +33,13 @@ def test_train_accepts_max_length(monkeypatch):
     cl = TestClient(app)
     r = cl.post('/api/reranker/train', json={"epochs": 1, "batch_size": 2, "max_length": 128})
     assert r.status_code == 200
-    # Verify CLI args include our max_length
-    argv = calls.get('args') or []
+    # Verify CLI args include our max_length (runner spawns in a background thread)
+    import time
+    argv = []
+    for _ in range(20):  # wait up to ~1s
+        argv = calls.get('args') or []
+        if argv:
+            break
+        time.sleep(0.05)
     assert '--max_length' in argv
     assert '128' in argv
-

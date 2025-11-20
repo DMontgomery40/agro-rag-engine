@@ -1,6 +1,5 @@
 import json as _json
 import subprocess
-from pathlib import Path
 from typing import Any, Dict
 
 from fastapi import APIRouter
@@ -237,7 +236,8 @@ def loki_status() -> Dict[str, Any]:
 
     Tries LOKI_URL env (default http://loki:3100), then localhost fallback.
     """
-    import os, requests
+    import os
+    import requests
     base = (os.getenv("LOKI_URL") or "http://loki:3100").rstrip("/")
     urls = [f"{base}/ready", f"{base}/loki/api/v1/status/buildinfo"]
     # Fallback to localhost binding

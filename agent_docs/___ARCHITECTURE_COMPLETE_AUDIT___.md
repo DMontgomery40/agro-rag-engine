@@ -6,7 +6,59 @@
 
 ---
 
-## 🔄 AGENT COORDINATION STATUS (UPDATED 2025-11-19)
+## 🔄 AGENT COORDINATION STATUS (UPDATED 2025-11-20)
+
+### Config Registry & agro_config.json Implementation Complete (2025-11-20)
+
+**Completed:**
+- ✅ Created Pydantic models with validation (`server/models/agro_config_model.py`)
+- ✅ Implemented ConfigRegistry with thread-safe load/reload (`server/services/config_registry.py`)
+- ✅ Updated config_store.py to route updates to correct file
+- ✅ Added startup event in server/asgi.py to load config
+- ✅ Updated retrieval/hybrid_search.py with module-level caching
+- ✅ Updated server/langgraph_app.py with module-level caching
+- ✅ Created comprehensive test suite (16/16 tests passing)
+- ✅ Created default agro_config.json with current values
+- ✅ Verified backward compatibility (all smoke tests pass)
+
+**Architecture Changes:**
+- **New Files:**
+  - `agro_config.json` - Tunable RAG parameters (nested JSON structure)
+  - `server/models/agro_config_model.py` - Pydantic validation models
+  - `server/services/config_registry.py` - Config registry singleton
+  - `tests/test_agro_config.py` - Comprehensive test suite
+
+**Config Precedence:**
+1. `.env` file (highest priority - secrets & infrastructure)
+2. `agro_config.json` (tunable RAG parameters)
+3. Pydantic defaults (fallback)
+
+**Tunable Parameters (7 total):**
+- `RRF_K_DIV` (60) - Reciprocal Rank Fusion smoothing constant
+- `LANGGRAPH_FINAL_K` (20) - LangGraph pipeline result count
+- `MAX_QUERY_REWRITES` (2) - Multi-query expansion limit
+- `FALLBACK_CONFIDENCE` (0.55) - Confidence threshold for fallback
+- `CARD_BONUS` (0.08) - Scoring bonus for card matches
+- `FILENAME_BOOST_EXACT` (1.5) - Filename exact match multiplier
+- `FILENAME_BOOST_PARTIAL` (1.2) - Path component match multiplier
+
+**Performance Optimizations:**
+- Module-level caching in `hybrid_search.py` and `langgraph_app.py`
+- Values loaded once at import, not on every function call
+- Registry reload updates cached values across modules
+
+**GUI Integration:**
+- Existing `/api/config` GET endpoint includes agro_config values
+- Existing `/api/config` POST endpoint routes to correct file automatically
+- Config sources tracked in `hints.config_sources` for debugging
+
+**Status:**
+- Implementation: 100% Complete ✅
+- Tests: 16/16 passing ✅
+- Backward compatibility: Verified ✅
+- Ready for Production
+
+---
 
 ### Backend Refactor - Phase 1 In Progress (2025-11-19)
 
@@ -1826,6 +1878,73 @@ Add useEffect to load from /api/config on mount.
 ---
 
 # CHANGES LOG (Updated After Each Modification)
+## 2025-11-20 04:10 UTC - Backend Lint Cleanup (hardware) + Smoke Test
+
+**Files Modified:**
+- server/routers/hardware.py:1-6,10-31
+
+**Files Added:**
+- tests/routers/test_hardware_direct.py
+
+**Changes:**
+- Moved `platform` import to module scope; removed duplicate in-function imports.
+- Split multi-statement line in memory parsing loop; added spacing around operators for readability.
+- No functional behavior changes; endpoint path and response shape unchanged.
+
+**Verification:**
+- Ran backend smoke: `PYTHONPATH=. pytest -q tests/routers/test_hardware_direct.py`
+- Result: 1 passed. Response contains keys: `info`, `runtimes`, `tools`.
+
+**Impact:**
+- Eliminates lint warnings (duplicate import, E702) in `hardware.py`.
+- Adds direct test coverage for `/api/scan-hw` to prevent regressions.
+
+## 2025-11-20 04:20 UTC - Backend Lint Cleanup (docker router) + Smoke Verify
+
+**Files Modified:**
+- server/routers/docker.py:216-224
+
+**Changes:**
+- Split inline `import os, requests` into separate lines inside `loki_status()` to satisfy import style linting without altering import timing or behavior.
+
+**Verification:**
+- Ran backend smoke:
+  - `PYTHONPATH=. pytest -q tests/smoke/test_docker_status.py`
+  - `PYTHONPATH=. pytest -q tests/smoke/test_loki_status.py`
+- Result: both passed (2 tests).
+
+**Impact:**
+- Removes E401 (multiple imports on one line) risk.
+- No functional changes; endpoint behavior and responses unchanged.
+
+## 2025-11-20 04:40 UTC - Backend Lint Cleanup Batch 2 (routers)
+
+**Files Modified:**
+- server/routers/reranker_ops.py:203-217 — expand one-line `if` to block in `parse_metrics()`
+- server/routers/reranker_learning.py:108 — split `import subprocess, re` onto separate lines
+- server/routers/mcp_ops.py:5 — remove unused `Path` import
+- server/routers/search.py:3, 23-37, 41-49 — remove unused `cast`; annotate `request` properly as FastAPI-injected (avoid Pydantic field inference)
+- server/routers/observability.py:48-55, 92-103 — expand one-line conditionals/excepts into blocks for readability and lint compliance
+- server/routers/editor.py:118-124 — expand one-line `if ...: del` into a normal block
+
+**Changes:**
+- Address E701/E704/E401 patterns without altering endpoint behavior.
+- Ensure FastAPI route signatures avoid Optional[Request] Pydantic inference (use injected `Request = None`).
+
+**Verification:**
+- Targeted backend smoke (FastAPI TestClient):
+  - `PYTHONPATH=. pytest -q tests/routers/test_search_direct.py`
+  - `PYTHONPATH=. pytest -q tests/routers/test_editor_direct.py`
+  - `PYTHONPATH=. pytest -q tests/routers/test_keywords_direct.py`
+  - `PYTHONPATH=. pytest -q tests/routers/test_config_direct.py`
+  - `PYTHONPATH=. pytest -q tests/routers/test_traces_direct.py`
+  - `PYTHONPATH=. pytest -q tests/smoke/test_reranker_train_route_maxlen.py`
+- Results: all passed on this batch. Previously confirmed: hardware + docker + loki smokes passing.
+
+**Impact:**
+- Reduced lint noise in critical routers; safer diffs (no logic changes).
+- Added confidence via focused, repeatable backend smokes.
+
 ## 2025-11-20 03:15 UTC - Backend Agent - Comprehensive Subprocess Python Interpreter Fix
 
 **Files Modified:**
@@ -2316,3 +2435,106 @@ Dependencies:
 
 Status:
 - Next step: run Playwright GUI smoke with server running at 8012 to produce verification logs and screenshots.
+
+## 2025-11-20 — Backend Refactor COMPLETE
+
+**Files Modified:**
+- `server/asgi.py`: Mounts all 20 routers. Canonical entry point.
+- `server/app.py`: Deprecated shim (imports `create_app` from `asgi.py`).
+- `server/routers/*.py`: 12 new/updated router files created.
+- `server/utils.py`: New shared utilities.
+- `requirements.txt`: Added `requests>=2.31.0`.
+
+**Changes:**
+- Moved ALL endpoint logic from monolithic `app.py` to modular `server/routers/*.py`.
+- Extracted clusters: Onboarding, Cost, Golden, Eval, Cards, Profiles, Autotune, Git, Hardware, Observability, Reranker Ops, MCP Ops.
+- Achieved 100% Route Parity (verified by `scripts/verify_refactor.py`).
+- Verified functional parity via smoke tests of critical clusters.
+
+**Impact:**
+- Backend is now fully modular.
+- `app.py` is no longer the "God Object".
+- New features can be added by creating a router and adding 1 line to `asgi.py`.
+
+**Status:**
+- Verified and PROD READY.
+
+## 2025-11-20 — Frontend Wiring & Cleanup
+
+**Files Modified:**
+- `web/src/components/Chat/ChatInterface.tsx`: Uses config.GEN_MODEL.
+- `web/src/components/Sidepanel.tsx`: Uses config.GEN_MODEL.
+- `web/src/components/Admin/GitIntegrationSubtab.tsx`: Wired to /api/git endpoints.
+- `web/src/api/docker.ts`: Added restart/pause/logs endpoints.
+- `web/src/stores/useDockerStore.ts`: Added actions for container control.
+
+**Cleanup:**
+- Deleted 7 orphaned/backup files from `web/src`.
+
+**Status:**
+- Frontend now fully supports the new backend architecture.
+
+## 2025-11-20 — Final Integration Check
+
+**Files Modified:**
+- `bin/ragctl`: Updated to use `server.asgi:create_app` (removed legacy `app:app` reference).
+
+**Verification:**
+- Backend Refactor: 100% Route Parity.
+- Frontend Wiring: `/web` uses dynamic config and new endpoints.
+- Docker/CLI: All entry points aligned to ASGI factory.
+
+**Status:**
+- System is fully migrated to modular architecture.
+
+## 2025-11-20 — CLI Tool Update
+
+**Files Modified:**
+- `cli/chat_cli.py`: Updated to respect `PORT` env var, added `/model` command, improved `/help`, and updated feedback loop wiring.
+
+**Status:**
+- CLI tool is now aligned with new backend architecture.
+
+## 2025-11-20 — CLI Unification
+
+**Files Created:**
+- `cli/agro.py`: Unified Python CLI using `click` and `rich`. Supports `chat`, `index`, `config`, `eval`, `reranker`, `profiles`.
+
+**Files Modified:**
+- `bin/ragctl`: Updated to delegate app commands to `cli.agro`.
+
+**Status:**
+- CLI is feature-complete and matches backend capabilities.
+
+## 2025-11-20 — CLI Modularization & Workflow Expansion
+
+**Files Created:**
+- `scripts/mine_golden.py`: Script to mine training triplets from golden dataset.
+- `cli/commands/*.py`: Modular CLI commands for chat, index, config, eval, reranker, golden, ops, mcp.
+
+**Files Modified:**
+- `cli/agro.py`: Refactored to aggregate modular commands.
+- `server/routers/reranker_ops.py`: Added `/api/reranker/mine_golden` endpoint.
+
+**Status:**
+- CLI now supports full Reranker Learning workflow (mine-golden, mine, train, evaluate) and all system ops.
+
+## 2025-11-20 — CLI Help Interface Upgrade
+
+**Files Modified:**
+- `cli/agro.py`: Added `help` command with dynamic module loading.
+- `cli/commands/utils.py`: Added `print_help` helper using Rich panels.
+- `cli/commands/*.py`: Added `HELP` dictionary with verbose description, usage, and examples to all 8 command modules.
+
+**Status:**
+- CLI now provides accessible, rich-formatted help for all capabilities.
+
+## 2025-11-20 — CLI Help & Wizard Upgrade
+
+**Files Modified:**
+- `cli/commands/config.py`: Added `wizard` interactive configuration.
+- `cli/agro.py`: Enhanced `help` command to support subcommands.
+- `cli/commands/*.py`: Added granular help for all subcommands.
+
+**Status:**
+- CLI provides interactive setup and detailed, rich help for every operation.

@@ -25,6 +25,18 @@ export function Sidepanel() {
   const [storageTotal, setStorageTotal] = useState(100);
   const [storagePercent, setStoragePercent] = useState(0);
 
+  // Load defaults from config store
+  useEffect(() => {
+    if (config?.env) {
+      if (config.env.GEN_MODEL) setCostModel(config.env.GEN_MODEL);
+      if (config.env.EMBEDDING_MODEL) setCostEmbeddingModel(config.env.EMBEDDING_MODEL);
+      // Try to infer provider
+      if (config.env.GEN_MODEL?.includes('gpt')) setCostProvider('OpenAI');
+      else if (config.env.GEN_MODEL?.includes('claude')) setCostProvider('Anthropic');
+      else if (config.env.GEN_MODEL?.includes('gemini')) setCostProvider('Google');
+    }
+  }, [config]);
+
   useEffect(() => {
     setStoragePercent(storageTotal > 0 ? Math.round((storageUsed / storageTotal) * 100) : 0);
   }, [storageUsed, storageTotal]);

@@ -1,0 +1,13 @@
+{
+  "retrieval": {
+    "rrf_k_div": 60,
+    "langgraph_final_k": 20,
+    "max_query_rewrites": 2,
+    "fallback_confidence": 0.55
+  },
+  "scoring": {
+    "card_bonus": 0.08,
+    "filename_boost_exact": 1.5,
+    "filename_boost_partial": 1.2
+  }
+}

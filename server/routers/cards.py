@@ -28,7 +28,8 @@ def cards_build_start(repo: str = Query(None), enrich: int = Query(1)):
 def cards_build_stream(job_id: str):
     from server.cards_builder import get_job
     job = get_job(job_id)
-    if not job: raise HTTPException(404, "Job not found")
+    if not job:
+        raise HTTPException(404, "Job not found")
     return StreamingResponse(job.events(), media_type='text/event-stream')
 
 @router.get("/api/cards")

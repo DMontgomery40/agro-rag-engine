@@ -14,6 +14,10 @@ interface DockerStore {
   startContainer: (id: string) => Promise<void>;
   stopContainer: (id: string) => Promise<void>;
   restartContainer: (id: string) => Promise<void>;
+  pauseContainer: (id: string) => Promise<void>;
+  unpauseContainer: (id: string) => Promise<void>;
+  removeContainer: (id: string) => Promise<void>;
+  getContainerLogs: (id: string, tail?: number) => Promise<{ success: boolean; logs: string; error?: string }>;
   reset: () => void;
 }
 
@@ -52,7 +56,6 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
   startContainer: async (id: string) => {
     try {
       await dockerApi.startContainer(id);
-      // Refresh containers list
       await get().fetchContainers();
     } catch (error) {
       set({
@@ -80,6 +83,51 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
       set({
         error: error instanceof Error ? error.message : 'Failed to restart container'
       });
+    }
+  },
+
+  pauseContainer: async (id: string) => {
+    try {
+      await dockerApi.pauseContainer(id);
+      await get().fetchContainers();
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to pause container'
+      });
+    }
+  },
+
+  unpauseContainer: async (id: string) => {
+    try {
+      await dockerApi.unpauseContainer(id);
+      await get().fetchContainers();
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to unpause container'
+      });
+    }
+  },
+
+  removeContainer: async (id: string) => {
+    try {
+      await dockerApi.removeContainer(id);
+      await get().fetchContainers();
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to remove container'
+      });
+    }
+  },
+
+  getContainerLogs: async (id: string, tail: number = 100) => {
+    try {
+      return await dockerApi.getContainerLogs(id, tail);
+    } catch (error) {
+      return {
+        success: false,
+        logs: '',
+        error: error instanceof Error ? error.message : 'Failed to fetch logs'
+      };
     }
   },
 

@@ -7,6 +7,8 @@ from typing import Any, Dict, List, Optional
 
 from common.config_loader import load_repos
 from common.paths import repo_root, gui_dir
+from server.services.config_registry import get_config_registry
+from server.models.agro_config_model import AGRO_CONFIG_KEYS
 
 logger = logging.getLogger("agro.api")
 
@@ -47,6 +49,9 @@ def env_reload() -> Dict[str, Any]:
         _ld(override=False)
         from common.config_loader import clear_cache
         clear_cache()
+        # Also reload the config registry to pick up agro_config.json changes
+        registry = get_config_registry()
+        registry.reload()
     except Exception as e:
         logger.warning("env_reload error: %s", e)
     return {"ok": True}
@@ -59,7 +64,8 @@ def secrets_ingest(text: str, persist: bool) -> Dict[str, Any]:
         if not s or s.startswith("#") or "=" not in s:
             continue
         k, v = s.split("=", 1)
-        k = k.strip(); v = v.strip()
+        k = k.strip()
+        v = v.strip()
         if not k:
             continue
         os.environ[k] = v
@@ -86,7 +92,8 @@ def _effective_rerank_backend() -> Dict[str, Any]:
     try:
         from server.learning_reranker import get_reranker_info
     except Exception:
-        get_reranker_info = lambda: {}
+        def get_reranker_info():
+            return {}
     import time
     backend_env = (os.getenv("RERANK_BACKEND", "").strip().lower() or "")
     now = time.time()
@@ -112,19 +119,74 @@ def _effective_rerank_backend() -> Dict[str, Any]:
 
 
 def get_config(unmask: bool = False) -> Dict[str, Any]:
-    cfg = load_repos()
+    """Return configuration snapshot safe for JSON serialization.
+
+    Extra defensive guards ensure this never raises in constrained or unusual
+    container environments. If any step fails, returns a minimal but valid
+    payload so the API does not 500.
+    """
+    try:
+        cfg = load_repos() or {}
+    except Exception:
+        cfg = {"default_repo": None, "repos": []}
+
     env: Dict[str, Any] = {}
-    for k, v in os.environ.items():
-        if (not unmask) and (k in SECRET_FIELDS) and v:
-            env[k] = '••••••••••••••••'
-        else:
-            env[k] = v
-    return {
-        "env": env,
-        "default_repo": cfg.get("default_repo"),
-        "repos": cfg.get("repos", []),
-        "hints": {"rerank_backend": _effective_rerank_backend()},
-    }
+    try:
+        for k, v in os.environ.items():
+            try:
+                vv = str(v) if v is not None else ""
+            except Exception:
+                vv = ""
+            if (not unmask) and (k in SECRET_FIELDS) and vv:
+                env[k] = '••••••••••••••••'
+            else:
+                env[k] = vv
+    except Exception:
+        # Fallback if os.environ iteration fails (should not happen)
+        env = {}
+
+    # Merge in agro_config.json values from registry
+    # Only if not already in env (env takes precedence)
+    try:
+        registry = get_config_registry()
+        config_with_sources = registry.get_all_with_sources()
+        for key in AGRO_CONFIG_KEYS:
+            if key not in env and key in config_with_sources:
+                config_entry = config_with_sources[key]
+                value = config_entry['value']
+                # Don't mask AGRO config values (they're not secrets)
+                env[key] = value
+    except Exception as e:
+        logger.warning(f"Failed to merge agro_config.json: {e}")
+
+    hints: Dict[str, Any] = {}
+    try:
+        hints["rerank_backend"] = _effective_rerank_backend()
+    except Exception:
+        hints["rerank_backend"] = {"backend": "none", "reason": "probe_failed"}
+
+    # Add config source metadata for debugging/UI
+    try:
+        registry = get_config_registry()
+        sources = {}
+        for key in AGRO_CONFIG_KEYS:
+            source = registry.get_source(key)
+            if source:
+                sources[key] = source
+        hints["config_sources"] = sources
+    except Exception as e:
+        logger.warning(f"Failed to get config sources: {e}")
+
+    try:
+        return {
+            "env": env,
+            "default_repo": cfg.get("default_repo"),
+            "repos": cfg.get("repos", []),
+            "hints": hints,
+        }
+    except Exception:
+        # Absolute last-resort fallback (never raise)
+        return {"env": {}, "default_repo": None, "repos": [], "hints": hints}
 
 
 def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -132,9 +194,23 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
     env_updates: Dict[str, Any] = dict(payload.get("env") or {})
     repos_updates: List[Dict[str, Any]] = list(payload.get("repos") or [])
 
+    # Split env_updates into agro_config and .env based on AGRO_CONFIG_KEYS
+    agro_config_updates = {k: v for k, v in env_updates.items() if k in AGRO_CONFIG_KEYS}
+    env_file_updates = {k: v for k, v in env_updates.items() if k not in AGRO_CONFIG_KEYS}
+
+    # Update agro_config.json if there are relevant updates
+    if agro_config_updates:
+        try:
+            registry = get_config_registry()
+            registry.update_agro_config(agro_config_updates)
+            logger.info(f"Updated agro_config.json with keys: {sorted(agro_config_updates.keys())}")
+        except Exception as e:
+            logger.error(f"Failed to update agro_config.json: {e}")
+            # Don't fail the whole operation, continue with .env updates
+
     # Backup .env
     env_path = root / ".env"
-    if env_path.exists():
+    if env_path.exists() and env_file_updates:
         from datetime import datetime
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         backup_path = root / f".env.backup-{timestamp}"
@@ -144,7 +220,7 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
         except Exception as e:
             logger.warning(".env backup failed: %s", e)
 
-    # Upsert .env in memory copy
+    # Upsert .env in memory copy (only for non-AGRO keys)
     existing: Dict[str, str] = {}
     if env_path.exists():
         for line in env_path.read_text().splitlines():
@@ -152,7 +228,7 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
                 continue
             k, v = line.split("=", 1)
             existing[k.strip()] = v.strip()
-    for k, v in env_updates.items():
+    for k, v in env_file_updates.items():
         if v is None:
             existing.pop(k, None)
         else:
@@ -162,12 +238,15 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
             os.environ.pop(k, None)
         else:
             os.environ[k] = str(v)
-    _atomic_write_text(env_path, "\n".join(f"{k}={existing[k]}" for k in sorted(existing.keys())) + "\n")
+
+    # Write .env if there were updates
+    if env_file_updates:
+        _atomic_write_text(env_path, "\n".join(f"{k}={existing[k]}" for k in sorted(existing.keys())) + "\n")
 
     # Upsert repos.json
     repos_path = root / "repos.json"
     cfg = _read_json(repos_path, {"default_repo": None, "repos": []})
-    default_repo = env_updates.get("REPO") or cfg.get("default_repo")
+    default_repo = env_file_updates.get("REPO") or cfg.get("default_repo")
     by_name: Dict[str, Dict[str, Any]] = {str(r.get("name")): r for r in cfg.get("repos", []) if r.get("name")}
     for r in repos_updates:
         name = str(r.get("name") or "").strip()
@@ -191,12 +270,20 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
     }
     _write_json(repos_path, new_cfg)
 
-    return {"status": "success", "applied_env_keys": sorted(existing.keys()), "repos_count": len(new_cfg.get("repos", []))}
+    return {
+        "status": "success",
+        "applied_env_keys": sorted(existing.keys()),
+        "applied_agro_config_keys": sorted(agro_config_updates.keys()),
+        "repos_count": len(new_cfg.get("repos", []))
+    }
 
 
 def repos_all() -> Dict[str, Any]:
-    cfg = load_repos()
-    return {"default_repo": cfg.get("default_repo"), "repos": cfg.get("repos", [])}
+    try:
+        cfg = load_repos()
+        return {"default_repo": cfg.get("default_repo"), "repos": cfg.get("repos", [])}
+    except Exception:
+        return {"default_repo": None, "repos": []}
 
 
 def repos_get(repo_name: str) -> Optional[Dict[str, Any]]:
@@ -265,7 +352,7 @@ def _classify_components(m: Dict[str, Any]) -> list[str]:
     # Embedding if explicit field or dimensions present and no token pricing
     has_embed_cost = ("embed_per_1k" in m) or ("dimensions" in m)
     has_gen_pricing = ("input_per_1k" in m) or ("output_per_1k" in m) or (unit in {"1k_tokens", "request"}) or ("per_request" in m)
-    if has_embed_cost and not ("rerank_per_1k" in m):
+    if has_embed_cost and ("rerank_per_1k" not in m):
         comps.append("EMB")
 
     # Generative if token pricing present or marked as request based, and not a pure embed-only entry

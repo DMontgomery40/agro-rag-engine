@@ -1,16 +1,19 @@
 import logging
 import os
-from typing import Any, Dict, Optional, cast
+from typing import Any, Dict, Optional, Type
 
 from fastapi import APIRouter, Query, Request
 
 from server.services import rag as rag_svc
 from retrieval.hybrid_search import search_routed_multi
 
+# Runtime import pattern to handle optional dependency
+MCPServerClass: Optional[Type] = None
 try:
-    from server.mcp.server import MCPServer as _MCPServer
+    from server.mcp.server import MCPServer
+    MCPServerClass = MCPServer
 except ImportError:
-    _MCPServer = None
+    pass
 
 logger = logging.getLogger("agro.api")
 
@@ -18,12 +21,21 @@ router = APIRouter()
 
 
 @router.get("/search")
-def search(q: str = Query(..., description="Question"), repo: Optional[str] = Query(None), top_k: Optional[int] = Query(None), request: Request = None) -> Dict[str, Any]:
+def search(
+    q: str = Query(..., description="Question"),
+    repo: Optional[str] = Query(None),
+    top_k: Optional[int] = Query(None),
+    request: Request = None,  # FastAPI-injected (not part of query model)
+) -> Dict[str, Any]:
     return rag_svc.do_search(q, repo, top_k, request)
 
 
 @router.get("/answer")
-def answer(q: str = Query(..., description="Question"), repo: Optional[str] = Query(None), request: Request = None) -> Dict[str, Any]:
+def answer(
+    q: str = Query(..., description="Question"),
+    repo: Optional[str] = Query(None),
+    request: Request = None,  # FastAPI-injected (not part of query model)
+) -> Dict[str, Any]:
     return rag_svc.do_answer(q, repo, request)
 
 
@@ -45,8 +57,8 @@ def api_mcp_rag_search(
     - Falls back to local retrieval if MCP server class is unavailable or force_local
     """
     try:
-        if not force_local and _MCPServer is not None:
-            mcp = cast(object, _MCPServer)()  # type: ignore
+        if not force_local and MCPServerClass is not None:
+            mcp = MCPServerClass()
             # MCPServer handle_rag_search is typically synchronous or async?
             # Assuming synchronous based on backup code.
             res = mcp.handle_rag_search(repo=(repo or os.getenv('REPO','agro')), question=q, top_k=top_k)  # type: ignore[attr-defined]

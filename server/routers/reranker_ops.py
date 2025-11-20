@@ -76,7 +76,7 @@ def reranker_cron_setup(payload: Dict[str, Any]) -> Dict[str, Any]:
     try:
         result = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
         current = result.stdout if result.returncode == 0 else ""
-        lines = [l for l in current.splitlines() if 'mine_triplets.py' not in l and 'train_reranker.py' not in l]
+        lines = [line for line in current.splitlines() if 'mine_triplets.py' not in line and 'train_reranker.py' not in line]
         lines.append(cron_line)
         new_cron = "\n".join(lines) + "\n"
         proc = subprocess.Popen(["crontab", "-"], stdin=subprocess.PIPE, text=True)
@@ -91,7 +91,7 @@ def reranker_cron_remove() -> Dict[str, Any]:
     try:
         result = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
         current = result.stdout if result.returncode == 0 else ""
-        lines = [l for l in current.splitlines() if 'mine_triplets.py' not in l and 'train_reranker.py' not in l]
+        lines = [line for line in current.splitlines() if 'mine_triplets.py' not in line and 'train_reranker.py' not in line]
         new_cron = "\n".join(lines) + "\n" if lines else ""
         proc = subprocess.Popen(["crontab", "-"], stdin=subprocess.PIPE, text=True)
         proc.communicate(input=new_cron)
@@ -132,7 +132,8 @@ def reranker_baseline_compare() -> Dict[str, Any]:
     current = _RERANKER_STATUS["result"]
     
     def parse_metrics(output):
-        if not output: return {}
+        if not output:
+            return {}
         import re
         mrr = 0.0
         hit1 = 0.0
@@ -246,7 +247,7 @@ def reranker_costs() -> Dict[str, Any]:
                 if ts >= day_ago:
                     total_cost += evt.get("cost_usd", 0.0) or 0.0
                     count += 1
-            except:
+            except Exception:
                 pass
     
     return {"total_24h": round(total_cost, 4), "avg_per_query": round(total_cost / max(1, count), 6), "queries_24h": count}
@@ -270,7 +271,7 @@ def reranker_nohits() -> Dict[str, Any]:
                         "query": evt.get("query_raw", ""),
                         "ts": evt.get("ts", "")
                     })
-            except:
+            except Exception:
                 pass
     return {"queries": nohits[-50:], "count": len(nohits)}
 
@@ -296,3 +297,13 @@ def get_latest_reranker_eval() -> Dict[str, Any]:
             return json.load(f)
     except Exception:
         return {"metrics": None}
+
+@router.post("/api/reranker/mine_golden")
+def reranker_mine_golden() -> Dict[str, Any]:
+    import subprocess
+    try:
+        script = repo_root() / "scripts" / "mine_golden.py"
+        res = subprocess.run([sys.executable, str(script)], capture_output=True, text=True)
+        return {"ok": res.returncode == 0, "stdout": res.stdout, "stderr": res.stderr}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}

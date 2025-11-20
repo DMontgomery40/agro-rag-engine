@@ -1,5 +1,4 @@
 import os
-import json
 from typing import Optional, Dict, Any, Tuple
 
 try:
@@ -104,7 +103,9 @@ def generate_text(
     prefer_ollama = bool(OLLAMA_URL)
     if prefer_ollama:
         try:
-            import requests, json as _json, time
+            import requests
+            import json as _json
+            import time
             sys_text = (system_instructions or "").strip()
             prompt = (f"<system>{sys_text}</system>\n" if sys_text else "") + user_input
             url = OLLAMA_URL.rstrip("/") + "/generate"

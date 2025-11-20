@@ -36,12 +36,39 @@ export const dockerApi = {
 
   /**
    * Restart a container by ID
-   * Implemented as stop + start since backend doesn't have a restart endpoint
    */
   async restartContainer(id: string): Promise<void> {
-    await apiClient.post(api(`/api/docker/container/${id}/stop`));
-    // Wait a moment for container to stop
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    await apiClient.post(api(`/api/docker/container/${id}/start`));
+    await apiClient.post(api(`/api/docker/container/${id}/restart`));
   },
+
+  /**
+   * Pause a container by ID
+   */
+  async pauseContainer(id: string): Promise<void> {
+    await apiClient.post(api(`/api/docker/container/${id}/pause`));
+  },
+
+  /**
+   * Unpause a container by ID
+   */
+  async unpauseContainer(id: string): Promise<void> {
+    await apiClient.post(api(`/api/docker/container/${id}/unpause`));
+  },
+
+  /**
+   * Remove a container by ID
+   */
+  async removeContainer(id: string): Promise<void> {
+    await apiClient.post(api(`/api/docker/container/${id}/remove`));
+  },
+
+  /**
+   * Get container logs
+   */
+  async getContainerLogs(id: string, tail: number = 100): Promise<{ success: boolean; logs: string; error?: string }> {
+    const { data } = await apiClient.get<{ success: boolean; logs: string; error?: string }>(
+      api(`/api/docker/container/${id}/logs?tail=${tail}`)
+    );
+    return data;
+  }
 };

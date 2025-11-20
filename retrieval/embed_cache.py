@@ -1,4 +1,5 @@
-import os, json
+import os
+import json
 import tiktoken
 
 class EmbeddingCache:
@@ -62,4 +63,3 @@ class EmbeddingCache:
                 embs[orig] = vec
                 self.put(hashes[orig], vec)
         return embs
-

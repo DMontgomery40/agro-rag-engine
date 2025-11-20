@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-import os, sys, json, urllib.request, urllib.error
+import os
+import sys
+import json
+import urllib.request
+import urllib.error
 
 API = "https://api.netlify.com/api/v1"
 
@@ -59,4 +63,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

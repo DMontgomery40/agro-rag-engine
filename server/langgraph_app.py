@@ -1,4 +1,5 @@
-import os, operator
+import os
+import operator
 from typing import List, Dict, TypedDict, Annotated
 from pathlib import Path
 from dotenv import load_dotenv, find_dotenv
@@ -11,6 +12,7 @@ from retrieval.hybrid_search import search_routed_multi as hybrid_search_routed_
 from server.tracing import get_trace
 from server.env_model import generate_text
 from server.index_stats import get_index_stats
+from server.services.config_registry import get_config_registry
 
 # Load environment from repo root .env without hard-coded paths
 try:
@@ -26,6 +28,12 @@ try:
             load_dotenv(dotenv_path=alt, override=False)
 except Exception:
     pass
+
+# Module-level cached configuration values from ConfigRegistry
+_config_registry = get_config_registry()
+_MAX_QUERY_REWRITES = _config_registry.get_int('MAX_QUERY_REWRITES', 2)
+_LANGGRAPH_FINAL_K = _config_registry.get_int('LANGGRAPH_FINAL_K', 20)
+_FALLBACK_CONFIDENCE = _config_registry.get_float('FALLBACK_CONFIDENCE', 0.55)
 
 class RAGState(TypedDict):
     question: str
@@ -47,9 +55,9 @@ def should_use_multi_query(question: str) -> bool:
 def retrieve_node(state: RAGState) -> Dict:
     q = state['question']
     repo = state.get('repo') if isinstance(state, dict) else None
-    mq = int(os.getenv('MQ_REWRITES','2')) if should_use_multi_query(q) else 1
+    mq = _MAX_QUERY_REWRITES if should_use_multi_query(q) else 1
     tr = get_trace()
-    docs = hybrid_search_routed_multi(q, repo_override=repo, m=mq, final_k=int(os.getenv('LANGGRAPH_FINAL_K','20') or 20), trace=tr)
+    docs = hybrid_search_routed_multi(q, repo_override=repo, m=mq, final_k=_LANGGRAPH_FINAL_K, trace=tr)
     conf = float(sum(d.get('rerank_score',0.0) for d in docs)/max(1,len(docs)))
     repo_used = (repo or (docs[0].get('repo') if docs else os.getenv('REPO','project')))
     # freshness snapshot (per-request)
@@ -116,7 +124,8 @@ def rewrite_query(state: RAGState) -> Dict:
     return {'question': newq}
 
 def generate_node(state: RAGState) -> Dict:
-    q = state['question']; ctx = state['documents'][:5]
+    q = state['question']
+    ctx = state['documents'][:5]
     # packer summary for trace
     try:
         tr = get_trace()
@@ -210,7 +219,7 @@ You answer strictly from the provided code context. Always cite file paths and l
     content, _ = generate_text(user_input=user, system_instructions=sys, reasoning_effort=None)
     content = content or ''
     conf = float(state.get('confidence', 0.0) or 0.0)
-    if conf < 0.55:
+    if conf < _FALLBACK_CONFIDENCE:
         repo = state.get('repo') or os.getenv('REPO','project')
         alt_docs = hybrid_search_routed_multi(q, repo_override=repo, m=4, final_k=10)
         if alt_docs:
@@ -296,6 +305,7 @@ def build_graph():
 if __name__ == '__main__':
     import sys
     q = ' '.join(sys.argv[1:]) if len(sys.argv)>1 else 'Where is OAuth token validated?'
-    graph = build_graph(); cfg = {'configurable': {'thread_id': 'dev'}}
+    graph = build_graph()
+    cfg = {'configurable': {'thread_id': 'dev'}}
     res = graph.invoke({'question': q, 'documents': [], 'generation':'', 'iteration':0, 'confidence':0.0}, cfg)
     print(res['generation'])

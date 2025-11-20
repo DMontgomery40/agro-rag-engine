@@ -1,8 +1,6 @@
 import os
 import subprocess
-import json
-from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
@@ -13,7 +11,8 @@ from common.config_loader import load_repos
 from server.api_interceptor import setup_interceptor
 from server.frequency_limiter import FrequencyAnomalyMiddleware
 from server.metrics import init_metrics_fastapi
-import logging, uuid
+import logging
+import uuid
 from server.feedback import router as feedback_router
 from server.alerts import router as alerts_router, monitoring_router
 from server.routers.pipeline import router as pipeline_router
@@ -100,9 +99,6 @@ def create_app() -> FastAPI:
                 resp.headers["Expires"] = "0"
                 return resp
             return JSONResponse({"error": "Web UI not built"}, status_code=404)
-
-        # Serve built assets under /web/assets
-        web_assets = StaticFiles(directory=str(WEB_DIST / "assets"), html=False)
 
         @web_router.get("/assets/{path:path}", include_in_schema=False)
         def web_assets_proxy(path: str):  # type: ignore[unused-ignore]
@@ -295,5 +291,18 @@ def create_app() -> FastAPI:
             "generation": {"provider": gen_provider, "model": gen_model},
             "health": {"qdrant": _qdrant_health(), "redis": _redis_health(), "llm": _llm_health()},
         }
+
+    # Startup event: Load config registry
+    @app.on_event("startup")
+    async def startup_event():
+        """Load configuration registry at application startup."""
+        try:
+            from server.services.config_registry import get_config_registry
+            registry = get_config_registry()
+            registry.load()
+            logging.getLogger("agro.api").info("Config registry loaded successfully")
+        except Exception as e:
+            # Log error but don't fail startup - config registry should be resilient
+            logging.getLogger("agro.api").error(f"Failed to load config registry: {e}")
 
     return app

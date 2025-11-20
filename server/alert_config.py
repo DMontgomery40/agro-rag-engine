@@ -2,11 +2,9 @@
 # Alert configuration management - stores user-configurable thresholds
 
 import json
-import os
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from dataclasses import dataclass, asdict
-from datetime import datetime
 
 CONFIG_DIR = Path(__file__).parent.parent / "data" / "config"
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)

@@ -2,9 +2,8 @@ import os
 import sys
 import json
 import subprocess
-from pathlib import Path
 from typing import Dict, Any
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from common.paths import repo_root
 
 router = APIRouter()
@@ -80,7 +79,7 @@ def mcp_status() -> Dict[str, Any]:
 
     # Python stdio MCP availability
     try:
-        from server.mcp.server import MCPServer as _M
+        __import__("server.mcp.server")
         py_stdio_available = True
     except Exception:
         py_stdio_available = False
@@ -118,7 +117,7 @@ def mcp_http_stop() -> Dict[str, Any]:
     """Stop HTTP MCP server"""
     try:
         # Kill process on port 8013
-        result = subprocess.run(
+        _ = subprocess.run(
             ["pkill", "-f", "server.mcp.http"],
             capture_output=True, text=True, timeout=5
         )
@@ -155,10 +154,9 @@ def mcp_stdio_test() -> Dict[str, Any]:
                     "tools": [t.get("name") for t in tools] if isinstance(tools, list) else [],
                     "output": result.stdout[:500]
                 }
-            except:
+            except Exception:
                 pass
         
         return {"success": False, "error": "Failed to parse MCP response", "output": result.stdout + "\n" + result.stderr}
     except Exception as e:
         return {"success": False, "error": str(e)}
-

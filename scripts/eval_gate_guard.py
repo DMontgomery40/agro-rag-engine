@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-import sys, json, re
+import sys
+import json
+import re
 
 """
 Usage:
@@ -51,4 +53,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

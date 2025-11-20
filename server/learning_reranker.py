@@ -11,7 +11,9 @@ used during retrieval operations.
 
 Purpose: Hot-reloadable cross-encoder for enhanced search with feedback-driven training
 """
-import os, math, time
+import os
+import math
+import time
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 from sentence_transformers import CrossEncoder
@@ -72,7 +74,8 @@ def get_reranker() -> CrossEncoder:
     return _RERANKER
 
 def _minmax(scores: List[float]) -> List[float]:
-    if not scores: return []
+    if not scores:
+        return []
     mn, mx = min(scores), max(scores)
     if math.isclose(mn, mx):
         return [0.5 for _ in scores]
