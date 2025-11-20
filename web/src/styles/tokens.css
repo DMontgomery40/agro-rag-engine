@@ -3,6 +3,9 @@
 
 /* Dark (current) */
 html, :root, [data-theme="dark"] {
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
   --bg: #0a0a0a;
   --bg-elev1: #111111;
   --bg-elev2: #1a1a1a;
@@ -36,6 +39,9 @@ html, :root, [data-theme="dark"] {
 
 /* Light */
 [data-theme="light"] {
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
   --bg: #F7F8FB;
   --bg-elev1: #FFFFFF;
   --bg-elev2: #F1F3F7;

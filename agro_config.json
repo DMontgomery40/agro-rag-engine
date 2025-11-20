@@ -77,7 +77,7 @@
   },
   "generation": {
     "gen_model": "gpt-4o",
-    "gen_temperature": 0.0,
+    "gen_temperature": 0.07,
     "gen_max_tokens": 2048,
     "gen_top_p": 1.0,
     "gen_timeout": 60,

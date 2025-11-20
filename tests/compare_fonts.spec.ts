@@ -2,7 +2,7 @@ import { test } from '@playwright/test';
 
 test('Compare font rendering between /gui and /web', async ({ page }) => {
   console.log('\n=== Checking /gui fonts ===');
-  await page.goto('http://localhost:5173/gui/index.html');
+  await page.goto('http://localhost:8012/gui/index.html');
   await page.waitForLoadState('networkidle');
 
   const guiBody = await page.evaluate(() => {
@@ -17,7 +17,7 @@ test('Compare font rendering between /gui and /web', async ({ page }) => {
   console.log('/gui code font:', guiBody.code);
 
   console.log('\n=== Checking /web fonts ===');
-  await page.goto('http://localhost:5173/rag');
+  await page.goto('http://localhost:8012/web');
   await page.waitForLoadState('networkidle');
   await page.waitForTimeout(2000);
 

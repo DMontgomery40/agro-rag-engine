@@ -2,6 +2,7 @@
 
 html { height: 100%; }
 body { height: 100%; margin: 0; font-family: var(--font-sans); background: var(--bg); color: var(--fg); }
+code, pre, .mono { font-family: var(--font-mono); }
 
 /* Minimal utility mappings (pre-Tailwind) */
 .bg-panel { background: var(--panel); }
@@ -15,4 +16,3 @@ body { height: 100%; margin: 0; font-family: var(--font-sans); background: var(-
 
 .container { max-width: 1024px; margin: 0 auto; padding: 16px; }
 .card { background: var(--card-bg); border:1px solid var(--line); border-radius: 12px; padding: 16px; }
-

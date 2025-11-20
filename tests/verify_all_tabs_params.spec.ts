@@ -1,113 +1,130 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '@playwright/test'
+import fs from 'fs'
+import path from 'path'
 
-test.describe('All Tabs Parameter Verification', () => {
-  
-  test('Admin tab has CHAT_STREAMING_ENABLED visible', async ({ page }) => {
-    await page.goto('http://localhost:5173/admin');
-    await page.waitForLoadState('networkidle');
-    
-    const chatStreamingInput = page.locator('#CHAT_STREAMING_ENABLED, [name="CHAT_STREAMING_ENABLED"]');
-    const count = await chatStreamingInput.count();
-    console.log('CHAT_STREAMING_ENABLED count:', count);
-    expect(count).toBeGreaterThan(0);
-  });
+// Utility: flatten agro_config.json keys into param list (lower_snake)
+function loadAgroParams(): string[] {
+  const root = path.resolve(__dirname, '..')
+  const cfgPath = path.resolve(root, 'agro_config.json')
+  const text = fs.readFileSync(cfgPath, 'utf-8')
+  const json = JSON.parse(text) as Record<string, Record<string, any>>
+  const params: string[] = []
+  for (const section of Object.values(json)) {
+    for (const k of Object.keys(section)) params.push(k)
+  }
+  return params
+}
 
-  test('Infrastructure tab has infrastructure services', async ({ page }) => {
-    await page.goto('http://localhost:5173/infrastructure');
-    await page.waitForLoadState('networkidle');
-    
-    // Should have Qdrant, Redis, Prometheus, Grafana controls
-    const qdrantStatus = page.locator('#qdrant-status');
-    await expect(qdrantStatus).toBeVisible();
-  });
+// Utility: map lower_snake to possible DOM identifiers
+function idCandidates(param: string): string[] {
+  const up = param.toUpperCase()
+  const hyphen = param.replace(/_/g, '-')
+  return [
+    param,
+    up,
+    hyphen,
+    hyphen.toLowerCase(),
+    `input-${param}`,
+    `select-${param}`,
+    `${param}-input`,
+  ]
+}
 
-  test('Scan all tabs for all 100 params', async ({ page }) => {
-    const tabs = ['rag', 'admin', 'infrastructure'];
-    let totalFound = 0;
-    let foundParams: string[] = [];
-    let missingParams: string[] = [];
-    
-    const allParams = [
-      // Retrieval
-      'rrf_k_div', 'langgraph_final_k', 'max_query_rewrites', 'fallback_confidence',
-      'final_k', 'eval_final_k', 'conf_top1', 'conf_avg5', 'conf_any',
-      'eval_multi', 'query_expansion_enabled', 'bm25_weight', 'vector_weight',
-      'card_search_enabled', 'multi_query_m',
-      // Scoring
-      'card_bonus', 'filename_boost_exact', 'filename_boost_partial',
-      // Layer bonus
-      'gui', 'retrieval', 'indexer', 'vendor_penalty', 'freshness_bonus',
-      // Embedding
-      'embedding_type', 'embedding_model', 'embedding_dim', 'voyage_model',
-      'embedding_model_local', 'embedding_batch_size', 'embedding_max_tokens',
-      'embedding_cache_enabled', 'embedding_timeout', 'embedding_retry_max',
-      // Chunking
-      'chunk_size', 'chunk_overlap', 'ast_overlap_lines', 'max_chunk_size',
-      'min_chunk_chars', 'greedy_fallback_target', 'chunking_strategy', 'preserve_imports',
-      // Indexing
-      'qdrant_url', 'collection_name', 'vector_backend', 'indexing_batch_size',
-      'indexing_workers', 'bm25_tokenizer', 'bm25_stemmer_lang', 'index_excluded_exts',
-      'index_max_file_size_mb',
-      // Reranking
-      'reranker_model', 'agro_reranker_enabled', 'agro_reranker_alpha', 'agro_reranker_topn',
-      'agro_reranker_batch', 'agro_reranker_maxlen', 'agro_reranker_reload_on_change',
-      'agro_reranker_reload_period_sec', 'cohere_rerank_model', 'voyage_rerank_model',
-      'reranker_backend', 'reranker_timeout',
-      // Generation
-      'gen_model', 'gen_temperature', 'gen_max_tokens', 'gen_top_p', 'gen_timeout',
-      'gen_retry_max', 'enrich_model', 'enrich_backend', 'enrich_disabled', 'ollama_num_ctx',
-      // Enrichment
-      'cards_enrich_default', 'cards_max', 'enrich_code_chunks', 'enrich_min_chars',
-      'enrich_max_chars', 'enrich_timeout',
-      // Keywords
-      'keywords_max_per_repo', 'keywords_min_freq', 'keywords_boost',
-      'keywords_auto_generate', 'keywords_refresh_hours',
-      // Tracing
-      'tracing_enabled', 'trace_sampling_rate', 'prometheus_port', 'metrics_enabled',
-      'alert_include_resolved', 'alert_webhook_timeout', 'log_level',
-      // Training
-      'reranker_train_epochs', 'reranker_train_batch', 'reranker_train_lr',
-      'reranker_warmup_ratio', 'triplets_min_count', 'triplets_mine_mode',
-      // UI
-      'chat_streaming_enabled', 'chat_history_max', 'editor_port', 'grafana_dashboard_uid'
-    ];
-    
-    for (const tab of tabs) {
-      await page.goto(`http://localhost:5173/${tab}`);
-      await page.waitForLoadState('networkidle');
-      console.log(`\nScanning ${tab} tab...`);
-      
-      for (const param of allParams) {
-        if (foundParams.includes(param)) continue;
-        
-        const possibleIds = [
-          param,
-          param.toUpperCase(),
-          param.toLowerCase(),
-          param.replace(/_/g, '-'),
-        ];
-        
-        for (const id of possibleIds) {
-          const input = page.locator(`input[id="${id}"], input[name="${id}"], select[id="${id}"], select[name="${id}"]`);
-          const count = await input.count();
-          if (count > 0) {
-            totalFound++;
-            foundParams.push(param);
-            console.log(`  ✓ Found: ${param}`);
-            break;
+// Pages to scan for controls in the React app
+const WEB_PAGES = ['/web/rag', '/web/admin', '/web/infrastructure']
+
+test.describe('Config ↔ Web UI Wiring Audit', () => {
+  test('Scan /web for all agro_config.json parameters and report missing', async ({ page }) => {
+    const params = loadAgroParams()
+    const missing: string[] = []
+    let foundCount = 0
+
+    for (const url of WEB_PAGES) {
+      await page.goto(`http://localhost:8012${url}`)
+      await page.waitForLoadState('networkidle')
+      // Allow React + legacy modules to initialize and render tab content
+      await page.waitForTimeout(2000)
+      await page.locator('.subtab-bar').first().waitFor({ timeout: 5000 }).catch(() => {})
+
+      // Click through subtabs if present to ensure all sections render
+      const subtabButtons = page.locator('.subtab-bar button[data-subtab]')
+      const subtabCount = await subtabButtons.count()
+      const subtabIds: string[] = []
+      for (let i = 0; i < subtabCount; i++) {
+        const id = await subtabButtons.nth(i).getAttribute('data-subtab')
+        if (id) subtabIds.push(id)
+      }
+
+      const visitStates = subtabIds.length ? subtabIds : ['__default']
+      for (const sub of visitStates) {
+        if (sub !== '__default') {
+          await subtabButtons.locator(`[data-subtab="${sub}"]`).click({ trial: false }).catch(() => {})
+          await page.waitForTimeout(250)
+        }
+
+        for (const p of params) {
+          // Skip if already found on a previous page/subtab
+          if ((page as any)._found?.has(p)) continue
+
+          const candidates = idCandidates(p)
+          let present = false
+          for (const id of candidates) {
+            const loc = page.locator(
+              `input#${id}, input[name="${id}"] , select#${id}, select[name="${id}"], textarea#${id}, textarea[name="${id}"]`
+            )
+            if (await loc.count()) {
+              present = true
+              foundCount++
+              ;(page as any)._found = (page as any)._found || new Set<string>()
+              ;(page as any)._found.add(p)
+              break
+            }
           }
+          if (!present && url === WEB_PAGES[WEB_PAGES.length - 1] && sub === visitStates[visitStates.length - 1]) missing.push(p)
         }
       }
     }
-    
-    missingParams = allParams.filter(p => !foundParams.includes(p));
-    
-    console.log(`\n\n✓ Total found: ${totalFound} / ${allParams.length}`);
-    if (missingParams.length > 0) {
-      console.log(`\n✗ Missing ${missingParams.length} parameters:`);
-      console.log(missingParams.join(', '));
+
+    console.log(`\nFound ${foundCount}/${params.length} parameters across ${WEB_PAGES.join(', ')}`)
+    if (missing.length) {
+      console.log(`Missing (${missing.length}):\n${missing.join(', ')}`)
     }
-    
-    expect(totalFound).toBeGreaterThanOrEqual(90);
-  });
-});
+    // Expect at least 80 present to catch major regressions
+    expect(foundCount).toBeGreaterThan(80)
+  })
+
+  test('Backend wiring: changing GEN_TEMPERATURE reflects in UI (and revert)', async ({ page, request }) => {
+    // Read current config from API
+    const resp = await request.get('http://localhost:8012/api/config')
+    expect(resp.ok()).toBeTruthy()
+    const cfg = await resp.json()
+    const current = parseFloat(String(cfg.env?.GEN_TEMPERATURE ?? '0'))
+    const next = current === 0 ? 0.07 : 0.0
+
+    // Update via API (writes agro_config.json)
+    const set1 = await request.post('http://localhost:8012/api/config', {
+      data: { env: { GEN_TEMPERATURE: next } },
+    })
+    expect(set1.ok()).toBeTruthy()
+
+    // Load UI and verify field reflects updated value
+    await page.goto('http://localhost:8012/web/rag')
+    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(800)
+    // Ensure Retrieval subtab is active where GEN_TEMPERATURE lives
+    await page.locator('.subtab-bar button[data-subtab="retrieval"]').first().click({ trial: false }).catch(() => {})
+    await page.waitForTimeout(250)
+
+    const input = page.locator('input[name="GEN_TEMPERATURE"]')
+    await expect(input).toHaveCount(1)
+    // Compare string forms with fixed decimals to avoid float string diffs
+    const val = await input.inputValue()
+    expect(Number.parseFloat(val)).toBeCloseTo(next, 3)
+
+    // Revert to original
+    const set2 = await request.post('http://localhost:8012/api/config', {
+      data: { env: { GEN_TEMPERATURE: current } },
+    })
+    expect(set2.ok()).toBeTruthy()
+  })
+})

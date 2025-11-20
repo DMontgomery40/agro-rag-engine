@@ -193,6 +193,55 @@ All subagents successfully coordinated updates to shared files (agro_config_mode
 
 ---
 
+## 2025-11-20 12:45 - Frontend Agent - Font Fix + Wiring Tests
+
+Files Modified:
+- web/src/styles/tokens.css:1 (added `--font-sans`, `--font-mono` in dark/light roots)
+- tests/compare_fonts.spec.ts:1 (update to hit `http://localhost:8012/gui` and `/web`)
+- tests/verify_all_tabs_params.spec.ts:1 (NEW – programmatically reads `agro_config.json`, audits `/web` pages, and verifies backend wiring by POSTing `/api/config`)
+
+Changes:
+- Fixed ADA-critical font regression in React app by defining `--font-sans` and `--font-mono` tokens; `global.css` already uses `font-family: var(--font-sans)` so Inter now applies consistently like `/gui`.
+- Updated font comparison Playwright test to target the server-served routes (`/gui/index.html` and `/web`) on port 8012.
+- Added a comprehensive Playwright audit that:
+  - Loads all parameter keys from `agro_config.json` and scans `/web/rag`, `/web/admin`, `/web/infrastructure` for matching controls.
+  - Performs a backend wiring smoke by changing `GEN_TEMPERATURE` via `/api/config`, asserting the UI reflects the new value, then reverting.
+
+Impact:
+- Web UI now renders with the same Inter font stack as `/gui` (visual parity, ADA compliance for dyslexia-friendly typography).
+- Establishes a baseline “no-fake-UI” audit that flags missing params and proves at least one end-to-end control is wired to the backend.
+
+Verification:
+- Run: `npm ci && npx playwright install && (cd web && npm ci && npm run build)`
+- Then: `npx playwright test -c tools/playwright.config.ts tests/compare_fonts.spec.ts tests/verify_all_tabs_params.spec.ts`
+- Expect: Non-black-screen render at `/web`, body font contains `Inter`, and backend wiring test passes with config revert.
+
+Dependencies:
+- `web/src/styles/global.css` references `var(--font-sans)`; tokens now provide it.
+- Server `server/app.py` uses `create_app()` which serves `/web` from `web/dist` (ensure `web` build before running tests).
+
+Issues Marked as FIXED:
+- Web font mismatch vs `/gui` (serif fallback) → FIXED by token variables.
+
+Next Targets:
+- Expand backend wiring assertions to additional keys across Retrieval/Indexing/Enrichment.
+- Migrate remaining 5173-based tests to server port 8012 and `/web` routes for consistency.
+
+## 2025-11-20 13:00 - Frontend Agent - Router Basename + Code Font
+
+Files Modified:
+- web/src/main.tsx:15 (BrowserRouter now uses `basename="/web"` so routes like `/web/rag` resolve)
+- web/src/styles/global.css:4 (set `code, pre, .mono { font-family: var(--font-mono) }`)
+- web/vite.config.ts:9 (set `base: '/web/'` so built assets resolve under FastAPI `/web` mount)
+
+Impact:
+- React Router now correctly matches routes when served under `/web` (previously `/web/rag` did not match `/rag` without basename).
+- Monospace usage is standardized via `--font-mono` for code elements; body remains Inter.
+
+Verification Artifacts:
+- Font parity logs: tests/compare_fonts.spec.ts (Body fonts match = true; Code fonts differ but use mono stack).
+- GUI smoke screenshots: test-results/react-app-loaded.png, test-results/react-navigation.png, test-results/react-rag-subtabs.png, test-results/react-learning-ranker.png, test-results/react-vscode-tab.png, test-results/react-admin-tab.png
+
 ### Config Registry EXPANDED AGAIN: 28 Reranking, Generation & Enrichment Parameters (2025-11-20)
 
 **Completed by Subagent 1:**
@@ -3259,4 +3308,3 @@ Test Results (6/6 PASSED):
 - ✅ Responsive design: Classes support mobile, tablet, desktop
 
 **Status:** COMPLETE - All font and CSS issues resolved and verified
-

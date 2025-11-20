@@ -4,6 +4,8 @@ import path from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // Ensure built assets resolve under FastAPI mount at /web
+  base: '/web/',
   plugins: [react()],
   resolve: {
     alias: {
@@ -29,4 +31,3 @@ export default defineConfig({
     outDir: 'dist'
   }
 })
-
