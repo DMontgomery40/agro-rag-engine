@@ -2852,3 +2852,21 @@ Status:
 
 **Status:**
 - CLI provides interactive setup and detailed, rich help for every operation.
+
+## 2025-11-20 08:19 - Backend Agent - Pipeline Summary 500 Hardening
+
+Files Modified:
+- server/asgi.py: retrieval top_k parsing and robust return
+- tests/test_pipeline_summary_invalid_env.py: new backend smoke for invalid envs
+
+Changes:
+- Guard int conversion for FINAL_K/LANGGRAPH_FINAL_K with try/except; default to 10
+- Wrap /api/pipeline/summary assembly in try/except to return a safe minimal structure on error
+
+Impact:
+- Eliminates 500s from /api/pipeline/summary when env vars are misconfigured
+- Keeps GUI dashboard healthy with consistent JSON
+
+Verification:
+- uvicorn smoke: /api/pipeline/summary returns 200 with invalid FINAL_K env
+- Added test (invalid env) — note: TestClient exhibited EndOfStream on this machine, but live uvicorn responded 200 as expected

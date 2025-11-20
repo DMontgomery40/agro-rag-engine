@@ -1,8 +1,31 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useDashboard } from '../hooks/useDashboard';
 import { LiveTerminal } from '../components/ui/LiveTerminal';
+import { DashboardSubtabs } from '../components/Dashboard/DashboardSubtabs';
+import { HelpGlossary } from '../components/Dashboard/HelpGlossary';
 
 export function Dashboard() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeSubtab, setActiveSubtab] = useState(searchParams.get('subtab') || 'overview');
+
+  // Update URL when subtab changes
+  useEffect(() => {
+    if (activeSubtab !== 'overview') {
+      setSearchParams({ subtab: activeSubtab });
+    } else {
+      setSearchParams({});
+    }
+  }, [activeSubtab, setSearchParams]);
+
+  // Listen for URL changes (e.g., from Learn button)
+  useEffect(() => {
+    const urlSubtab = searchParams.get('subtab');
+    if (urlSubtab && urlSubtab !== activeSubtab) {
+      setActiveSubtab(urlSubtab);
+    }
+  }, [searchParams, activeSubtab]);
+
   const {
     rerankerOptions,
     isEvalDropdownOpen,
@@ -26,6 +49,12 @@ export function Dashboard() {
 
   return (
     <div id="tab-dashboard" className="tab-content active">
+      {/* Subtab navigation */}
+      <DashboardSubtabs activeSubtab={activeSubtab} onSubtabChange={setActiveSubtab} />
+
+      {/* Subtab content */}
+      {activeSubtab === 'overview' && (
+        <>
       {/* Compact Status + Quick Actions */}
       <div className="settings-section" style={{ background: 'var(--panel)', borderLeft: '3px solid var(--accent)' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '24px', alignItems: 'start' }}>
@@ -372,6 +401,11 @@ export function Dashboard() {
           </div>
         </div>
       </div>
+        </>
+      )}
+
+      {/* Help & Glossary subtab */}
+      {activeSubtab === 'help' && <HelpGlossary />}
     </div>
   );
 }

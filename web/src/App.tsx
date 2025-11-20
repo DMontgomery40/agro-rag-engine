@@ -181,6 +181,19 @@ function App() {
           <span className="tagline">Another Good RAG Option</span>
         </h1>
         <div className="top-actions">
+          <button
+            id="btn-learn"
+            title="Open Help & Glossary"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            onClick={() => window.location.hash = '#/dashboard?subtab=help'}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            <span>Learn</span>
+          </button>
           <input id="global-search" type="search" placeholder="Search settings (Ctrl+K)" />
           <div id="search-results"></div>
           <select

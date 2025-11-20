@@ -2241,6 +2241,14 @@
             <span class="tagline">Another Good RAG Option</span>
         </h1>
         <div class="top-actions">
+            <button id="btn-learn" title="Open Help & Glossary" style="display: flex; align-items: center; gap: 6px;" onclick="window.Navigation.navigateTo('dashboard', 'help')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+                <span>Learn</span>
+            </button>
             <input id="global-search" type="search" placeholder="Search settings (Ctrl+K)">
             <div id="search-results"></div>
             <select id="theme-mode" name="THEME_MODE" title="Theme Mode" style="background: var(--input-bg); color: var(--fg); border:1px solid var(--line); padding:6px 8px; border-radius:6px;">
@@ -2285,6 +2293,7 @@
             <!-- Subtab bars for each top-level tab (hidden by default; shown via JS) -->
             <div id="dashboard-subtabs" class="subtab-bar" style="display:none;">
                 <button class="subtab-btn active" data-subtab="overview-dash">Overview</button>
+                <button class="subtab-btn" data-subtab="help">Help & Glossary</button>
             </div>
             <div id="chat-subtabs" class="subtab-bar" style="display:none;">
                 <button class="subtab-btn active" data-subtab="ui" data-parent="chat">Interface</button>
@@ -5874,6 +5883,7 @@
 
             <!-- Tab: Dashboard -->
             <div id="tab-dashboard" class="tab-content active">
+                <div class="section-subtab active" id="tab-dashboard-overview-dash">
                 <!-- Compact Status + Quick Actions -->
                 <div class="settings-section" style="background: var(--panel); border-left: 3px solid var(--accent);">
                     <div style="display: grid; grid-template-columns: 300px 1fr; gap: 24px; align-items: start;">
@@ -6232,11 +6242,54 @@
                         </div>
                     </div>
                 </div>
-            </div>
-            </div>
-        <!-- Tab: Onboarding -->
+                </div>
+                </div><!-- end tab-dashboard-overview-dash -->
 
-            <!-- Tab: Chat -->
+                <!-- Help & Glossary Subtab -->
+                <div class="section-subtab" id="tab-dashboard-help">
+                    <div class="settings-section" style="border-left: 3px solid var(--link);">
+                        <h3 style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                            </svg>
+                            Help & Glossary
+                        </h3>
+                        <p style="color: var(--fg-muted); margin-bottom: 24px; line-height: 1.6;">
+                            Explore all RAG configuration parameters, their descriptions, and helpful links to documentation.
+                        </p>
+
+                        <!-- Search and Filter Controls -->
+                        <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
+                            <input
+                                type="search"
+                                id="glossary-search"
+                                placeholder="Search parameters..."
+                                style="flex: 1; min-width: 300px; padding: 10px 14px; background: var(--input-bg); border: 1px solid var(--line); border-radius: 8px; color: var(--fg); font-size: 14px;"
+                            />
+                            <div id="glossary-category-filters" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <!-- Category filter buttons will be inserted here by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Glossary Grid Container -->
+                        <div id="glossary-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 16px;">
+                            <!-- Glossary cards will be inserted here by JS -->
+                            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--fg-muted);">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 16px; opacity: 0.3;">
+                                    <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                                    <path d="M2 17l10 5 10-5"></path>
+                                    <path d="M2 12l10 5 10-5"></path>
+                                </svg>
+                                <p>Loading glossary...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div><!-- end tab-dashboard-help -->
+            </div><!-- closes tab-dashboard -->
+
+        <!-- Tab: Chat -->
             <div id="tab-chat" class="tab-content">
                 <div id="tab-chat-ui" class="section-subtab active">
                     <div class="settings-section" style="border-left: 3px solid var(--link); padding: 0;">
@@ -6871,6 +6924,7 @@
     <script src="/gui/js/storage-calculator.js"></script>
     <script src="/gui/js/profile_logic.js"></script>
     <script src="/gui/js/tooltips.js"></script>
+    <script src="/gui/js/glossary.js"></script>
     <script src="/gui/js/profile_renderer.js"></script>
     <script src="/gui/js/autoprofile_v2.js"></script>
     <script type="module" src="/gui/js/cost_logic.js"></script>

@@ -44,7 +44,10 @@ export const routes: RouteConfig[] = [
     label: 'Dashboard',
     icon: '📊',
     order: 2,
-    subtabs: []
+    subtabs: [
+      { id: 'overview', title: 'Overview' },
+      { id: 'help', title: 'Help & Glossary' }
+    ]
   },
   {
     path: '/chat',

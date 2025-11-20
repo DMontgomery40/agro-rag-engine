@@ -110,7 +110,10 @@
         'dashboard': {
             title: '📊 Dashboard',
             order: 2,
-            subtabs: []
+            subtabs: [
+                { id: 'overview-dash', title: 'Overview' },
+                { id: 'help', title: 'Help & Glossary' }
+            ]
         },
         'chat': {
             title: '💬 Chat',

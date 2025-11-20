@@ -220,7 +220,11 @@ def create_app() -> FastAPI:
             retrieval_mode = "bm25"
         else:
             retrieval_mode = "hybrid"
-        top_k = int(os.getenv("FINAL_K", os.getenv("LANGGRAPH_FINAL_K", "10") or 10))
+        # Be resilient to invalid or missing env overrides
+        try:
+            top_k = int((os.getenv("FINAL_K") or os.getenv("LANGGRAPH_FINAL_K") or "10").strip())
+        except Exception:
+            top_k = 10
 
         rr_enabled = _bool_env("AGRO_RERANKER_ENABLED", "0")
         rr_backend = (os.getenv("RERANK_BACKEND", "").strip().lower() or None)
@@ -283,14 +287,26 @@ def create_app() -> FastAPI:
                     return "fail"
             return "unknown"
 
-        return {
-            "repo": {"name": repo_name, "mode": repo_mode, "branch": branch},
-            "retrieval": {"mode": retrieval_mode, "top_k": top_k},
-            "reranker": {"enabled": rr_enabled, "backend": rr_backend, "provider": rr_provider, "model": rr_model},
-            "enrichment": {"enabled": enrich_enabled, "backend": enrich_backend, "model": enrich_model},
-            "generation": {"provider": gen_provider, "model": gen_model},
-            "health": {"qdrant": _qdrant_health(), "redis": _redis_health(), "llm": _llm_health()},
-        }
+        try:
+            return {
+                "repo": {"name": repo_name, "mode": repo_mode, "branch": branch},
+                "retrieval": {"mode": retrieval_mode, "top_k": top_k},
+                "reranker": {"enabled": rr_enabled, "backend": rr_backend, "provider": rr_provider, "model": rr_model},
+                "enrichment": {"enabled": enrich_enabled, "backend": enrich_backend, "model": enrich_model},
+                "generation": {"provider": gen_provider, "model": gen_model},
+                "health": {"qdrant": _qdrant_health(), "redis": _redis_health(), "llm": _llm_health()},
+            }
+        except Exception as e:
+            logging.getLogger("agro.api").warning("pipeline_summary failed: %s", e)
+            # Return a safe minimal structure rather than 500 to keep UI healthy
+            return {
+                "repo": {"name": repo_name or "local", "mode": repo_mode or "local", "branch": branch},
+                "retrieval": {"mode": retrieval_mode or "hybrid", "top_k": top_k if isinstance(top_k, int) else 10},
+                "reranker": {"enabled": bool(rr_enabled), "backend": rr_backend or None, "provider": rr_provider or None, "model": rr_model},
+                "enrichment": {"enabled": bool(enrich_enabled), "backend": enrich_backend or None, "model": enrich_model or None},
+                "generation": {"provider": gen_provider or None, "model": gen_model or None},
+                "health": {"qdrant": "unknown", "redis": "unknown", "llm": "unknown"},
+            }
 
     # Startup event: Load config registry
     @app.on_event("startup")
