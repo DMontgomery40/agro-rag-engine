@@ -22,8 +22,8 @@
 
   function buildUrl() {
     const base = String(vFromDom('GRAFANA_BASE_URL', 'http://127.0.0.1:3000')).replace(/\/$/, '');
-    const uid = String(vFromDom('GRAFANA_DASHBOARD_UID', 'agro-total-visibility'));
-    const slug = String(vFromDom('GRAFANA_DASHBOARD_SLUG', 'agro-total-visibility'));
+    const uid = String(vFromDom('GRAFANA_DASHBOARD_UID', 'agro-overview'));
+    const slug = String(vFromDom('GRAFANA_DASHBOARD_SLUG', 'agro-overview'));
     const orgId = String(vFromDom('GRAFANA_ORG_ID', '1'));
     const refresh = String(vFromDom('GRAFANA_REFRESH', '10s'));
     const kiosk = String(vFromDom('GRAFANA_KIOSK', 'tv'));
@@ -91,7 +91,7 @@
   function getConfig() {
     return {
       baseUrl: vFromDom('GRAFANA_BASE_URL', 'http://127.0.0.1:3000'),
-      dashboardUid: vFromDom('GRAFANA_DASHBOARD_UID', 'agro-total-visibility'),
+      dashboardUid: vFromDom('GRAFANA_DASHBOARD_UID', 'agro-overview'),
       embedEnabled: vFromDom('GRAFANA_EMBED_ENABLED', 'true')
     };
   }
