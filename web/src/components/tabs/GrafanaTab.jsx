@@ -1,7 +1,18 @@
+import { useState } from 'react';
+import { GrafanaSubtabs } from '../Grafana/GrafanaSubtabs';
+
 export default function GrafanaTab() {
+  const [activeSubtab, setActiveSubtab] = useState('dashboard');
+
   return (
     <div id="tab-grafana" className="tab-content active" style={{padding: 0}}>
-      <div id="tab-grafana-config" className="section-subtab" style={{padding: '24px'}}>
+      <GrafanaSubtabs activeSubtab={activeSubtab} onSubtabChange={setActiveSubtab} />
+
+      <div
+        id="tab-grafana-config"
+        className={`section-subtab ${activeSubtab === 'config' ? 'active' : ''}`}
+        style={{padding: '24px'}}
+      >
                     <div className="settings-section">
                         <h3 id="grafana-config-anchor">Grafana Metrics Dashboard</h3>
                         <p className="small">Configure and embed your live Grafana dashboard powered by Prometheus.</p>
@@ -74,7 +85,11 @@ export default function GrafanaTab() {
 
                     </div>
                 </div>
-                <div id="tab-grafana-dashboard" className="section-subtab fullscreen active">
+
+                <div
+                  id="tab-grafana-dashboard"
+                  className={`section-subtab fullscreen ${activeSubtab === 'dashboard' ? 'active' : ''}`}
+                >
                     <div id="grafana-embed" style={{height: 'calc(100vh - 200px)', minHeight: '600px', display: 'flex', overflow: 'hidden', background: 'var(--card-bg)'}}>
                         <iframe id="grafana-iframe" style={{width:'100%', height:'100%', border:0, background: 'var(--bg)', display: 'block'}}></iframe>
                     </div>

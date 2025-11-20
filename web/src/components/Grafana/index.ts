@@ -3,3 +3,4 @@
 
 export { GrafanaDashboard } from './GrafanaDashboard';
 export { GrafanaConfig } from './GrafanaConfig';
+export { GrafanaSubtabs } from './GrafanaSubtabs';
