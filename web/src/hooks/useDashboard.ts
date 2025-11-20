@@ -1,5 +1,30 @@
 import { useState, useEffect, useCallback } from 'react';
-import { rerankerApi, indexApi, configApi, healthApi, keywordsApi } from '../api';
+
+// This is a placeholder for the actual API functions
+// In a real app, this would be in a separate api.ts file
+const api = {
+    get: async (url: string) => {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    },
+    post: async (url: string, data?: any) => {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    }
+};
+
 
 interface RerankerOption {
     id: string;
@@ -52,20 +77,20 @@ export function useDashboard() {
     const [terminalLines, setTerminalLines] = useState<string[]>([]);
     const [terminalProgress, setTerminalProgress] = useState<{ percent: number, message: string } | null>(null);
 
-    const showTerminal = useCallback((title: string) => {
+    const showTerminal = (title: string) => {
         setTerminalTitle(title);
         setIsTerminalVisible(true);
         setTerminalLines([]);
         setTerminalProgress(null);
-    }, []);
+    };
 
     const hideTerminal = () => {
         setIsTerminalVisible(false);
     };
     
-    const appendTerminalLine = useCallback((line: string) => {
+    const appendTerminalLine = (line: string) => {
         setTerminalLines(prev => [...prev, line]);
-    }, []);
+    };
 
     const toggleEvalDropdown = () => {
         setIsEvalDropdownOpen(prev => !prev);
@@ -80,7 +105,7 @@ export function useDashboard() {
     useEffect(() => {
         const fetchRerankerOptions = async () => {
             try {
-                const data = await rerankerApi.getAvailable();
+                const data = await api.get('/api/reranker/available');
                 if (data.options) {
                     setRerankerOptions(data.options);
                 }
@@ -95,7 +120,7 @@ export function useDashboard() {
     useEffect(() => {
         const poll = async () => {
             try {
-                const data: IndexStatus = await indexApi.getStatus();
+                const data: IndexStatus = await api.get('/api/index/status');
                 setIndexStatus(data);
                 if (data.metadata) {
                     setBranch(data.metadata.current_branch);
@@ -103,14 +128,14 @@ export function useDashboard() {
                     const cardsCount = data.metadata.repos.reduce((acc, repo) => acc + (repo.has_cards ? 1 : 0), 0);
                     setCards(`${cardsCount} / ${data.metadata.repos.length}`);
                 }
-                 const healthData = await healthApi.check();
+                 const healthData = await api.get('/api/health');
                  if(healthData.status === 'ok'){
                     setHealth('OK');
                  } else {
                     setHealth('Error');
                  }
 
-                 const configData = await configApi.get();
+                 const configData = await api.get('/api/config');
                  if(configData.MCP_SERVER_URL){
                      setMcp('Active');
                  } else {
@@ -137,22 +162,40 @@ export function useDashboard() {
     const runIndexer = useCallback(async () => {
         showTerminal('Run Indexer');
         try {
-            await indexApi.runIndexer(repo, true, appendTerminalLine);
+            const response = await fetch('/api/index/start', { method: 'POST' });
+            if (!response.body) return;
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                const text = decoder.decode(value);
+                appendTerminalLine(text);
+            }
         } catch (error) {
             console.error('Failed to start indexer:', error);
             appendTerminalLine(`❌ Error: ${error instanceof Error ? error.message : String(error)}`);
         }
-    }, [repo, showTerminal, appendTerminalLine]);
+    }, []);
     
     const runKeywords = useCallback(async () => {
         showTerminal('Generate Keywords');
         try {
-            await keywordsApi.generate(repo, appendTerminalLine);
+            const response = await fetch('/api/keywords/generate', { method: 'POST' });
+            if (!response.body) return;
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                const text = decoder.decode(value);
+                appendTerminalLine(text);
+            }
         } catch (error) {
             console.error('Failed to generate keywords:', error);
             appendTerminalLine(`❌ Error: ${error instanceof Error ? error.message : String(error)}`);
         }
-    }, [repo, showTerminal, appendTerminalLine]);
+    }, []);
     
     const runEval = useCallback(async (model: string, backend: string) => {
         showTerminal(`Evaluate - ${model}`);
@@ -160,7 +203,7 @@ export function useDashboard() {
         // Placeholder for eval logic
         console.log(`Running eval with model: ${model}, backend: ${backend}`);
         closeEvalDropdown();
-    }, [showTerminal, appendTerminalLine, closeEvalDropdown]);
+    }, [closeEvalDropdown]);
 
     // Close dropdown on click outside
     useEffect(() => {

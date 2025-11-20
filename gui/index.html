@@ -393,6 +393,50 @@
             min-height: 0; /* allow children to grow */
         }
 
+        /* Admin tab subtabs */
+        .admin-subtab-content {
+            display: none;
+            padding: 24px;
+            overflow-y: auto;
+            width: 100%;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .admin-subtab-content.active {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .admin-subtab-content.active > :first-child {
+            margin-top: 0;
+        }
+
+        /* Infrastructure tab subtabs */
+        .infrastructure-subtab-content {
+            display: none;
+            padding: 24px;
+            overflow-y: auto;
+            width: 100%;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .infrastructure-subtab-content.active {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .infrastructure-subtab-content.active > :first-child {
+            margin-top: 0;
+        }
+
         .subtab-btn {
             background: transparent;
             color: var(--fg-muted);
@@ -2682,43 +2726,64 @@
                             </label>
                         </div>
                         <div class="input-group">
-                            <label>Grafana Base URL</label>
+                            <label>
+                                Grafana Base URL
+                                <span class="help-icon" data-tooltip="GRAFANA_BASE_URL">?</span>
+                            </label>
                             <input type="text" name="GRAFANA_BASE_URL" value="http://127.0.0.1:3000" placeholder="http://127.0.0.1:3000">
                         </div>
                     </div>
 
                     <div class="input-row">
                         <div class="input-group">
-                            <label>Dashboard UID</label>
+                            <label>
+                                Dashboard UID
+                                <span class="help-icon" data-tooltip="GRAFANA_DASHBOARD_UID">?</span>
+                            </label>
                             <input type="text" name="GRAFANA_DASHBOARD_UID" value="agro-overview" placeholder="agro-overview">
                         </div>
                         <div class="input-group">
-                            <label>Dashboard Slug</label>
+                            <label>
+                                Dashboard Slug
+                                <span class="help-icon" data-tooltip="GRAFANA_DASHBOARD_SLUG">?</span>
+                            </label>
                             <input type="text" name="GRAFANA_DASHBOARD_SLUG" value="agro-overview" placeholder="agro-overview">
                         </div>
                     </div>
 
                     <div class="input-row">
                         <div class="input-group">
-                            <label>Org ID</label>
+                            <label>
+                                Org ID
+                                <span class="help-icon" data-tooltip="GRAFANA_ORG_ID">?</span>
+                            </label>
                             <input type="number" name="GRAFANA_ORG_ID" value="1" min="1">
                         </div>
                         <div class="input-group">
-                            <label>Refresh Interval</label>
+                            <label>
+                                Refresh Interval
+                                <span class="help-icon" data-tooltip="GRAFANA_REFRESH">?</span>
+                            </label>
                             <input type="text" name="GRAFANA_REFRESH" value="10s" placeholder="10s">
                         </div>
                     </div>
 
                     <div class="input-row">
                         <div class="input-group">
-                            <label>Kiosk Mode</label>
+                            <label>
+                                Kiosk Mode
+                                <span class="help-icon" data-tooltip="GRAFANA_KIOSK">?</span>
+                            </label>
                             <select name="GRAFANA_KIOSK">
                                 <option value="">None</option>
                                 <option value="tv" selected>tv</option>
                             </select>
                         </div>
                         <div class="input-group">
-                            <label>Auth Mode</label>
+                            <label>
+                                Auth Mode
+                                <span class="help-icon" data-tooltip="GRAFANA_AUTH_MODE">?</span>
+                            </label>
                             <select name="GRAFANA_AUTH_MODE">
                                 <option value="anonymous" selected>Anonymous</option>
                                 <option value="token">Service Account Token</option>
@@ -2728,7 +2793,10 @@
 
                     <div class="input-row">
                         <div class="input-group">
-                            <label>Auth Token (optional)</label>
+                            <label>
+                                Auth Token (optional)
+                                <span class="help-icon" data-tooltip="GRAFANA_AUTH_TOKEN">?</span>
+                            </label>
                             <input type="text" name="GRAFANA_AUTH_TOKEN" placeholder="Token for auth_token=...">
                         </div>
                         <div class="input-group">
@@ -2786,7 +2854,10 @@
                         <!-- Repository Selection -->
                         <div class="input-row" style="margin-bottom: 12px;">
                             <div class="input-group">
-                                <label>Repository to Build Cards For</label>
+                                <label>
+                                    Repository to Build Cards For
+                                    <span class="help-icon" data-tooltip="CARDS_REPO">?</span>
+                                </label>
                                 <select id="cards-repo-select" style="width: 100%;">
                                     <option value="">Loading...</option>
                                 </select>
@@ -2796,7 +2867,10 @@
                         <!-- Filters -->
                         <div class="input-row" style="margin-bottom: 12px;">
                             <div class="input-group">
-                                <label>Exclude Directories (comma-separated)</label>
+                                <label>
+                                    Exclude Directories (comma-separated)
+                                    <span class="help-icon" data-tooltip="CARDS_EXCLUDE_DIRS">?</span>
+                                </label>
                                 <input type="text" id="cards-exclude-dirs" placeholder="e.g., node_modules, vendor, dist" style="width: 100%;">
                                 <p class="small" style="color:var(--fg-muted);">Directories to skip when building cards</p>
                             </div>
@@ -2804,7 +2878,10 @@
 
                         <div class="input-row" style="margin-bottom: 12px;">
                             <div class="input-group">
-                                <label>Exclude Patterns (comma-separated)</label>
+                                <label>
+                                    Exclude Patterns (comma-separated)
+                                    <span class="help-icon" data-tooltip="CARDS_EXCLUDE_PATTERNS">?</span>
+                                </label>
                                 <input type="text" id="cards-exclude-patterns" placeholder="e.g., .test.js, .spec.ts, .min.js" style="width: 100%;">
                                 <p class="small" style="color:var(--fg-muted);">File patterns to skip</p>
                             </div>
@@ -2812,7 +2889,10 @@
 
                         <div class="input-row" style="margin-bottom: 16px;">
                             <div class="input-group">
-                                <label>Exclude Keywords (comma-separated)</label>
+                                <label>
+                                    Exclude Keywords (comma-separated)
+                                    <span class="help-icon" data-tooltip="CARDS_EXCLUDE_KEYWORDS">?</span>
+                                </label>
                                 <input type="text" id="cards-exclude-keywords" placeholder="e.g., deprecated, legacy, TODO" style="width: 100%;">
                                 <p class="small" style="color:var(--fg-muted);">Skip chunks containing these keywords</p>
                             </div>
@@ -2821,7 +2901,10 @@
                         <!-- Options -->
                         <div class="input-row" style="margin-bottom: 16px; align-items: flex-end;">
                             <div class="input-group">
-                                <label>Cards Max</label>
+                                <label>
+                                    Cards Max
+                                    <span class="help-icon" data-tooltip="CARDS_MAX">?</span>
+                                </label>
                                 <input type="number" id="cards-max" name="CARDS_MAX" value="0" min="0" step="10" style="max-width: 160px;">
                                 <p class="small" style="color:var(--fg-muted);">Limit chunks (0 = all)</p>
                             </div>
@@ -2927,13 +3010,19 @@
                         <button class="small-button" id="btn-add-gen-model" style="margin-bottom:12px;">Add Model</button>
                         <div class="input-row">
                             <div class="input-group">
-                                <label>Primary Model (GEN_MODEL)</label>
+                                <label>
+                                Primary Model (GEN_MODEL)
+                                <span class="help-icon" data-tooltip="GEN_MODEL">?</span>
+                            </label>
                                 <select name="GEN_MODEL" id="gen-model-select" class="model-select" data-component-filter="GEN">
                                     <option value="">Select a model...</option>
                                 </select>
                             </div>
                             <div class="input-group">
-                                <label>OpenAI API Key</label>
+                                <label>
+                                OpenAI API Key
+                                <span class="help-icon" data-tooltip="OPENAI_API_KEY">?</span>
+                            </label>
                                 <input type="password" name="OPENAI_API_KEY">
                             </div>
                         </div>
@@ -2954,13 +3043,19 @@
                         </div>
                         <div class="input-row">
                         <div class="input-group">
-                            <label>Enrich Model (ENRICH_MODEL)</label>
+                            <label>
+                                Enrich Model (ENRICH_MODEL)
+                                <span class="help-icon" data-tooltip="ENRICH_MODEL">?</span>
+                            </label>
                             <select name="ENRICH_MODEL" id="enrich-model-select" class="model-select" data-component-filter="GEN">
                                 <option value="">Select a model...</option>
                             </select>
                         </div>
                             <div class="input-group">
-                                <label>Enrich Model (Ollama)</label>
+                                <label>
+                                Enrich Model (Ollama)
+                                <span class="help-icon" data-tooltip="ENRICH_MODEL_OLLAMA">?</span>
+                            </label>
                                 <select name="ENRICH_MODEL_OLLAMA" id="enrich-model-ollama-select" class="model-select">
                                     <option value="">Select a model...</option>
                                 </select>
@@ -2968,33 +3063,51 @@
                         </div>
                         <div class="input-row">
                             <div class="input-group">
-                                <label>Anthropic API Key</label>
+                                <label>
+                                Anthropic API Key
+                                <span class="help-icon" data-tooltip="ANTHROPIC_API_KEY">?</span>
+                            </label>
                                 <input type="password" name="ANTHROPIC_API_KEY">
                             </div>
                             <div class="input-group">
-                                <label>Google API Key</label>
+                                <label>
+                                Google API Key
+                                <span class="help-icon" data-tooltip="GOOGLE_API_KEY">?</span>
+                            </label>
                                 <input type="password" name="GOOGLE_API_KEY">
                             </div>
                         </div>
                         <div class="input-row">
                             <div class="input-group">
-                                <label>Ollama URL</label>
+                                <label>
+                                Ollama URL
+                                <span class="help-icon" data-tooltip="OLLAMA_URL">?</span>
+                            </label>
                                 <input type="text" name="OLLAMA_URL" placeholder="http://127.0.0.1:11434">
                             </div>
                             <div class="input-group">
-                                <label>OpenAI Base URL (optional)</label>
+                                <label>
+                                OpenAI Base URL (optional)
+                                <span class="help-icon" data-tooltip="OPENAI_BASE_URL">?</span>
+                            </label>
                                 <input type="text" name="OPENAI_BASE_URL" placeholder="For vLLM proxy">
                             </div>
                         </div>
                         <div class="input-row">
                             <div class="input-group">
-                                <label>HTTP Override Model</label>
+                                <label>
+                                HTTP Override Model
+                                <span class="help-icon" data-tooltip="GEN_MODEL_HTTP">?</span>
+                            </label>
                                 <select name="GEN_MODEL_HTTP" id="http-override-model-select">
                                     <option value="">Select a model...</option>
                                 </select>
                             </div>
                             <div class="input-group">
-                                <label>MCP Override Model</label>
+                                <label>
+                                MCP Override Model
+                                <span class="help-icon" data-tooltip="GEN_MODEL_MCP">?</span>
+                            </label>
                                 <select name="GEN_MODEL_MCP" id="mcp-override-model-select">
                                     <option value="">Select a model...</option>
                                 </select>
@@ -3002,13 +3115,19 @@
                         </div>
                         <div class="input-row">
                             <div class="input-group">
-                                <label>CLI Override Model</label>
+                                <label>
+                                CLI Override Model
+                                <span class="help-icon" data-tooltip="GEN_MODEL_CLI">?</span>
+                            </label>
                                 <select name="GEN_MODEL_CLI" id="cli-override-model-select">
                                     <option value="">Select a model...</option>
                                 </select>
                             </div>
                             <div class="input-group">
-                                <label>Enrich Backend</label>
+                                <label>
+                                Enrich Backend
+                                <span class="help-icon" data-tooltip="ENRICH_BACKEND">?</span>
+                            </label>
                                 <select name="ENRICH_BACKEND" id="enrich-backend-select">
                                     <option value="">Default</option>
                                     <option value="openai">OpenAI</option>
@@ -3282,7 +3401,10 @@
                                 <input type="number" name="TOPK_DENSE" value="75" min="1">
                             </div>
                             <div class="input-group">
-                                <label>Vector Backend</label>
+                                <label>
+                                Vector Backend
+                                <span class="help-icon" data-tooltip="VECTOR_BACKEND">?</span>
+                            </label>
                                 <select name="VECTOR_BACKEND">
                                     <option value="qdrant">Qdrant</option>
                                     <option value="faiss">FAISS (experimental)</option>
@@ -3719,7 +3841,10 @@
                                 <button class="small-button" id="btn-trace-open-ls">Open</button>
                             </div>
                             <div class="input-group">
-                                <label>Tracing Mode</label>
+                                <label>
+                                Tracing Mode
+                                <span class="help-icon" data-tooltip="TRACING_MODE">?</span>
+                            </label>
                                 <select name="TRACING_MODE">
                                     <option value="off">Off</option>
                                     <option value="local">Local</option>
@@ -3727,14 +3852,20 @@
                                 </select>
                             </div>
                             <div class="input-group">
-                                <label>Auto-open in LangSmith</label>
+                                <label>
+                                Auto-open in LangSmith
+                                <span class="help-icon" data-tooltip="TRACE_AUTO_LS">?</span>
+                            </label>
                                 <select name="TRACE_AUTO_LS">
                                     <option value="0">No</option>
                                     <option value="1">Yes</option>
                                 </select>
                             </div>
                             <div class="input-group">
-                                <label>Trace Retention</label>
+                                <label>
+                                Trace Retention
+                                <span class="help-icon" data-tooltip="TRACE_RETENTION">?</span>
+                            </label>
                                 <input type="number" name="TRACE_RETENTION" value="50" min="1" max="500">
                             </div>
                         </div>
@@ -3742,30 +3873,45 @@
                         <!-- LangSmith / LangChain Tracing Settings -->
                         <div class="input-row">
                             <div class="input-group">
-                                <label>LangChain Tracing V2 (LANGCHAIN_TRACING_V2)</label>
+                                <label>
+                                LangChain Tracing V2 (LANGCHAIN_TRACING_V2)
+                                <span class="help-icon" data-tooltip="LANGCHAIN_TRACING_V2">?</span>
+                            </label>
                                 <select name="LANGCHAIN_TRACING_V2">
                                     <option value="0">Off</option>
                                     <option value="1">On</option>
                                 </select>
                             </div>
                             <div class="input-group">
-                                <label>LangSmith Endpoint (LANGCHAIN_ENDPOINT)</label>
+                                <label>
+                                LangSmith Endpoint (LANGCHAIN_ENDPOINT)
+                                <span class="help-icon" data-tooltip="LANGCHAIN_ENDPOINT">?</span>
+                            </label>
                                 <input type="text" name="LANGCHAIN_ENDPOINT" placeholder="https://api.smith.langchain.com">
                             </div>
                         </div>
                         <div class="input-row">
                             <div class="input-group">
-                                <label>LangSmith API Key (LANGCHAIN_API_KEY)</label>
+                                <label>
+                                LangSmith API Key (LANGCHAIN_API_KEY)
+                                <span class="help-icon" data-tooltip="LANGCHAIN_API_KEY">?</span>
+                            </label>
                                 <input type="password" name="LANGCHAIN_API_KEY" placeholder="sk-...">
                             </div>
                             <div class="input-group">
-                                <label>LangSmith API Key (alias) (LANGSMITH_API_KEY)</label>
+                                <label>
+                                LangSmith API Key (alias) (LANGSMITH_API_KEY)
+                                <span class="help-icon" data-tooltip="LANGSMITH_API_KEY">?</span>
+                            </label>
                                 <input type="password" name="LANGSMITH_API_KEY" placeholder="ls_...">
                             </div>
                         </div>
                         <div class="input-row">
                             <div class="input-group">
-                                <label>LangSmith Project (LANGCHAIN_PROJECT)</label>
+                                <label>
+                                LangSmith Project (LANGCHAIN_PROJECT)
+                                <span class="help-icon" data-tooltip="LANGCHAIN_PROJECT">?</span>
+                            </label>
                                 <input type="text" name="LANGCHAIN_PROJECT" placeholder="agro">
                             </div>
                         </div>
@@ -3773,17 +3919,26 @@
                         <!-- LangTrace Settings -->
                         <div class="input-row">
                             <div class="input-group">
-                                <label>LangTrace API Host (LANGTRACE_API_HOST)</label>
+                                <label>
+                                LangTrace API Host (LANGTRACE_API_HOST)
+                                <span class="help-icon" data-tooltip="LANGTRACE_API_HOST">?</span>
+                            </label>
                                 <input type="text" name="LANGTRACE_API_HOST" placeholder="https://app.langtrace.ai/project/.../traces">
                             </div>
                             <div class="input-group">
-                                <label>LangTrace Project ID (LANGTRACE_PROJECT_ID)</label>
+                                <label>
+                                LangTrace Project ID (LANGTRACE_PROJECT_ID)
+                                <span class="help-icon" data-tooltip="LANGTRACE_PROJECT_ID">?</span>
+                            </label>
                                 <input type="text" name="LANGTRACE_PROJECT_ID" placeholder="cmg...">
                             </div>
                         </div>
                         <div class="input-row">
                             <div class="input-group full-width">
-                                <label>LangTrace API Key (LANGTRACE_API_KEY)</label>
+                                <label>
+                                LangTrace API Key (LANGTRACE_API_KEY)
+                                <span class="help-icon" data-tooltip="LANGTRACE_API_KEY">?</span>
+                            </label>
                                 <input type="password" name="LANGTRACE_API_KEY" placeholder="...">
                             </div>
                         </div>
@@ -3811,7 +3966,10 @@
                         </h3>
                         <div class="input-row">
                             <div class="input-group">
-                                <label>Rerank Backend (RERANK_BACKEND)</label>
+                                <label>
+                                Rerank Backend (RERANK_BACKEND)
+                                <span class="help-icon" data-tooltip="RERANK_BACKEND">?</span>
+                            </label>
                                 <select name="RERANK_BACKEND">
                                     <option value="none">none</option>
                                     <option value="local">local</option>
@@ -3820,7 +3978,10 @@
                                 </select>
                             </div>
                             <div class="input-group">
-                                <label>Local/HF Model (RERANKER_MODEL)</label>
+                                <label>
+                                Local/HF Model (RERANKER_MODEL)
+                                <span class="help-icon" data-tooltip="RERANKER_MODEL">?</span>
+                            </label>
                                 <input type="text" name="RERANKER_MODEL" placeholder="cross-encoder/ms-marco-MiniLM-L-12-v2">
                             </div>
                         </div>
@@ -3840,7 +4001,10 @@
                         </div>
                         <div class="input-row">
                             <div class="input-group">
-                                <label>Cohere Model (COHERE_RERANK_MODEL)</label>
+                                <label>
+                                Cohere Model (COHERE_RERANK_MODEL)
+                                <span class="help-icon" data-tooltip="COHERE_RERANK_MODEL">?</span>
+                            </label>
                                 <select name="COHERE_RERANK_MODEL">
                                     <option value="">(select model)</option>
                                     <option value="rerank-3.5">rerank-3.5</option>
@@ -3850,20 +4014,29 @@
                                 </select>
                             </div>
                             <div class="input-group">
-                                <label>Cohere API Key (COHERE_API_KEY)</label>
+                                <label>
+                                Cohere API Key (COHERE_API_KEY)
+                                <span class="help-icon" data-tooltip="COHERE_API_KEY">?</span>
+                            </label>
                                 <input type="password" name="COHERE_API_KEY" placeholder="ck_...">
                             </div>
                         </div>
                         <div class="input-row">
                             <div class="input-group">
-                                <label>HF Trust Remote Code (TRANSFORMERS_TRUST_REMOTE_CODE)</label>
+                                <label>
+                                HF Trust Remote Code (TRANSFORMERS_TRUST_REMOTE_CODE)
+                                <span class="help-icon" data-tooltip="TRANSFORMERS_TRUST_REMOTE_CODE">?</span>
+                            </label>
                                 <select name="TRANSFORMERS_TRUST_REMOTE_CODE">
                                     <option value="1">1</option>
                                     <option value="0">0</option>
                                 </select>
                             </div>
                             <div class="input-group">
-                                <label>Input Snippet Chars (RERANK_INPUT_SNIPPET_CHARS)</label>
+                                <label>
+                                Input Snippet Chars (RERANK_INPUT_SNIPPET_CHARS)
+                                <span class="help-icon" data-tooltip="RERANK_INPUT_SNIPPET_CHARS">?</span>
+                            </label>
                                 <input type="number" name="RERANK_INPUT_SNIPPET_CHARS" value="700" min="200" max="2000" step="50">
                             </div>
                         </div>
@@ -3938,35 +4111,53 @@
                         <h3>⚙️ Reranker Configuration</h3>
                         <div class="input-row">
                             <div class="input-group">
-                                <label>Enable Learning Reranker</label>
+                                <label>
+                                Enable Learning Reranker
+                                <span class="help-icon" data-tooltip="AGRO_RERANKER_ENABLED">?</span>
+                            </label>
                                 <select name="AGRO_RERANKER_ENABLED">
                                     <option value="0">OFF</option>
                                     <option value="1">ON</option>
                                 </select>
                             </div>
                             <div class="input-group">
-                                <label>Model Path (AGRO_RERANKER_MODEL_PATH)</label>
+                                <label>
+                                Model Path (AGRO_RERANKER_MODEL_PATH)
+                                <span class="help-icon" data-tooltip="AGRO_RERANKER_MODEL_PATH">?</span>
+                            </label>
                                 <input type="text" name="AGRO_RERANKER_MODEL_PATH" placeholder="cross-encoder/ms-marco-MiniLM-L-12-v2" value="models/cross-encoder-agro">
                             </div>
                             <div class="input-group">
-                                <label>Telemetry Log Path</label>
+                                <label>
+                                Telemetry Log Path
+                                <span class="help-icon" data-tooltip="AGRO_LOG_PATH">?</span>
+                            </label>
                                 <input type="text" name="AGRO_LOG_PATH" placeholder="data/logs/queries.jsonl" value="data/logs/queries.jsonl">
                             </div>
                         </div>
                         <div class="input-row">
                             <div class="input-group">
-                                <label>Triplets Output (AGRO_TRIPLETS_PATH)</label>
+                                <label>
+                                Triplets Output (AGRO_TRIPLETS_PATH)
+                                <span class="help-icon" data-tooltip="AGRO_TRIPLETS_PATH">?</span>
+                            </label>
                                 <input type="text" name="AGRO_TRIPLETS_PATH" placeholder="data/training/triplets.jsonl" value="data/training/triplets.jsonl">
                             </div>
                             <div class="input-group">
-                                <label>Mine Mode (AGRO_RERANKER_MINE_MODE)</label>
+                                <label>
+                                Mine Mode (AGRO_RERANKER_MINE_MODE)
+                                <span class="help-icon" data-tooltip="AGRO_RERANKER_MINE_MODE">?</span>
+                            </label>
                                 <select name="AGRO_RERANKER_MINE_MODE">
                                     <option value="append">append</option>
                                     <option value="replace">replace</option>
                                 </select>
                             </div>
                             <div class="input-group">
-                                <label>Reset Before Mine (AGRO_RERANKER_MINE_RESET)</label>
+                                <label>
+                                Reset Before Mine (AGRO_RERANKER_MINE_RESET)
+                                <span class="help-icon" data-tooltip="AGRO_RERANKER_MINE_RESET">?</span>
+                            </label>
                                 <select name="AGRO_RERANKER_MINE_RESET">
                                     <option value="0">No</option>
                                     <option value="1">Yes</option>
@@ -3986,15 +4177,24 @@
                         </div>
                         <div class="input-row">
                             <div class="input-group">
-                                <label>Blend Alpha (CE Weight)</label>
+                                <label>
+                                Blend Alpha (CE Weight)
+                                <span class="help-icon" data-tooltip="AGRO_RERANKER_ALPHA">?</span>
+                            </label>
                                 <input type="number" name="AGRO_RERANKER_ALPHA" value="0.7" min="0.0" max="1.0" step="0.05">
                             </div>
                             <div class="input-group">
-                                <label>Max Sequence Length</label>
+                                <label>
+                                Max Sequence Length
+                                <span class="help-icon" data-tooltip="AGRO_RERANKER_MAXLEN">?</span>
+                            </label>
                                 <input type="number" name="AGRO_RERANKER_MAXLEN" value="512" min="128" max="1024" step="64">
                             </div>
                             <div class="input-group">
-                                <label>Batch Size (Inference)</label>
+                                <label>
+                                Batch Size (Inference)
+                                <span class="help-icon" data-tooltip="AGRO_RERANKER_BATCH">?</span>
+                            </label>
                                 <input type="number" name="AGRO_RERANKER_BATCH" value="16" min="1" max="64" step="4">
                             </div>
                         </div>
@@ -4039,15 +4239,24 @@
                         </div>
                         <div class="input-row">
                             <div class="input-group">
-                                <label>Training Epochs</label>
+                                <label>
+                                Training Epochs
+                                <span class="help-icon" data-tooltip="RERANKER_TRAIN_EPOCHS">?</span>
+                            </label>
                                 <input type="number" id="reranker-epochs" name="RERANKER_TRAIN_EPOCHS" value="2" min="1" max="10">
                             </div>
                             <div class="input-group">
-                                <label>Training Batch Size</label>
+                                <label>
+                                Training Batch Size
+                                <span class="help-icon" data-tooltip="RERANKER_TRAIN_BATCH">?</span>
+                            </label>
                                 <input type="number" id="reranker-batch" name="RERANKER_TRAIN_BATCH" value="16" min="1" max="64" step="4">
                             </div>
                             <div class="input-group">
-                                <label>Training Max Length</label>
+                                <label>
+                                Training Max Length
+                                <span class="help-icon" data-tooltip="RERANKER_TRAIN_MAX_LENGTH">?</span>
+                            </label>
                                 <input type="number" id="reranker-maxlen" name="RERANKER_TRAIN_MAX_LENGTH" value="512" min="128" max="1024" step="64">
                             </div>
                         </div>
@@ -4316,7 +4525,10 @@
                                 </select>
                             </div>
                             <div class="input-group">
-                                <label>Embedding Type</label>
+                                <label>
+                                Embedding Type
+                                <span class="help-icon" data-tooltip="EMBEDDING_TYPE">?</span>
+                            </label>
                                 <select name="EMBEDDING_TYPE" style="background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); padding: 8px; border-radius: 4px;">
                                     <option value="openai">OpenAI (text-embedding-3-large)</option>
                                     <option value="local">Local (BGE-small, no API)</option>
@@ -4376,7 +4588,10 @@
                                 </p>
                             </div>
                             <div class="input-group">
-                                <label>Collection Name</label>
+                                <label>
+                                Collection Name
+                                <span class="help-icon" data-tooltip="COLLECTION_NAME">?</span>
+                            </label>
                                 <input type="text" name="COLLECTION_NAME" placeholder="code_chunks_{repo}">
                                 <p class="small" style="color: var(--fg-muted);">Qdrant collection name (leave empty for auto)</p>
                             </div>
@@ -4384,15 +4599,24 @@
 
                         <div class="input-row">
                             <div class="input-group">
-                                <label>Chunk Size (tokens)</label>
+                                <label>
+                                Chunk Size (tokens)
+                                <span class="help-icon" data-tooltip="CHUNK_SIZE">?</span>
+                            </label>
                                 <input type="number" name="CHUNK_SIZE" value="1000" min="100" max="4000" step="100">
                             </div>
                             <div class="input-group">
-                                <label>Chunk Overlap (tokens)</label>
+                                <label>
+                                Chunk Overlap (tokens)
+                                <span class="help-icon" data-tooltip="CHUNK_OVERLAP">?</span>
+                            </label>
                                 <input type="number" name="CHUNK_OVERLAP" value="200" min="0" max="1000" step="50">
                             </div>
                             <div class="input-group">
-                                <label>Max Workers</label>
+                                <label>
+                                Max Workers
+                                <span class="help-icon" data-tooltip="INDEX_MAX_WORKERS">?</span>
+                            </label>
                                 <input type="number" name="INDEX_MAX_WORKERS" value="4" min="1" max="16">
                             </div>
                         </div>
@@ -4874,6 +5098,7 @@
                             <div class="input-group">
                                 <label>
                                     Sample Size
+                                    <span class="help-icon" data-tooltip="EVAL_SAMPLE_SIZE">?</span>
                                 </label>
                                 <select id="eval-sample-size" name="eval_sample_size">
                                     <option value="">Full (All Questions)</option>
@@ -5012,12 +5237,18 @@
 
                     <div class="input-row">
                         <div class="input-group">
-                            <label>Cost Spike Alert (USD/hour)</label>
+                            <label>
+                                Cost Spike Alert (USD/hour)
+                                <span class="help-icon" data-tooltip="ALERT_COST_BURN_SPIKE_USD_PER_HOUR">?</span>
+                            </label>
                             <input type="number" id="alert_cost_burn_spike_usd_per_hour" min="0.01" max="100" step="0.01" placeholder="0.10">
                             <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Alert when hourly burn exceeds this amount</p>
                         </div>
                         <div class="input-group">
-                            <label>Token Spike (tokens/min)</label>
+                            <label>
+                                Token Spike (tokens/min)
+                                <span class="help-icon" data-tooltip="ALERT_TOKEN_BURN_SPIKE_PER_MINUTE">?</span>
+                            </label>
                             <input type="number" id="alert_token_burn_spike_per_minute" min="100" max="100000" step="100" placeholder="5000">
                             <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Alert on sudden spike above this rate</p>
                         </div>
@@ -5025,7 +5256,10 @@
 
                     <div class="input-row">
                         <div class="input-group">
-                            <label>Token Burn Sustained (tokens/min)</label>
+                            <label>
+                                Token Burn Sustained (tokens/min)
+                                <span class="help-icon" data-tooltip="ALERT_TOKEN_BURN_SUSTAINED_PER_MINUTE">?</span>
+                            </label>
                             <input type="number" id="alert_token_burn_sustained_per_minute" min="100" max="100000" step="100" placeholder="2000">
                             <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Alert if sustained for 15+ minutes</p>
                         </div>
@@ -5039,12 +5273,18 @@
 
                     <div class="input-row">
                         <div class="input-group">
-                            <label>Monthly Budget (USD)</label>
+                            <label>
+                                Monthly Budget (USD)
+                                <span class="help-icon" data-tooltip="ALERT_MONTHLY_BUDGET_USD">?</span>
+                            </label>
                             <input type="number" id="alert_monthly_budget_usd" min="1" max="10000" step="1" placeholder="500">
                             <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Hard limit for monthly spending</p>
                         </div>
                         <div class="input-group">
-                            <label>Budget Warning Level (USD)</label>
+                            <label>
+                                Budget Warning Level (USD)
+                                <span class="help-icon" data-tooltip="ALERT_BUDGET_WARNING_USD">?</span>
+                            </label>
                             <input type="number" id="alert_budget_warning_usd" min="1" max="10000" step="1" placeholder="400">
                             <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Alert when spending exceeds this</p>
                         </div>
@@ -5052,7 +5292,10 @@
 
                     <div class="input-row">
                         <div class="input-group">
-                            <label>Budget Critical Level (USD)</label>
+                            <label>
+                                Budget Critical Level (USD)
+                                <span class="help-icon" data-tooltip="ALERT_BUDGET_CRITICAL_USD">?</span>
+                            </label>
                             <input type="number" id="alert_budget_critical_usd" min="1" max="10000" step="1" placeholder="450">
                             <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Critical alert when spending exceeds this</p>
                         </div>
@@ -5210,7 +5453,10 @@
                     <!-- Runtime Mode Toggle (Infrastructure) -->
                     <div class="input-row" style="margin-top: 8px;">
                         <div class="input-group">
-                            <label>Runtime Mode (DEV_LOCAL_UVICORN)</label>
+                            <label>
+                                Runtime Mode (DEV_LOCAL_UVICORN)
+                                <span class="help-icon" data-tooltip="DEV_LOCAL_UVICORN">?</span>
+                            </label>
                             <select name="DEV_LOCAL_UVICORN" id="infra-runtime-mode">
                                 <option value="0">Docker (default)</option>
                                 <option value="1">Local uvicorn (dev-only)</option>
@@ -5255,7 +5501,10 @@
 
                     <div class="input-row">
                         <div class="input-group">
-                            <label>Auto-start Colima</label>
+                            <label>
+                                Auto-start Colima
+                                <span class="help-icon" data-tooltip="AUTO_COLIMA">?</span>
+                            </label>
                             <select name="AUTO_COLIMA">
                                 <option value="1">On (auto-start if needed)</option>
                                 <option value="0">Off (manual start)</option>
@@ -5263,7 +5512,10 @@
                             <p class="small" style="color: var(--fg-muted);">Automatically start Colima Docker runtime on macOS</p>
                         </div>
                         <div class="input-group">
-                            <label>Colima Profile</label>
+                            <label>
+                                Colima Profile
+                                <span class="help-icon" data-tooltip="COLIMA_PROFILE">?</span>
+                            </label>
                             <input type="text" name="COLIMA_PROFILE" placeholder="default">
                             <p class="small" style="color: var(--fg-muted);">Colima profile name (leave empty for default)</p>
                         </div>
@@ -5351,57 +5603,90 @@
                     <h3 id="infra-paths-anchor">Infrastructure Configuration</h3>
                     <div class="input-row">
                         <div class="input-group">
-                            <label>Qdrant URL</label>
+                            <label>
+                                Qdrant URL
+                                <span class="help-icon" data-tooltip="QDRANT_URL">?</span>
+                            </label>
                             <input type="text" name="QDRANT_URL" value="http://127.0.0.1:6333">
                         </div>
                         <div class="input-group">
-                            <label>Redis URL</label>
+                            <label>
+                                Redis URL
+                                <span class="help-icon" data-tooltip="REDIS_URL">?</span>
+                            </label>
                             <input type="text" name="REDIS_URL" value="redis://127.0.0.1:6379/0">
                         </div>
                     </div>
                     <div class="input-row">
                         <div class="input-group">
-                            <label>Repo Root</label>
+                            <label>
+                                Repo Root
+                                <span class="help-icon" data-tooltip="REPO_ROOT">?</span>
+                            </label>
                             <input type="text" name="REPO_ROOT" placeholder="Override project root (optional)">
                         </div>
                         <div class="input-group">
-                            <label>Files Root</label>
+                            <label>
+                                Files Root
+                                <span class="help-icon" data-tooltip="FILES_ROOT">?</span>
+                            </label>
                             <input type="text" name="FILES_ROOT" placeholder="/files mount root (optional)">
                         </div>
                     </div>
                     <div class="input-row">
                         <div class="input-group">
-                            <label>Active Repository</label>
+                            <label>
+                                Active Repository
+                                <span class="help-icon" data-tooltip="REPO">?</span>
+                            </label>
                             <select name="REPO" id="repo-select"></select>
                         </div>
                         <div class="input-group">
-                            <label>Collection Suffix</label>
+                            <label>
+                                Collection Suffix
+                                <span class="help-icon" data-tooltip="COLLECTION_SUFFIX">?</span>
+                            </label>
                             <input type="text" name="COLLECTION_SUFFIX" placeholder="default">
                         </div>
                     </div>
                     <div class="input-row">
                         <div class="input-group">
-                            <label>Collection Name</label>
+                            <label>
+                                Collection Name
+                                <span class="help-icon" data-tooltip="COLLECTION_NAME">?</span>
+                            </label>
                             <input type="text" name="COLLECTION_NAME" placeholder="code_chunks_{REPO}">
                         </div>
                         <div class="input-group">
-                            <label>Repo Path (fallback)</label>
+                            <label>
+                                Repo Path (fallback)
+                                <span class="help-icon" data-tooltip="REPO_PATH">?</span>
+                            </label>
                             <input type="text" name="REPO_PATH" placeholder="/path/to/repo">
                         </div>
                     </div>
                     <div class="input-row">
                         <div class="input-group">
-                            <label>GUI Directory</label>
+                            <label>
+                                GUI Directory
+                                <span class="help-icon" data-tooltip="GUI_DIR">?</span>
+                            </label>
                             <input type="text" name="GUI_DIR" placeholder="./gui">
                         </div>
                         <div class="input-group">
-                            <label>Docs Directory</label>
+                            <label>
+                                Docs Directory
+                                <span class="help-icon" data-tooltip="DOCS_DIR">?</span>
+                            </label>
                             <input type="text" name="DOCS_DIR" placeholder="./docs">
                         </div>
                     </div>
                     <div class="input-row">
                         <div class="input-group">
-                            <label>Data Directory</label>
+                            <label>
+                                Data Directory
+                                <span class="help-icon" data-tooltip="DATA_DIR">?</span>
+                            </label>
                             <input type="text" name="DATA_DIR" placeholder="./data">
                         </div>
                         <div class="input-group">
@@ -5409,11 +5694,17 @@
                     </div>
                     <div class="input-row">
                         <div class="input-group">
-                            <label>Repos File</label>
+                            <label>
+                                Repos File
+                                <span class="help-icon" data-tooltip="REPOS_FILE">?</span>
+                            </label>
                             <input type="text" name="REPOS_FILE" value="./repos.json">
                         </div>
                         <div class="input-group">
-                            <label>Out Dir Base</label>
+                            <label>
+                                Out Dir Base
+                                <span class="help-icon" data-tooltip="OUT_DIR_BASE">?</span>
+                            </label>
                             <input type="text" name="OUT_DIR_BASE" placeholder="./out.noindex or ./out">
                             <p class="small" style="color: var(--fg-muted);">
                                 Primary storage location for all indexed data. This is the <strong>single source</strong> for this setting.
@@ -5422,21 +5713,33 @@
                     </div>
                     <div class="input-row">
                         <div class="input-group">
-                            <label>RAG Out Base</label>
+                            <label>
+                                RAG Out Base
+                                <span class="help-icon" data-tooltip="RAG_OUT_BASE">?</span>
+                            </label>
                             <input type="text" name="RAG_OUT_BASE" placeholder="Override for OUT_DIR_BASE">
                         </div>
                         <div class="input-group">
-                            <label>MCP HTTP Host</label>
+                            <label>
+                                MCP HTTP Host
+                                <span class="help-icon" data-tooltip="MCP_HTTP_HOST">?</span>
+                            </label>
                             <input type="text" name="MCP_HTTP_HOST" value="0.0.0.0">
                         </div>
                     </div>
                     <div class="input-row">
                         <div class="input-group">
-                            <label>MCP HTTP Port</label>
+                            <label>
+                                MCP HTTP Port
+                                <span class="help-icon" data-tooltip="MCP_HTTP_PORT">?</span>
+                            </label>
                             <input type="number" name="MCP_HTTP_PORT" value="8013">
                         </div>
                         <div class="input-group">
-                            <label>MCP HTTP Path</label>
+                            <label>
+                                MCP HTTP Path
+                                <span class="help-icon" data-tooltip="MCP_HTTP_PATH">?</span>
+                            </label>
                             <input type="text" name="MCP_HTTP_PATH" value="/mcp">
                         </div>
                     </div>
@@ -5449,12 +5752,18 @@
 
                     <div class="input-row">
                         <div class="input-group">
-                            <label>Error Rate Threshold (%)</label>
+                            <label>
+                                Error Rate Threshold (%)
+                                <span class="help-icon" data-tooltip="ALERT_ERROR_RATE_THRESHOLD_PERCENT">?</span>
+                            </label>
                             <input type="number" id="alert_error_rate_threshold_percent" min="0.1" max="50" step="0.1" placeholder="5.0">
                             <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Alert when error rate exceeds this percentage</p>
                         </div>
                         <div class="input-group">
-                            <label>Request Latency P99 (seconds)</label>
+                            <label>
+                                Request Latency P99 (seconds)
+                                <span class="help-icon" data-tooltip="ALERT_REQUEST_LATENCY_P99_SECONDS">?</span>
+                            </label>
                             <input type="number" id="alert_request_latency_p99_seconds" min="0.1" max="60" step="0.1" placeholder="5.0">
                             <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Alert when 99th percentile latency exceeds this</p>
                         </div>
@@ -5462,12 +5771,18 @@
 
                     <div class="input-row">
                         <div class="input-group">
-                            <label>Timeout Errors (per 5 min)</label>
+                            <label>
+                                Timeout Errors (per 5 min)
+                                <span class="help-icon" data-tooltip="ALERT_TIMEOUT_ERRORS_PER_5MIN">?</span>
+                            </label>
                             <input type="number" id="alert_timeout_errors_per_5min" min="1" max="1000" step="1" placeholder="10">
                             <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Alert when timeout count exceeds this</p>
                         </div>
                         <div class="input-group">
-                            <label>Rate Limit Errors (per 5 min)</label>
+                            <label>
+                                Rate Limit Errors (per 5 min)
+                                <span class="help-icon" data-tooltip="ALERT_RATE_LIMIT_ERRORS_PER_5MIN">?</span>
+                            </label>
                             <input type="number" id="alert_rate_limit_errors_per_5min" min="1" max="1000" step="1" placeholder="5">
                             <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Alert when rate limit hits exceed this</p>
                         </div>
@@ -5481,12 +5796,18 @@
 
                     <div class="input-row">
                         <div class="input-group">
-                            <label>Endpoint Call Frequency (calls/min)</label>
+                            <label>
+                                Endpoint Call Frequency (calls/min)
+                                <span class="help-icon" data-tooltip="ALERT_ENDPOINT_CALL_FREQUENCY_PER_MINUTE">?</span>
+                            </label>
                             <input type="number" id="alert_endpoint_call_frequency_per_minute" min="1" max="1000" step="1" placeholder="10">
                             <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Alert when a single endpoint gets called this frequently</p>
                         </div>
                         <div class="input-group">
-                            <label>Sustained Frequency Duration (minutes)</label>
+                            <label>
+                                Sustained Frequency Duration (minutes)
+                                <span class="help-icon" data-tooltip="ALERT_ENDPOINT_FREQUENCY_SUSTAINED_MINUTES">?</span>
+                            </label>
                             <input type="number" id="alert_endpoint_frequency_sustained_minutes" min="1" max="60" step="1" placeholder="2">
                             <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Duration threshold for sustained frequency alert</p>
                         </div>
@@ -5494,7 +5815,10 @@
 
                     <div class="input-row">
                         <div class="input-group">
-                            <label>Cohere Rerank Calls (calls/min)</label>
+                            <label>
+                                Cohere Rerank Calls (calls/min)
+                                <span class="help-icon" data-tooltip="ALERT_COHERE_RERANK_CALLS_PER_MINUTE">?</span>
+                            </label>
                             <input type="number" id="alert_cohere_rerank_calls_per_minute" min="1" max="1000" step="1" placeholder="30">
                             <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Alert when Cohere reranking calls spike</p>
                         </div>
@@ -5542,7 +5866,10 @@
                     <h3>Theme & Appearance</h3>
                     <div class="input-row">
                         <div class="input-group">
-                            <label>Theme Mode</label>
+                            <label>
+                                Theme Mode
+                                <span class="help-icon" data-tooltip="THEME_MODE">?</span>
+                            </label>
                             <select name="THEME_MODE" id="misc-theme-mode">
                                 <option value="auto">Auto (System)</option>
                                 <option value="dark">Dark</option>
@@ -5558,45 +5885,69 @@
                     <h3>Server Settings</h3>
                     <div class="input-row">
                         <div class="input-group">
-                            <label>Edition (AGRO_EDITION)</label>
+                            <label>
+                                Edition (AGRO_EDITION)
+                                <span class="help-icon" data-tooltip="AGRO_EDITION">?</span>
+                            </label>
                             <input type="text" name="AGRO_EDITION" placeholder="oss | pro | enterprise">
                         </div>
                         <div class="input-group">
-                            <label>Thread ID</label>
+                            <label>
+                                Thread ID
+                                <span class="help-icon" data-tooltip="THREAD_ID">?</span>
+                            </label>
                             <input type="text" name="THREAD_ID" placeholder="http or cli-chat">
                         </div>
                     </div>
                     <div class="input-row">
                         <div class="input-group">
-                            <label>Serve Host</label>
+                            <label>
+                                Serve Host
+                                <span class="help-icon" data-tooltip="HOST">?</span>
+                            </label>
                             <input type="text" name="HOST" value="127.0.0.1">
                         </div>
                         <div class="input-group">
-                            <label>Serve Port</label>
+                            <label>
+                                Serve Port
+                                <span class="help-icon" data-tooltip="PORT">?</span>
+                            </label>
                             <input type="number" name="PORT" value="8012">
                         </div>
                     </div>
                     <div class="input-row">
                         <div class="input-group">
-                            <label>Open Browser on Start</label>
+                            <label>
+                                Open Browser on Start
+                                <span class="help-icon" data-tooltip="OPEN_BROWSER">?</span>
+                            </label>
                             <select name="OPEN_BROWSER">
                                 <option value="1">On</option>
                                 <option value="0">Off</option>
                             </select>
                         </div>
                         <div class="input-group">
-                            <label>agro Path</label>
+                            <label>
+                                agro Path
+                                <span class="help-icon" data-tooltip="AGRO_PATH">?</span>
+                            </label>
                             <input type="text" name="agro_PATH">
                         </div>
                     </div>
-                    
+
                     <div class="input-row">
                         <div class="input-group">
-                            <label>Netlify API Key</label>
+                            <label>
+                                Netlify API Key
+                                <span class="help-icon" data-tooltip="NETLIFY_API_KEY">?</span>
+                            </label>
                             <input type="password" name="NETLIFY_API_KEY">
                         </div>
                         <div class="input-group">
-                            <label>Netlify Domains</label>
+                            <label>
+                                Netlify Domains
+                                <span class="help-icon" data-tooltip="NETLIFY_DOMAINS">?</span>
+                            </label>
                             <input type="text" name="NETLIFY_DOMAINS">
                         </div>
                     </div>
@@ -5726,12 +6077,18 @@
                     </div>
                     <div class="input-row">
                         <div class="input-group">
-                            <label>Editor Port</label>
+                            <label>
+                                Editor Port
+                                <span class="help-icon" data-tooltip="EDITOR_PORT">?</span>
+                            </label>
                             <input type="number" name="EDITOR_PORT" value="4440" min="1024" max="65535">
                             <p class="small">Preferred port (auto-increments if busy)</p>
                         </div>
                         <div class="input-group">
-                            <label>Bind Mode</label>
+                            <label>
+                                Bind Mode
+                                <span class="help-icon" data-tooltip="EDITOR_BIND">?</span>
+                            </label>
                             <select name="EDITOR_BIND">
                                 <option value="local">Local only (127.0.0.1)</option>
                                 <option value="public">Public (0.0.0.0)</option>

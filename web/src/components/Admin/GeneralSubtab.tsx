@@ -1,407 +1,383 @@
-// AGRO - General Subtab Component
-// General server settings and configuration
-
-import { useState, useEffect } from 'react';
-
-interface GeneralConfig {
-  THEME_MODE?: string;
-  AGRO_EDITION?: string;
-  THREAD_ID?: string;
-  HOST?: string;
-  PORT?: string;
-  OPEN_BROWSER?: string;
-  agro_PATH?: string;
-  NETLIFY_API_KEY?: string;
-  NETLIFY_DOMAINS?: string;
-  EDITOR_ENABLED?: string;
-  EDITOR_EMBED_ENABLED?: string;
-  EDITOR_PORT?: string;
-  EDITOR_BIND?: string;
-}
+// Imported from /gui/index.html - contains all config parameters
+// This component uses dangerouslySetInnerHTML to render the exact HTML from /gui
 
 export function GeneralSubtab() {
-  const [config, setConfig] = useState<GeneralConfig>({});
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const htmlContent = `                <!-- Theme & Appearance (from settings-general) -->
+                <div class="settings-section">
+                    <h3>Theme & Appearance</h3>
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>
+                                Theme Mode
+                                <span class="help-icon" data-tooltip="THEME_MODE">?</span>
+                            </label>
+                            <select name="THEME_MODE" id="misc-theme-mode">
+                                <option value="auto">Auto (System)</option>
+                                <option value="dark">Dark</option>
+                                <option value="light">Light</option>
+                            </select>
+                            <p class="small">Controls light/dark theme globally. Top bar selector changes it live.</p>
+                        </div>
+                    </div>
+                </div>
 
-  useEffect(() => {
-    loadConfig();
-  }, []);
+                <!-- Server Settings (from settings-general) -->
+                <div class="settings-section" style="border-left: 3px solid var(--link);">
+                    <h3>Server Settings</h3>
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>
+                                Edition (AGRO_EDITION)
+                                <span class="help-icon" data-tooltip="AGRO_EDITION">?</span>
+                            </label>
+                            <input type="text" name="AGRO_EDITION" placeholder="oss | pro | enterprise">
+                        </div>
+                        <div class="input-group">
+                            <label>
+                                Thread ID
+                                <span class="help-icon" data-tooltip="THREAD_ID">?</span>
+                            </label>
+                            <input type="text" name="THREAD_ID" placeholder="http or cli-chat">
+                        </div>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>
+                                Serve Host
+                                <span class="help-icon" data-tooltip="HOST">?</span>
+                            </label>
+                            <input type="text" name="HOST" value="127.0.0.1">
+                        </div>
+                        <div class="input-group">
+                            <label>
+                                Serve Port
+                                <span class="help-icon" data-tooltip="PORT">?</span>
+                            </label>
+                            <input type="number" name="PORT" value="8012">
+                        </div>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>
+                                Open Browser on Start
+                                <span class="help-icon" data-tooltip="OPEN_BROWSER">?</span>
+                            </label>
+                            <select name="OPEN_BROWSER">
+                                <option value="1">On</option>
+                                <option value="0">Off</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>
+                                agro Path
+                                <span class="help-icon" data-tooltip="AGRO_PATH">?</span>
+                            </label>
+                            <input type="text" name="agro_PATH">
+                        </div>
+                    </div>
 
-  const api = (path: string) => {
-    const base = (window as any).API_BASE_URL || '';
-    return `${base}${path}`;
-  };
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>
+                                Netlify API Key
+                                <span class="help-icon" data-tooltip="NETLIFY_API_KEY">?</span>
+                            </label>
+                            <input type="password" name="NETLIFY_API_KEY">
+                        </div>
+                        <div class="input-group">
+                            <label>
+                                Netlify Domains
+                                <span class="help-icon" data-tooltip="NETLIFY_DOMAINS">?</span>
+                            </label>
+                            <input type="text" name="NETLIFY_DOMAINS">
+                        </div>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>
+                                Chat Streaming Enabled
+                                <span class="help-icon" data-tooltip="CHAT_STREAMING_ENABLED">?</span>
+                            </label>
+                            <select id="CHAT_STREAMING_ENABLED" name="CHAT_STREAMING_ENABLED">
+                                <option value="1">Enabled</option>
+                                <option value="0">Disabled</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
 
-  async function loadConfig() {
-    try {
-      const response = await fetch(api('/api/config'));
-      const data = await response.json();
-      if (data.env) {
-        setConfig(data.env);
-      }
-      setLoading(false);
-    } catch (error) {
-      console.error('Failed to load config:', error);
-      setLoading(false);
-    }
-  }
+                <!-- Tracing & Observability Settings -->
+                <div class="settings-section" style="border-left: 3px solid var(--link);">
+                    <h3>Tracing & Observability</h3>
+                    <p class="small">Configure distributed tracing, metrics collection, and monitoring.</p>
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>
+                                Tracing Enabled
+                                <span class="help-icon" data-tooltip="TRACING_ENABLED">?</span>
+                            </label>
+                            <select id="TRACING_ENABLED" name="TRACING_ENABLED">
+                                <option value="1">Enabled</option>
+                                <option value="0">Disabled</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>
+                                Trace Sampling Rate
+                                <span class="help-icon" data-tooltip="TRACE_SAMPLING_RATE">?</span>
+                            </label>
+                            <input
+                                type="number"
+                                id="TRACE_SAMPLING_RATE"
+                                name="TRACE_SAMPLING_RATE"
+                                value="1.0"
+                                min="0.0"
+                                max="1.0"
+                                step="0.1"
+                            />
+                        </div>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>
+                                Prometheus Port
+                                <span class="help-icon" data-tooltip="PROMETHEUS_PORT">?</span>
+                            </label>
+                            <input
+                                type="number"
+                                id="PROMETHEUS_PORT"
+                                name="PROMETHEUS_PORT"
+                                value="9090"
+                                min="1024"
+                                max="65535"
+                                step="1"
+                            />
+                        </div>
+                        <div class="input-group">
+                            <label>
+                                Metrics Enabled
+                                <span class="help-icon" data-tooltip="METRICS_ENABLED">?</span>
+                            </label>
+                            <select id="METRICS_ENABLED" name="METRICS_ENABLED">
+                                <option value="1">Enabled</option>
+                                <option value="0">Disabled</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>
+                                Log Level
+                                <span class="help-icon" data-tooltip="LOG_LEVEL">?</span>
+                            </label>
+                            <select id="LOG_LEVEL" name="LOG_LEVEL">
+                                <option value="DEBUG">DEBUG</option>
+                                <option value="INFO">INFO</option>
+                                <option value="WARNING">WARNING</option>
+                                <option value="ERROR">ERROR</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>
+                                Alert Webhook Timeout
+                                <span class="help-icon" data-tooltip="ALERT_WEBHOOK_TIMEOUT">?</span>
+                            </label>
+                            <input
+                                type="number"
+                                id="ALERT_WEBHOOK_TIMEOUT"
+                                name="ALERT_WEBHOOK_TIMEOUT"
+                                value="5"
+                                min="1"
+                                max="30"
+                                step="1"
+                            />
+                        </div>
+                    </div>
+                </div>
 
-  async function saveConfig() {
-    setSaving(true);
-    try {
-      const response = await fetch(api('/api/config'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ env: config })
-      });
-      const data = await response.json();
-      if (data.status === 'success') {
-        alert('Configuration saved successfully!');
-      } else {
-        alert(`Failed to save configuration: ${data.error}`);
-      }
-    } catch (error: any) {
-      alert(`Error saving configuration: ${error.message}`);
-    } finally {
-      setSaving(false);
-    }
-  }
+                <!-- Embedded Editor Settings (from settings-general) -->
+                <div class="settings-section" style="border-left: 3px solid var(--link);">
+                    <h3 id="admin-editor-settings-anchor"><span class="accent-blue">●</span> Embedded Editor</h3>
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label class="toggle">
+                                <input type="checkbox" name="EDITOR_ENABLED" value="1">
+                                <span class="toggle-track" aria-hidden="true"><span class="toggle-thumb"></span></span>
+                                <span class="toggle-label">Enable Embedded Editor</span>
+                            </label>
+                            <p class="small">Start OpenVSCode Server container on up.sh</p>
+                        </div>
+                        <div class="input-group">
+                            <label class="toggle">
+                                <input type="checkbox" name="EDITOR_EMBED_ENABLED" value="1" checked>
+                                <span class="toggle-track" aria-hidden="true"><span class="toggle-thumb"></span></span>
+                                <span class="toggle-label">Enable Editor Embed (iframe)</span>
+                            </label>
+                            <p class="small">Show the editor inline in the GUI (hides automatically in CI)</p>
+                        </div>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>
+                                Editor Port
+                                <span class="help-icon" data-tooltip="EDITOR_PORT">?</span>
+                            </label>
+                            <input type="number" name="EDITOR_PORT" value="4440" min="1024" max="65535">
+                            <p class="small">Preferred port (auto-increments if busy)</p>
+                        </div>
+                        <div class="input-group">
+                            <label>
+                                Bind Mode
+                                <span class="help-icon" data-tooltip="EDITOR_BIND">?</span>
+                            </label>
+                            <select name="EDITOR_BIND">
+                                <option value="local">Local only (127.0.0.1)</option>
+                                <option value="public">Public (0.0.0.0)</option>
+                            </select>
+                            <p class="small">Local = secure; Public = accessible from network</p>
+                        </div>
+                    </div>
+                </div>
 
-  const updateConfig = (key: keyof GeneralConfig, value: string) => {
-    setConfig(prev => ({ ...prev, [key]: value }));
-  };
+                <!-- Integrations (from settings-integrations) -->
+                <div class="settings-section">
+                    <h3 id="admin-integrations-anchor">MCP & Channels</h3>
+                    <p class="small">Set per‑channel inference models. Provider is inferred from the model name; use base URL and keys from Infrastructure or Models for proxies/local engines.</p>
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>HTTP Responses Model</label>
+                            <select name="GEN_MODEL_HTTP" id="http-model-select">
+                                <option value="">Select a model...</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>MCP stdio Model</label>
+                            <select name="GEN_MODEL_MCP" id="mcp-model-select">
+                                <option value="">Select a model...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>CLI Chat Model</label>
+                            <select name="GEN_MODEL_CLI" id="cli-model-select">
+                                <option value="">Select a model...</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>MCP HTTP (host/port/path)</label>
+                            <div style="display:flex; gap:8px;">
+                                <input type="text" name="MCP_HTTP_HOST" placeholder="0.0.0.0" style="width:40%">
+                                <input type="number" name="MCP_HTTP_PORT" placeholder="8013" style="width:30%">
+                                <input type="text" name="MCP_HTTP_PATH" placeholder="/mcp" style="width:30%">
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-  if (loading) {
-    return (
-      <div style={{ padding: '20px', textAlign: 'center', color: 'var(--fg-muted)' }}>
-        Loading configuration...
-      </div>
-    );
-  }
+                <div class="settings-section" style="border-left: 3px solid var(--link);">
+                    <h3><span style="color: var(--link);">●</span> Alert Notifications (Slack/Discord)</h3>
+                    <p class="small">Configure webhook URLs for alert notifications. Leave blank to disable notifications for that platform.</p>
 
-  return (
-    <div className="settings-section">
-      <h2>General Settings</h2>
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>Slack Webhook URL</label>
+                            <input type="password" id="webhook_slack_url" placeholder="https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXX">
+                            <p class="small" style="color: var(--fg-muted); margin-top: 4px;">🔒 Password field for security - not saved in browser</p>
+                        </div>
+                    </div>
 
-      {/* Theme & Appearance */}
-      <div
-        style={{
-          background: 'var(--bg-elev2)',
-          border: '1px solid var(--line)',
-          borderRadius: '6px',
-          padding: '20px',
-          marginBottom: '20px'
-        }}
-      >
-        <h3 style={{ marginTop: 0 }}>Theme & Appearance</h3>
-        <div className="input-row">
-          <div className="input-group">
-            <label>Theme Mode</label>
-            <select
-              id="misc-theme-mode"
-              name="THEME_MODE"
-              value={config.THEME_MODE || 'auto'}
-              onChange={(e) => updateConfig('THEME_MODE', e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px',
-                background: 'var(--input-bg)',
-                border: '1px solid var(--line)',
-                borderRadius: '4px',
-                color: 'var(--fg)'
-              }}
-            >
-              <option value="auto">Auto (System)</option>
-              <option value="dark">Dark</option>
-              <option value="light">Light</option>
-            </select>
-            <p className="small" style={{ color: 'var(--fg-muted)', marginTop: '4px' }}>
-              Controls light/dark theme globally. Top bar selector changes it live.
-            </p>
-          </div>
-        </div>
-      </div>
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>Discord Webhook URL</label>
+                            <input type="password" id="webhook_discord_url" placeholder="https://discordapp.com/api/webhooks/000000000000000000/XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX">
+                            <p class="small" style="color: var(--fg-muted); margin-top: 4px;">🔒 Password field for security - not saved in browser</p>
+                        </div>
+                    </div>
 
-      {/* Server Settings */}
-      <div
-        style={{
-          background: 'var(--bg-elev2)',
-          border: '1px solid var(--line)',
-          borderRadius: '6px',
-          padding: '20px',
-          marginBottom: '20px'
-        }}
-      >
-        <h3 style={{ marginTop: 0 }}>Server Settings</h3>
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>Notification Settings</label>
+                            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 8px;">
+                                <label style="display: flex; align-items: center; gap: 8px; font-weight: 400; margin: 0;">
+                                    <input type="checkbox" id="webhook_enabled" checked>
+                                    <span>Enable notifications</span>
+                                </label>
+                                <div>
+                                    <label>Notify on severity:</label>
+                                    <div style="display: flex; gap: 12px; margin-top: 6px;">
+                                        <label style="display: flex; align-items: center; gap: 6px;">
+                                            <input type="checkbox" id="webhook_sev_critical" checked>
+                                            🔴 Critical
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 6px;">
+                                            <input type="checkbox" id="webhook_sev_warning" checked>
+                                            ⚠️ Warning
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 6px;">
+                                            <input type="checkbox" id="webhook_sev_info">
+                                            ℹ️ Info
+                                        </label>
+                                    </div>
+                                </div>
+                                <label style="display: flex; align-items: center; gap: 8px; font-weight: 400; margin: 0;">
+                                    <input type="checkbox" id="webhook_include_resolved" checked>
+                                    <span>Include resolved alerts</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
 
-        <div className="input-row">
-          <div className="input-group">
-            <label>Edition (AGRO_EDITION)</label>
-            <input
-              name="AGRO_EDITION"
-              type="text"
-              value={config.AGRO_EDITION || ''}
-              onChange={(e) => updateConfig('AGRO_EDITION', e.target.value)}
-              placeholder="oss | pro | enterprise"
-              style={{
-                width: '100%',
-                padding: '8px',
-                background: 'var(--input-bg)',
-                border: '1px solid var(--line)',
-                borderRadius: '4px',
-                color: 'var(--fg)'
-              }}
-            />
-          </div>
-          <div className="input-group">
-            <label>Thread ID</label>
-            <input
-              name="THREAD_ID"
-              type="text"
-              value={config.THREAD_ID || ''}
-              onChange={(e) => updateConfig('THREAD_ID', e.target.value)}
-              placeholder="http or cli-chat"
-              style={{
-                width: '100%',
-                padding: '8px',
-                background: 'var(--input-bg)',
-                border: '1px solid var(--line)',
-                borderRadius: '4px',
-                color: 'var(--fg)'
-              }}
-            />
-          </div>
-        </div>
+                    <div class="input-row">
+                        <button class="small-button" id="btn-save-webhooks" style="background: var(--accent); color: var(--accent-contrast); font-weight: 600; width: 100%;">💾 Save Webhook Configuration</button>
+                    </div>
+                    <div id="webhook-save-status" style="font-size: 12px; color: var(--fg-muted); margin-top: 8px;"></div>
+                </div>
 
-        <div className="input-row">
-          <div className="input-group">
-            <label>Serve Host</label>
-            <input
-              name="HOST"
-              type="text"
-              value={config.HOST || ''}
-              onChange={(e) => updateConfig('HOST', e.target.value)}
-              placeholder="127.0.0.1"
-              style={{
-                width: '100%',
-                padding: '8px',
-                background: 'var(--input-bg)',
-                border: '1px solid var(--line)',
-                borderRadius: '4px',
-                color: 'var(--fg)'
-              }}
-            />
-          </div>
-          <div className="input-group">
-            <label>Serve Port</label>
-            <input
-              name="PORT"
-              type="number"
-              value={config.PORT || ''}
-              onChange={(e) => updateConfig('PORT', e.target.value)}
-              placeholder="8012"
-              style={{
-                width: '100%',
-                padding: '8px',
-                background: 'var(--input-bg)',
-                border: '1px solid var(--line)',
-                borderRadius: '4px',
-                color: 'var(--fg)'
-              }}
-            />
-          </div>
-        </div>
+                <!-- Secrets Management (from settings-secrets) -->
+                <div class="settings-section">
+                    <h3 id="admin-secrets-anchor">Secrets Management</h3>
+                    <p class="small">Import secrets from .env files. Drag and drop .env files in the sidepanel or use the file upload below.</p>
+                    <!-- Secrets dropzone is in sidepanel (lines 7140-7154) - reference only -->
+                </div>
 
-        <div className="input-row">
-          <div className="input-group">
-            <label>Open Browser on Start</label>
-            <select
-              name="OPEN_BROWSER"
-              value={config.OPEN_BROWSER || '1'}
-              onChange={(e) => updateConfig('OPEN_BROWSER', e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px',
-                background: 'var(--input-bg)',
-                border: '1px solid var(--line)',
-                borderRadius: '4px',
-                color: 'var(--fg)'
-              }}
-            >
-              <option value="1">On</option>
-              <option value="0">Off</option>
-            </select>
-          </div>
-          <div className="input-group">
-            <label>AGRO Path</label>
-            <input
-              name="agro_PATH"
-              type="text"
-              value={config.agro_PATH || ''}
-              onChange={(e) => updateConfig('agro_PATH', e.target.value)}
-              placeholder="Path to AGRO"
-              style={{
-                width: '100%',
-                padding: '8px',
-                background: 'var(--input-bg)',
-                border: '1px solid var(--line)',
-                borderRadius: '4px',
-                color: 'var(--fg)'
-              }}
-            />
-          </div>
-        </div>
-
-        <div className="input-row">
-          <div className="input-group">
-            <label>Netlify API Key</label>
-            <input
-              name="NETLIFY_API_KEY"
-              type="password"
-              value={config.NETLIFY_API_KEY || ''}
-              onChange={(e) => updateConfig('NETLIFY_API_KEY', e.target.value)}
-              placeholder="Netlify API Key"
-              style={{
-                width: '100%',
-                padding: '8px',
-                background: 'var(--input-bg)',
-                border: '1px solid var(--line)',
-                borderRadius: '4px',
-                color: 'var(--fg)'
-              }}
-            />
-          </div>
-          <div className="input-group">
-            <label>Netlify Domains</label>
-            <input
-              name="NETLIFY_DOMAINS"
-              type="text"
-              value={config.NETLIFY_DOMAINS || ''}
-              onChange={(e) => updateConfig('NETLIFY_DOMAINS', e.target.value)}
-              placeholder="Comma-separated domains"
-              style={{
-                width: '100%',
-                padding: '8px',
-                background: 'var(--input-bg)',
-                border: '1px solid var(--line)',
-                borderRadius: '4px',
-                color: 'var(--fg)'
-              }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Embedded Editor Settings */}
-      <div
-        style={{
-          background: 'var(--bg-elev2)',
-          border: '1px solid var(--line)',
-          borderRadius: '6px',
-          padding: '20px',
-          marginBottom: '20px'
-        }}
-      >
-        <h3 style={{ marginTop: 0 }}>Embedded Editor</h3>
-
-        <div className="input-row">
-          <div className="input-group">
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <input
-                name="EDITOR_ENABLED"
-                type="checkbox"
-                value="1"
-                checked={config.EDITOR_ENABLED === '1'}
-                onChange={(e) => updateConfig('EDITOR_ENABLED', e.target.checked ? '1' : '0')}
-              />
-              <span>Enable Embedded Editor</span>
-            </label>
-            <p className="small" style={{ color: 'var(--fg-muted)', marginTop: '4px' }}>
-              Start OpenVSCode Server container on up.sh
-            </p>
-          </div>
-          <div className="input-group">
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <input
-                name="EDITOR_EMBED_ENABLED"
-                type="checkbox"
-                value="1"
-                checked={config.EDITOR_EMBED_ENABLED === '1'}
-                onChange={(e) => updateConfig('EDITOR_EMBED_ENABLED', e.target.checked ? '1' : '0')}
-              />
-              <span>Enable Editor Embed (iframe)</span>
-            </label>
-            <p className="small" style={{ color: 'var(--fg-muted)', marginTop: '4px' }}>
-              Show the editor inline in the GUI (hides automatically in CI)
-            </p>
-          </div>
-        </div>
-
-        <div className="input-row">
-          <div className="input-group">
-            <label>Editor Port</label>
-            <input
-              name="EDITOR_PORT"
-              type="number"
-              value={config.EDITOR_PORT || ''}
-              onChange={(e) => updateConfig('EDITOR_PORT', e.target.value)}
-              placeholder="4440"
-              min="1024"
-              max="65535"
-              style={{
-                width: '100%',
-                padding: '8px',
-                background: 'var(--input-bg)',
-                border: '1px solid var(--line)',
-                borderRadius: '4px',
-                color: 'var(--fg)'
-              }}
-            />
-            <p className="small" style={{ color: 'var(--fg-muted)', marginTop: '4px' }}>
-              Preferred port (auto-increments if busy)
-            </p>
-          </div>
-          <div className="input-group">
-            <label>Bind Mode</label>
-            <select
-              name="EDITOR_BIND"
-              value={config.EDITOR_BIND || 'local'}
-              onChange={(e) => updateConfig('EDITOR_BIND', e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px',
-                background: 'var(--input-bg)',
-                border: '1px solid var(--line)',
-                borderRadius: '4px',
-                color: 'var(--fg)'
-              }}
-            >
-              <option value="local">Local only (127.0.0.1)</option>
-              <option value="public">Public (0.0.0.0)</option>
-            </select>
-            <p className="small" style={{ color: 'var(--fg-muted)', marginTop: '4px' }}>
-              Local = secure; Public = accessible from network
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Save Button */}
-      <button
-        className="small-button"
-        onClick={saveConfig}
-        disabled={saving}
-        style={{
-          width: '100%',
-          background: 'var(--accent)',
-          color: 'var(--accent-contrast)',
-          fontWeight: '600',
-          padding: '12px'
-        }}
-      >
-        {saving ? 'Saving...' : 'Save Settings'}
-      </button>
-    </div>
-  );
+                <!-- Debug Tools (from devtools-debug) -->
+                <div class="settings-section" style="border-left: 3px solid var(--link);">
+                    <h3>
+                        <span style="color:var(--link);">●</span> MCP RAG Search (debug)
+                    </h3>
+                    <p class="small">Runs the MCP server's <code>rag_search</code> tool to return file paths and line ranges. Falls back to local retrieval if MCP is unavailable.</p>
+                    <div class="input-row">
+                        <div class="input-group full-width">
+                            <label>Question</label>
+                            <input type="text" id="mcp-rag-q" placeholder="e.g. Where is OAuth token validated?">
+                        </div>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>Repository</label>
+                            <input type="text" id="mcp-rag-repo" placeholder="agro">
+                        </div>
+                        <div class="input-group">
+                            <label>Top K</label>
+                            <input type="number" id="mcp-rag-topk" value="10" min="1" max="50">
+                        </div>
+                        <div class="input-group">
+                            <label>Force Local</label>
+                            <select id="mcp-rag-local">
+                                <option value="false" selected>No (use MCP if available)</option>
+                                <option value="true">Yes (bypass MCP)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-group">
+                            <button class="small-button" id="btn-mcp-rag-run">Run</button>
+                        </div>
+                    </div>
+                    <pre id="mcp-rag-results" class="result-display" style="min-height: 120px; white-space: pre-wrap; background: var(--code-bg);"></pre>
+                </div>
+`;
+  
+  return <div dangerouslySetInnerHTML={{ __html: htmlContent }} />;
 }

@@ -290,12 +290,10 @@
         .subtab-bar {
             display: flex;
             gap: 4px;
-            padding: 8px 16px;
-            background: var(--bg-elev2);
+            padding: 8px 24px;
+            background: var(--bg-elev1);
             border-bottom: 1px solid var(--line);
-            position: sticky;
-            top: 65px; /* Tab bar height (~65px) */
-            z-index: 98; /* Below tab-bar (99) but above content */
+            /* No sticky positioning - let it flow naturally */
         }
         /* Default hidden; Navigation toggles visibility when RAG is active */
         #rag-subtabs { display: none; }

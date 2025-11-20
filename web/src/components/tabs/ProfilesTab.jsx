@@ -1,6 +1,6 @@
 export default function ProfilesTab() {
   return (
-    <div id="tab-profiles" className="tab-content">
+    <div id="tab-profiles" className="tab-content active">
       <div id="tab-profiles-budget" className="section-subtab active">
                 {/* Budget Calculator & Cost Tracking (from analytics-cost) */}
                 <div className="settings-section" style={{borderLeft: '3px solid var(--warn)'}}>

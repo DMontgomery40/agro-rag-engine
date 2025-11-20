@@ -52,9 +52,12 @@ export function Dashboard() {
       {/* Subtab navigation */}
       <DashboardSubtabs activeSubtab={activeSubtab} onSubtabChange={setActiveSubtab} />
 
-      {/* Subtab content */}
-      {activeSubtab === 'overview' && (
-        <>
+      {/* Overview Subtab */}
+      <div
+        id="tab-dashboard-overview"
+        className={`dashboard-subtab ${activeSubtab === 'overview' ? 'active' : ''}`}
+        style={{ display: activeSubtab === 'overview' ? 'flex' : 'none', flexDirection: 'column' }}
+      >
       {/* Compact Status + Quick Actions */}
       <div className="settings-section" style={{ background: 'var(--panel)', borderLeft: '3px solid var(--accent)' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '24px', alignItems: 'start' }}>
@@ -401,11 +404,16 @@ export function Dashboard() {
           </div>
         </div>
       </div>
-        </>
-      )}
+      </div>
 
-      {/* Help & Glossary subtab */}
-      {activeSubtab === 'help' && <HelpGlossary />}
+      {/* Help & Glossary Subtab */}
+      <div
+        id="tab-dashboard-help"
+        className={`dashboard-subtab ${activeSubtab === 'help' ? 'active' : ''}`}
+        style={{ display: activeSubtab === 'help' ? 'flex' : 'none', flexDirection: 'column' }}
+      >
+        <HelpGlossary />
+      </div>
     </div>
   );
 }
