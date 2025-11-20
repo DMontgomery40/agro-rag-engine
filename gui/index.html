@@ -3012,6 +3012,164 @@
                                 </select>
                             </div>
                         </div>
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>
+                                    Max Tokens
+                                    <span class="help-icon" data-tooltip="GEN_MAX_TOKENS">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="GEN_MAX_TOKENS"
+                                    name="GEN_MAX_TOKENS"
+                                    value="2048"
+                                    min="100"
+                                    max="8192"
+                                    step="128"
+                                />
+                            </div>
+                            <div class="input-group">
+                                <label>
+                                    Top-P (Nucleus Sampling)
+                                    <span class="help-icon" data-tooltip="GEN_TOP_P">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="GEN_TOP_P"
+                                    name="GEN_TOP_P"
+                                    value="1.0"
+                                    min="0.0"
+                                    max="1.0"
+                                    step="0.05"
+                                />
+                            </div>
+                        </div>
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>
+                                    Timeout (seconds)
+                                    <span class="help-icon" data-tooltip="GEN_TIMEOUT">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="GEN_TIMEOUT"
+                                    name="GEN_TIMEOUT"
+                                    value="60"
+                                    min="10"
+                                    max="300"
+                                    step="5"
+                                />
+                            </div>
+                            <div class="input-group">
+                                <label>
+                                    Retry Max
+                                    <span class="help-icon" data-tooltip="GEN_RETRY_MAX">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="GEN_RETRY_MAX"
+                                    name="GEN_RETRY_MAX"
+                                    value="2"
+                                    min="1"
+                                    max="5"
+                                    step="1"
+                                />
+                            </div>
+                        </div>
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>
+                                    Enrich Disabled
+                                    <span class="help-icon" data-tooltip="ENRICH_DISABLED">?</span>
+                                </label>
+                                <select id="ENRICH_DISABLED" name="ENRICH_DISABLED">
+                                    <option value="0">No (Enable Enrichment)</option>
+                                    <option value="1">Yes (Disable Enrichment)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Keywords Parameters Section -->
+                    <div class="settings-section">
+                        <h3>Keywords Parameters</h3>
+                        <p class="small">Discriminative keywords extraction and boosting configuration.</p>
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>
+                                    Max Keywords Per Repo
+                                    <span class="help-icon" data-tooltip="KEYWORDS_MAX_PER_REPO">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="KEYWORDS_MAX_PER_REPO"
+                                    name="KEYWORDS_MAX_PER_REPO"
+                                    value="50"
+                                    min="10"
+                                    max="500"
+                                    step="10"
+                                />
+                            </div>
+                            <div class="input-group">
+                                <label>
+                                    Min Frequency
+                                    <span class="help-icon" data-tooltip="KEYWORDS_MIN_FREQ">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="KEYWORDS_MIN_FREQ"
+                                    name="KEYWORDS_MIN_FREQ"
+                                    value="3"
+                                    min="1"
+                                    max="10"
+                                    step="1"
+                                />
+                            </div>
+                        </div>
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>
+                                    Keywords Boost
+                                    <span class="help-icon" data-tooltip="KEYWORDS_BOOST">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="KEYWORDS_BOOST"
+                                    name="KEYWORDS_BOOST"
+                                    value="1.3"
+                                    min="1.0"
+                                    max="3.0"
+                                    step="0.1"
+                                />
+                            </div>
+                            <div class="input-group">
+                                <label>
+                                    Auto-Generate Keywords
+                                    <span class="help-icon" data-tooltip="KEYWORDS_AUTO_GENERATE">?</span>
+                                </label>
+                                <select id="KEYWORDS_AUTO_GENERATE" name="KEYWORDS_AUTO_GENERATE">
+                                    <option value="1">Enabled</option>
+                                    <option value="0">Disabled</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>
+                                    Refresh Hours
+                                    <span class="help-icon" data-tooltip="KEYWORDS_REFRESH_HOURS">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="KEYWORDS_REFRESH_HOURS"
+                                    name="KEYWORDS_REFRESH_HOURS"
+                                    value="24"
+                                    min="1"
+                                    max="168"
+                                    step="1"
+                                />
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Retrieval Parameters Section -->
@@ -3194,6 +3352,97 @@
                                     <option value="prefer_first_party">Prefer First Party</option>
                                     <option value="prefer_vendor">Prefer Vendor</option>
                                 </select>
+                            </div>
+                        </div>
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>
+                                    BM25 Weight
+                                    <span class="help-icon" data-tooltip="BM25_WEIGHT">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="BM25_WEIGHT"
+                                    name="BM25_WEIGHT"
+                                    value="0.3"
+                                    min="0.0"
+                                    max="1.0"
+                                    step="0.1"
+                                />
+                            </div>
+                            <div class="input-group">
+                                <label>
+                                    Vector Weight
+                                    <span class="help-icon" data-tooltip="VECTOR_WEIGHT">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="VECTOR_WEIGHT"
+                                    name="VECTOR_WEIGHT"
+                                    value="0.7"
+                                    min="0.0"
+                                    max="1.0"
+                                    step="0.1"
+                                />
+                            </div>
+                        </div>
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>
+                                    Card Search Enabled
+                                    <span class="help-icon" data-tooltip="CARD_SEARCH_ENABLED">?</span>
+                                </label>
+                                <select id="CARD_SEARCH_ENABLED" name="CARD_SEARCH_ENABLED">
+                                    <option value="1">Enabled</option>
+                                    <option value="0">Disabled</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>
+                                    Multi-Query M
+                                    <span class="help-icon" data-tooltip="MULTI_QUERY_M">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="MULTI_QUERY_M"
+                                    name="MULTI_QUERY_M"
+                                    value="4"
+                                    min="1"
+                                    max="10"
+                                    step="1"
+                                />
+                            </div>
+                        </div>
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>
+                                    Confidence Top-1 Threshold
+                                    <span class="help-icon" data-tooltip="CONF_TOP1">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="CONF_TOP1"
+                                    name="CONF_TOP1"
+                                    value="0.62"
+                                    min="0.0"
+                                    max="1.0"
+                                    step="0.01"
+                                />
+                            </div>
+                            <div class="input-group">
+                                <label>
+                                    Confidence Avg-5 Threshold
+                                    <span class="help-icon" data-tooltip="CONF_AVG5">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="CONF_AVG5"
+                                    name="CONF_AVG5"
+                                    value="0.55"
+                                    min="0.0"
+                                    max="1.0"
+                                    step="0.01"
+                                />
                             </div>
                         </div>
                     </div>
@@ -3380,6 +3629,70 @@
                                     </span>
                                 </label>
                                 <input type="number" name="FALLBACK_CONFIDENCE" value="0.55" min="0.3" max="0.8" step="0.05">
+                            </div>
+                        </div>
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>
+                                    Layer Bonus (GUI)
+                                    <span class="help-icon" data-tooltip="LAYER_BONUS_GUI">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="LAYER_BONUS_GUI"
+                                    name="LAYER_BONUS_GUI"
+                                    value="0.15"
+                                    min="0.0"
+                                    max="0.5"
+                                    step="0.05"
+                                />
+                            </div>
+                            <div class="input-group">
+                                <label>
+                                    Layer Bonus (Retrieval)
+                                    <span class="help-icon" data-tooltip="LAYER_BONUS_RETRIEVAL">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="LAYER_BONUS_RETRIEVAL"
+                                    name="LAYER_BONUS_RETRIEVAL"
+                                    value="0.15"
+                                    min="0.0"
+                                    max="0.5"
+                                    step="0.05"
+                                />
+                            </div>
+                        </div>
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>
+                                    Vendor Penalty
+                                    <span class="help-icon" data-tooltip="VENDOR_PENALTY">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="VENDOR_PENALTY"
+                                    name="VENDOR_PENALTY"
+                                    value="-0.1"
+                                    min="-0.5"
+                                    max="0.0"
+                                    step="0.05"
+                                />
+                            </div>
+                            <div class="input-group">
+                                <label>
+                                    Freshness Bonus
+                                    <span class="help-icon" data-tooltip="FRESHNESS_BONUS">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="FRESHNESS_BONUS"
+                                    name="FRESHNESS_BONUS"
+                                    value="0.05"
+                                    min="0.0"
+                                    max="0.3"
+                                    step="0.05"
+                                />
                             </div>
                         </div>
                     </div>
@@ -3678,16 +3991,114 @@
                         </div>
                         <div class="input-row">
                             <div class="input-group">
+                                <label>
+                                    Reranker Top-N
+                                    <span class="help-icon" data-tooltip="AGRO_RERANKER_TOPN">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="AGRO_RERANKER_TOPN"
+                                    name="AGRO_RERANKER_TOPN"
+                                    value="50"
+                                    min="10"
+                                    max="200"
+                                    step="5"
+                                />
+                            </div>
+                            <div class="input-group">
+                                <label>
+                                    Voyage Rerank Model
+                                    <span class="help-icon" data-tooltip="VOYAGE_RERANK_MODEL">?</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    id="VOYAGE_RERANK_MODEL"
+                                    name="VOYAGE_RERANK_MODEL"
+                                    value="rerank-2"
+                                />
+                            </div>
+                            <div class="input-group">
+                                <label>
+                                    Reload on Change
+                                    <span class="help-icon" data-tooltip="AGRO_RERANKER_RELOAD_ON_CHANGE">?</span>
+                                </label>
+                                <select id="AGRO_RERANKER_RELOAD_ON_CHANGE" name="AGRO_RERANKER_RELOAD_ON_CHANGE">
+                                    <option value="0">Disabled</option>
+                                    <option value="1">Enabled</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="input-row">
+                            <div class="input-group">
                                 <label>Training Epochs</label>
-                                <input type="number" id="reranker-epochs" value="2" min="1" max="10">
+                                <input type="number" id="reranker-epochs" name="RERANKER_TRAIN_EPOCHS" value="2" min="1" max="10">
                             </div>
                             <div class="input-group">
                                 <label>Training Batch Size</label>
-                                <input type="number" id="reranker-batch" value="16" min="1" max="64" step="4">
+                                <input type="number" id="reranker-batch" name="RERANKER_TRAIN_BATCH" value="16" min="1" max="64" step="4">
                             </div>
                             <div class="input-group">
                                 <label>Training Max Length</label>
-                                <input type="number" id="reranker-maxlen" value="512" min="128" max="1024" step="64">
+                                <input type="number" id="reranker-maxlen" name="RERANKER_TRAIN_MAX_LENGTH" value="512" min="128" max="1024" step="64">
+                            </div>
+                        </div>
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>
+                                    Training Learning Rate
+                                    <span class="help-icon" data-tooltip="RERANKER_TRAIN_LR">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="RERANKER_TRAIN_LR"
+                                    name="RERANKER_TRAIN_LR"
+                                    value="0.00002"
+                                    min="0.000001"
+                                    max="0.001"
+                                    step="0.000001"
+                                />
+                            </div>
+                            <div class="input-group">
+                                <label>
+                                    Warmup Ratio
+                                    <span class="help-icon" data-tooltip="RERANKER_WARMUP_RATIO">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="RERANKER_WARMUP_RATIO"
+                                    name="RERANKER_WARMUP_RATIO"
+                                    value="0.1"
+                                    min="0.0"
+                                    max="0.5"
+                                    step="0.05"
+                                />
+                            </div>
+                        </div>
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>
+                                    Triplets Min Count
+                                    <span class="help-icon" data-tooltip="TRIPLETS_MIN_COUNT">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="TRIPLETS_MIN_COUNT"
+                                    name="TRIPLETS_MIN_COUNT"
+                                    value="100"
+                                    min="10"
+                                    max="10000"
+                                    step="10"
+                                />
+                            </div>
+                            <div class="input-group">
+                                <label>
+                                    Triplets Mine Mode
+                                    <span class="help-icon" data-tooltip="TRIPLETS_MINE_MODE">?</span>
+                                </label>
+                                <select id="TRIPLETS_MINE_MODE" name="TRIPLETS_MINE_MODE">
+                                    <option value="replace">Replace</option>
+                                    <option value="append">Append</option>
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -3977,6 +4388,321 @@
                             </div>
                         </div>
 
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>
+                                    AST Overlap Lines
+                                    <span class="help-icon" data-tooltip="AST_OVERLAP_LINES">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="AST_OVERLAP_LINES"
+                                    name="AST_OVERLAP_LINES"
+                                    value="20"
+                                    min="0"
+                                    max="100"
+                                    step="5"
+                                />
+                            </div>
+                            <div class="input-group">
+                                <label>
+                                    Max Chunk Size (bytes)
+                                    <span class="help-icon" data-tooltip="MAX_CHUNK_SIZE">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="MAX_CHUNK_SIZE"
+                                    name="MAX_CHUNK_SIZE"
+                                    value="2000000"
+                                    min="10000"
+                                    max="10000000"
+                                    step="100000"
+                                />
+                            </div>
+                        </div>
+
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>
+                                    Min Chunk Chars
+                                    <span class="help-icon" data-tooltip="MIN_CHUNK_CHARS">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="MIN_CHUNK_CHARS"
+                                    name="MIN_CHUNK_CHARS"
+                                    value="50"
+                                    min="10"
+                                    max="500"
+                                    step="10"
+                                />
+                            </div>
+                            <div class="input-group">
+                                <label>
+                                    Greedy Fallback Target
+                                    <span class="help-icon" data-tooltip="GREEDY_FALLBACK_TARGET">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="GREEDY_FALLBACK_TARGET"
+                                    name="GREEDY_FALLBACK_TARGET"
+                                    value="800"
+                                    min="200"
+                                    max="2000"
+                                    step="100"
+                                />
+                            </div>
+                        </div>
+
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>
+                                    Chunking Strategy
+                                    <span class="help-icon" data-tooltip="CHUNKING_STRATEGY">?</span>
+                                </label>
+                                <select id="CHUNKING_STRATEGY" name="CHUNKING_STRATEGY">
+                                    <option value="ast">AST-based</option>
+                                    <option value="greedy">Greedy</option>
+                                    <option value="hybrid">Hybrid</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>
+                                    Preserve Imports
+                                    <span class="help-icon" data-tooltip="PRESERVE_IMPORTS">?</span>
+                                </label>
+                                <select id="PRESERVE_IMPORTS" name="PRESERVE_IMPORTS">
+                                    <option value="1">Yes</option>
+                                    <option value="0">No</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>
+                                    Indexing Batch Size
+                                    <span class="help-icon" data-tooltip="INDEXING_BATCH_SIZE">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="INDEXING_BATCH_SIZE"
+                                    name="INDEXING_BATCH_SIZE"
+                                    value="100"
+                                    min="10"
+                                    max="1000"
+                                    step="10"
+                                />
+                            </div>
+                            <div class="input-group">
+                                <label>
+                                    Indexing Workers
+                                    <span class="help-icon" data-tooltip="INDEXING_WORKERS">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="INDEXING_WORKERS"
+                                    name="INDEXING_WORKERS"
+                                    value="4"
+                                    min="1"
+                                    max="16"
+                                    step="1"
+                                />
+                            </div>
+                        </div>
+
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>
+                                    BM25 Tokenizer
+                                    <span class="help-icon" data-tooltip="BM25_TOKENIZER">?</span>
+                                </label>
+                                <select id="BM25_TOKENIZER" name="BM25_TOKENIZER">
+                                    <option value="stemmer">Stemmer</option>
+                                    <option value="lowercase">Lowercase</option>
+                                    <option value="whitespace">Whitespace</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>
+                                    BM25 Stemmer Language
+                                    <span class="help-icon" data-tooltip="BM25_STEMMER_LANG">?</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    id="BM25_STEMMER_LANG"
+                                    name="BM25_STEMMER_LANG"
+                                    value="english"
+                                />
+                            </div>
+                        </div>
+
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>
+                                    Index Excluded Extensions
+                                    <span class="help-icon" data-tooltip="INDEX_EXCLUDED_EXTS">?</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    id="INDEX_EXCLUDED_EXTS"
+                                    name="INDEX_EXCLUDED_EXTS"
+                                    value=".png,.jpg,.gif,.ico,.svg,.woff,.ttf"
+                                />
+                            </div>
+                            <div class="input-group">
+                                <label>
+                                    Max File Size (MB)
+                                    <span class="help-icon" data-tooltip="INDEX_MAX_FILE_SIZE_MB">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="INDEX_MAX_FILE_SIZE_MB"
+                                    name="INDEX_MAX_FILE_SIZE_MB"
+                                    value="10"
+                                    min="1"
+                                    max="100"
+                                    step="1"
+                                />
+                            </div>
+                        </div>
+
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>
+                                    Embedding Model
+                                    <span class="help-icon" data-tooltip="EMBEDDING_MODEL">?</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    id="EMBEDDING_MODEL"
+                                    name="EMBEDDING_MODEL"
+                                    value="text-embedding-3-large"
+                                />
+                            </div>
+                            <div class="input-group">
+                                <label>
+                                    Embedding Dimensions
+                                    <span class="help-icon" data-tooltip="EMBEDDING_DIM">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="EMBEDDING_DIM"
+                                    name="EMBEDDING_DIM"
+                                    value="3072"
+                                    min="512"
+                                    max="3072"
+                                    step="256"
+                                />
+                            </div>
+                        </div>
+
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>
+                                    Voyage Model
+                                    <span class="help-icon" data-tooltip="VOYAGE_MODEL">?</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    id="VOYAGE_MODEL"
+                                    name="VOYAGE_MODEL"
+                                    value="voyage-code-3"
+                                />
+                            </div>
+                            <div class="input-group">
+                                <label>
+                                    Local Embedding Model
+                                    <span class="help-icon" data-tooltip="EMBEDDING_MODEL_LOCAL">?</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    id="EMBEDDING_MODEL_LOCAL"
+                                    name="EMBEDDING_MODEL_LOCAL"
+                                    value="all-MiniLM-L6-v2"
+                                />
+                            </div>
+                        </div>
+
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>
+                                    Embedding Batch Size
+                                    <span class="help-icon" data-tooltip="EMBEDDING_BATCH_SIZE">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="EMBEDDING_BATCH_SIZE"
+                                    name="EMBEDDING_BATCH_SIZE"
+                                    value="64"
+                                    min="1"
+                                    max="256"
+                                    step="8"
+                                />
+                            </div>
+                            <div class="input-group">
+                                <label>
+                                    Embedding Max Tokens
+                                    <span class="help-icon" data-tooltip="EMBEDDING_MAX_TOKENS">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="EMBEDDING_MAX_TOKENS"
+                                    name="EMBEDDING_MAX_TOKENS"
+                                    value="8000"
+                                    min="512"
+                                    max="8192"
+                                    step="512"
+                                />
+                            </div>
+                        </div>
+
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>
+                                    Embedding Cache Enabled
+                                    <span class="help-icon" data-tooltip="EMBEDDING_CACHE_ENABLED">?</span>
+                                </label>
+                                <select id="EMBEDDING_CACHE_ENABLED" name="EMBEDDING_CACHE_ENABLED">
+                                    <option value="1">Enabled</option>
+                                    <option value="0">Disabled</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>
+                                    Embedding Timeout (seconds)
+                                    <span class="help-icon" data-tooltip="EMBEDDING_TIMEOUT">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="EMBEDDING_TIMEOUT"
+                                    name="EMBEDDING_TIMEOUT"
+                                    value="30"
+                                    min="5"
+                                    max="120"
+                                    step="5"
+                                />
+                            </div>
+                        </div>
+
+                        <div class="input-row">
+                            <div class="input-group">
+                                <label>
+                                    Embedding Retry Max
+                                    <span class="help-icon" data-tooltip="EMBEDDING_RETRY_MAX">?</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    id="EMBEDDING_RETRY_MAX"
+                                    name="EMBEDDING_RETRY_MAX"
+                                    value="3"
+                                    min="1"
+                                    max="5"
+                                    step="1"
+                                />
+                            </div>
+                        </div>
+
                         <button class="small-button" id="btn-save-index-settings" style="background: var(--link); color: var(--accent-contrast); font-weight: 600;">
                             💾 Save Settings
                         </button>
@@ -4134,7 +4860,7 @@
                                         </div>
                                     </span>
                                 </label>
-                                <input type="number" id="eval-final-k" value="5" min="1" max="20">
+                                <input type="number" id="eval-final-k" name="EVAL_FINAL_K" value="5" min="1" max="20">
                             </div>
                             <div class="input-group">
                                 <label>
@@ -4162,7 +4888,7 @@
                                         </div>
                                     </span>
                                 </label>
-                                <input type="text" id="eval-golden-path" placeholder="data/golden.json">
+                                <input type="text" id="eval-golden-path" name="EVAL_GOLDEN_PATH" placeholder="data/golden.json">
                             </div>
                             <div class="input-group" style="flex: 2;">
                                 <label>
@@ -4175,7 +4901,7 @@
                                         </div>
                                     </span>
                                 </label>
-                                <input type="text" id="eval-baseline-path" placeholder="data/evals/eval_baseline.json">
+                                <input type="text" id="eval-baseline-path" name="EVAL_BASELINE_PATH" placeholder="data/evals/eval_baseline.json">
                             </div>
                         </div>
 
@@ -4863,6 +5589,107 @@
                         <div class="input-group">
                             <label>Netlify Domains</label>
                             <input type="text" name="NETLIFY_DOMAINS">
+                        </div>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>
+                                Chat Streaming Enabled
+                                <span class="help-icon" data-tooltip="CHAT_STREAMING_ENABLED">?</span>
+                            </label>
+                            <select id="CHAT_STREAMING_ENABLED" name="CHAT_STREAMING_ENABLED">
+                                <option value="1">Enabled</option>
+                                <option value="0">Disabled</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tracing & Observability Settings -->
+                <div class="settings-section" style="border-left: 3px solid var(--link);">
+                    <h3>Tracing & Observability</h3>
+                    <p class="small">Configure distributed tracing, metrics collection, and monitoring.</p>
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>
+                                Tracing Enabled
+                                <span class="help-icon" data-tooltip="TRACING_ENABLED">?</span>
+                            </label>
+                            <select id="TRACING_ENABLED" name="TRACING_ENABLED">
+                                <option value="1">Enabled</option>
+                                <option value="0">Disabled</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>
+                                Trace Sampling Rate
+                                <span class="help-icon" data-tooltip="TRACE_SAMPLING_RATE">?</span>
+                            </label>
+                            <input
+                                type="number"
+                                id="TRACE_SAMPLING_RATE"
+                                name="TRACE_SAMPLING_RATE"
+                                value="1.0"
+                                min="0.0"
+                                max="1.0"
+                                step="0.1"
+                            />
+                        </div>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>
+                                Prometheus Port
+                                <span class="help-icon" data-tooltip="PROMETHEUS_PORT">?</span>
+                            </label>
+                            <input
+                                type="number"
+                                id="PROMETHEUS_PORT"
+                                name="PROMETHEUS_PORT"
+                                value="9090"
+                                min="1024"
+                                max="65535"
+                                step="1"
+                            />
+                        </div>
+                        <div class="input-group">
+                            <label>
+                                Metrics Enabled
+                                <span class="help-icon" data-tooltip="METRICS_ENABLED">?</span>
+                            </label>
+                            <select id="METRICS_ENABLED" name="METRICS_ENABLED">
+                                <option value="1">Enabled</option>
+                                <option value="0">Disabled</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>
+                                Log Level
+                                <span class="help-icon" data-tooltip="LOG_LEVEL">?</span>
+                            </label>
+                            <select id="LOG_LEVEL" name="LOG_LEVEL">
+                                <option value="DEBUG">DEBUG</option>
+                                <option value="INFO">INFO</option>
+                                <option value="WARNING">WARNING</option>
+                                <option value="ERROR">ERROR</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>
+                                Alert Webhook Timeout
+                                <span class="help-icon" data-tooltip="ALERT_WEBHOOK_TIMEOUT">?</span>
+                            </label>
+                            <input
+                                type="number"
+                                id="ALERT_WEBHOOK_TIMEOUT"
+                                name="ALERT_WEBHOOK_TIMEOUT"
+                                value="5"
+                                min="1"
+                                max="30"
+                                step="1"
+                            />
                         </div>
                     </div>
                 </div>
@@ -6006,6 +6833,9 @@
     <!-- Navigation system (new) -->
     <script src="/gui/js/test-instrumentation.js"></script>
     <script src="/gui/js/navigation.js"></script>
+
+    <!-- Parameter validation library -->
+    <script src="/gui/js/parameter-validator.js"></script>
 
     <!-- Feature modules -->
     <script src="/gui/js/tabs.js"></script>

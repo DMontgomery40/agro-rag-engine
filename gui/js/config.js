@@ -301,61 +301,217 @@
                 const div = document.createElement('div');
                 div.style.cssText = 'background: var(--card-bg); border: 1px solid var(--line); border-radius: 6px; padding: 16px; margin-bottom: 16px;';
                 const rname = repo.name;
-                div.innerHTML = `
-                    <h4 style="color: var(--accent); font-size: 14px; margin-bottom: 12px;">Repo: ${repo.name}</h4>
-                    <div class="input-group" style="margin-bottom: 12px;">
-                        <label>Path <span class="path-validation-status" id="path-status-${repo.name}" style="margin-left: 8px;"></span></label>
-                        <input type="text" name="repo_path_${repo.name}" value="${repo.path || ''}" data-repo="${repo.name}" />
-                        <div class="small" id="path-resolved-${repo.name}" style="color: var(--fg-muted); margin-top: 4px;"></div>
-                    </div>
-                    <div class="input-group" style="margin-bottom: 12px;">
-                        <label>Exclude Paths (paths/patterns to skip during indexing)</label>
-                        <div id="exclude-paths-container-${repo.name}" style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; min-height: 32px; padding: 8px; background: var(--bg-elev2); border: 1px solid var(--line); border-radius: 4px;"></div>
-                        <div style="display: flex; gap: 6px;">
-                            <input type="text" id="exclude-path-input-${repo.name}" placeholder="e.g., /website, *.pyc, /node_modules" style="flex: 1;" />
-                            <button type="button" class="small-button" id="exclude-path-add-${repo.name}" style="background: var(--accent); color: var(--accent-contrast); padding: 6px 12px;">Add</button>
-                        </div>
-                        <input type="hidden" name="repo_excludepaths_${repo.name}" value="${(repo.exclude_paths||[]).join(',')}" />
-                    </div>
-                    <div class="input-group" style="margin-bottom: 12px;">
-                        <label>Keywords (comma-separated)</label>
-                        <input type="text" name="repo_keywords_${repo.name}" value="${(repo.keywords||[]).join(',')}" list="keywords-list" placeholder="search or type to add" />
-                    </div>
-                    <div class="input-group" style="margin-bottom: 12px;">
-                        <label>Path Boosts (comma-separated)</label>
-                        <input type="text" name="repo_pathboosts_${repo.name}" value="${(repo.path_boosts||[]).join(',')}" />
-                    </div>
-                    <div class="input-group">
-                        <label>Layer Bonuses (JSON)</label>
-                        <textarea name="repo_layerbonuses_${repo.name}" rows="3">${repo.layer_bonuses ? JSON.stringify(repo.layer_bonuses, null, 2) : ''}</textarea>
-                    </div>
-                    <div class="input-group full-width" style="margin-top:12px;">
-                        <label>Keyword Manager</label>
-                        <div style="display:grid; grid-template-columns: 1fr auto 1fr; gap:8px; align-items:center;">
-                            <div>
-                                <div style="display:flex; gap:6px; margin-bottom:6px;">
-                                    <input type="text" id="kw-filter-${rname}" placeholder="filter..." style="width:60%;">
-                                    <select id="kw-src-${rname}">
-                                        <option value="all">All</option>
-                                        <option value="discriminative">Discriminative</option>
-                                        <option value="semantic">Semantic</option>
-                                        <option value="repos">Repo</option>
-                                    </select>
-                                    <button class="small-button" id="kw-new-${rname}" style="background:var(--accent); color: var(--accent-contrast); padding:4px 8px; font-size:11px;" title="Add New Keyword">+</button>
-                                </div>
-                                <select id="kw-all-${rname}" multiple size="8" style="width:100%;"></select>
-                            </div>
-                            <div style="display:flex; flex-direction:column; gap:8px;">
-                                <button class="small-button" id="kw-add-${rname}">&gt;&gt;</button>
-                                <button class="small-button" id="kw-rem-${rname}">&lt;&lt;</button>
-                            </div>
-                            <div>
-                                <div class="small" style="margin-bottom:6px;">Repo Keywords</div>
-                                <select id="kw-repo-${rname}" multiple size="8" style="width:100%;"></select>
-                            </div>
-                        </div>
-                    </div>
-                `;
+
+                // FIXED XSS: Create h4 safely using textContent instead of innerHTML
+                const h4 = document.createElement('h4');
+                h4.style.cssText = 'color: var(--accent); font-size: 14px; margin-bottom: 12px;';
+                h4.textContent = `Repo: ${repo.name}`;
+                div.appendChild(h4);
+
+                // FIXED XSS: Create path input group using DOM methods
+                const pathGroup = document.createElement('div');
+                pathGroup.className = 'input-group';
+                pathGroup.style.cssText = 'margin-bottom: 12px;';
+
+                const pathLabel = document.createElement('label');
+                pathLabel.textContent = 'Path ';
+                const pathStatus = document.createElement('span');
+                pathStatus.className = 'path-validation-status';
+                pathStatus.id = `path-status-${repo.name}`;
+                pathStatus.style.marginLeft = '8px';
+                pathLabel.appendChild(pathStatus);
+                pathGroup.appendChild(pathLabel);
+
+                const pathInput = document.createElement('input');
+                pathInput.type = 'text';
+                pathInput.name = `repo_path_${repo.name}`;
+                pathInput.value = repo.path || '';
+                pathInput.setAttribute('data-repo', repo.name);
+                pathGroup.appendChild(pathInput);
+
+                const pathResolved = document.createElement('div');
+                pathResolved.className = 'small';
+                pathResolved.id = `path-resolved-${repo.name}`;
+                pathResolved.style.cssText = 'color: var(--fg-muted); margin-top: 4px;';
+                pathGroup.appendChild(pathResolved);
+                div.appendChild(pathGroup);
+
+                // FIXED XSS: Create exclude paths group using DOM methods
+                const excludeGroup = document.createElement('div');
+                excludeGroup.className = 'input-group';
+                excludeGroup.style.cssText = 'margin-bottom: 12px;';
+
+                const excludeLabel = document.createElement('label');
+                excludeLabel.textContent = 'Exclude Paths (paths/patterns to skip during indexing)';
+                excludeGroup.appendChild(excludeLabel);
+
+                const excludeContainer = document.createElement('div');
+                excludeContainer.id = `exclude-paths-container-${repo.name}`;
+                excludeContainer.style.cssText = 'display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; min-height: 32px; padding: 8px; background: var(--bg-elev2); border: 1px solid var(--line); border-radius: 4px;';
+                excludeGroup.appendChild(excludeContainer);
+
+                const excludeInputWrapper = document.createElement('div');
+                excludeInputWrapper.style.cssText = 'display: flex; gap: 6px;';
+
+                const excludeInput = document.createElement('input');
+                excludeInput.type = 'text';
+                excludeInput.id = `exclude-path-input-${repo.name}`;
+                excludeInput.placeholder = 'e.g., /website, *.pyc, /node_modules';
+                excludeInput.style.flex = '1';
+                excludeInputWrapper.appendChild(excludeInput);
+
+                const excludeAddBtn = document.createElement('button');
+                excludeAddBtn.type = 'button';
+                excludeAddBtn.className = 'small-button';
+                excludeAddBtn.id = `exclude-path-add-${repo.name}`;
+                excludeAddBtn.style.cssText = 'background: var(--accent); color: var(--accent-contrast); padding: 6px 12px;';
+                excludeAddBtn.textContent = 'Add';
+                excludeInputWrapper.appendChild(excludeAddBtn);
+                excludeGroup.appendChild(excludeInputWrapper);
+
+                const excludeHidden = document.createElement('input');
+                excludeHidden.type = 'hidden';
+                excludeHidden.name = `repo_excludepaths_${repo.name}`;
+                excludeHidden.value = (repo.exclude_paths || []).join(',');
+                excludeGroup.appendChild(excludeHidden);
+                div.appendChild(excludeGroup);
+
+                // FIXED XSS: Create keywords group using DOM methods
+                const keywordsGroup = document.createElement('div');
+                keywordsGroup.className = 'input-group';
+                keywordsGroup.style.cssText = 'margin-bottom: 12px;';
+
+                const keywordsLabel = document.createElement('label');
+                keywordsLabel.textContent = 'Keywords (comma-separated)';
+                keywordsGroup.appendChild(keywordsLabel);
+
+                const keywordsInput = document.createElement('input');
+                keywordsInput.type = 'text';
+                keywordsInput.name = `repo_keywords_${repo.name}`;
+                keywordsInput.value = (repo.keywords || []).join(',');
+                keywordsInput.setAttribute('list', 'keywords-list');
+                keywordsInput.placeholder = 'search or type to add';
+                keywordsGroup.appendChild(keywordsInput);
+                div.appendChild(keywordsGroup);
+
+                // FIXED XSS: Create path boosts group using DOM methods
+                const boostsGroup = document.createElement('div');
+                boostsGroup.className = 'input-group';
+                boostsGroup.style.cssText = 'margin-bottom: 12px;';
+
+                const boostsLabel = document.createElement('label');
+                boostsLabel.textContent = 'Path Boosts (comma-separated)';
+                boostsGroup.appendChild(boostsLabel);
+
+                const boostsInput = document.createElement('input');
+                boostsInput.type = 'text';
+                boostsInput.name = `repo_pathboosts_${repo.name}`;
+                boostsInput.value = (repo.path_boosts || []).join(',');
+                boostsGroup.appendChild(boostsInput);
+                div.appendChild(boostsGroup);
+
+                // FIXED XSS: Create layer bonuses group using DOM methods
+                const layerGroup = document.createElement('div');
+                layerGroup.className = 'input-group';
+
+                const layerLabel = document.createElement('label');
+                layerLabel.textContent = 'Layer Bonuses (JSON)';
+                layerGroup.appendChild(layerLabel);
+
+                const layerTextarea = document.createElement('textarea');
+                layerTextarea.name = `repo_layerbonuses_${repo.name}`;
+                layerTextarea.rows = 3;
+                layerTextarea.value = repo.layer_bonuses ? JSON.stringify(repo.layer_bonuses, null, 2) : '';
+                layerGroup.appendChild(layerTextarea);
+                div.appendChild(layerGroup);
+
+                // FIXED XSS: Create keyword manager group using DOM methods
+                const kwManagerGroup = document.createElement('div');
+                kwManagerGroup.className = 'input-group full-width';
+                kwManagerGroup.style.cssText = 'margin-top:12px;';
+
+                const kwManagerLabel = document.createElement('label');
+                kwManagerLabel.textContent = 'Keyword Manager';
+                kwManagerGroup.appendChild(kwManagerLabel);
+
+                const kwManagerGrid = document.createElement('div');
+                kwManagerGrid.style.cssText = 'display:grid; grid-template-columns: 1fr auto 1fr; gap:8px; align-items:center;';
+
+                // Left column
+                const leftCol = document.createElement('div');
+                const topControls = document.createElement('div');
+                topControls.style.cssText = 'display:flex; gap:6px; margin-bottom:6px;';
+
+                const kwFilter = document.createElement('input');
+                kwFilter.type = 'text';
+                kwFilter.id = `kw-filter-${rname}`;
+                kwFilter.placeholder = 'filter...';
+                kwFilter.style.width = '60%';
+                topControls.appendChild(kwFilter);
+
+                const kwSrc = document.createElement('select');
+                kwSrc.id = `kw-src-${rname}`;
+                ['all', 'discriminative', 'semantic', 'repos'].forEach(val => {
+                    const opt = document.createElement('option');
+                    opt.value = val;
+                    opt.textContent = val.charAt(0).toUpperCase() + val.slice(1);
+                    kwSrc.appendChild(opt);
+                });
+                topControls.appendChild(kwSrc);
+
+                const kwNewBtn = document.createElement('button');
+                kwNewBtn.className = 'small-button';
+                kwNewBtn.id = `kw-new-${rname}`;
+                kwNewBtn.style.cssText = 'background:var(--accent); color: var(--accent-contrast); padding:4px 8px; font-size:11px;';
+                kwNewBtn.title = 'Add New Keyword';
+                kwNewBtn.textContent = '+';
+                topControls.appendChild(kwNewBtn);
+                leftCol.appendChild(topControls);
+
+                const kwAllSelect = document.createElement('select');
+                kwAllSelect.id = `kw-all-${rname}`;
+                kwAllSelect.multiple = true;
+                kwAllSelect.size = 8;
+                kwAllSelect.style.width = '100%';
+                leftCol.appendChild(kwAllSelect);
+                kwManagerGrid.appendChild(leftCol);
+
+                // Middle column (buttons)
+                const midCol = document.createElement('div');
+                midCol.style.cssText = 'display:flex; flex-direction:column; gap:8px;';
+
+                const kwAddBtn = document.createElement('button');
+                kwAddBtn.className = 'small-button';
+                kwAddBtn.id = `kw-add-${rname}`;
+                kwAddBtn.innerHTML = '&gt;&gt;';
+                midCol.appendChild(kwAddBtn);
+
+                const kwRemBtn = document.createElement('button');
+                kwRemBtn.className = 'small-button';
+                kwRemBtn.id = `kw-rem-${rname}`;
+                kwRemBtn.innerHTML = '&lt;&lt;';
+                midCol.appendChild(kwRemBtn);
+                kwManagerGrid.appendChild(midCol);
+
+                // Right column
+                const rightCol = document.createElement('div');
+                const repoKwLabel = document.createElement('div');
+                repoKwLabel.className = 'small';
+                repoKwLabel.style.cssText = 'margin-bottom:6px;';
+                repoKwLabel.textContent = 'Repo Keywords';
+                rightCol.appendChild(repoKwLabel);
+
+                const kwRepoSelect = document.createElement('select');
+                kwRepoSelect.id = `kw-repo-${rname}`;
+                kwRepoSelect.multiple = true;
+                kwRepoSelect.size = 8;
+                kwRepoSelect.style.width = '100%';
+                rightCol.appendChild(kwRepoSelect);
+                kwManagerGrid.appendChild(rightCol);
+
+                kwManagerGroup.appendChild(kwManagerGrid);
+                div.appendChild(kwManagerGroup);
+
                 reposSection.appendChild(div);
 
                 // Hook keyword manager events
@@ -598,11 +754,20 @@
                     paths.forEach(path => {
                         const chip = document.createElement('div');
                         chip.style.cssText = 'display: inline-flex; align-items: center; gap: 6px; background: var(--accent); color: var(--accent-contrast); padding: 4px 8px; border-radius: 4px; font-size: 11px;';
-                        chip.innerHTML = `
-                            <span>${path}</span>
-                            <button type="button" style="background: transparent; border: none; color: var(--accent-contrast); cursor: pointer; padding: 0; font-size: 14px; line-height: 1;" data-path="${path}">&times;</button>
-                        `;
-                        chip.querySelector('button').addEventListener('click', () => {
+
+                        // FIXED XSS: Create span and button safely using DOM methods
+                        const pathSpan = document.createElement('span');
+                        pathSpan.textContent = path;
+                        chip.appendChild(pathSpan);
+
+                        const removeBtn = document.createElement('button');
+                        removeBtn.type = 'button';
+                        removeBtn.style.cssText = 'background: transparent; border: none; color: var(--accent-contrast); cursor: pointer; padding: 0; font-size: 14px; line-height: 1;';
+                        removeBtn.setAttribute('data-path', path);
+                        removeBtn.innerHTML = '&times;';
+                        chip.appendChild(removeBtn);
+
+                        removeBtn.addEventListener('click', () => {
                             const currentPaths = (excludePathsHidden.value || '').split(',').filter(p => p.trim());
                             const newPaths = currentPaths.filter(p => p !== path);
                             excludePathsHidden.value = newPaths.join(',');
@@ -635,10 +800,7 @@
                 renderExcludePaths();
 
                 // Add path validation on blur
-                const pathInput = div.querySelector(`[name="repo_path_${rname}"]`);
-                const pathStatus = div.querySelector(`#path-status-${rname}`);
-                const pathResolved = div.querySelector(`#path-resolved-${rname}`);
-
+                // Note: pathInput, pathStatus, pathResolved already defined above
                 async function validatePath() {
                     const pathValue = pathInput.value.trim();
                     if (!pathValue) {
@@ -722,9 +884,12 @@
 
             // Non-secret fields - normal behavior
             if (field.type === 'checkbox') {
-                val = field.checked;
+                val = field.checked ? 1 : 0;  // Backend expects 1/0, not true/false
             } else if (field.type === 'number') {
-                val = field.value;
+                const parsed = parseFloat(field.value);
+                val = isNaN(parsed) ? 0 : parsed;  // Safe conversion with fallback
+            } else if (field.type === 'text' || field.type === 'password') {
+                val = field.value.trim();  // Trim whitespace
             } else {
                 val = field.value;
             }
