@@ -105,3 +105,15 @@ def save_baseline(results: Dict[str, Any]):
     with open(BASELINE_PATH, 'w') as f:
         json.dump(results, f, indent=2)
     print(f"✓ Baseline saved to {BASELINE_PATH}")
+
+
+def save_latest(results: Dict[str, Any]):
+    """Write latest eval results for Grafana/Loki to consume."""
+    latest_path = Path(__file__).resolve().parents[1] / 'data' / 'tracking' / 'evals_latest.json'
+    latest_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with open(latest_path, 'w', encoding='utf-8') as f:
+            json.dump(results, f, indent=2)
+        print(f"✓ Latest eval written to {latest_path}")
+    except Exception:
+        pass

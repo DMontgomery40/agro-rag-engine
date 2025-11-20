@@ -23,6 +23,7 @@ import fnmatch
 import pathlib
 import common.qdrant_utils as qdrant_recreate_fallback  # make recreate_collection 404-safe
 from datetime import datetime
+import time as _time
 
 # --- global safe filters (avoid indexing junk) ---
 from common.filtering import _prune_dirs_in_place, _should_index_file, PRUNE_DIRS
@@ -240,14 +241,22 @@ def embed_texts_voyage(texts: List[str], model: str = 'voyage-code-3', batch: in
     return out
 
 def main() -> None:
+    # Prepare tracking output dir
+    tracking_dir = Path(os.getenv('TRACKING_DIR', str(Path(__file__).resolve().parents[1] / 'data' / 'tracking')))
+    tracking_dir.mkdir(parents=True, exist_ok=True)
+    indexing_log = tracking_dir / 'indexing_events.jsonl'
+
     # Load repo-specific exclude patterns from repos.json
     repo_exclude_patterns = exclude_paths(REPO)
     if repo_exclude_patterns:
         print(f'Loaded {len(repo_exclude_patterns)} exclude patterns for repo "{REPO}": {repo_exclude_patterns}')
 
+    t_collect0 = _time.time()
     files = collect_files(BASES)
     print(f'Discovered {len(files)} source files.')
+    t_collect = _time.time() - t_collect0
     all_chunks: List[Dict] = []
+    t_chunk0 = _time.time()
     for fp in files:
         if not should_index_file(fp, repo_exclude_patterns):
             continue
@@ -291,24 +300,66 @@ def main() -> None:
         seen.add(h)
         c['hash'] = h
         chunks.append(c)
+    t_chunk = _time.time() - t_chunk0
     print(f'Prepared {len(chunks)} chunks.')
 
     ENRICH = (os.getenv('ENRICH_CODE_CHUNKS', 'false') or 'false').lower() == 'true'
     enrich = None  # type: ignore[assignment]
+    enrich_stats = {"count": 0, "seconds": 0.0, "tokens": 0, "cost_usd": 0.0, "model": os.getenv('GEN_MODEL', os.getenv('ENRICH_MODEL', ''))}
     if ENRICH:
         try:
             from common.metadata import enrich  # type: ignore
         except Exception:
             pass
         if enrich is not None:
+            _t0 = _time.time()
+            # Mark time window to correlate with API tracker logs for true tokens/cost
+            from datetime import datetime as _dt
+            _win_start = _dt.utcnow()
             for c in chunks:
                 try:
                     meta = enrich(c.get('file_path',''), c.get('language',''), c.get('code',''))
                     c['summary'] = meta.get('summary','')
                     c['keywords'] = meta.get('keywords', [])
+                    enrich_stats["count"] += 1
                 except Exception:
                     c['summary'] = ''
                     c['keywords'] = []
+            enrich_stats["seconds"] = round(_time.time() - _t0, 3)
+            # Correlate with API tracker JSONL to get tokens + cost for enrichment window
+            try:
+                from pathlib import Path as _P
+                import json as _json
+                _tracker_path = _P(__file__).resolve().parents[1] / 'data' / 'tracking' / 'api_calls.jsonl'
+                if _tracker_path.exists():
+                    lines = _tracker_path.read_text(encoding='utf-8').splitlines()
+                    # Parse minimal window
+                    _win_end = _dt.utcnow()
+                    def _parse_ts(s):
+                        try:
+                            return _dt.fromisoformat(s.replace('Z',''))
+                        except Exception:
+                            return None
+                    for ln in lines[::-1]:  # reverse for recency
+                        try:
+                            o = _json.loads(ln)
+                        except Exception:
+                            continue
+                        ts = _parse_ts(str(o.get('timestamp','')))
+                        if not ts:
+                            continue
+                        if ts < _win_start:
+                            break
+                        # Only LLM calls (OpenAI responses/chat)
+                        prov = str(o.get('provider','')).lower()
+                        if prov in {'openai'}:
+                            enrich_stats["tokens"] += int(o.get('tokens_estimated', 0) or 0)
+                            try:
+                                enrich_stats["cost_usd"] += float(o.get('cost_usd', 0.0) or 0.0)
+                            except Exception:
+                                pass
+            except Exception:
+                pass
 
     corpus: List[str] = []
     for c in chunks:
@@ -320,6 +371,7 @@ def main() -> None:
         body = c['code']
         corpus.append((' '.join(pre)+'\n'+body).strip())
 
+    t_bm0 = _time.time()
     stemmer = Stemmer('english')
     tokenizer = Tokenizer(stemmer=stemmer, stopwords='en')
     corpus_tokens = tokenizer.tokenize(corpus)
@@ -345,6 +397,7 @@ def main() -> None:
     with open(os.path.join(OUTDIR,'chunks.jsonl'),'w',encoding='utf-8') as f:
         for c in chunks:
             f.write(json.dumps(c, ensure_ascii=False)+'\n')
+    t_bm = _time.time() - t_bm0
     print('BM25 index saved.')
 
     try:
@@ -355,17 +408,41 @@ def main() -> None:
             'bm25_index_dir': os.path.join(OUTDIR, 'bm25_index'),
             'chunk_count': len(chunks),
             'collection_name': COLLECTION,
+            'enrich': enrich_stats if ENRICH else None,
         }
         with open(os.path.join(OUTDIR, 'last_index.json'), 'w', encoding='utf-8') as mf:
             json.dump(meta, mf, indent=2)
     except Exception:
         pass
 
+    embed_stats: Dict[str, any] = {"provider": None, "model": None, "tokens": 0, "cost_usd": 0.0, "cache_hits": 0, "fresh": 0}
     if (os.getenv('SKIP_DENSE','0') or '0').strip() == '1':
         print('Skipping dense embeddings and Qdrant upsert (SKIP_DENSE=1).')
+        # Persist tracking event for BM25-only runs
+        try:
+            evt = {
+                "type": "indexing_event",
+                "repo": REPO,
+                "ts": datetime.utcnow().isoformat() + 'Z',
+                "mode": "bm25_only",
+                "phases": {
+                    "collect_s": round(t_collect, 3),
+                    "chunk_s": round(t_chunk, 3),
+                    "bm25_s": round(t_bm, 3),
+                    "embed_s": 0.0,
+                    "upsert_s": 0.0,
+                },
+                "chunk_count": len(chunks),
+                "embedding": embed_stats,
+            }
+            with open(indexing_log, 'a', encoding='utf-8') as lf:
+                lf.write(json.dumps(evt) + '\n')
+        except Exception:
+            pass
         return
 
     client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+    t_embed0 = _time.time()
     texts = []
     for c in chunks:
         if c.get('summary') or c.get('keywords'):
@@ -384,6 +461,7 @@ def main() -> None:
             embs = []
         if not embs:
             embs = embed_texts_local(texts)
+        embed_stats.update({"provider": "voyage", "model": os.getenv('VOYAGE_MODEL', 'voyage-code-3')})
     elif et == 'mxbai':
         try:
             dim = int(os.getenv('EMBEDDING_DIM', '512'))
@@ -391,14 +469,26 @@ def main() -> None:
         except Exception as e:
             print(f"MXBAI embedding failed ({e}); falling back to local embeddings.")
             embs = embed_texts_local(texts)
+        embed_stats.update({"provider": "local", "model": "mxbai-embed-large-v1"})
     elif et == 'local':
         embs = embed_texts_local(texts)
+        embed_stats.update({"provider": "local", "model": "sentence-transformers"})
     else:
         if client is not None:
             try:
                 cache = EmbeddingCache(OUTDIR)
                 hashes = [c['hash'] for c in chunks]
                 embedding_model = os.getenv('EMBEDDING_MODEL', 'text-embedding-3-large')
+                # Pre-count cache hits before embedding
+                _hits = sum(1 for h in hashes if cache.get(h) is not None)
+                from tiktoken import get_encoding
+                enc = get_encoding('cl100k_base')
+                # Estimate tokens for fresh texts only
+                fresh_texts = [t for t, h in zip(texts, hashes) if cache.get(h) is None]
+                embed_stats["tokens"] = sum(len(enc.encode(t)) for t in fresh_texts)
+                # OpenAI embeddings pricing ~ $0.13 per 1K tokens for text-embedding-3-large
+                embed_stats["cost_usd"] = round((embed_stats["tokens"] / 1000.0) * 0.13, 6)
+                embed_stats.update({"provider": "openai", "model": embedding_model, "cache_hits": _hits, "fresh": len(fresh_texts)})
                 embs = cache.embed_texts(client, texts, hashes, model=embedding_model, batch=64)
                 pruned = cache.prune(set(hashes))
                 if pruned > 0:
@@ -408,7 +498,10 @@ def main() -> None:
                 print(f'Embedding via OpenAI failed ({e}); falling back to local embeddings.')
         if not embs:
             embs = embed_texts_local(texts)
+            embed_stats.update({"provider": "local", "model": "sentence-transformers"})
+    t_embed = _time.time() - t_embed0
     point_ids: List[str] = []
+    t_upsert0 = _time.time()
     try:
         q = QdrantClient(url=QDRANT_URL)
         qdrant_recreate_fallback.recreate_collection(
@@ -459,6 +552,30 @@ def main() -> None:
             pass
     except Exception as e:
         print(f"Qdrant unavailable or failed to index ({e}); continuing with BM25-only index. Dense retrieval will be disabled.")
+    t_upsert = _time.time() - t_upsert0
+
+    # Persist high-level indexing event for Grafana/Loki
+    try:
+        evt = {
+            "type": "indexing_event",
+            "repo": REPO,
+            "ts": datetime.utcnow().isoformat() + 'Z',
+            "mode": "full",
+            "phases": {
+                "collect_s": round(t_collect, 3),
+                "chunk_s": round(t_chunk, 3),
+                "bm25_s": round(t_bm, 3),
+                "embed_s": round(t_embed, 3),
+                "upsert_s": round(t_upsert, 3),
+            },
+            "chunk_count": len(chunks),
+            "embedding": embed_stats,
+            "enrich": enrich_stats if ENRICH else None,
+        }
+        with open(indexing_log, 'a', encoding='utf-8') as lf:
+            lf.write(json.dumps(evt) + '\n')
+    except Exception:
+        pass
 
 if __name__ == '__main__':
     main()

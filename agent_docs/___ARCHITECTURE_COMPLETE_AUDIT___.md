@@ -1896,6 +1896,54 @@ Add useEffect to load from /api/config on mount.
 **Status:**
 - Fixed: Indexer crash on launch from API due to env/interpreter mismatch.
 
+## 2025-11-20 04:05 UTC - Observability Overhaul Phase 1
+
+**Files Modified:**
+- .gitignore: added exception `!data/training/triplets.manual.jsonl` to track curated triplets
+- server/api_tracker.py: added `TRACE_STEPS_LOG` and `track_trace()` to record granular step timings (JSONL + Prometheus histogram)
+- retrieval/hybrid_search.py: instrumented vector_search, bm25_search, hydrate, cross_encoder_rerank with `track_trace` and durations
+- retrieval/rerank.py: instrumented local pipeline and CrossEncoder with `track_api_call(APIProvider.LOCAL)` and `track_trace`
+- indexer/index_repo.py: added per-phase timings (collect/chunk/bm25/embed/upsert), embedding token/cost estimates, cache hit stats; writes JSONL to `data/tracking/indexing_events.jsonl`
+- eval/eval_loop.py: added `save_latest()` to write latest eval summary to `data/tracking/evals_latest.json`
+- infra/grafana/provisioning/dashboards/agro_total_visibility.json: new dashboard focusing on Indexing, Traces, and Eval logs + stage duration timeseries
+
+**Files Added:**
+- tests/smoke/test_indexing_events_log.py: verifies indexer writes `indexing_events.jsonl` on BM25-only run
+- tests/smoke/test_trace_steps_log.py: verifies `/search` logs `trace_steps.jsonl` with bm25 and vector steps
+
+**Impact:**
+- Grafana can now visualize:
+  - Indexing runs via Loki table (indexing_events.jsonl)
+  - Query step durations via Prometheus (REQUEST_DURATION stage labels)
+  - Per-step trace logs via Loki (trace_steps.jsonl)
+  - Latest evaluation JSON via Loki (evals_latest.json)
+- Local model usage now appears in API tracking metrics and logs (provider=LOCAL)
+
+**Verification:**
+- `pytest -q tests/smoke/test_indexing_events_log.py` → passes
+- `pytest -q tests/smoke/test_trace_steps_log.py` → passes
+
+## 2025-11-20 03:20 UTC - Backend Agent - Triplet Seeds + Feedback Log Smoke
+
+**Files Added:**
+- data/training/triplets.manual.jsonl
+  - 12 curated, repo-grounded hard-negative triplets with exact file:line spans and code snippets.
+  - Format matches miner/trainer expectations: {query, positive_text, positive_doc_id, negative_texts, negative_doc_ids} per line.
+- tests/routers/test_feedback_logging.py
+  - Smoke test to ensure chat/search feedback pipeline logs to `data/logs/queries.jsonl` (the file used by `scripts/mine_triplets.py`).
+  - Creates a query event via `server.telemetry.log_query_event`, posts `/api/feedback` with thumbs up, then asserts both events are present in the log.
+
+**Files Modified:**
+- tests/routers/test_feedback_logging.py: add `sys.path` root injection and delayed import of `server.app` to pick up `AGRO_LOG_PATH` set by the test.
+
+**Impact:**
+- GUI thumbs up/down (via `/api/feedback`) now confirmed to feed the exact JSONL log consumed by the mining script (`data/logs/queries.jsonl`).
+- Seed triplets provide immediate high-quality training data without waiting for enough live feedback.
+
+**Notes:**
+- Logging path is configurable via `AGRO_LOG_PATH` and defaults to `data/logs/queries.jsonl` relative to repo root (see server/telemetry.py:1-27).
+- Manual triplets are placed under `data/training/` and do not override mined triplets; they can be merged or used standalone.
+
 
 ## 2025-11-15 15:05 - Web App Load Fix + Smoke
 

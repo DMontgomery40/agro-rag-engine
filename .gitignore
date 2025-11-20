@@ -64,6 +64,7 @@ out.noindex-*/
 .cache
 *.egg-info/
 *.jsonl
+!data/training/triplets.manual.jsonl
 
 # Runtime data (generated, not committed)
 data/qdrant/

@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 TRACKING_DIR = Path(__file__).parent.parent / "data" / "tracking"
 TRACKING_DIR.mkdir(parents=True, exist_ok=True)
 API_CALLS_LOG = TRACKING_DIR / "api_calls.jsonl"
+TRACE_STEPS_LOG = TRACKING_DIR / "trace_steps.jsonl"
 
 
 class APIProvider(Enum):
@@ -115,6 +116,53 @@ class APITracker:
             )
         except Exception as e:
             logger.debug(f"Failed to record API call metric: {e}")
+
+    def track_trace(self, step: str, provider: str, model: str, duration_ms: float,
+                    route: str = "", tokens: int = 0, cost_usd: float = 0.0,
+                    ok: bool = True, extra: Optional[Dict[str, Any]] = None):
+        """Record a granular trace step for TOTAL VISIBILITY dashboards.
+
+        Writes JSONL lines to data/tracking/trace_steps.jsonl and updates Prometheus histogram
+        using the generic REQUEST_DURATION with stage label equal to the step name.
+        """
+        payload = {
+            "type": "trace_step",
+            "ts": datetime.utcnow().isoformat() + "Z",
+            "step": step,
+            "provider": provider,
+            "model": model,
+            "duration_ms": float(duration_ms),
+            "route": route,
+            "tokens": int(tokens),
+            "cost_usd": float(cost_usd),
+            "ok": bool(ok),
+        }
+        if extra:
+            try:
+                payload.update(dict(extra))
+            except Exception:
+                pass
+        try:
+            with open(TRACE_STEPS_LOG, "a", encoding="utf-8") as f:
+                f.write(json.dumps(payload) + "\n")
+        except Exception as e:
+            logger.debug(f"Failed to write trace step: {e}")
+        # Also reflect as a histogram observation under the step name
+        try:
+            from server.metrics import REQUEST_DURATION
+            REQUEST_DURATION.labels(stage=step).observe(max(0.0, float(duration_ms) / 1000.0))
+        except Exception:
+            pass
+        # Expose tokens/cost for stage via Prometheus (role="stage")
+        try:
+            if tokens and tokens > 0:
+                from server.metrics import record_tokens as _rec_tokens
+                _rec_tokens("stage", provider, model or "", int(tokens))
+            if cost_usd and cost_usd > 0:
+                from server.metrics import record_cost as _rec_cost
+                _rec_cost(provider, model or "", float(cost_usd))
+        except Exception:
+            pass
 
     def get_stats_for_provider(self, provider: APIProvider, minutes: int = 5) -> Dict[str, Any]:
         """Get rate statistics for a specific provider."""
@@ -240,6 +288,13 @@ def track_api_call(
         response_size_bytes=response_size_bytes,
     )
     _tracker.track_call(call)
+
+
+def track_trace(step: str, provider: str, model: str, duration_ms: float,
+                route: str = "", tokens: int = 0, cost_usd: float = 0.0,
+                ok: bool = True, extra: Optional[Dict[str, Any]] = None):
+    """Public helper for granular step timing."""
+    _tracker.track_trace(step, provider, model, duration_ms, route=route, tokens=tokens, cost_usd=cost_usd, ok=ok, extra=extra)
 
 
 def get_provider_from_url(url: str) -> APIProvider:

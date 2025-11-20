@@ -2,6 +2,7 @@
 import math
 import os
 from typing import List, Dict, Any, Optional
+import time as _time
 
 from rerankers import Reranker  # type: ignore[import-untyped]
 
@@ -234,7 +235,18 @@ def rerank_results(query: str, results: List[Dict[str, Any]], top_k: int = 10, t
             code_snip = (r.get('code') or r.get('text') or '')[:snip_len]
             pairs.append({'text': query, 'text_pair': code_snip})
         try:
+            t0 = _time.time()
             out = pipe(pairs, truncation=True)  # type: ignore[misc]
+            duration_ms = (_time.time() - t0) * 1000
+            # Track LOCAL model usage
+            try:
+                from server.api_tracker import track_api_call, APIProvider, track_trace
+                track_api_call(provider=APIProvider.LOCAL, endpoint="hf_pipeline:text-classification", method="RUN",
+                               duration_ms=duration_ms, status_code=200, tokens_estimated=0, cost_usd=0.0)
+                track_trace(step="rerank_local_pipeline", provider="local", model=model_name, duration_ms=duration_ms,
+                            extra={"candidates": len(results), "top_k": top_k})
+            except Exception:
+                pass
             raw = []
             for i, o in enumerate(out):
                 score = float(o.get('score', 0.0))
@@ -278,7 +290,17 @@ def rerank_results(query: str, results: List[Dict[str, Any]], top_k: int = 10, t
     rr = get_reranker()
     if rr is None and _maybe_init_hf_pipeline(model_name) is not None:
         return results[:top_k]
+    t0 = _time.time()
     ranked = rr.rank(query=query, docs=docs, doc_ids=list(range(len(docs))))  # type: ignore[attr-defined]
+    duration_ms = (_time.time() - t0) * 1000
+    try:
+        from server.api_tracker import track_api_call, APIProvider, track_trace
+        track_api_call(provider=APIProvider.LOCAL, endpoint="cross-encoder.rank", method="RUN",
+                       duration_ms=duration_ms, status_code=200, tokens_estimated=0, cost_usd=0.0)
+        track_trace(step="rerank_local_encoder", provider="local", model=model_name, duration_ms=duration_ms,
+                    extra={"candidates": len(docs), "top_k": top_k})
+    except Exception:
+        pass
     raw_scores = []
     for res in ranked.results:
         idx = res.document.doc_id
