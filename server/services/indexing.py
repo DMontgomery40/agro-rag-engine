@@ -23,7 +23,8 @@ def start(payload: Dict[str, Any] | None = None) -> Dict[str, Any]:
         try:
             repo = os.getenv("REPO", "agro")
             _INDEX_STATUS.append(f"Indexing repository: {repo}")
-            env = {**os.environ, "REPO": repo}
+            # Ensure the indexer resolves repo paths correctly and uses the same interpreter
+            env = {**os.environ, "REPO": repo, "REPO_ROOT": str(repo_root())}
             if payload.get("enrich"):
                 env["ENRICH_CODE_CHUNKS"] = "true"
                 _INDEX_STATUS.append("Enriching chunks with summaries and keywords...")
@@ -31,7 +32,7 @@ def start(payload: Dict[str, Any] | None = None) -> Dict[str, Any]:
                 env["SKIP_DENSE"] = "1"
                 _INDEX_STATUS.append("Skipping dense embeddings (BM25 only)...")
             result = subprocess.run(
-                ["python", "-m", "indexer.index_repo"],
+                [sys.executable, "-m", "indexer.index_repo"],
                 capture_output=True,
                 text=True,
                 cwd=repo_root(),
@@ -58,6 +59,7 @@ async def run(repo: str, dense: bool):
     async def stream_output():
         env = os.environ.copy()
         env['REPO'] = repo
+        env['REPO_ROOT'] = str(repo_root())
         env['SKIP_DENSE'] = '0' if dense else '1'
         cmd = [sys.executable, '-m', 'indexer.index_repo']
         proc = await asyncio.create_subprocess_exec(
@@ -83,4 +85,3 @@ def status() -> Dict[str, Any]:
     if not _INDEX_METADATA:
         return {"lines": _INDEX_STATUS, "running": len(_INDEX_STATUS) > 0 and not any("completed" in s or "failed" in s for s in _INDEX_STATUS), "metadata": _get_index_stats()}
     return {"lines": _INDEX_STATUS, "running": False, "metadata": _INDEX_METADATA}
-

@@ -41,7 +41,15 @@ export function QuickActions() {
     }
 
     try {
-      const response = await fetch('/api/keywords/generate', { method: 'POST' });
+      // Get current repo from URL params or default to agro
+      const params = new URLSearchParams(window.location.search);
+      const repo = params.get('repo') || 'agro';
+
+      const response = await fetch('/api/keywords/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ repo })
+      });
       const data = await response.json();
       
       if (response.ok) {

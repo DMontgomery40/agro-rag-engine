@@ -1,6 +1,6 @@
 import os
 from fastapi import APIRouter
-from .reranker import get_reranker, get_reranker_info
+from .learning_reranker import get_reranker, get_reranker_info
 
 router = APIRouter()
 

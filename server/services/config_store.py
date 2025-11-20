@@ -84,7 +84,7 @@ def secrets_ingest(text: str, persist: bool) -> Dict[str, Any]:
 
 def _effective_rerank_backend() -> Dict[str, Any]:
     try:
-        from server.reranker import get_reranker_info
+        from server.learning_reranker import get_reranker_info
     except Exception:
         get_reranker_info = lambda: {}
     import time

@@ -830,7 +830,11 @@
                 if (window.UXFeedback && window.UXFeedback.toast) {
                     window.UXFeedback.toast('Configuration updated successfully', 'success');
                 } else {
-                    showToast('Configuration updated successfully', 'success');
+                    console.log('✓ Configuration updated successfully');
+                    // Fallback: Use alert if showToast not available
+                    if (typeof showToast === 'function') {
+                        showToast('Configuration updated successfully', 'success');
+                    }
                 }
                 await loadConfig(); // Reload to confirm
             }

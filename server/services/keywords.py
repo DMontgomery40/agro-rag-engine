@@ -108,6 +108,7 @@ def add_keyword(body: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def generate_keywords(body: Dict[str, Any]) -> Dict[str, Any]:
+    import sys
     repo = body.get("repo") or os.getenv("REPO", "agro")
     mode = (body.get("mode") or "heuristic").strip().lower()
     max_files = int(body.get("max_files", 200) or 200)
@@ -116,8 +117,8 @@ def generate_keywords(body: Dict[str, Any]) -> Dict[str, Any]:
 
     def run_heuristic():
         base = repo_root()
-        subprocess.check_call(["python", str(base / "scripts" / "analyze_keywords.py"), "--repo", repo, "--max_files", str(max_files)])
-        subprocess.check_call(["python", str(base / "scripts" / "analyze_keywords_v2.py"), "--repo", repo, "--max_files", str(max_files)])
+        subprocess.check_call([sys.executable, str(base / "scripts" / "analyze_keywords.py"), "--repo", repo, "--max_files", str(max_files)])
+        subprocess.check_call([sys.executable, str(base / "scripts" / "analyze_keywords_v2.py"), "--repo", repo, "--max_files", str(max_files)])
         results["discriminative"] = {"ok": True, "count": len(_read_json(base / "discriminative_keywords.json", {}).get("manual", []))}
         results["semantic"] = {"ok": True, "count": len(_read_json(base / "semantic_keywords.json", {}).get("manual", []))}
 

@@ -1,3 +1,16 @@
+"""
+Learning Reranker Module (server/learning_reranker.py)
+
+This is the LEARNING reranker that supports:
+  - Feedback loop integration for model improvement
+  - Hot-reloadable cross-encoder model training
+  - Enhanced search quality through continuous learning
+
+NOT to be confused with retrieval/rerank.py which is the production search reranker
+used during retrieval operations.
+
+Purpose: Hot-reloadable cross-encoder for enhanced search with feedback-driven training
+"""
 import os, math, time
 from typing import List, Dict, Any, Optional
 from pathlib import Path

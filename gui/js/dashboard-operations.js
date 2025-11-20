@@ -181,12 +181,18 @@
             try {
                 terminal.appendLine('🔄 Generating keywords from indexed content...\n');
 
+                // Get current repo from system status or default to agro
+                const repo = document.getElementById('dash-repo')?.textContent?.trim() || 'agro';
+
                 const response = await fetch(api('/api/keywords/generate'), {
-                    method: 'POST'
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ repo })
                 });
 
                 if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    const errorData = await response.json().catch(() => ({ error: response.statusText }));
+                    throw new Error(`HTTP ${response.status}: ${errorData.error || response.statusText}`);
                 }
 
                 // Try streaming if available, otherwise just read as text

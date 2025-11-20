@@ -46,8 +46,16 @@ from server.feedback import router as feedback_router
 from server.reranker_info import router as reranker_info_router
 from server.reranker_info import reranker_available_options as _rr_available_options
 from server.alerts import router as alerts_router, monitoring_router
+from server.routers.traces import router as traces_router
+from server.routers.repos import router as repos_router
+from server.routers.pipeline import router as pipeline_router
+from server.routers.keywords import router as keywords_router
+from server.routers.search import router as search_router
+from server.routers.indexing import router as indexing_router
+from server.routers.config import router as config_router
+from server.routers.editor import router as editor_router
 from server.telemetry import log_query_event
-from server.reranker import rerank_candidates, get_reranker_info
+from server.learning_reranker import rerank_candidates, get_reranker_info
 from server.frequency_limiter import FrequencyAnomalyMiddleware, get_frequency_stats
 from server.api_interceptor import setup_interceptor
 from server.metrics import (
@@ -85,6 +93,14 @@ app.include_router(feedback_router)
 app.include_router(reranker_info_router)
 app.include_router(alerts_router)
 app.include_router(monitoring_router)
+app.include_router(traces_router)
+app.include_router(repos_router)
+app.include_router(pipeline_router)
+app.include_router(keywords_router)
+app.include_router(search_router)
+app.include_router(indexing_router)
+app.include_router(config_router)
+app.include_router(editor_router)
 
 _graph = None
 def get_graph():
@@ -1946,7 +1962,7 @@ def index_start(payload: Dict[str, Any] = None) -> Dict[str, Any]:
 
             # Run the actual indexer
             result = subprocess.run(
-                ["python", "-m", "indexer.index_repo"],
+                [sys.executable, "-m", "indexer.index_repo"],
                 capture_output=True,
                 text=True,
                 cwd=repo_root(),
@@ -2176,7 +2192,7 @@ def mcp_http_start() -> Dict[str, Any]:
         
         # Start in background
         subprocess.Popen(
-            [str(ROOT / ".venv" / "bin" / "python"), "-m", "server.mcp.http"],
+            [sys.executable, "-m", "server.mcp.http"],
             cwd=str(ROOT),
             stdout=open("/tmp/agro_mcp_http.log", "w"),
             stderr=subprocess.STDOUT
@@ -2222,7 +2238,7 @@ def mcp_stdio_test() -> Dict[str, Any]:
     try:
         # Test stdio MCP
         result = subprocess.run(
-            [str(ROOT / ".venv" / "bin" / "python"), "-m", "server.mcp.server"],
+            [sys.executable, "-m", "server.mcp.server"],
             input='{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}\n',
             capture_output=True, text=True, timeout=10, cwd=str(ROOT)
         )
@@ -3659,7 +3675,9 @@ def reranker_cron_setup(payload: Dict[str, Any]) -> Dict[str, Any]:
     time_str = payload.get("time", "02:15")
     hour, minute = time_str.split(":")
     
-    cron_line = f'{minute} {hour} * * * cd {repo_root()} && . .venv/bin/activate && python scripts/mine_triplets.py && python scripts/train_reranker.py --epochs 1 && python scripts/eval_reranker.py >> data/logs/nightly_reranker.log 2>&1'
+    # Use absolute path to current Python interpreter for cron reliability across environments
+    py_path = sys.executable
+    cron_line = f'{minute} {hour} * * * cd {repo_root()} && {py_path} scripts/mine_triplets.py && {py_path} scripts/train_reranker.py --epochs 1 && {py_path} scripts/eval_reranker.py >> data/logs/nightly_reranker.log 2>&1'
     
     try:
         # Get current crontab

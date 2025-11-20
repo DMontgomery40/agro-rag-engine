@@ -4,7 +4,7 @@
     {
       "name": "agro",
       "slug": "agro",
-      "path": "${REPO_ROOT:-/app}",
+      "path": "${REPO_ROOT:-/}",
       "exclude_paths": [
         "/docs",
         "/agent_docs",
@@ -42,7 +42,8 @@
         "eval",
         "indexer",
         "retrieval",
-        "layer"
+        "layer",
+        "stdio"
       ],
       "path_boosts": [
         "/gui",
