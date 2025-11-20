@@ -1,0 +1,648 @@
+"""Pydantic models for agro_config.json validation and type safety.
+
+This module defines the schema for tunable RAG parameters stored in agro_config.json.
+Using Pydantic provides:
+- Type validation at load time
+- Range validation (e.g., rrf_k_div must be 1-200)
+- Clear error messages for invalid configs
+- Default values that match current hardcoded values
+- JSON schema generation for documentation
+"""
+
+from pydantic import BaseModel, Field, field_validator, model_validator
+from typing import Optional
+
+
+class RetrievalConfig(BaseModel):
+    """Configuration for retrieval and search parameters."""
+
+    rrf_k_div: int = Field(
+        default=60,
+        ge=1,
+        le=200,
+        description="RRF rank smoothing constant (higher = more weight to top ranks)"
+    )
+
+    langgraph_final_k: int = Field(
+        default=20,
+        ge=1,
+        le=100,
+        description="Number of final results to return in LangGraph pipeline"
+    )
+
+    max_query_rewrites: int = Field(
+        default=2,
+        ge=1,
+        le=10,
+        description="Maximum number of query rewrites for multi-query expansion"
+    )
+
+    fallback_confidence: float = Field(
+        default=0.55,
+        ge=0.0,
+        le=1.0,
+        description="Confidence threshold for fallback retrieval strategies"
+    )
+
+    final_k: int = Field(
+        default=10,
+        ge=1,
+        le=100,
+        description="Default top-k for search results"
+    )
+
+    eval_final_k: int = Field(
+        default=5,
+        ge=1,
+        le=50,
+        description="Top-k for evaluation runs"
+    )
+
+    conf_top1: float = Field(
+        default=0.62,
+        ge=0.0,
+        le=1.0,
+        description="Confidence threshold for top-1"
+    )
+
+    conf_avg5: float = Field(
+        default=0.55,
+        ge=0.0,
+        le=1.0,
+        description="Confidence threshold for avg top-5"
+    )
+
+    conf_any: float = Field(
+        default=0.55,
+        ge=0.0,
+        le=1.0,
+        description="Minimum confidence threshold"
+    )
+
+    eval_multi: int = Field(
+        default=1,
+        ge=0,
+        le=1,
+        description="Enable multi-query in eval"
+    )
+
+    query_expansion_enabled: int = Field(
+        default=1,
+        ge=0,
+        le=1,
+        description="Enable synonym expansion"
+    )
+
+    bm25_weight: float = Field(
+        default=0.3,
+        ge=0.0,
+        le=1.0,
+        description="Weight for BM25 in hybrid search"
+    )
+
+    vector_weight: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=1.0,
+        description="Weight for vector search"
+    )
+
+    card_search_enabled: int = Field(
+        default=1,
+        ge=0,
+        le=1,
+        description="Enable card-based retrieval"
+    )
+
+    multi_query_m: int = Field(
+        default=4,
+        ge=1,
+        le=10,
+        description="Query variants for multi-query"
+    )
+
+    @field_validator('rrf_k_div')
+    @classmethod
+    def validate_rrf_k_div(cls, v):
+        """Ensure RRF k_div is reasonable."""
+        if v < 10:
+            raise ValueError('rrf_k_div should be at least 10 for meaningful rank smoothing')
+        return v
+
+    @model_validator(mode='after')
+    def validate_weights_sum_to_one(self):
+        """Ensure BM25 and vector weights sum to 1.0."""
+        total = self.bm25_weight + self.vector_weight
+        if not (0.99 <= total <= 1.01):
+            raise ValueError('bm25_weight + vector_weight must sum to 1.0')
+        return self
+
+
+class ScoringConfig(BaseModel):
+    """Configuration for result scoring and boosting."""
+
+    card_bonus: float = Field(
+        default=0.08,
+        ge=0.0,
+        le=1.0,
+        description="Bonus score for chunks matched via card-based retrieval"
+    )
+
+    filename_boost_exact: float = Field(
+        default=1.5,
+        ge=1.0,
+        le=5.0,
+        description="Score multiplier when filename exactly matches query terms"
+    )
+
+    filename_boost_partial: float = Field(
+        default=1.2,
+        ge=1.0,
+        le=3.0,
+        description="Score multiplier when path components match query terms"
+    )
+
+    @model_validator(mode='after')
+    def validate_exact_boost_greater_than_partial(self):
+        """Ensure exact boost is greater than partial boost."""
+        if self.filename_boost_exact <= self.filename_boost_partial:
+            raise ValueError('filename_boost_exact should be greater than filename_boost_partial')
+        return self
+
+
+class LayerBonusConfig(BaseModel):
+    """Layer-specific scoring bonuses."""
+
+    gui: float = Field(
+        default=0.15,
+        ge=0.0,
+        le=0.5,
+        description="Bonus for GUI layer"
+    )
+
+    retrieval: float = Field(
+        default=0.15,
+        ge=0.0,
+        le=0.5,
+        description="Bonus for retrieval layer"
+    )
+
+    indexer: float = Field(
+        default=0.15,
+        ge=0.0,
+        le=0.5,
+        description="Bonus for indexer layer"
+    )
+
+    vendor_penalty: float = Field(
+        default=-0.1,
+        ge=-0.5,
+        le=0.0,
+        description="Penalty for vendor code"
+    )
+
+    freshness_bonus: float = Field(
+        default=0.05,
+        ge=0.0,
+        le=0.3,
+        description="Bonus for recent files"
+    )
+
+
+class RerankingConfig(BaseModel):
+    """Reranking configuration for result refinement."""
+
+    reranker_model: str = Field(
+        default="cross-encoder/ms-marco-MiniLM-L-12-v2",
+        description="Reranker model path"
+    )
+
+    agro_reranker_enabled: int = Field(
+        default=1,
+        ge=0,
+        le=1,
+        description="Enable reranking"
+    )
+
+    agro_reranker_alpha: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=1.0,
+        description="Blend weight for reranker scores"
+    )
+
+    agro_reranker_topn: int = Field(
+        default=50,
+        ge=10,
+        le=200,
+        description="Number of candidates to rerank"
+    )
+
+    agro_reranker_batch: int = Field(
+        default=16,
+        ge=1,
+        le=128,
+        description="Reranker batch size"
+    )
+
+    agro_reranker_maxlen: int = Field(
+        default=512,
+        ge=128,
+        le=2048,
+        description="Max token length for reranker"
+    )
+
+    agro_reranker_reload_on_change: int = Field(
+        default=0,
+        ge=0,
+        le=1,
+        description="Hot-reload on model change"
+    )
+
+    agro_reranker_reload_period_sec: int = Field(
+        default=60,
+        ge=10,
+        le=600,
+        description="Reload check period (seconds)"
+    )
+
+    cohere_rerank_model: str = Field(
+        default="rerank-3.5",
+        description="Cohere reranker model"
+    )
+
+    voyage_rerank_model: str = Field(
+        default="rerank-2",
+        description="Voyage reranker model"
+    )
+
+    reranker_backend: str = Field(
+        default="local",
+        pattern="^(local|cohere|voyage)$",
+        description="Reranker backend"
+    )
+
+    reranker_timeout: int = Field(
+        default=10,
+        ge=5,
+        le=60,
+        description="Reranker API timeout (seconds)"
+    )
+
+
+class GenerationConfig(BaseModel):
+    """LLM generation configuration."""
+
+    gen_model: str = Field(
+        default="gpt-4o-mini",
+        description="Primary generation model"
+    )
+
+    gen_temperature: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=2.0,
+        description="Generation temperature"
+    )
+
+    gen_max_tokens: int = Field(
+        default=2048,
+        ge=100,
+        le=8192,
+        description="Max tokens for generation"
+    )
+
+    gen_top_p: float = Field(
+        default=1.0,
+        ge=0.0,
+        le=1.0,
+        description="Nucleus sampling threshold"
+    )
+
+    gen_timeout: int = Field(
+        default=60,
+        ge=10,
+        le=300,
+        description="Generation timeout (seconds)"
+    )
+
+    gen_retry_max: int = Field(
+        default=2,
+        ge=1,
+        le=5,
+        description="Max retries for generation"
+    )
+
+    enrich_model: str = Field(
+        default="gpt-4o-mini",
+        description="Model for code enrichment"
+    )
+
+    enrich_backend: str = Field(
+        default="openai",
+        pattern="^(openai|ollama|mlx)$",
+        description="Enrichment backend"
+    )
+
+    enrich_disabled: int = Field(
+        default=0,
+        ge=0,
+        le=1,
+        description="Disable code enrichment"
+    )
+
+    ollama_num_ctx: int = Field(
+        default=8192,
+        ge=2048,
+        le=32768,
+        description="Context window for Ollama"
+    )
+
+
+class EnrichmentConfig(BaseModel):
+    """Code enrichment and card generation configuration."""
+
+    cards_enrich_default: int = Field(
+        default=1,
+        ge=0,
+        le=1,
+        description="Enable card enrichment by default"
+    )
+
+    cards_max: int = Field(
+        default=100,
+        ge=10,
+        le=1000,
+        description="Max cards to generate"
+    )
+
+    enrich_code_chunks: int = Field(
+        default=1,
+        ge=0,
+        le=1,
+        description="Enable chunk enrichment"
+    )
+
+    enrich_min_chars: int = Field(
+        default=50,
+        ge=10,
+        le=500,
+        description="Min chars for enrichment"
+    )
+
+    enrich_max_chars: int = Field(
+        default=1000,
+        ge=100,
+        le=5000,
+        description="Max chars for enrichment prompt"
+    )
+
+    enrich_timeout: int = Field(
+        default=30,
+        ge=5,
+        le=120,
+        description="Enrichment timeout (seconds)"
+    )
+
+
+class AgroConfigRoot(BaseModel):
+    """Root configuration model for agro_config.json.
+
+    This is the top-level model that contains all configuration categories.
+    The nested structure provides logical grouping and better organization.
+    """
+
+    retrieval: RetrievalConfig = Field(default_factory=RetrievalConfig)
+    scoring: ScoringConfig = Field(default_factory=ScoringConfig)
+    layer_bonus: LayerBonusConfig = Field(default_factory=LayerBonusConfig)
+    reranking: RerankingConfig = Field(default_factory=RerankingConfig)
+    generation: GenerationConfig = Field(default_factory=GenerationConfig)
+    enrichment: EnrichmentConfig = Field(default_factory=EnrichmentConfig)
+
+    class Config:
+        # Allow extra fields for forward compatibility
+        extra = 'allow'
+        # Use nested JSON structure
+        json_schema_extra = {
+            "description": "AGRO RAG Engine tunable configuration parameters",
+            "title": "AGRO Config"
+        }
+
+    def to_flat_dict(self) -> dict[str, any]:
+        """Convert nested config to flat dict with env-style keys.
+
+        This provides backward compatibility with existing code that expects
+        flat environment variable names like 'RRF_K_DIV' instead of nested
+        access like config.retrieval.rrf_k_div.
+
+        Returns:
+            Flat dictionary mapping env-style keys to values:
+            {
+                'RRF_K_DIV': 60,
+                'CARD_BONUS': 0.08,
+                ...
+            }
+        """
+        return {
+            # Retrieval params (existing + new)
+            'RRF_K_DIV': self.retrieval.rrf_k_div,
+            'LANGGRAPH_FINAL_K': self.retrieval.langgraph_final_k,
+            'MAX_QUERY_REWRITES': self.retrieval.max_query_rewrites,
+            'FALLBACK_CONFIDENCE': self.retrieval.fallback_confidence,
+            'FINAL_K': self.retrieval.final_k,
+            'EVAL_FINAL_K': self.retrieval.eval_final_k,
+            'CONF_TOP1': self.retrieval.conf_top1,
+            'CONF_AVG5': self.retrieval.conf_avg5,
+            'CONF_ANY': self.retrieval.conf_any,
+            'EVAL_MULTI': self.retrieval.eval_multi,
+            'QUERY_EXPANSION_ENABLED': self.retrieval.query_expansion_enabled,
+            'BM25_WEIGHT': self.retrieval.bm25_weight,
+            'VECTOR_WEIGHT': self.retrieval.vector_weight,
+            'CARD_SEARCH_ENABLED': self.retrieval.card_search_enabled,
+            'MULTI_QUERY_M': self.retrieval.multi_query_m,
+            # Scoring params
+            'CARD_BONUS': self.scoring.card_bonus,
+            'FILENAME_BOOST_EXACT': self.scoring.filename_boost_exact,
+            'FILENAME_BOOST_PARTIAL': self.scoring.filename_boost_partial,
+            # Layer bonus params
+            'LAYER_BONUS_GUI': self.layer_bonus.gui,
+            'LAYER_BONUS_RETRIEVAL': self.layer_bonus.retrieval,
+            'LAYER_BONUS_INDEXER': self.layer_bonus.indexer,
+            'VENDOR_PENALTY': self.layer_bonus.vendor_penalty,
+            'FRESHNESS_BONUS': self.layer_bonus.freshness_bonus,
+            # Reranking params (12 new)
+            'RERANKER_MODEL': self.reranking.reranker_model,
+            'AGRO_RERANKER_ENABLED': self.reranking.agro_reranker_enabled,
+            'AGRO_RERANKER_ALPHA': self.reranking.agro_reranker_alpha,
+            'AGRO_RERANKER_TOPN': self.reranking.agro_reranker_topn,
+            'AGRO_RERANKER_BATCH': self.reranking.agro_reranker_batch,
+            'AGRO_RERANKER_MAXLEN': self.reranking.agro_reranker_maxlen,
+            'AGRO_RERANKER_RELOAD_ON_CHANGE': self.reranking.agro_reranker_reload_on_change,
+            'AGRO_RERANKER_RELOAD_PERIOD_SEC': self.reranking.agro_reranker_reload_period_sec,
+            'COHERE_RERANK_MODEL': self.reranking.cohere_rerank_model,
+            'VOYAGE_RERANK_MODEL': self.reranking.voyage_rerank_model,
+            'RERANKER_BACKEND': self.reranking.reranker_backend,
+            'RERANKER_TIMEOUT': self.reranking.reranker_timeout,
+            # Generation params (10 new)
+            'GEN_MODEL': self.generation.gen_model,
+            'GEN_TEMPERATURE': self.generation.gen_temperature,
+            'GEN_MAX_TOKENS': self.generation.gen_max_tokens,
+            'GEN_TOP_P': self.generation.gen_top_p,
+            'GEN_TIMEOUT': self.generation.gen_timeout,
+            'GEN_RETRY_MAX': self.generation.gen_retry_max,
+            'ENRICH_MODEL': self.generation.enrich_model,
+            'ENRICH_BACKEND': self.generation.enrich_backend,
+            'ENRICH_DISABLED': self.generation.enrich_disabled,
+            'OLLAMA_NUM_CTX': self.generation.ollama_num_ctx,
+            # Enrichment params (6 new)
+            'CARDS_ENRICH_DEFAULT': self.enrichment.cards_enrich_default,
+            'CARDS_MAX': self.enrichment.cards_max,
+            'ENRICH_CODE_CHUNKS': self.enrichment.enrich_code_chunks,
+            'ENRICH_MIN_CHARS': self.enrichment.enrich_min_chars,
+            'ENRICH_MAX_CHARS': self.enrichment.enrich_max_chars,
+            'ENRICH_TIMEOUT': self.enrichment.enrich_timeout,
+        }
+
+    @classmethod
+    def from_flat_dict(cls, data: dict[str, any]) -> 'AgroConfigRoot':
+        """Create config from flat env-style dict.
+
+        This allows the API to receive updates in the traditional flat format
+        and convert them to the nested structure for storage.
+
+        Args:
+            data: Flat dictionary with env-style keys
+
+        Returns:
+            AgroConfigRoot instance with nested structure
+        """
+        return cls(
+            retrieval=RetrievalConfig(
+                rrf_k_div=data.get('RRF_K_DIV', 60),
+                langgraph_final_k=data.get('LANGGRAPH_FINAL_K', 20),
+                max_query_rewrites=data.get('MAX_QUERY_REWRITES', 2),
+                fallback_confidence=data.get('FALLBACK_CONFIDENCE', 0.55),
+                final_k=data.get('FINAL_K', 10),
+                eval_final_k=data.get('EVAL_FINAL_K', 5),
+                conf_top1=data.get('CONF_TOP1', 0.62),
+                conf_avg5=data.get('CONF_AVG5', 0.55),
+                conf_any=data.get('CONF_ANY', 0.55),
+                eval_multi=data.get('EVAL_MULTI', 1),
+                query_expansion_enabled=data.get('QUERY_EXPANSION_ENABLED', 1),
+                bm25_weight=data.get('BM25_WEIGHT', 0.3),
+                vector_weight=data.get('VECTOR_WEIGHT', 0.7),
+                card_search_enabled=data.get('CARD_SEARCH_ENABLED', 1),
+                multi_query_m=data.get('MULTI_QUERY_M', 4),
+            ),
+            scoring=ScoringConfig(
+                card_bonus=data.get('CARD_BONUS', 0.08),
+                filename_boost_exact=data.get('FILENAME_BOOST_EXACT', 1.5),
+                filename_boost_partial=data.get('FILENAME_BOOST_PARTIAL', 1.2),
+            ),
+            layer_bonus=LayerBonusConfig(
+                gui=data.get('LAYER_BONUS_GUI', 0.15),
+                retrieval=data.get('LAYER_BONUS_RETRIEVAL', 0.15),
+                indexer=data.get('LAYER_BONUS_INDEXER', 0.15),
+                vendor_penalty=data.get('VENDOR_PENALTY', -0.1),
+                freshness_bonus=data.get('FRESHNESS_BONUS', 0.05),
+            ),
+            reranking=RerankingConfig(
+                reranker_model=data.get('RERANKER_MODEL', 'cross-encoder/ms-marco-MiniLM-L-12-v2'),
+                agro_reranker_enabled=data.get('AGRO_RERANKER_ENABLED', 1),
+                agro_reranker_alpha=data.get('AGRO_RERANKER_ALPHA', 0.7),
+                agro_reranker_topn=data.get('AGRO_RERANKER_TOPN', 50),
+                agro_reranker_batch=data.get('AGRO_RERANKER_BATCH', 16),
+                agro_reranker_maxlen=data.get('AGRO_RERANKER_MAXLEN', 512),
+                agro_reranker_reload_on_change=data.get('AGRO_RERANKER_RELOAD_ON_CHANGE', 0),
+                agro_reranker_reload_period_sec=data.get('AGRO_RERANKER_RELOAD_PERIOD_SEC', 60),
+                cohere_rerank_model=data.get('COHERE_RERANK_MODEL', 'rerank-3.5'),
+                voyage_rerank_model=data.get('VOYAGE_RERANK_MODEL', 'rerank-2'),
+                reranker_backend=data.get('RERANKER_BACKEND', 'local'),
+                reranker_timeout=data.get('RERANKER_TIMEOUT', 10),
+            ),
+            generation=GenerationConfig(
+                gen_model=data.get('GEN_MODEL', 'gpt-4o-mini'),
+                gen_temperature=data.get('GEN_TEMPERATURE', 0.0),
+                gen_max_tokens=data.get('GEN_MAX_TOKENS', 2048),
+                gen_top_p=data.get('GEN_TOP_P', 1.0),
+                gen_timeout=data.get('GEN_TIMEOUT', 60),
+                gen_retry_max=data.get('GEN_RETRY_MAX', 2),
+                enrich_model=data.get('ENRICH_MODEL', 'gpt-4o-mini'),
+                enrich_backend=data.get('ENRICH_BACKEND', 'openai'),
+                enrich_disabled=data.get('ENRICH_DISABLED', 0),
+                ollama_num_ctx=data.get('OLLAMA_NUM_CTX', 8192),
+            ),
+            enrichment=EnrichmentConfig(
+                cards_enrich_default=data.get('CARDS_ENRICH_DEFAULT', 1),
+                cards_max=data.get('CARDS_MAX', 100),
+                enrich_code_chunks=data.get('ENRICH_CODE_CHUNKS', 1),
+                enrich_min_chars=data.get('ENRICH_MIN_CHARS', 50),
+                enrich_max_chars=data.get('ENRICH_MAX_CHARS', 1000),
+                enrich_timeout=data.get('ENRICH_TIMEOUT', 30),
+            )
+        )
+
+
+# Default config instance for easy access
+DEFAULT_CONFIG = AgroConfigRoot()
+
+# Set of keys that belong in agro_config.json (not .env)
+AGRO_CONFIG_KEYS = {
+    # Retrieval params (15 params)
+    'RRF_K_DIV',
+    'LANGGRAPH_FINAL_K',
+    'MAX_QUERY_REWRITES',
+    'FALLBACK_CONFIDENCE',
+    'FINAL_K',
+    'EVAL_FINAL_K',
+    'CONF_TOP1',
+    'CONF_AVG5',
+    'CONF_ANY',
+    'EVAL_MULTI',
+    'QUERY_EXPANSION_ENABLED',
+    'BM25_WEIGHT',
+    'VECTOR_WEIGHT',
+    'CARD_SEARCH_ENABLED',
+    'MULTI_QUERY_M',
+    # Scoring params (3 params)
+    'CARD_BONUS',
+    'FILENAME_BOOST_EXACT',
+    'FILENAME_BOOST_PARTIAL',
+    # Layer bonus params (5 params)
+    'LAYER_BONUS_GUI',
+    'LAYER_BONUS_RETRIEVAL',
+    'LAYER_BONUS_INDEXER',
+    'VENDOR_PENALTY',
+    'FRESHNESS_BONUS',
+    # Reranking params (12 params)
+    'RERANKER_MODEL',
+    'AGRO_RERANKER_ENABLED',
+    'AGRO_RERANKER_ALPHA',
+    'AGRO_RERANKER_TOPN',
+    'AGRO_RERANKER_BATCH',
+    'AGRO_RERANKER_MAXLEN',
+    'AGRO_RERANKER_RELOAD_ON_CHANGE',
+    'AGRO_RERANKER_RELOAD_PERIOD_SEC',
+    'COHERE_RERANK_MODEL',
+    'VOYAGE_RERANK_MODEL',
+    'RERANKER_BACKEND',
+    'RERANKER_TIMEOUT',
+    # Generation params (10 params)
+    'GEN_MODEL',
+    'GEN_TEMPERATURE',
+    'GEN_MAX_TOKENS',
+    'GEN_TOP_P',
+    'GEN_TIMEOUT',
+    'GEN_RETRY_MAX',
+    'ENRICH_MODEL',
+    'ENRICH_BACKEND',
+    'ENRICH_DISABLED',
+    'OLLAMA_NUM_CTX',
+    # Enrichment params (6 params)
+    'CARDS_ENRICH_DEFAULT',
+    'CARDS_MAX',
+    'ENRICH_CODE_CHUNKS',
+    'ENRICH_MIN_CHARS',
+    'ENRICH_MAX_CHARS',
+    'ENRICH_TIMEOUT',
+}
