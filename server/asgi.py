@@ -15,7 +15,6 @@ from server.frequency_limiter import FrequencyAnomalyMiddleware
 from server.metrics import init_metrics_fastapi
 import logging, uuid
 from server.feedback import router as feedback_router
-from server.reranker_info import router as reranker_info_router
 from server.alerts import router as alerts_router, monitoring_router
 from server.routers.pipeline import router as pipeline_router
 from server.routers.traces import router as traces_router
@@ -25,6 +24,20 @@ from server.routers.editor import router as editor_router
 from server.routers.search import router as search_router
 from server.routers.keywords import router as keywords_router
 from server.routers.indexing import router as indexing_router
+from server.routers.docker import router as docker_router
+from server.routers.reranker_learning import router as reranker_learning_router
+from server.routers.onboarding import router as onboarding_router
+from server.routers.golden import router as golden_router
+from server.routers.eval import router as eval_router
+from server.routers.cost import router as cost_router
+from server.routers.cards import router as cards_router
+from server.routers.profiles import router as profiles_router
+from server.routers.autotune import router as autotune_router
+from server.routers.git_ops import router as git_ops_router
+from server.routers.hardware import router as hardware_router
+from server.routers.observability import router as observability_router
+from server.routers.reranker_ops import router as reranker_ops_router
+from server.routers.mcp_ops import router as mcp_ops_router
 
 
 def create_app() -> FastAPI:
@@ -74,10 +87,11 @@ def create_app() -> FastAPI:
     if GUI_DIR.exists():
         app.mount("/gui", StaticFiles(directory=str(GUI_DIR), html=True), name="gui")
     if WEB_DIST.exists():
-        app.mount("/web", StaticFiles(directory=str(WEB_DIST), html=True), name="web")
-        @app.get("/web/config", include_in_schema=False)
-        @app.get("/web/search", include_in_schema=False)
-        def web_spa_top():  # type: ignore[unused-ignore]
+        from fastapi import APIRouter
+        web_router = APIRouter()
+
+        @web_router.get("/", include_in_schema=False)
+        def web_index():  # type: ignore[unused-ignore]
             idx = WEB_DIST / "index.html"
             if idx.exists():
                 resp = FileResponse(str(idx))
@@ -86,10 +100,26 @@ def create_app() -> FastAPI:
                 resp.headers["Expires"] = "0"
                 return resp
             return JSONResponse({"error": "Web UI not built"}, status_code=404)
+
+        # Serve built assets under /web/assets
+        web_assets = StaticFiles(directory=str(WEB_DIST / "assets"), html=False)
+
+        @web_router.get("/assets/{path:path}", include_in_schema=False)
+        def web_assets_proxy(path: str):  # type: ignore[unused-ignore]
+            p = WEB_DIST / "assets" / path
+            if p.is_file():
+                return FileResponse(str(p))
+            return JSONResponse({"error": "Asset not found"}, status_code=404)
+
+        # Catch-all fallback to index.html for SPA routes
+        @web_router.get("/{rest_of_path:path}", include_in_schema=False)
+        def web_spa_router_catchall(rest_of_path: str):  # type: ignore[unused-ignore]
+            return web_index()
+
+        app.include_router(web_router, prefix="/web")
         # SPA fallback for nested routes under /web
         @app.get("/web/{rest_of_path:path}", include_in_schema=False)
         def web_spa(rest_of_path: str):  # type: ignore[unused-ignore]
-            # Serve asset files directly if present
             p = WEB_DIST / rest_of_path
             if p.is_file():
                 return FileResponse(str(p))
@@ -131,11 +161,41 @@ def create_app() -> FastAPI:
         return health()
 
     # Include extracted routers (initial slice)
-    app.include_router(config_router)
     app.include_router(pipeline_router)
     app.include_router(search_router)
     app.include_router(keywords_router)
     app.include_router(indexing_router)
+    app.include_router(docker_router)
+    app.include_router(reranker_learning_router)
+    
+    # Include new routers (formerly orphaned in app.py)
+    app.include_router(onboarding_router)
+    app.include_router(golden_router)
+    app.include_router(eval_router)
+    app.include_router(cost_router)
+    app.include_router(cards_router)
+    app.include_router(profiles_router)
+    app.include_router(autotune_router)
+    app.include_router(git_ops_router)
+    app.include_router(hardware_router)
+    app.include_router(observability_router)
+    app.include_router(reranker_ops_router)
+    app.include_router(mcp_ops_router)
+
+    # Include existing routers
+    app.include_router(feedback_router)
+    # Reranker info is optional; avoid hard import to keep core paths light
+    try:
+        from server.reranker_info import router as reranker_info_router  # type: ignore
+        app.include_router(reranker_info_router)
+    except Exception:
+        pass
+    app.include_router(alerts_router)
+    app.include_router(monitoring_router)
+    app.include_router(traces_router)
+    app.include_router(repos_router)
+    app.include_router(config_router)
+    app.include_router(editor_router)
 
 
     # ---------------- Pipeline Summary API ----------------
@@ -211,7 +271,7 @@ def create_app() -> FastAPI:
                 if u.startswith("redis://"):
                     host_port = u.split("redis://", 1)[1].split("/", 1)[0]
                     host, port = host_port.split(":", 1)
-                    with __import__('socket').create_connection((host, int(port)), timeout=1.0):
+                    with socket.create_connection((host, int(port)), timeout=1.0):
                         return "ok"
             except Exception:
                 return "fail"
@@ -235,15 +295,5 @@ def create_app() -> FastAPI:
             "generation": {"provider": gen_provider, "model": gen_model},
             "health": {"qdrant": _qdrant_health(), "redis": _redis_health(), "llm": _llm_health()},
         }
-
-    # Include existing routers
-    app.include_router(feedback_router)
-    app.include_router(reranker_info_router)
-    app.include_router(alerts_router)
-    app.include_router(monitoring_router)
-    app.include_router(traces_router)
-    app.include_router(repos_router)
-    app.include_router(config_router)
-    app.include_router(editor_router)
 
     return app

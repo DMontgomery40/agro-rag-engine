@@ -34,6 +34,7 @@ export interface RerankerStatus {
 export interface TrainingOptions {
   epochs?: number;
   batch_size?: number;
+  max_length?: number;
 }
 
 export interface RerankerInfo {

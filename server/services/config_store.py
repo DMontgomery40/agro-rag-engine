@@ -253,11 +253,56 @@ def _read_json(path: Path, default: Any) -> Any:
     return default
 
 
-def prices_get() -> Dict[str, Any]:
-    data = _read_json(gui_dir() / "prices.json", {"models": []})
-    if not data or not isinstance(data, dict) or not data.get("models"):
+def _classify_components(m: Dict[str, Any]) -> list[str]:
+    comps: list[str] = []
+    name = (str(m.get("family") or "") + " " + str(m.get("model") or "")).lower()
+    unit = str(m.get("unit") or "").lower()
+
+    # Rerank if explicit field present or name hints contain rerank
+    if ("rerank_per_1k" in m) or ("rerank" in name):
+        comps.append("RERANK")
+
+    # Embedding if explicit field or dimensions present and no token pricing
+    has_embed_cost = ("embed_per_1k" in m) or ("dimensions" in m)
+    has_gen_pricing = ("input_per_1k" in m) or ("output_per_1k" in m) or (unit in {"1k_tokens", "request"}) or ("per_request" in m)
+    if has_embed_cost and not ("rerank_per_1k" in m):
+        comps.append("EMB")
+
+    # Generative if token pricing present or marked as request based, and not a pure embed-only entry
+    if has_gen_pricing and not ("embed_per_1k" in m and "input_per_1k" not in m and "output_per_1k" not in m):
+        comps.append("GEN")
+
+    if not comps:
+        comps = ["GEN"]
+    return sorted(list(set(comps)))
+
+
+def _normalize_prices(data: Dict[str, Any]) -> Dict[str, Any]:
+    try:
+        models = list(data.get("models", [])) if isinstance(data, dict) else []
+        out: list[Dict[str, Any]] = []
+        for m in models:
+            if not isinstance(m, dict):
+                continue
+            mm = dict(m)
+            if "provider" in mm and isinstance(mm["provider"], str):
+                mm["provider"] = mm["provider"].strip().lower()
+            if "model" in mm and isinstance(mm["model"], str):
+                mm["model"] = mm["model"].strip()
+            if not isinstance(mm.get("components"), list) or not mm.get("components"):
+                mm["components"] = _classify_components(mm)
+            out.append(mm)
+        new = dict(data)
+        new["models"] = out
+        return new
+    except Exception:
         return _default_prices()
-    return data
+
+
+def prices_get() -> Dict[str, Any]:
+    raw = _read_json(gui_dir() / "prices.json", {"models": []})
+    data = raw if (raw and isinstance(raw, dict) and raw.get("models")) else _default_prices()
+    return _normalize_prices(data)
 
 
 def prices_upsert(item: Dict[str, Any]) -> Dict[str, Any]:
@@ -270,6 +315,10 @@ def prices_upsert(item: Dict[str, Any]) -> Dict[str, Any]:
         models.append(item)
     else:
         models[idx].update(item)
+    # Normalize components on write so subsequent reads are fast
+    for i in range(len(models)):
+        if not isinstance(models[i].get("components"), list):
+            models[i]["components"] = _classify_components(models[i])
     data["models"] = models
     data["last_updated"] = __import__('datetime').datetime.now().strftime('%Y-%m-%d')
     _write_json(prices_path, data)

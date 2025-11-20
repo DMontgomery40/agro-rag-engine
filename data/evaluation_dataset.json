@@ -966,5 +966,12 @@
       "gui/js/tooltips.js",
       "gui/js/error-helpers.js"
     ]
+  },
+  {
+    "q": "smoke test question",
+    "repo": "agro",
+    "expect_paths": [
+      "README.md"
+    ]
   }
 ]

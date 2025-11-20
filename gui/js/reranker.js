@@ -995,11 +995,12 @@ function initRerankerUI() {
         trainBtn.addEventListener('click', async () => {
             const epochs = parseInt(document.getElementById('reranker-epochs')?.value || '2');
             const batchSize = parseInt(document.getElementById('reranker-batch')?.value || '16');
+            const maxLength = parseInt(document.getElementById('reranker-maxlen')?.value || '512');
 
             trainBtn.disabled = true;
             trainBtn.textContent = 'Training...';
             try {
-                await trainReranker({ epochs, batch_size: batchSize });
+                await trainReranker({ epochs, batch_size: batchSize, max_length: maxLength });
             } catch (error) {
                 alert(error.message);
             } finally {

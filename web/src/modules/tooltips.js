@@ -114,6 +114,65 @@
         [['Free (no API costs)', 'info'], ['Requires download', 'warn']]
       ),
 
+      // Reranker Inference (live search blending)
+      AGRO_RERANKER_ALPHA: L(
+        'Reranker Blend Alpha',
+        'Weight of the cross-encoder reranker score during final fusion. Higher alpha prioritizes semantic pairwise scoring; lower alpha relies more on initial hybrid retrieval (BM25 + dense). Typical range 0.6–0.8. Increasing alpha can improve ordering for nuanced queries but may surface false positives if your model is undertrained.',
+        [
+          ['Cross-Encoder Overview (SBERT)', 'https://www.sbert.net/examples/applications/cross-encoder/README.html'],
+          ['Reciprocal Rank Fusion (RRF)', 'https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf'],
+          ['Hybrid Retrieval Concepts', 'https://qdrant.tech/articles/hybrid-search/']
+        ],
+        [['Affects ranking', 'info']]
+      ),
+      AGRO_RERANKER_MAXLEN: L(
+        'Reranker Max Sequence Length (Inference)',
+        'Maximum token length for each (query, text) pair during live reranking. Larger values increase memory/cost and may not improve quality beyond ~256–384 tokens for code. Use higher values for long comments/docs; lower for tight compute budgets.',
+        [
+          ['Transformers Tokenization', 'https://huggingface.co/docs/transformers/main/en/tokenizer_summary'],
+          ['Sequence Length vs Memory', 'https://huggingface.co/docs/transformers/perf_train_gpu_one']
+        ],
+        [['Performance sensitive', 'warn']]
+      ),
+      AGRO_RERANKER_BATCH: L(
+        'Reranker Batch Size (Inference)',
+        'Batch size used when scoring candidates during rerank. Higher values reduce latency but increase memory. If you see OOM or throttling, lower this value.',
+        [
+          ['Batching Techniques', 'https://huggingface.co/docs/transformers/v4.44.2/en/perf_train_gpu_one#use-mixed-precision'],
+          ['Latency vs Throughput', 'https://en.wikipedia.org/wiki/Batch_processing']
+        ],
+        [['Tune for memory', 'info']]
+      ),
+
+      // Learning Reranker — Training controls
+      RERANKER_TRAIN_EPOCHS: L(
+        'Training Epochs',
+        'Number of full passes over the training triplets for the learning reranker. More epochs can improve quality but risk overfitting when data is small. Start with 1–2 and increase as your mined dataset grows.',
+        [
+          ['Fine-tuning Cross-Encoders', 'https://www.sbert.net/examples/training/cross-encoder/README.html'],
+          ['InputExample format', 'https://www.sbert.net/docs/package_reference/cross_encoder.html#inputexample']
+        ],
+        [['Quality vs overfit', 'warn']]
+      ),
+      RERANKER_TRAIN_BATCH: L(
+        'Training Batch Size',
+        'Batches per gradient step during training. Larger batch sizes stabilize training but require more memory. For Colima or small GPUs/CPUs, use 1–4. If you see the container exit with code -9 (OOM), reduce this value.',
+        [
+          ['Memory Tips (HF)', 'https://huggingface.co/docs/transformers/perf_train_gpu_one'],
+          ['Colima Resources', 'https://github.com/abiosoft/colima']
+        ],
+        [['Lower = safer on Colima', 'info']]
+      ),
+      RERANKER_TRAIN_MAXLEN: L(
+        'Training Max Sequence Length',
+        'Token limit for the cross-encoder during training. Longer sequences increase memory quadratically. If training fails with OOM (-9) under Docker/Colima, set 128–256. Sequences longer than the limit are truncated by the tokenizer and may emit warnings.',
+        [
+          ['Tokenization & Truncation', 'https://huggingface.co/docs/tokenizers/index'],
+          ['Cross-Encoder Training', 'https://www.sbert.net/examples/training/cross-encoder/README.html']
+        ],
+        [['Memory sensitive', 'warn']]
+      ),
+
       // Retrieval tuning
       MQ_REWRITES: L(
         'Multi‑Query Rewrites',
@@ -637,6 +696,44 @@
 
     // Also attach to manual tooltips in HTML
     attachManualTooltips();
+
+    // Attach training control tooltips by id (React inputs don’t always use name=)
+    const trainingFields = [
+      { id: 'reranker-epochs', key: 'RERANKER_TRAIN_EPOCHS' },
+      { id: 'reranker-batch', key: 'RERANKER_TRAIN_BATCH' },
+      { id: 'reranker-maxlen', key: 'RERANKER_TRAIN_MAXLEN' },
+    ];
+    trainingFields.forEach(({id, key}) => {
+      const field = document.getElementById(id);
+      if (!field) return;
+      const parent = field.closest('.input-group');
+      if (!parent) return;
+      const label = parent.querySelector('label');
+      if (!label || label.querySelector('.help-icon')) return;
+      let html = map[key];
+      if (!html) return;
+      const spanText = document.createElement('span');
+      spanText.className = 'label-text';
+      spanText.textContent = label.textContent;
+      label.textContent = '';
+      label.appendChild(spanText);
+      const wrap = document.createElement('span');
+      wrap.className = 'tooltip-wrap';
+      const icon = document.createElement('span');
+      icon.className = 'help-icon';
+      icon.setAttribute('tabindex', '0');
+      icon.setAttribute('aria-label', `Help: ${label.textContent}`);
+      icon.textContent = '?';
+      icon.dataset.tooltipAttached = 'true';
+      const bubble = document.createElement('div');
+      bubble.className = 'tooltip-bubble';
+      bubble.setAttribute('role', 'tooltip');
+      bubble.innerHTML = html;
+      wrap.appendChild(icon);
+      wrap.appendChild(bubble);
+      label.appendChild(wrap);
+      attachTooltipListeners(icon, bubble, wrap);
+    });
   }
 
   window.Tooltips = { buildTooltipMap, attachTooltips, attachManualTooltips };

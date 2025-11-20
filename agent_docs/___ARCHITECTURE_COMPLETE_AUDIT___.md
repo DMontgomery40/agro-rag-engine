@@ -2300,3 +2300,19 @@ Add useEffect to load from /api/config on mount.
 2. After testing passes: Remove all 12 inline duplicate endpoints
 3. Verify final line count reduction in app.py
 4. Mark Phase 1 as complete
+## 2025-11-20  — UI Embed Fix + Playwright Alignment
+
+Files Modified:
+- gui/js/grafana.js:25–39, 91–97 — Default dashboard UID/slug changed to `agro-overview` (provisioned, known-good). `getConfig().dashboardUid` default updated accordingly. Rationale: ensure Grafana embed loads a guaranteed dashboard by default in /gui.
+- gui/index.html:2684–2688 — Initial values for `GRAFANA_DASHBOARD_UID` and `GRAFANA_DASHBOARD_SLUG` set to `agro-overview` so users see a working board immediately.
+- tests/gui-smoke/grafana_embed.spec.ts: URL assertion updated to read UID from the page and assert against it, avoiding hardcoded `agro-total-visibility`. Maintains non-black-screen + sizing checks at 1920×1080.
+
+Impact:
+- Grafana tab in legacy GUI renders a dashboard out of the box. Users can still switch to `agro-total-visibility` or any UID via UI or POST /api/config.
+- Playwright smoke remains stable even if the default UID changes via env or UI.
+
+Dependencies:
+- No import changes. Relies on existing Grafana provisioning at infra/grafana/provisioning/dashboards/agro_overview.json (uid `agro-overview`).
+
+Status:
+- Next step: run Playwright GUI smoke with server running at 8012 to produce verification logs and screenshots.

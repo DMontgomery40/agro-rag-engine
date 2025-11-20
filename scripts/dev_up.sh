@@ -33,11 +33,11 @@ if [[ "${DEV_LOCAL_UVICORN:-0}" = "1" ]]; then
     bash "$ROOT_DIR/scripts/setup.sh"
   fi
   . "$ROOT_DIR/.venv/bin/activate"
-  if pgrep -f "uvicorn .*server\.app:app" >/dev/null; then
+  if pgrep -f "uvicorn .*server\.asgi:create_app" >/dev/null; then
     log "Uvicorn already running."
   else
-    log "Starting uvicorn locally on $HOST:$PORT ..."
-    nohup uvicorn server.app:app --host "$HOST" --port "$PORT" > /tmp/uvicorn_server.log 2>&1 &
+    log "Starting uvicorn locally on $HOST:$PORT (ASGI factory) ..."
+    nohup uvicorn server.asgi:create_app --factory --host "$HOST" --port "$PORT" > /tmp/uvicorn_server.log 2>&1 &
     sleep 1
   fi
 else

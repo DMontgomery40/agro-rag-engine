@@ -36,6 +36,7 @@ export function LearningRankerSubtab() {
   const [batch, setBatch] = useState(config.AGRO_RERANKER_BATCH || 16);
   const [epochs, setEpochs] = useState(2);
   const [trainBatch, setTrainBatch] = useState(16);
+  const [trainMaxLen, setTrainMaxLen] = useState(512);
 
   // Status and results
   const [status, setStatus] = useState<RerankerStatus>({
@@ -181,7 +182,7 @@ export function LearningRankerSubtab() {
       const response = await fetch(api('/reranker/train'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ epochs, batch: trainBatch })
+        body: JSON.stringify({ epochs, batch_size: trainBatch, max_length: trainMaxLen })
       });
       const data = await response.json();
       if (response.ok) {
@@ -623,6 +624,18 @@ export function LearningRankerSubtab() {
               max="64"
               step="4"
               onChange={(e) => setTrainBatch(parseInt(e.target.value) || 16)}
+            />
+          </div>
+          <div className="input-group">
+            <label>Training Max Length</label>
+            <input
+              id="reranker-maxlen"
+              type="number"
+              value={trainMaxLen}
+              min="128"
+              max="1024"
+              step="64"
+              onChange={(e) => setTrainMaxLen(parseInt(e.target.value) || 512)}
             />
           </div>
         </div>
