@@ -30,6 +30,7 @@ test('Grafana embed: structure, sizing, and theme variables', async ({ page }) =
   const src = await iframe.getAttribute('src');
   // We don’t require Grafana to be up; just ensure URL composed
   expect(src).toContain('/d/');
+  expect(src).toContain('/agro-total-visibility');
   expect(src).toContain('orgId=');
   expect(src).toContain('refresh=');
 
@@ -46,4 +47,3 @@ test('Grafana embed: structure, sizing, and theme variables', async ({ page }) =
   expect(colors.bg.length).toBeGreaterThan(0);
   expect(colors.bg.toLowerCase()).not.toBe('#000000');
 });
-

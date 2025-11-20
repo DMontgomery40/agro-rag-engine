@@ -1,4 +1,5 @@
 {
+  "uid": "agro-total-visibility",
   "title": "AGRO Total Visibility",
   "style": "dark",
   "refresh": "10s",
@@ -18,69 +19,119 @@
     "target": {"limit": 100, "matchAny": false, "tags": [], "type": "dashboard"}
   }]},
   "panels": [
-    {"type": "row", "title": "Indexing Performance", "collapsed": false, "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0}},
+    {"type": "row", "title": "Quick Stats", "collapsed": false, "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0}},
     {
-      "type": "logs",
-      "title": "Indexing Runs (latest 100)",
-      "datasource": {"type": "loki", "uid": "loki"},
-      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 1},
-      "options": {"dedupStrategy": "none", "enableLogDetails": true, "showTime": true, "wrapLogMessage": true},
-      "targets": [{"expr": "{filename=~\\".*/data/tracking/indexing_events.jsonl\\"} | json", "refId": "A"}]
+      "type": "stat",
+      "title": "Request Rate (req/min)",
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 1},
+      "fieldConfig": {"defaults": {"unit": "reqpm", "color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color":"#73BF69"},{"color":"#F2CC0C", "value": 200}, {"color":"#F2495C", "value": 1000}]}, "decimals": 0}},
+      "options": {"colorMode":"background","graphMode":"area","justifyMode":"center","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false},"textMode":"value"},
+      "targets": [{"expr": "sum(rate(agro_requests_total[1m])) * 60", "refId": "A"}]
     },
-    {"type": "row", "title": "Query Traceability", "collapsed": false, "gridPos": {"h": 1, "w": 24, "x": 0, "y": 10}},
+    {
+      "type": "stat",
+      "title": "Error Rate (%)",
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 1},
+      "fieldConfig": {"defaults": {"unit": "percent", "color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color":"#73BF69"},{"color":"#F2CC0C", "value": 2},{"color":"#F2495C", "value": 5}]}, "decimals": 2}},
+      "options": {"colorMode":"background","graphMode":"area","justifyMode":"center","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false},"textMode":"value"},
+      "targets": [{"expr": "sum(rate(agro_requests_total{success=\"false\"}[5m])) / sum(rate(agro_requests_total[5m])) * 100", "refId": "A"}]
+    },
+    {
+      "type": "stat",
+      "title": "P95 Latency (s)",
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 1},
+      "fieldConfig": {"defaults": {"unit": "s", "color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color":"#73BF69"},{"color":"#F2CC0C", "value": 2},{"color":"#F2495C", "value": 5}]}, "decimals": 2}},
+      "options": {"colorMode":"background","graphMode":"area","justifyMode":"center","reduceOptions":{"calcs":["lastNotNull"],"fields":"","values":false},"textMode":"value"},
+      "targets": [{"expr": "histogram_quantile(0.95, sum by (le) (rate(agro_request_duration_seconds_bucket{stage=\"request\"}[5m])))", "refId": "A"}]
+    },
+    {
+      "type": "stat",
+      "title": "Tokens (5m)",
+      "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 1},
+      "fieldConfig": {"defaults": {"unit": "short", "decimals": 0}},
+      "options": {"colorMode":"background","graphMode":"none","justifyMode":"center","reduceOptions":{"calcs":["sum"],"fields":"","values":false},"textMode":"value"},
+      "targets": [{"expr": "sum(increase(agro_tokens_total{role=\"stage\"}[5m]))", "refId": "A"}]
+    },
+
+    {"type": "row", "title": "Stage Latency (smoothed)", "collapsed": false, "gridPos": {"h": 1, "w": 24, "x": 0, "y": 5}},
     {
       "type": "timeseries",
       "title": "Stage Duration (avg over 5m)",
       "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
-      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 11},
-      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 6},
+      "fieldConfig": {
+        "defaults": {
+          "custom": {"lineInterpolation": "smooth", "fillOpacity": 20, "showPoints": "never", "gradientMode": "opacity"},
+          "color": {"mode": "palette-classic"},
+          "unit": "s"
+        },
+        "overrides": [
+          {"matcher": {"id":"byName","options":"vector_search"}, "properties": [{"id":"color","value":{"mode":"fixed","fixedColor":"#8A5CF6"}}]},
+          {"matcher": {"id":"byName","options":"bm25_search"},   "properties": [{"id":"color","value":{"mode":"fixed","fixedColor":"#FFB357"}}]},
+          {"matcher": {"id":"byName","options":"rrf_fusion"},    "properties": [{"id":"color","value":{"mode":"fixed","fixedColor":"#F2CC0C"}}]},
+          {"matcher": {"id":"byName","options":"hydrate"},       "properties": [{"id":"color","value":{"mode":"fixed","fixedColor":"#56D5DB"}}]},
+          {"matcher": {"id":"byName","options":"cross_encoder_rerank"}, "properties": [{"id":"color","value":{"mode":"fixed","fixedColor":"#73BF69"}}]},
+          {"matcher": {"id":"byName","options":"request"},      "properties": [{"id":"color","value":{"mode":"fixed","fixedColor":"#A0A7B5"}}]}
+        ]
+      },
       "options": {"legend": {"displayMode": "table", "placement": "right"}, "tooltip": {"mode": "multi"}},
       "targets": [{
-        "expr": "sum(rate(agro_request_duration_seconds_sum{stage=~\\"(vector_search|bm25_search|cross_encoder_rerank|hydrate|request)\\"}[5m])) by (stage) / sum(rate(agro_request_duration_seconds_count{stage=~\\"(vector_search|bm25_search|cross_encoder_rerank|hydrate|request)\\"}[5m])) by (stage)",
+        "expr": "sum(rate(agro_request_duration_seconds_sum{stage=~\"(vector_search|bm25_search|rrf_fusion|hydrate|cross_encoder_rerank|request)\"}[5m])) by (stage) / sum(rate(agro_request_duration_seconds_count{stage=~\"(vector_search|bm25_search|rrf_fusion|hydrate|cross_encoder_rerank|request)\"}[5m])) by (stage)",
         "legendFormat": "{{stage}}",
         "refId": "A"
       }]
     },
-    {
-      "type": "logs",
-      "title": "Trace Steps (latest 100)",
-      "datasource": {"type": "loki", "uid": "loki"},
-      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 20},
-      "options": {"dedupStrategy": "none", "enableLogDetails": true, "showTime": true, "wrapLogMessage": true},
-      "targets": [{"expr": "{filename=~\\".*/data/tracking/trace_steps.jsonl\\"} | json", "refId": "A"}]
-    },
+
+    {"type": "row", "title": "Tokens & Cost by Provider", "collapsed": false, "gridPos": {"h": 1, "w": 24, "x": 0, "y": 15}},
     {
       "type": "timeseries",
       "title": "Tokens by Stage (5m sum)",
       "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 29},
-      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+      "fieldConfig": {"defaults": {"unit": "short", "custom": {"lineInterpolation":"smooth","showPoints":"never","fillOpacity":15}}},
       "options": {"legend": {"displayMode": "table", "placement": "right"}},
-      "targets": [{
-        "expr": "sum(increase(agro_tokens_total{role=\"stage\"}[5m])) by (provider,model)",
-        "legendFormat": "{{provider}}:{{model}}",
-        "refId": "A"
-      }]
+      "targets": [{"expr": "sum(increase(agro_tokens_total{role=\"stage\"}[5m])) by (provider,model)", "legendFormat": "{{provider}}:{{model}}", "refId":"A"}]
     },
     {
       "type": "timeseries",
       "title": "Cost by Stage (5m sum)",
       "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 29},
-      "fieldConfig": {"defaults": {"unit": "currencyUSD"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+      "fieldConfig": {"defaults": {"unit": "currencyUSD", "custom": {"lineInterpolation":"smooth","showPoints":"never","fillOpacity":15}}},
       "options": {"legend": {"displayMode": "table", "placement": "right"}},
-      "targets": [{
-        "expr": "sum(increase(agro_cost_usd_total[5m])) by (provider,model)",
-        "legendFormat": "{{provider}}:{{model}}",
-        "refId": "A"
-      }]
+      "targets": [{"expr": "sum(increase(agro_cost_usd_total[5m])) by (provider,model)", "legendFormat": "{{provider}}:{{model}}", "refId":"A"}]
     },
-    {"type": "row", "title": "Evaluation & Quality", "collapsed": false, "gridPos": {"h": 1, "w": 24, "x": 0, "y": 29}},
+
+    {"type": "row", "title": "Indexing Runs", "collapsed": false, "gridPos": {"h": 1, "w": 24, "x": 0, "y": 24}},
+    {
+      "type": "logs",
+      "title": "Indexing Runs (latest 100)",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 25},
+      "options": {"dedupStrategy": "none", "enableLogDetails": true, "showTime": true, "wrapLogMessage": true},
+      "targets": [{"expr": "{filename=~\\".*/data/tracking/indexing_events.jsonl\\"} | json", "refId": "A"}]
+    },
+
+    {"type": "row", "title": "Trace Steps", "collapsed": false, "gridPos": {"h": 1, "w": 24, "x": 0, "y": 34}},
+    {
+      "type": "logs",
+      "title": "Trace Steps (latest 100)",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 35},
+      "options": {"dedupStrategy": "none", "enableLogDetails": true, "showTime": true, "wrapLogMessage": true},
+      "targets": [{"expr": "{filename=~\\".*/data/tracking/trace_steps.jsonl\\"} | json", "refId": "A"}]
+    },
+
+    {"type": "row", "title": "Evaluation & Quality", "collapsed": false, "gridPos": {"h": 1, "w": 24, "x": 0, "y": 44}},
     {
       "type": "logs",
       "title": "Latest Evaluation",
       "datasource": {"type": "loki", "uid": "loki"},
-      "gridPos": {"h": 6, "w": 24, "x": 0, "y": 37},
+      "gridPos": {"h": 6, "w": 24, "x": 0, "y": 45},
       "options": {"dedupStrategy": "none", "enableLogDetails": true, "showTime": true, "wrapLogMessage": true},
       "targets": [{"expr": "{filename=~\\".*/data/tracking/evals_latest.json\\"} | json", "refId": "A"}]
     }
