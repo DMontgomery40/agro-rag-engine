@@ -2,7 +2,7 @@
   "retrieval": {
     "rrf_k_div": 60,
     "langgraph_final_k": 20,
-    "max_query_rewrites": 3,
+    "max_query_rewrites": 2,
     "fallback_confidence": 0.55,
     "final_k": 10,
     "eval_final_k": 5,
@@ -14,12 +14,20 @@
     "bm25_weight": 0.3,
     "vector_weight": 0.7,
     "card_search_enabled": 1,
-    "multi_query_m": 4
+    "multi_query_m": 4,
+    "use_semantic_synonyms": 1,
+    "topk_dense": 75,
+    "topk_sparse": 75,
+    "hydration_mode": "lazy",
+    "hydration_max_chars": 2000,
+    "disable_rerank": 0
   },
   "scoring": {
-    "card_bonus": 0.12,
+    "card_bonus": 0.08,
     "filename_boost_exact": 1.5,
-    "filename_boost_partial": 1.2
+    "filename_boost_partial": 1.2,
+    "vendor_mode": "prefer_first_party",
+    "path_boosts": "/gui,/server,/indexer,/retrieval"
   },
   "layer_bonus": {
     "gui": 0.15,
@@ -31,7 +39,7 @@
   "embedding": {
     "embedding_type": "openai",
     "embedding_model": "text-embedding-3-large",
-    "embedding_dim": 512,
+    "embedding_dim": 3072,
     "voyage_model": "voyage-code-3",
     "embedding_model_local": "all-MiniLM-L6-v2",
     "embedding_batch_size": 64,
@@ -52,17 +60,20 @@
   },
   "indexing": {
     "qdrant_url": "http://127.0.0.1:6333",
-    "collection_name": "",
+    "collection_name": "code_chunks_{repo}",
     "vector_backend": "qdrant",
     "indexing_batch_size": 100,
     "indexing_workers": 4,
     "bm25_tokenizer": "stemmer",
     "bm25_stemmer_lang": "english",
     "index_excluded_exts": ".png,.jpg,.gif,.ico,.svg,.woff,.ttf",
-    "index_max_file_size_mb": 10
+    "index_max_file_size_mb": 10,
+    "skip_dense": 0,
+    "out_dir_base": "./out",
+    "repos_file": "./repos.json"
   },
   "reranking": {
-    "reranker_model": "models/cross-encoder-agro",
+    "reranker_model": "cross-encoder/ms-marco-MiniLM-L-12-v2",
     "agro_reranker_enabled": 1,
     "agro_reranker_alpha": 0.7,
     "agro_reranker_topn": 50,
@@ -73,19 +84,22 @@
     "cohere_rerank_model": "rerank-3.5",
     "voyage_rerank_model": "rerank-2",
     "reranker_backend": "local",
-    "reranker_timeout": 10
+    "reranker_timeout": 10,
+    "rerank_input_snippet_chars": 700
   },
   "generation": {
-    "gen_model": "gpt-4o",
-    "gen_temperature": 0.07,
+    "gen_model": "gpt-4o-mini",
+    "gen_temperature": 0.0,
     "gen_max_tokens": 2048,
     "gen_top_p": 1.0,
     "gen_timeout": 60,
     "gen_retry_max": 2,
-    "enrich_model": "qwen3-coder:14b",
+    "enrich_model": "gpt-4o-mini",
     "enrich_backend": "openai",
     "enrich_disabled": 0,
-    "ollama_num_ctx": 8192
+    "ollama_num_ctx": 8192,
+    "gen_model_cli": "qwen3-coder:14b",
+    "gen_model_ollama": "qwen3-coder:30b"
   },
   "enrichment": {
     "cards_enrich_default": 1,
@@ -109,20 +123,51 @@
     "metrics_enabled": 1,
     "alert_include_resolved": 1,
     "alert_webhook_timeout": 5,
-    "log_level": "INFO"
+    "log_level": "INFO",
+    "tracing_mode": "langsmith",
+    "trace_auto_ls": 1,
+    "trace_retention": 50,
+    "agro_log_path": "data/logs/queries.jsonl",
+    "alert_notify_severities": "critical,warning"
   },
   "training": {
     "reranker_train_epochs": 2,
     "reranker_train_batch": 16,
-    "reranker_train_lr": 0.00002,
+    "reranker_train_lr": 2e-05,
     "reranker_warmup_ratio": 0.1,
     "triplets_min_count": 100,
-    "triplets_mine_mode": "replace"
+    "triplets_mine_mode": "replace",
+    "agro_reranker_model_path": "models/cross-encoder-agro",
+    "agro_reranker_mine_mode": "replace",
+    "agro_reranker_mine_reset": 0,
+    "agro_triplets_path": "data/training/triplets.jsonl"
   },
   "ui": {
     "chat_streaming_enabled": 1,
     "chat_history_max": 50,
     "editor_port": 4440,
-    "grafana_dashboard_uid": "agro-overview"
+    "grafana_dashboard_uid": "agro-overview",
+    "grafana_dashboard_slug": "agro-overview",
+    "grafana_base_url": "http://127.0.0.1:3000",
+    "grafana_auth_mode": "anonymous",
+    "grafana_embed_enabled": 1,
+    "grafana_kiosk": "tv",
+    "grafana_org_id": 1,
+    "grafana_refresh": "10s",
+    "editor_bind": "local",
+    "editor_embed_enabled": 1,
+    "editor_enabled": 1,
+    "editor_image": "agro-vscode:latest",
+    "theme_mode": "dark",
+    "open_browser": 1
+  },
+  "hydration": {
+    "hydration_mode": "lazy",
+    "hydration_max_chars": 2000
+  },
+  "evaluation": {
+    "golden_path": "data/evaluation_dataset.json",
+    "baseline_path": "data/evals/eval_baseline.json",
+    "eval_multi_m": 10
   }
 }
