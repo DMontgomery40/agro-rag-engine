@@ -89,8 +89,10 @@ def ensure_venv_and_deps(rag_root: Path, progress: Progress, task_id) -> bool:
         for req in reqs:
             if Path(req).exists():
                 subprocess.check_call([str(py), '-m', 'pip', 'install', '--disable-pip-version-check', '-r', req])
+        # Install Gunicorn for production API serving
+        subprocess.check_call([str(py), '-m', 'pip', 'install', '--disable-pip-version-check', 'gunicorn'])
         # quick sanity imports
-        subprocess.check_call([str(py), '-c', 'import fastapi,qdrant_client,bm25s,langgraph;print("ok")'])
+        subprocess.check_call([str(py), '-c', 'import fastapi,qdrant_client,bm25s,langgraph,gunicorn;print("ok")'])
         return True
     except subprocess.CalledProcessError as e:
         console.print(f"[red]Dependency install failed:[/red] {e}")

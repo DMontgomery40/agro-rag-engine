@@ -69,15 +69,34 @@ def _find_repo(name: str) -> Optional[Dict[str, Any]]:
     return None
 
 
+def _expand_env_vars(path_str: str) -> str:
+    """Expand environment variables in path string. Supports ${VAR}, ${VAR:-default}, and $VAR syntax."""
+    import re
+
+    def replace_var(match):
+        # Handle ${VAR:-default} syntax
+        if ':-' in match.group(0):
+            var_part = match.group(0)[2:-1]  # Remove ${ and }
+            var_name, default = var_part.split(':-', 1)
+            return os.getenv(var_name.strip(), default.strip())
+        # Handle ${VAR} or $VAR
+        var_name = match.group(1) or match.group(2)
+        return os.getenv(var_name, match.group(0))
+
+    # Replace ${VAR:-default}, ${VAR}, and $VAR patterns
+    path_str = re.sub(r'\$\{([^}]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)', replace_var, path_str)
+    return path_str
+
+
 def get_repo_paths(name: str) -> List[str]:
     r = _find_repo(name)
     if not r:
         raise ValueError(f"Unknown repo: {name}. Known: {', '.join(list_repos()) or '[]'}")
     p = r.get("path")
     if isinstance(p, list):
-        return [str(Path(x).expanduser()) for x in p]
+        return [str(Path(_expand_env_vars(x)).expanduser()) for x in p]
     if isinstance(p, str):
-        return [str(Path(p).expanduser())]
+        return [str(Path(_expand_env_vars(p)).expanduser())]
     raise ValueError(f"Repo `{name}` missing 'path' in repos.json")
 
 
@@ -148,4 +167,13 @@ def choose_repo_from_query(query: str, default: Optional[str] = None) -> str:
     if best:
         return best
     return (default or get_default_repo())
+
+
+def exclude_paths(name: str) -> List[str]:
+    """Get list of exclude path patterns for a repo."""
+    r = _find_repo(name)
+    if not r:
+        return []
+    lst = r.get("exclude_paths") or []
+    return [str(x) for x in lst if isinstance(x, str)]
 

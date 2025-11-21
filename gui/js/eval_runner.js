@@ -38,10 +38,33 @@ async function saveEvalSettings() {
         const r = await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         if (!r.ok) throw new Error('Config update failed');
         await fetch('/api/env/reload', { method: 'POST' }).catch(() => {});
-        showToast('✓ Eval settings saved', 'success');
+        console.log('✓ Eval settings saved');
+        // Button re-enables itself, providing user feedback
     } catch (e) {
         console.error('Failed to save eval settings:', e);
-        showToast('Failed to save eval settings', 'error');
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to Save Evaluation Settings', {
+          message: e.message,
+          causes: [
+            'Backend API server is not running or responding slowly',
+            'Invalid file path format entered (golden.json or baseline.json path)',
+            'File system permissions issue - cannot read/write evaluation files',
+            'Network connectivity issue preventing config update',
+            'Qdrant or other backend service temporarily unavailable'
+          ],
+          fixes: [
+            'Verify file paths are correct: use relative paths like "data/golden.json"',
+            'Check backend is running: look at Infrastructure tab or docker logs',
+            'Verify file permissions: "ls -la data/" to check directory permissions',
+            'Try again - the issue may be temporary',
+            'Check if port 8012 is in use by another service'
+          ],
+          links: [
+            ['Evaluation Setup Docs', '/docs/EVALUATION.md#setup'],
+            ['Troubleshooting', '/docs/TROUBLESHOOTING.md#evaluation'],
+            ['File Permissions', 'https://en.wikipedia.org/wiki/File_permissions']
+          ]
+        }) : `Failed to save settings: ${e.message}`;
+        alert(msg);
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = 'Save Eval Settings'; }
     }
@@ -51,21 +74,32 @@ async function saveEvalSettings() {
 async function runEvaluation() {
     const useMulti = document.getElementById('eval-use-multi').value === '1';
     const finalK = parseInt(document.getElementById('eval-final-k').value) || 5;
+    const sampleSize = document.getElementById('eval-sample-size');
+    const sampleLimit = sampleSize ? parseInt(sampleSize.value) || null : null;
 
     const btn = document.getElementById('btn-eval-run');
     btn.disabled = true;
     btn.textContent = 'Starting...';
 
     try {
+        const payload = { use_multi: useMulti, final_k: finalK };
+        if (sampleLimit && sampleLimit > 0) {
+            payload.sample_limit = sampleLimit;
+        }
+
         const response = await fetch('/api/eval/run', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ use_multi: useMulti, final_k: finalK })
+            body: JSON.stringify(payload)
         });
 
         const data = await response.json();
 
         if (data.ok) {
+            // Store warning to display during/after eval
+            if (data.warning) {
+                window._evalWarning = data.warning;
+            }
             showEvalProgress();
             startPolling();
         } else {
@@ -161,12 +195,54 @@ function startPolling() {
                 await loadEvalResults();
             }
         } catch (error) {
-            console.error('Failed to poll status:', error);
+            console.error('Failed to poll evaluation status:', error);
 
-            // Hide progress bar on error
+            // Stop polling and show error to user
+            clearInterval(evalPollingInterval);
+            evalPollingInterval = null;
+
+            // Hide progress bar
             if (window.UXFeedback) {
                 window.UXFeedback.progress.hide('evaluation');
             }
+
+            // Show error in the UI with enhanced diagnostics
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Evaluation Polling Failed', {
+                message: error.message,
+                causes: [
+                    'Backend server crashed or was restarted during evaluation',
+                    'Network connection interrupted while polling status',
+                    'Evaluation process terminated unexpectedly',
+                    'Qdrant vector database became unavailable mid-evaluation',
+                    'API timeout while fetching evaluation status'
+                ],
+                fixes: [
+                    'Check Infrastructure tab to verify backend is running',
+                    'Review backend logs for evaluation process errors',
+                    'Ensure Qdrant is running: check Infrastructure > Services',
+                    'Check network connectivity and retry evaluation',
+                    'Restart evaluation after verifying all services are up'
+                ],
+                links: [
+                    ['Evaluation Troubleshooting', '/docs/EVALUATION.md#troubleshooting'],
+                    ['Backend Logs', '/docs/DEBUGGING.md#backend-logs'],
+                    ['Qdrant Status', 'https://qdrant.tech/documentation/guides/monitoring/'],
+                    ['Backend Health', '/api/health']
+                ]
+            }) : `✗ Evaluation polling failed: ${error.message}. Backend may have crashed.`;
+
+            const statusEl = document.getElementById('eval-status');
+            if (statusEl) {
+                statusEl.style.color = 'var(--err)';
+                statusEl.textContent = msg;
+                statusEl.title = `Error: ${error.message}. The backend evaluation process may have terminated.`;
+            }
+
+            console.warn('[Eval] Polling stopped. Possible causes:');
+            console.warn('  • Backend server crashed or restarted');
+            console.warn('  • Network connection interrupted');
+            console.warn('  • Evaluation process terminated unexpectedly');
+            console.warn('  • Qdrant or other service became unavailable');
         }
     }, 1000);
 }
@@ -177,8 +253,16 @@ async function loadEvalResults() {
         const response = await fetch('/api/eval/results');
         const data = await response.json();
 
+        // Handle both error response formats
         if (data.error) {
             throw new Error(data.error);
+        }
+        if (data.ok === false && data.message) {
+            throw new Error(data.message);
+        }
+        if (!data.top1_accuracy && data.top1_accuracy !== 0) {
+            // Results object should have numeric accuracy metrics
+            throw new Error('Invalid evaluation results: missing metrics');
         }
 
         evalResults = data;
@@ -198,7 +282,27 @@ async function loadEvalResults() {
         }
     } catch (error) {
         console.error('Failed to load results:', error);
-        document.getElementById('eval-status').textContent = 'Error: ' + error.message;
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to Load Evaluation Results', {
+            message: error.message,
+            causes: [
+                'Evaluation has not been run yet or results were not saved',
+                'Backend evaluation results API endpoint is not responding',
+                'Evaluation results file is corrupted or has invalid format',
+                'Network timeout while fetching evaluation results'
+            ],
+            fixes: [
+                'Run a full evaluation first using "Run Full Evaluation" button',
+                'Verify backend service is running: check Infrastructure tab',
+                'Check backend logs for /api/eval/results endpoint errors',
+                'Refresh the page and try loading results again'
+            ],
+            links: [
+                ['Evaluation Guide', '/docs/EVALUATION.md#viewing-results'],
+                ['OpenAI Evals', 'https://platform.openai.com/docs/guides/evals'],
+                ['Backend Health', '/api/health']
+            ]
+        }) : 'Error: ' + error.message;
+        document.getElementById('eval-status').textContent = msg;
         document.getElementById('eval-status').style.color = 'var(--err)';
         const btn = document.getElementById('btn-eval-run');
         btn.disabled = false;
@@ -217,6 +321,35 @@ function renderEvalResults() {
 
     // Show results section
     document.getElementById('eval-results').style.display = 'block';
+
+    // Display warning if present (either from results or stored from start)
+    const warning = evalResults.warning || window._evalWarning;
+    if (warning) {
+        let resultsContainer = document.getElementById('eval-results');
+        let warningEl = resultsContainer.querySelector('#eval-warning-banner');
+        if (!warningEl) {
+            warningEl = document.createElement('div');
+            warningEl.id = 'eval-warning-banner';
+            warningEl.style.cssText = `
+                background: color-mix(in oklch, var(--warn) 8%, var(--bg));
+                border: 1px solid var(--warn);
+                border-radius: 4px;
+                padding: 12px;
+                margin-bottom: 16px;
+                font-size: 13px;
+            `;
+            warningEl.innerHTML = `
+                <div style="color: var(--warn); font-weight: 600; margin-bottom: 4px;">
+                    ⚠ ${warning}
+                </div>
+                <div style="color: var(--fg-muted); font-size: 12px; margin-top: 4px;">
+                    Evaluation proceeded with available services. Results may reflect BM25-only retrieval if vector search was unavailable.
+                </div>
+            `;
+            resultsContainer.insertBefore(warningEl, resultsContainer.firstChild);
+        }
+    }
+    window._evalWarning = null;
 
     // Overall metrics
     const top1Pct = (evalResults.top1_accuracy * 100).toFixed(1) + '%';
@@ -303,7 +436,25 @@ function renderQuestionResult(r, isFailure) {
 // Save baseline
 async function saveBaseline() {
     if (!evalResults) {
-        alert('No evaluation results to save');
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('No Evaluation Results', {
+            message: 'Cannot save baseline - no evaluation results available',
+            causes: [
+                'No evaluation has been run yet in this session',
+                'Evaluation results were cleared or lost',
+                'Previous evaluation failed and did not produce results'
+            ],
+            fixes: [
+                'Run a full evaluation first using "Run Full Evaluation" button',
+                'Wait for current evaluation to complete before saving baseline',
+                'Check Evaluation tab for error messages from previous runs'
+            ],
+            links: [
+                ['Baseline Evaluation Setup', '/docs/EVALUATION.md#baseline'],
+                ['Running Evaluations', '/docs/EVALUATION.md#running-evaluations'],
+                ['Troubleshooting', '/docs/TROUBLESHOOTING.md#evaluation']
+            ]
+        }) : 'No evaluation results to save';
+        alert(msg);
         return;
     }
 
@@ -314,7 +465,7 @@ async function saveBaseline() {
 
         const data = await response.json();
         if (data.ok) {
-            showToast('Baseline saved successfully', 'success');
+            console.log('✓ Baseline saved successfully');
         } else {
             throw new Error('Failed to save baseline');
         }
@@ -345,7 +496,24 @@ async function saveBaseline() {
 // Compare with baseline
 async function compareWithBaseline() {
     if (!evalResults) {
-        alert('No current evaluation results');
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('No Current Results', {
+            message: 'Cannot compare - no current evaluation results available',
+            causes: [
+                'No evaluation has been run in this session',
+                'Evaluation results were lost or cleared',
+                'Page was refreshed before comparison was performed'
+            ],
+            fixes: [
+                'Run a full evaluation first before comparing',
+                'Check that evaluation completed successfully',
+                'Review Evaluation tab for any errors from previous runs'
+            ],
+            links: [
+                ['Comparison Guide', '/docs/EVALUATION.md#comparison'],
+                ['Running Evaluations', '/docs/EVALUATION.md#running-evaluations']
+            ]
+        }) : 'No current evaluation results';
+        alert(msg);
         return;
     }
 
@@ -354,7 +522,26 @@ async function compareWithBaseline() {
         const data = await response.json();
 
         if (!data.ok) {
-            throw new Error(data.message || 'No baseline found');
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Baseline Comparison Failed', {
+                message: data.message || 'No baseline found for comparison',
+                causes: [
+                    'No baseline exists yet - run evaluation and save as baseline first',
+                    'Backend baseline comparison API is not responding',
+                    'Baseline file is corrupted or missing'
+                ],
+                fixes: [
+                    'Save a baseline first using "Save as Baseline" button',
+                    'Check Infrastructure tab to ensure backend is running',
+                    'Re-run evaluation to generate fresh results',
+                    'Check backend logs for baseline file access errors'
+                ],
+                links: [
+                    ['Creating Baselines', '/docs/EVALUATION.md#creating-baseline'],
+                    ['Backend Health', '/api/health'],
+                    ['Troubleshooting', '/docs/TROUBLESHOOTING.md#baseline']
+                ]
+            }) : (data.message || 'Comparison failed');
+            throw new Error(msg);
         }
 
         renderComparison(data);
@@ -459,7 +646,24 @@ function renderComparison(data) {
 // Export results
 function exportEvalResults() {
     if (!evalResults) {
-        alert('No results to export');
+        const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('No Results to Export', {
+            message: 'Cannot export - no evaluation results available',
+            causes: [
+                'No evaluation has been run yet',
+                'Evaluation results were cleared from memory',
+                'Previous evaluation failed without producing results'
+            ],
+            fixes: [
+                'Run a full evaluation first to generate results',
+                'Wait for current evaluation to complete before exporting',
+                'Check Evaluation tab for any error messages'
+            ],
+            links: [
+                ['Exporting Results', '/docs/EVALUATION.md#export'],
+                ['Running Evaluations', '/docs/EVALUATION.md#running-evaluations']
+            ]
+        }) : 'No results to export';
+        alert(msg);
         return;
     }
 
@@ -472,7 +676,7 @@ function exportEvalResults() {
     a.download = `eval_results_${timestamp}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    showToast('Results exported', 'success');
+    console.log('✓ Results exported');
 }
 
 // Helper functions
@@ -482,26 +686,8 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-function showToast(message, type = 'info') {
-    const color = type === 'success' ? 'var(--ok)' : type === 'error' ? 'var(--err)' : 'var(--link)';
-    const toast = document.createElement('div');
-    toast.style.cssText = `
-        position: fixed;
-        top: 80px;
-        right: 24px;
-        background: var(--panel);
-        color: ${color};
-        border: 1px solid ${color};
-        padding: 12px 20px;
-        border-radius: 6px;
-        font-size: 13px;
-        z-index: 10000;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-    `;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
-}
+// Toast notifications have been replaced with inline warning banners
+// using the design system patterns from error-helpers.js and tooltips.js
 
 // Initialize
 if (typeof window !== 'undefined') {

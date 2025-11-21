@@ -1,0 +1,170 @@
+/**
+ * System Status Widget
+ * Displays real-time status for health, repo, cards, MCP, and autotune
+ */
+
+import { useState, useEffect, useCallback } from 'react';
+import { useAPI } from '@/hooks/useAPI';
+
+interface StatusData {
+  health: string;
+  repo: string;
+  cards: string;
+  mcp: string;
+  autotune: string;
+}
+
+export function SystemStatus() {
+  const { api } = useAPI();
+  const [status, setStatus] = useState<StatusData>({
+    health: '—',
+    repo: '—',
+    cards: '—',
+    mcp: '—',
+    autotune: '—',
+  });
+
+  const refreshStatus = useCallback(async () => {
+    const newStatus: StatusData = { ...status };
+
+    // Fetch repo info
+    try {
+      const configRes = await fetch(api('/api/config'));
+      const config = await configRes.json();
+      const repo = (config.env && (config.env.REPO || config.default_repo)) || '(none)';
+      const reposCount = (config.repos || []).length;
+      newStatus.repo = `${repo} (${reposCount} repos)`;
+    } catch (e) {
+      console.error('[SystemStatus] Failed to fetch repo:', e);
+    }
+
+    // Fetch health
+    try {
+      const healthRes = await fetch(api('/health'));
+      const health = await healthRes.json();
+      newStatus.health = `${health.status}${health.graph_loaded ? ' (graph ready)' : ''}`;
+    } catch (e) {
+      console.error('[SystemStatus] Failed to fetch health:', e);
+    }
+
+    // Fetch autotune
+    try {
+      const autotuneRes = await fetch(api('/api/autotune/status'));
+      const autotune = await autotuneRes.json();
+      newStatus.autotune = autotune.enabled ? (autotune.current_mode || 'enabled') : 'disabled';
+    } catch (e) {
+      newStatus.autotune = 'Pro required';
+    }
+
+    // Fetch cards
+    try {
+      const cardsRes = await fetch(api('/api/cards'));
+      const cards = await cardsRes.json();
+      newStatus.cards = `${cards.count || 0} cards`;
+    } catch (e) {
+      console.error('[SystemStatus] Failed to fetch cards:', e);
+    }
+
+    // Fetch MCP status
+    try {
+      const mcpRes = await fetch(api('/api/mcp/status'));
+      if (mcpRes.ok) {
+        const mcpData = await mcpRes.json();
+        const parts = [];
+        if (mcpData.python_http) {
+          const ph = mcpData.python_http;
+          parts.push(`py-http:${ph.host}:${ph.port}${ph.path} ${ph.running ? '' : '(stopped)'}`.trim());
+        }
+        if (mcpData.node_http) {
+          const nh = mcpData.node_http;
+          parts.push(`node-http:${nh.host}:${nh.port}${nh.path || ''} ${nh.running ? '' : '(stopped)'}`.trim());
+        }
+        if (mcpData.python_stdio_available !== undefined) {
+          parts.push(`py-stdio:${mcpData.python_stdio_available ? 'available' : 'missing'}`);
+        }
+        newStatus.mcp = parts.join(' | ') || 'unknown';
+      } else {
+        newStatus.mcp = 'unknown';
+      }
+    } catch (e) {
+      newStatus.mcp = 'unknown';
+    }
+
+    setStatus(newStatus);
+  }, [api]);
+
+  useEffect(() => {
+    refreshStatus();
+    const interval = setInterval(refreshStatus, 10000); // Refresh every 10 seconds
+    return () => clearInterval(interval);
+  }, [refreshStatus]);
+
+  return (
+    <div>
+      <h3
+        style={{
+          fontSize: '14px',
+          marginBottom: '16px',
+          color: 'var(--accent)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+        }}
+      >
+        <span
+          style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: 'var(--accent)',
+            boxShadow: '0 0 8px var(--accent)',
+          }}
+        ></span>
+        System Status
+      </h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <StatusItem label="Health" value={status.health} color="var(--ok)" />
+        <StatusItem label="Repo" value={status.repo} color="var(--fg)" />
+        <StatusItem label="Cards" value={status.cards} color="var(--link)" />
+        <StatusItem label="MCP" value={status.mcp} color="var(--link)" />
+        <StatusItem label="Auto-Tune" value={status.autotune} color="var(--warn)" />
+      </div>
+    </div>
+  );
+}
+
+interface StatusItemProps {
+  label: string;
+  value: string;
+  color: string;
+}
+
+function StatusItem({ label, value, color }: StatusItemProps) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '8px 12px',
+        background: 'var(--card-bg)',
+        borderRadius: '4px',
+        border: '1px solid var(--line)',
+      }}
+    >
+      <span
+        style={{
+          fontSize: '11px',
+          color: 'var(--fg-muted)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.5px',
+        }}
+      >
+        {label}
+      </span>
+      <span className="mono" style={{ color, fontWeight: '600' }}>
+        {value}
+      </span>
+    </div>
+  );
+}

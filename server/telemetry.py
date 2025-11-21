@@ -5,18 +5,20 @@ import uuid
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-# Get log path, ensure it's relative to repo root
-_log_path_str = os.getenv("AGRO_LOG_PATH", "data/logs/queries.jsonl")
-if Path(_log_path_str).is_absolute():
-    # If absolute path, use as-is
-    LOG_PATH = Path(_log_path_str)
-else:
-    # If relative, make it relative to repo root
-    from common.paths import repo_root
-    LOG_PATH = repo_root() / _log_path_str
+def _resolve_log_path() -> Path:
+    """Resolve the telemetry log path from env each time.
 
-# Create parent directory if it doesn't exist
-LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    This allows tests to monkeypatch AGRO_LOG_PATH and have it take effect
+    without relying on module reload order.
+    """
+    _log_path_str = os.getenv("AGRO_LOG_PATH", "data/logs/queries.jsonl")
+    if Path(_log_path_str).is_absolute():
+        path = Path(_log_path_str)
+    else:
+        from common.paths import repo_root
+        path = repo_root() / _log_path_str
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
 
 def _now() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
@@ -63,7 +65,7 @@ def log_query_event(
         "client_ip": client_ip or "",
         "user_agent": user_agent or "",
     }
-    with LOG_PATH.open("a", encoding="utf-8") as f:
+    with _resolve_log_path().open("a", encoding="utf-8") as f:
         f.write(json.dumps(evt, ensure_ascii=False) + "\n")
     return event_id
 
@@ -80,6 +82,5 @@ def log_feedback_event(event_id: str, feedback: Dict[str, Any]) -> None:
         "ts": _now(),
         "feedback": feedback,
     }
-    with LOG_PATH.open("a", encoding="utf-8") as f:
+    with _resolve_log_path().open("a", encoding="utf-8") as f:
         f.write(json.dumps(evt, ensure_ascii=False) + "\n")
-

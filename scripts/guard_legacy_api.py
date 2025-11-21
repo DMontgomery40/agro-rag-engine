@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-import os, sys, re
+import os
+import sys
+import re
 
 SCAN_ALL = os.getenv("SCAN_ALL", "0").lower() in {"1","true","yes"}
 ROOTS = [os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))]

@@ -1,8 +1,11 @@
 # Editor data
 .editor_data/
 out/editor/
+*.webm
+api_calls.jsonl
 
-# Python
+
+ Python
 __pycache__/
 *.py[codz]
 *.pyc
@@ -60,6 +63,8 @@ out.noindex-*/
 .dist/
 .cache
 *.egg-info/
+*.jsonl
+!data/training/triplets.manual.jsonl
 
 # Runtime data (generated, not committed)
 data/qdrant/

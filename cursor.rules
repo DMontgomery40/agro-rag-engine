@@ -19,7 +19,13 @@
   - everything in the backend must be full wired up and connected to the gui
   - everything in the gui must be fully wired up and connected to the backend
 
-## > !!! CRITICAL !!!  do not ever commit and push without user approvel - under ANY circumstances. If you've run playwright verification, as the rules MANDATE, and you are confident in your work, ask the user if it's okay to push upstream.  NEVER commit without user authorization !!! CRITICAL !!! 
+## > !!! CRITICAL !!!  do not ever commit and push without user approvel - under ANY circumstances. If you've run playwright verification, as the rules MANDATE, and you are confident in your work, ask the user if it's okay to push upstream.  NEVER commit without user authorization !!! CRITICAL !!!
+
+## Path Configuration: Always Use Relative Paths or Environment Variables
+
+  - **NEVER hard-code absolute paths** like `/Users/davidmontgomery/agro-rag-engine` - they break in Docker and other environments
+  - **ALWAYS use relative paths** (e.g., `models/cross-encoder-agro`, `data/evals/baseline.json`) or environment variables with defaults (e.g., `${REPO_ROOT:-/app}`)
+  - This ensures code works in both local development and Docker containers without modification
 
 ## You must verify the server is up, docker is running, and qdrant is accessible, before doing any RAG performance related tests
 
@@ -37,6 +43,16 @@
   - **BROKEN SETTINGS IN GUI MUST BE FIXED, THEY MUST NOT BE ERASED**
 
 # ***All agent-created .md files must go in /agent_docs/, please don't clutter root unnessarily***
+
+# **CRITICAL: Update Architecture Audit After EVERY Change**
+
+  - **MANDATORY RULE:** After EVERY code change (frontend OR backend), immediately update `agent_docs/___ARCHITECTURE_COMPLETE_AUDIT___.md`
+  - Add what you changed, which files, which line numbers
+  - Update dependencies if imports changed
+  - Mark issues as FIXED when resolved
+  - This is how frontend and backend agents COORDINATE
+  - If you don't update the audit, the other agent won't know what you did
+  - THIS IS NOT OPTIONAL - it's required for team coordination
 
 # Use the RAG server (API or MCP)
 Prefer `rag_search` for retrieval and `rag_answer` for full answers; it saves tokens and context.

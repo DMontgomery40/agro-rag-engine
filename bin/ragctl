@@ -8,26 +8,35 @@ usage() {
   cat <<'USAGE'
 Usage: ragctl <command> [args]
 
-Commands:
+Infrastructure:
   up                 Start Qdrant + Redis (docker compose)
   down               Stop infra
-  status             Show MCP + Docker + Qdrant status
-  setup [PATH] [NAME]
-                     Run guided setup for a repo (PATH optional; NAME optional)
-  index <REPO>       Index configured repo by name (uses repos.json or $REPOS_FILE)
+  status             Show Infra status (Docker/Ports)
   api                Run FastAPI server on 127.0.0.1:8012
-  chat [--stream]    Start CLI chat (honors $REPO and $THREAD_ID)
-  mcp-list           Print MCP tools/list response once
+  setup [PATH]       Run guided setup
+
+App Commands (requires API running):
+  chat               Start interactive chat
+  index <REPO>       Index a repository
+  config             Show/Set configuration
+  eval               Run evaluations
+  reranker           Reranker operations
+  profiles           Manage profiles
 
 Environment:
-  REPOS_FILE   Override path to repos.json (e.g., ~/.config/rag-service/repos.json)
-  REPO         Default repo for chat/index (can also pass to 'index')
+  REPOS_FILE   Override path to repos.json
+  REPO         Default repo
 USAGE
 }
 
 cmd="${1:-}"
+if [ -z "$cmd" ]; then
+  usage
+  exit 0
+fi
 shift || true
 
+# Infra commands
 case "$cmd" in
   up)
     exec bash "$ROOT_DIR/scripts/up.sh"
@@ -39,41 +48,29 @@ case "$cmd" in
     exec bash "$ROOT_DIR/scripts/status.sh"
     ;;
   setup)
-    # Allow: ragctl setup /abs/path name
     exec bash "$ROOT_DIR/scripts/setup.sh" "${1:-}" "${2:-}"
-    ;;
-  index)
-    repo_name="${1:-${REPO:-}}"
-    if [ -z "$repo_name" ]; then
-      echo "error: missing repo name. Usage: ragctl index <REPO>" >&2
-      exit 2
-    fi
-    if [ -x "$ROOT_DIR/.venv/bin/python" ]; then
-      . "$ROOT_DIR/.venv/bin/activate"
-    fi
-    REPO="$repo_name" exec python -m indexer.index_repo
     ;;
   api)
     if [ -x "$ROOT_DIR/.venv/bin/python" ]; then
       . "$ROOT_DIR/.venv/bin/activate"
     fi
-    exec python -m uvicorn server.app:app --host 127.0.0.1 --port 8012
-    ;;
-  chat)
-    if [ -x "$ROOT_DIR/.venv/bin/python" ]; then
-      . "$ROOT_DIR/.venv/bin/activate"
-    fi
-    exec python "$ROOT_DIR/chat_cli.py" "$@"
+    exec python -m uvicorn server.asgi:create_app --factory --host 127.0.0.1 --port 8012
     ;;
   mcp-list)
-    if [ -x "$ROOT_DIR/.venv/bin/python" ]; then
+     if [ -x "$ROOT_DIR/.venv/bin/python" ]; then
       . "$ROOT_DIR/.venv/bin/activate"
     fi
     printf '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}\n' | python -m server.mcp.server
     ;;
-  -*|--*)
-    usage; exit 2 ;;
-  ""|help|h|-h|--help)
+  # App commands -> Delegate to Python CLI
+  chat|index|config|config-set|eval|eval-status|reranker|profiles|profile-apply)
+    if [ -x "$ROOT_DIR/.venv/bin/python" ]; then
+      . "$ROOT_DIR/.venv/bin/activate"
+    fi
+    # Pass the command and all arguments
+    exec python -m cli.agro "$cmd" "$@"
+    ;;
+  help|h|-h|--help)
     usage; exit 0 ;;
   *)
     echo "Unknown command: $cmd" >&2

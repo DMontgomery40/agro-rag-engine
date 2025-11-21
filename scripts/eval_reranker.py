@@ -11,11 +11,37 @@ from sentence_transformers import CrossEncoder
 import numpy as np
 
 def load_triplets(path: Path) -> List[Dict[str, Any]]:
-    """Load all triplets from JSONL file."""
-    items = []
-    with path.open("r", encoding="utf-8") as f:
-        for line in f:
-            items.append(json.loads(line))
+    """Load all triplets from JSONL file.
+
+    Be robust to occasional malformed lines produced by upstream miners or
+    manual edits. We skip blank/whitespace-only lines and any line that fails
+    JSON parsing after control-character sanitization.
+    """
+    import re
+    import sys
+    items: List[Dict[str, Any]] = []
+    bad = 0
+    # Remove ASCII control chars except tab (0x09) from a single line
+    ctrl_re = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")
+    with path.open("r", encoding="utf-8", errors="replace") as f:
+        for raw in f:
+            s = raw.strip()
+            if not s:
+                continue
+            try:
+                items.append(json.loads(s))
+                continue
+            except Exception:
+                pass
+            # Attempt one pass of control-char sanitization
+            s2 = ctrl_re.sub(" ", s)
+            try:
+                items.append(json.loads(s2))
+            except Exception:
+                bad += 1
+                continue
+    if bad:
+        print(f"[eval_reranker] Skipped {bad} malformed JSONL line(s) in {path}", file=sys.stderr)
     return items
 
 def mrr_and_hits(model: CrossEncoder, triplets: List[Dict[str, Any]], 
@@ -76,5 +102,3 @@ def main():
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
-

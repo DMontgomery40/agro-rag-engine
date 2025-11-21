@@ -81,9 +81,33 @@
       const lastIndexedDisplay = document.getElementById('last-indexed-display');
       const formatted = (typeof window.formatIndexStatusDisplay === 'function') ? window.formatIndexStatusDisplay(d.lines, d.metadata) : formatIndexStatus(d.lines, d.metadata);
       const pct = d.running ? 50 : (d.metadata ? 100 : 0);
-      if (box1) box1.innerHTML = formatted;
+
+      // Preserve <details> open state before updating HTML
+      const preserveDetailsState = (container) => {
+        if (!container) return {};
+        const detailsEls = container.querySelectorAll('details');
+        const state = {};
+        detailsEls.forEach((el, idx) => { state[idx] = el.open; });
+        return state;
+      };
+
+      const restoreDetailsState = (container, state) => {
+        if (!container) return;
+        const detailsEls = container.querySelectorAll('details');
+        detailsEls.forEach((el, idx) => { if (idx in state) el.open = state[idx]; });
+      };
+
+      if (box1) {
+        const state1 = preserveDetailsState(box1);
+        box1.innerHTML = formatted;
+        restoreDetailsState(box1, state1);
+      }
       if (bar1) bar1.style.width = pct + '%';
-      if (box2) box2.innerHTML = formatted;
+      if (box2) {
+        const state2 = preserveDetailsState(box2);
+        box2.innerHTML = formatted;
+        restoreDetailsState(box2, state2);
+      }
       if (bar2) bar2.style.width = pct + '%';
       if (lastIndexedDisplay && d.metadata && d.metadata.timestamp){ lastIndexedDisplay.textContent = new Date(d.metadata.timestamp).toLocaleString(); }
       if (!d.running && indexPoll){ clearInterval(indexPoll); indexPoll = null; if (bar2){ setTimeout(()=>{bar2.style.width='0%';}, 2000); } }

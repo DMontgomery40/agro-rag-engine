@@ -1,4 +1,5 @@
-import os, operator
+import os
+import operator
 from typing import List, Dict, TypedDict, Annotated
 from pathlib import Path
 from dotenv import load_dotenv, find_dotenv
@@ -11,6 +12,7 @@ from retrieval.hybrid_search import search_routed_multi as hybrid_search_routed_
 from server.tracing import get_trace
 from server.env_model import generate_text
 from server.index_stats import get_index_stats
+from server.services.config_registry import get_config_registry
 
 # Load environment from repo root .env without hard-coded paths
 try:
@@ -26,6 +28,32 @@ try:
             load_dotenv(dotenv_path=alt, override=False)
 except Exception:
     pass
+
+# Module-level cached configuration values from ConfigRegistry
+_config_registry = get_config_registry()
+_MAX_QUERY_REWRITES = _config_registry.get_int('MAX_QUERY_REWRITES', 2)
+_LANGGRAPH_FINAL_K = _config_registry.get_int('LANGGRAPH_FINAL_K', 20)
+_FALLBACK_CONFIDENCE = _config_registry.get_float('FALLBACK_CONFIDENCE', 0.55)
+_CONF_TOP1 = _config_registry.get_float('CONF_TOP1', 0.62)
+_CONF_AVG5 = _config_registry.get_float('CONF_AVG5', 0.55)
+_CONF_ANY = _config_registry.get_float('CONF_ANY', 0.55)
+
+
+def reload_config():
+    """Reload configuration values from the registry.
+
+    Call this function after config changes to update module-level cached values.
+    This is automatically called when the config registry is reloaded via the API.
+    """
+    global _MAX_QUERY_REWRITES, _LANGGRAPH_FINAL_K, _FALLBACK_CONFIDENCE
+    global _CONF_TOP1, _CONF_AVG5, _CONF_ANY
+    _MAX_QUERY_REWRITES = _config_registry.get_int('MAX_QUERY_REWRITES', 2)
+    _LANGGRAPH_FINAL_K = _config_registry.get_int('LANGGRAPH_FINAL_K', 20)
+    _FALLBACK_CONFIDENCE = _config_registry.get_float('FALLBACK_CONFIDENCE', 0.55)
+    _CONF_TOP1 = _config_registry.get_float('CONF_TOP1', 0.62)
+    _CONF_AVG5 = _config_registry.get_float('CONF_AVG5', 0.55)
+    _CONF_ANY = _config_registry.get_float('CONF_ANY', 0.55)
+
 
 class RAGState(TypedDict):
     question: str
@@ -47,9 +75,9 @@ def should_use_multi_query(question: str) -> bool:
 def retrieve_node(state: RAGState) -> Dict:
     q = state['question']
     repo = state.get('repo') if isinstance(state, dict) else None
-    mq = int(os.getenv('MQ_REWRITES','2')) if should_use_multi_query(q) else 1
+    mq = _MAX_QUERY_REWRITES if should_use_multi_query(q) else 1
     tr = get_trace()
-    docs = hybrid_search_routed_multi(q, repo_override=repo, m=mq, final_k=int(os.getenv('LANGGRAPH_FINAL_K','20') or 20), trace=tr)
+    docs = hybrid_search_routed_multi(q, repo_override=repo, m=mq, final_k=_LANGGRAPH_FINAL_K, trace=tr)
     conf = float(sum(d.get('rerank_score',0.0) for d in docs)/max(1,len(docs)))
     repo_used = (repo or (docs[0].get('repo') if docs else os.getenv('REPO','project')))
     # freshness snapshot (per-request)
@@ -76,12 +104,12 @@ def route_after_retrieval(state:RAGState)->str:
     scores = sorted([float(d.get("rerank_score",0.0) or 0.0) for d in docs], reverse=True)
     top1 = scores[0] if scores else 0.0
     avg5 = (sum(scores[:5])/min(5, len(scores))) if scores else 0.0
-    try:
-        CONF_TOP1 = float(os.getenv('CONF_TOP1', '0.62'))
-        CONF_AVG5 = float(os.getenv('CONF_AVG5', '0.55'))
-        CONF_ANY = float(os.getenv('CONF_ANY', '0.55'))
-    except Exception:
-        CONF_TOP1, CONF_AVG5, CONF_ANY = 0.62, 0.55, 0.55
+
+    # Use cached config values instead of os.getenv
+    CONF_TOP1 = _CONF_TOP1
+    CONF_AVG5 = _CONF_AVG5
+    CONF_ANY = _CONF_ANY
+
     # Decide next step
     if top1 >= CONF_TOP1 or avg5 >= CONF_AVG5 or conf >= CONF_ANY:
         decision = "generate"
@@ -116,7 +144,8 @@ def rewrite_query(state: RAGState) -> Dict:
     return {'question': newq}
 
 def generate_node(state: RAGState) -> Dict:
-    q = state['question']; ctx = state['documents'][:5]
+    q = state['question']
+    ctx = state['documents'][:5]
     # packer summary for trace
     try:
         tr = get_trace()
@@ -210,7 +239,7 @@ You answer strictly from the provided code context. Always cite file paths and l
     content, _ = generate_text(user_input=user, system_instructions=sys, reasoning_effort=None)
     content = content or ''
     conf = float(state.get('confidence', 0.0) or 0.0)
-    if conf < 0.55:
+    if conf < _FALLBACK_CONFIDENCE:
         repo = state.get('repo') or os.getenv('REPO','project')
         alt_docs = hybrid_search_routed_multi(q, repo_override=repo, m=4, final_k=10)
         if alt_docs:
@@ -296,6 +325,7 @@ def build_graph():
 if __name__ == '__main__':
     import sys
     q = ' '.join(sys.argv[1:]) if len(sys.argv)>1 else 'Where is OAuth token validated?'
-    graph = build_graph(); cfg = {'configurable': {'thread_id': 'dev'}}
+    graph = build_graph()
+    cfg = {'configurable': {'thread_id': 'dev'}}
     res = graph.invoke({'question': q, 'documents': [], 'generation':'', 'iteration':0, 'confidence':0.0}, cfg)
     print(res['generation'])

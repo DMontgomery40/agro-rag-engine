@@ -1,6 +1,40 @@
 from __future__ import annotations
 
+import os
 from typing import Dict, Any
+
+# Module-level cached configuration
+try:
+    from server.services.config_registry import get_config_registry
+    _config_registry = get_config_registry()
+except ImportError:
+    _config_registry = None
+
+# Cached enrichment parameters
+_ENRICH_DISABLED = None
+_ENRICH_MIN_CHARS = None
+_ENRICH_MAX_CHARS = None
+
+def _load_cached_config():
+    """Load enrichment config values into module-level cache."""
+    global _ENRICH_DISABLED, _ENRICH_MIN_CHARS, _ENRICH_MAX_CHARS
+
+    if _config_registry is None:
+        # Fallback to env vars
+        _ENRICH_DISABLED = int(os.getenv('ENRICH_DISABLED', '0') or '0')
+        _ENRICH_MIN_CHARS = int(os.getenv('ENRICH_MIN_CHARS', '50') or '50')
+        _ENRICH_MAX_CHARS = int(os.getenv('ENRICH_MAX_CHARS', '1000') or '1000')
+    else:
+        _ENRICH_DISABLED = _config_registry.get_int('ENRICH_DISABLED', 0)
+        _ENRICH_MIN_CHARS = _config_registry.get_int('ENRICH_MIN_CHARS', 50)
+        _ENRICH_MAX_CHARS = _config_registry.get_int('ENRICH_MAX_CHARS', 1000)
+
+def reload_config():
+    """Reload all cached config values from registry."""
+    _load_cached_config()
+
+# Initialize cache on module import
+_load_cached_config()
 
 
 def enrich(file_path: str, lang: str, code: str) -> Dict[str, Any]:
@@ -21,8 +55,8 @@ def enrich(file_path: str, lang: str, code: str) -> Dict[str, Any]:
     try:
         from server.env_model import generate_text
 
-        # Only enrich if code is not too small and enrichment is enabled
-        if len(code or "") < 50 or os.getenv('ENRICH_DISABLED') == '1':
+        # Use cached config values
+        if len(code or "") < _ENRICH_MIN_CHARS or _ENRICH_DISABLED == 1:
             raise ValueError("Skip LLM enrichment")
 
         prompt = (
@@ -32,7 +66,7 @@ def enrich(file_path: str, lang: str, code: str) -> Dict[str, Any]:
             "keywords (array of technical terms). "
             "Be concise. Return ONLY valid JSON.\n\n"
         )
-        user_input = prompt + (code or "")[:1000]
+        user_input = prompt + (code or "")[:_ENRICH_MAX_CHARS]
 
         text, _ = generate_text(
             user_input=user_input,

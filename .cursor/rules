@@ -1,0 +1,45 @@
+# Cursor AI Rules for AGRO RAG Engine
+
+## Bug Documentation (MANDATORY)
+
+**When you fix a bug that the user VERIFIES as fixed, you MUST document it in `agent_docs/bug-resolution.md`**
+
+- This prevents repeat bugs across different agents and sessions
+- ONLY add entries AFTER user confirms the fix works
+- Include: symptoms, root cause, fix applied, files changed, prevention tips
+- Follow the template in agent_docs/bug-resolution.md
+- Many bugs are repeated by different agents - documentation prevents this
+
+### Common Repeat Bugs to Watch For
+
+- **Boolean .env values**: NEVER use `True`/`true`/`False`/`false` - always use `1` or `0`
+- **Subtab navigation**: data-subtab names must match ID construction pattern
+- **Absolute paths**: Never hardcode `/Users/...` paths, use relative or env vars
+- Check `agent_docs/bug-resolution.md` for full list before starting work
+
+## No Stubs or Placeholders
+
+- NEVER add stubs, placeholders, or TODOs without explicit user approval
+- Everything must be fully wired: backend to GUI, GUI to backend
+- This is an ADA compliance and contractual requirement
+
+## Verification Required
+
+- GUI changes: Test with Playwright (put in `/tests`)
+- Backend changes: Create smoke test (put in `/tests`)
+- Never claim "done" without proof it works
+
+## File Organization
+
+- All agent-created .md files go in `/agent_docs/`
+- Don't clutter root directory
+
+## Git Workflow
+
+- Never push to `main` directly
+- Work on `development` branch
+- Never commit without user approval
+
+## See CLAUDE.md for Full Rules
+
+For complete rules and requirements, see the main `CLAUDE.md` file.

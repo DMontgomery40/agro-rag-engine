@@ -1,19 +1,36 @@
 services:
-  api:
+  api:  # Compose service name (use with `docker compose ... api`)
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: rag-service-api
+    container_name: agro-api  # Runtime container name (use with `docker ... agro-api`)
+    env_file:
+      - .env
     environment:
       - QDRANT_URL=${QDRANT_URL:-http://qdrant:6333}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - GEN_MODEL=${GEN_MODEL:-qwen3-coder:30b}
+      - GEN_MODEL=${GEN_MODEL}
       - OLLAMA_URL=${OLLAMA_URL:-}
       - OAUTH_ENABLED=${OAUTH_ENABLED:-false}
       - OAUTH_TOKEN=${OAUTH_TOKEN:-}
+      - GIT_BRANCH=${GIT_BRANCH}
     ports:
       - "8012:8012"
+    command: ["uvicorn", "server.asgi:create_app", "--factory", "--host", "0.0.0.0", "--port", "8012", "--timeout-keep-alive", "120", "--log-level", "debug", "--reload"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./.env:/app/.env
+      - ./repos.json:/app/repos.json
+      - ./out:/app/out
+      - ./data:/app/data
+      - ./gui:/app/gui
+      - ./web:/app/web
+      - ./server:/app/server
+      - ./scripts:/app/scripts
+      - ./reranker:/app/reranker
+      - /var/run/docker.sock:/var/run/docker.sock
     profiles: ["api"]
 
   mcp-http:

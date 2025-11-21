@@ -3,7 +3,7 @@
 
 import time
 import functools
-from typing import Any, Optional
+from typing import Any
 import logging
 
 logger = logging.getLogger(__name__)

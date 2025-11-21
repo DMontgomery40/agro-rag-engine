@@ -60,10 +60,19 @@
       const mode = onboardingState.projectDraft.sourceType;
       if (mode === 'folder'){
         const path = $('#onboard-folder-path');
-        if (path && !path.value.trim()){ alert('Please select a folder or enter a path'); return; }
+        if (path && !path.value.trim()){
+          const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Repository Path Required', { message: 'No folder path was entered', causes: ['Repository path field is empty', 'User clicked Next without selecting/entering path', 'Browser file picker was cancelled'], fixes: ['Click "Browse" to select a repository folder', 'Manually enter a valid absolute path to the repo', 'Ensure path exists and is accessible'], links: [['Onboarding Guide', '/docs/ONBOARDING.md'], ['File Paths', 'https://en.wikipedia.org/wiki/Path_(computing)']] }) : 'Please select a folder or enter a path';
+          alert(msg);
+          return;
+        }
         onboardingState.projectDraft.folderPath = path ? path.value.trim() : '';
       } else if (mode === 'github'){
-        const url = $('#onboard-github-url'); if (url && !url.value.trim()){ alert('Please enter a GitHub repository URL'); return; }
+        const url = $('#onboard-github-url');
+        if (url && !url.value.trim()){
+          const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('GitHub URL Required', { message: 'No GitHub URL was entered', causes: ['GitHub URL field is empty', 'User clicked Next without entering URL', 'Form validation ran before input was complete'], fixes: ['Enter a valid GitHub repository URL (e.g., https://github.com/user/repo)', 'Ensure format is https://github.com/[owner]/[repo]', 'Check network access to GitHub.com'], links: [['GitHub URL Format', 'https://docs.github.com/en/repositories/creating-and-managing-repositories/about-repositories']] }) : 'Please enter a GitHub repository URL';
+          alert(msg);
+          return;
+        }
         onboardingState.projectDraft.githubUrl = url ? url.value.trim() : '';
         const branch = $('#onboard-github-branch'); const token = $('#onboard-github-token');
         onboardingState.projectDraft.githubBranch = branch && branch.value.trim() ? branch.value.trim() : 'main';
@@ -99,8 +108,35 @@
       }
     }catch(err){
       console.error('Indexing error:', err);
+      const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Onboarding Indexing Failed', {
+        message: err.message,
+        causes: [
+          'Repository path is invalid or inaccessible',
+          'Backend indexing service crashed during onboarding',
+          'Insufficient disk space for index creation',
+          'Qdrant vector database is not running or not accessible',
+          'Repository contains files that cannot be parsed'
+        ],
+        fixes: [
+          'Verify repository path exists and is readable',
+          'Check Infrastructure tab to ensure Qdrant is running',
+          'Check available disk space: need at least 1GB free',
+          'Review backend logs for specific indexing errors',
+          'Try selecting a smaller repository for initial setup'
+        ],
+        links: [
+          ['Onboarding Guide', '/docs/ONBOARDING.md'],
+          ['Indexing Process', '/docs/INDEXING.md#troubleshooting'],
+          ['Qdrant Setup', 'https://qdrant.tech/documentation/quick-start/'],
+          ['Backend Health', '/api/health']
+        ]
+      }) : 'Indexing error: ' + err.message;
       if (status) status.textContent = 'Indexing completed with keyword-only mode';
-      const fb = $('#onboard-index-fallback'); if (fb) fb.style.display = 'block';
+      const fb = $('#onboard-index-fallback');
+      if (fb) {
+        fb.style.display = 'block';
+        fb.innerHTML = `<div style="color: var(--warn); padding: 12px; background: var(--bg-elev1); border: 1px solid var(--warn); border-radius: 4px; margin-top: 12px;">${msg}</div>`;
+      }
       if (bar) bar.style.width = '70%'; if (nextBtn) nextBtn.disabled = false; onboardingState.indexing.running = false;
     }
   }
@@ -143,7 +179,7 @@
     const { speed, quality, cloud } = onboardingState.settings;
     const profile = { name: name.trim(), sources: onboardingState.projectDraft, settings: { MQ_REWRITES: speed, LANGGRAPH_FINAL_K: 10 + (speed*5), RERANK_BACKEND: quality===1?'none':(quality===2?'local':'cohere'), GEN_MODEL: quality===1?'local':'gpt-4o-mini', EMBEDDING_TYPE: cloud===1?'local':'openai' }, golden: onboardingState.questions.map(q=>q.text) };
     try{ const res = await fetch(api('/api/profiles/save'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(profile) }); if (!res.ok) throw new Error('Failed to save project'); alert('Project saved successfully!'); await fetch(api('/api/profiles/apply'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ profile_name: name.trim() }) }); }
-    catch(err){ console.error('Save project error:', err); alert('Error saving project: ' + err.message); }
+    catch(err){ console.error('Save project error:', err); const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to Save Project', { message: err.message, causes: ['Backend profiles API endpoint is not responding', 'Invalid project configuration data submitted', 'Disk space exhausted on backend server', 'Insufficient permissions to write profile files'], fixes: ['Verify backend service is running: check Infrastructure tab', 'Ensure all project fields are filled correctly', 'Check available disk space on the server', 'Review backend logs for specific error details'], links: [['Profiles Setup', '/docs/PROFILES.md'], ['Backend Health', '/api/health']] }) : 'Error saving project: ' + err.message; alert(msg); }
   }
 
   async function runTinyEval(){
@@ -193,6 +229,28 @@
       }
     } catch (e) {
       console.error('[onboarding.js] Failed to save onboarding completion:', e);
+      const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to Save Onboarding State', {
+        message: e.message,
+        causes: [
+          'Backend onboarding API endpoint is not responding',
+          'localStorage is disabled or in private browsing mode',
+          'Network connection interrupted during save',
+          'Server-side storage quota exceeded or permissions issue'
+        ],
+        fixes: [
+          'Verify backend service is running: check Infrastructure tab',
+          'Enable localStorage in browser settings',
+          'Check network connectivity and retry',
+          'Review backend logs for /api/onboarding/complete errors'
+        ],
+        links: [
+          ['Onboarding Guide', '/docs/ONBOARDING.md'],
+          ['Web Storage API', 'https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API'],
+          ['Backend Health', '/api/health']
+        ]
+      }) : 'Failed to save onboarding state: ' + e.message;
+      // Non-blocking error - log but don't alert user
+      console.warn(msg);
     }
   }
 

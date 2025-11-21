@@ -128,7 +128,7 @@ def web_get(url: str, max_bytes: int = 20000) -> Dict[str, Any]:
             u = urllib.parse.urlparse(url)
             host = (u.netloc or "").lower()
             return any(host == h or host.endswith("." + h) for h in allowed_hosts)
-        except:
+        except Exception:
             return False
     
     if not url.startswith("http"):

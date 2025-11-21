@@ -47,3 +47,21 @@ scrape_configs:
         labels:
           job: varlogs
           __path__: /var/log/*.log
+
+  # Scrape AGRO tracking JSONL files produced by the API container
+  - job_name: agro-tracking-jsonl
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: agro-tracking
+          __path__: /app/data/tracking/*.jsonl
+    pipeline_stages:
+      - json:
+          expressions:
+            ts: ts
+            type: type
+            repo: repo
+      - labels:
+          type:
+          repo:

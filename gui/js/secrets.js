@@ -31,8 +31,28 @@
         await window.loadConfig();
       }
     } catch (e) {
-      alert('Secrets ingest failed: ' + e.message);
       console.error('[Secrets] Ingest failed:', e);
+      const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Secrets Ingest Failed', {
+        message: e.message,
+        causes: [
+          'Uploaded file is not in valid .env format (KEY=VALUE per line)',
+          'Backend secrets API endpoint is not responding or crashed',
+          'File upload size exceeds maximum allowed limit (typically 1MB)',
+          'Backend failed to parse environment variables from file'
+        ],
+        fixes: [
+          'Verify uploaded file is in .env format with KEY=VALUE syntax, one per line',
+          'Check Infrastructure tab to ensure backend service is running',
+          'Reduce file size by removing comments or unnecessary variables (aim for < 100KB)',
+          'Verify file uses UTF-8 encoding and Unix line endings (LF, not CRLF)'
+        ],
+        links: [
+          ['Environment Variables Format', 'https://www.dotenv.org/docs/'],
+          ['Security Best Practices', '/docs/SECURITY.md#secrets'],
+          ['Backend Health', '/api/health']
+        ]
+      }) : 'Secrets ingest failed: ' + e.message;
+      alert(msg);
     }
   }
 

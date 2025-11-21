@@ -269,3 +269,198 @@ details summary { cursor:pointer; color: var(--muted); }
   .sidepanel { border-top:1px solid var(--line); height: 52vh; }
   #calc-frame { height: 42vh; }
 }
+
+/* Glossary Styles */
+.glossary-card {
+    background: var(--card-bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px;
+    transition: all var(--timing-normal) var(--ease-out);
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.glossary-card:hover {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.glossary-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    gap: 12px;
+}
+
+.glossary-card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    color: var(--fg);
+    flex: 1;
+}
+
+.glossary-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.glossary-param-name {
+    font-size: 11px;
+    padding: 4px 8px;
+    background: var(--bg-elev2);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    color: var(--accent);
+    font-family: 'SF Mono', monospace;
+    flex-shrink: 0;
+}
+
+.glossary-body {
+    color: var(--fg-muted);
+    line-height: 1.6;
+    font-size: 13px;
+    margin: 0 0 12px 0;
+}
+
+.glossary-badges {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.glossary-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.glossary-badge.info {
+    background: rgba(91, 157, 255, 0.15);
+    color: var(--link);
+    border: 1px solid rgba(91, 157, 255, 0.3);
+}
+
+.glossary-badge.warn {
+    background: rgba(255, 170, 0, 0.15);
+    color: var(--warn);
+    border: 1px solid rgba(255, 170, 0, 0.3);
+}
+
+.glossary-badge.reindex {
+    background: rgba(255, 107, 107, 0.15);
+    color: var(--err);
+    border: 1px solid rgba(255, 107, 107, 0.3);
+}
+
+.glossary-links {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border-top: 1px solid var(--line);
+    padding-top: 12px;
+}
+
+.glossary-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--link);
+    text-decoration: none;
+    font-size: 12px;
+    transition: all 0.15s ease;
+}
+
+.glossary-link:hover {
+    color: var(--accent);
+    gap: 6px;
+}
+
+.glossary-link svg {
+    opacity: 0.6;
+    transition: opacity 0.15s ease;
+}
+
+.glossary-link:hover svg {
+    opacity: 1;
+}
+
+.category-filter-btn {
+    padding: 8px 14px;
+    background: var(--bg-elev1);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--fg-muted);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.category-filter-btn:hover {
+    background: var(--bg-elev2);
+    border-color: var(--accent);
+    color: var(--fg);
+}
+
+.category-filter-btn.active {
+    background: var(--accent);
+    color: var(--accent-contrast);
+    border-color: var(--accent);
+    font-weight: 600;
+}
+
+.filter-count {
+    font-size: 11px;
+    padding: 2px 6px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.category-filter-btn.active .filter-count {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+#glossary-search {
+    transition: all 0.2s ease;
+}
+
+#glossary-search:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--ring);
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    #glossary-grid {
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)) !important;
+    }
+}
+
+@media (max-width: 768px) {
+    #glossary-grid {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .glossary-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .glossary-param-name {
+        align-self: flex-start;
+    }
+}

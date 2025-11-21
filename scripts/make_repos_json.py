@@ -12,7 +12,10 @@ Behavior:
   - Writes repos.json in repo root (or REPOS_FILE location if set)
   - If repos.json exists, writes a timestamped backup next to it
 """
-import os, sys, json, time
+import os
+import sys
+import json
+import time
 from pathlib import Path
 
 
@@ -95,4 +98,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

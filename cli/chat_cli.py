@@ -6,10 +6,12 @@ Uses LangGraph with Redis checkpoints for conversation memory.
 Usage:
     export REPO=agro
     export THREAD_ID=my-session-1
+    export PORT=8012
     python -m cli.chat_cli
 
 Commands:
     /repo <name>    - Switch repository (from repos.json)
+    /model <name>   - Switch generation model (e.g. gpt-4o, claude-3-5-sonnet)
     /save           - Save conversation checkpoint
     /clear          - Clear conversation history
     /help           - Show commands
@@ -20,16 +22,14 @@ import sys
 import requests  # type: ignore[import-untyped]
 from pathlib import Path
 from typing import Any, Optional
+
 try:
     from dotenv import load_dotenv as _maybe_load_dotenv  # type: ignore
 except Exception:
     _maybe_load_dotenv = None  # type: ignore[assignment]
 
 def _load_env_file(env_path: Path) -> bool:
-    """Load environment variables from .env if python-dotenv is installed.
-
-    This wrapper avoids conditional redefinition errors in static analysis.
-    """
+    """Load environment variables from .env if python-dotenv is installed."""
     if _maybe_load_dotenv is not None:
         return bool(_maybe_load_dotenv(env_path))
     return False
@@ -49,7 +49,8 @@ console = Console()
 # Configuration
 REPO = os.getenv('REPO', 'agro')
 THREAD_ID = os.getenv('THREAD_ID', 'cli-chat')
-
+PORT = int(os.getenv('PORT', '8012'))
+API_BASE = f"http://127.0.0.1:{PORT}"
 
 class ChatCLI:
     """Interactive CLI chat with RAG."""
@@ -57,17 +58,22 @@ class ChatCLI:
     def __init__(self, repo: str = 'agro', thread_id: str = 'cli-chat'):
         self.repo = repo
         self.thread_id = thread_id
+        self.model = None  # Use server default unless set
         self.graph = None
-        self._init_graph()
+        # Only init graph if API is unreachable
+        self._graph_fallback_ready = False
 
-    def _init_graph(self):
-        """Initialize LangGraph with Redis checkpoints."""
+    def _ensure_graph(self):
+        """Initialize LangGraph with Redis checkpoints lazily."""
+        if self._graph_fallback_ready:
+            return
         try:
             self.graph = build_graph()
-            console.print("[green]✓[/green] Graph initialized with Redis checkpoints")
+            self._graph_fallback_ready = True
+            console.print("[green]✓[/green] Graph initialized locally (Redis checkpoints)")
         except Exception as e:
-            console.print(f"[red]✗[/red] Failed to initialize graph: {e}")
-            sys.exit(1)
+            console.print(f"[red]✗[/red] Failed to initialize local graph: {e}")
+            # Don't exit, maybe API works
 
     def _get_config(self):
         """Get config for current thread."""
@@ -83,31 +89,44 @@ class ChatCLI:
 
     def ask(self, question: str) -> dict:
         """Ask a question and get answer via API to capture event_id."""
+        payload = {
+            'question': question,
+            'repo': self.repo
+        }
+        if self.model:
+            payload['model'] = self.model
+
         try:
             # Use API to get event_id for feedback
-            response = requests.post('http://127.0.0.1:8012/api/chat', json={
-                'question': question,
-                'repo': self.repo
-            })
+            response = requests.post(f'{API_BASE}/api/chat', json=payload, timeout=120)
             if response.status_code == 200:
                 return response.json()
             else:
-                # Fallback to direct graph call
-                state = {
-                    "question": question,
-                    "documents": [],
-                    "generation": "",
-                    "iteration": 0,
-                    "confidence": 0.0,
-                    "repo": self.repo
-                }
-                # mypy/pyright: self.graph is initialized in _init_graph or process exits
-                result = self.graph.invoke(state, self._get_config())  # type: ignore[call-arg]
-                result['event_id'] = None  # No event_id for direct calls
-                return result
+                console.print(f"[yellow]API Error {response.status_code}: {response.text}[/yellow]")
+                return self._ask_local(question)
         except Exception as e:
-            console.print(f"[red]Error:[/red] {e}")
-            return {"generation": f"Error: {e}", "documents": [], "confidence": 0.0, "event_id": None}
+            console.print(f"[yellow]API unreachable ({e}). Falling back to local graph...[/yellow]")
+            return self._ask_local(question)
+
+    def _ask_local(self, question: str) -> dict:
+        """Fallback to direct graph call."""
+        self._ensure_graph()
+        if not self.graph:
+            return {"generation": "Error: Could not connect to API and local graph init failed.", "documents": [], "confidence": 0.0, "event_id": None}
+        
+        state = {
+            "question": question,
+            "documents": [],
+            "generation": "",
+            "iteration": 0,
+            "confidence": 0.0,
+            "repo": self.repo
+        }
+        # Note: Local graph doesn't support 'model' override easily unless passed in state/config hacks
+        # We'll ignore self.model for local fallback for now
+        result = self.graph.invoke(state, self._get_config())  # type: ignore[attr-defined]
+        result['event_id'] = None  # No event_id for direct calls
+        return result
 
     def switch_repo(self, new_repo: str):
         """Switch to a different repository."""
@@ -119,10 +138,15 @@ class ChatCLI:
         self.repo = new_repo
         console.print(f"[green]✓[/green] Switched to repo: [bold]{new_repo}[/bold]")
 
+    def switch_model(self, new_model: str):
+        """Switch generation model."""
+        self.model = new_model
+        console.print(f"[green]✓[/green] Switched model to: [bold]{new_model}[/bold]")
+
     def submit_feedback(self, event_id: str, rating: int, note: Optional[str] = None):
         """Submit feedback for a query."""
         if not event_id:
-            console.print("[red]No event ID available for feedback[/red]")
+            console.print("[red]No event ID available for feedback (local run?)[/red]")
             return False
             
         if rating < 1 or rating > 5:
@@ -135,7 +159,7 @@ class ChatCLI:
             if note:
                 payload["note"] = note
                 
-            response = requests.post('http://127.0.0.1:8012/api/feedback', json=payload)
+            response = requests.post(f'{API_BASE}/api/feedback', json=payload, timeout=5)
             if response.status_code == 200:
                 console.print(f"[green]✓[/green] Feedback submitted: {rating}/5 stars")
                 if note:
@@ -153,24 +177,16 @@ class ChatCLI:
         help_text = """
 ## Commands
 
-- `/repo <name>` - Switch repository (from repos.json)
-- `/save` - Save conversation checkpoint
-- `/clear` - Clear conversation history
-- `/help` - Show this help
+- `/repo <name>`  - Switch repository (from repos.json)
+- `/model <name>` - Switch generation model (e.g. gpt-4o)
+- `/save`         - Save conversation checkpoint (Redis)
+- `/clear`        - Clear conversation history (new thread)
+- `/help`         - Show this help
 - `/exit`, `/quit` - Exit chat
 
-## Examples
-
-Ask a question:
-```
-> Where is OAuth token validated?
-```
-
-Switch repo:
-```
-> /repo agro
-> How do we handle inbound tracing?
-```
+## Interaction
+- **Feedback**: After an answer, enter a number (1-5) to rate it.
+- **Connection**: Tries API at `PORT` (env), falls back to local graph.
         """
         console.print(Markdown(help_text))
 
@@ -181,6 +197,7 @@ Switch repo:
 
 Connected to: [bold cyan]{self.repo}[/bold cyan]
 Thread ID: [bold]{self.thread_id}[/bold]
+API: [dim]{API_BASE}[/dim]
 
 Type your question or use `/help` for commands.
         """
@@ -203,7 +220,9 @@ Type your question or use `/help` for commands.
 
                 # Handle commands
                 if user_input.startswith('/'):
-                    cmd = user_input.lower().split()[0]
+                    parts = user_input.split()
+                    cmd = parts[0].lower()
+                    arg = parts[1] if len(parts) > 1 else None
 
                     if cmd in ['/exit', '/quit']:
                         console.print("[yellow]Goodbye![/yellow]")
@@ -214,11 +233,17 @@ Type your question or use `/help` for commands.
                         continue
 
                     elif cmd == '/repo':
-                        parts = user_input.split(maxsplit=1)
-                        if len(parts) > 1:
-                            self.switch_repo(parts[1].strip())
+                        if arg:
+                            self.switch_repo(arg)
                         else:
                             console.print("[red]Usage:[/red] /repo <project|project>")
+                        continue
+                    
+                    elif cmd == '/model':
+                        if arg:
+                            self.switch_model(arg)
+                        else:
+                            console.print("[red]Usage:[/red] /model <gpt-4o|claude-3-5-sonnet|...>")
                         continue
 
                     elif cmd == '/save':
@@ -245,6 +270,7 @@ Type your question or use `/help` for commands.
                 answer = self._format_answer(result.get('generation', ''))
                 confidence = result.get('confidence', 0.0)
                 docs = result.get('documents', [])
+                event_id = result.get('event_id')
 
                 # Display answer in panel
                 console.print("\n")
@@ -265,32 +291,22 @@ Type your question or use `/help` for commands.
                         console.print(f"  [dim]{i}.[/dim] {fp}:{start}-{end} [dim](score: {score:.3f})[/dim]")
 
                 # Collect feedback
-                event_id = result.get('event_id')
                 if event_id:
-                    console.print("\n[dim]Rate this answer (1-5 stars) to help improve search quality:[/dim]")
+                    console.print("\n[dim]Rate (1-5) or Enter to skip:[/dim]")
                     try:
-                        rating_input = Prompt.ask(
-                            "[bold cyan]Rating[/bold cyan] (1-5, or Enter to skip)",
-                            default="",
-                            show_default=False
-                        )
+                        rating_input = Prompt.ask("", default="", show_default=False)
                         
                         if rating_input.strip():
-                            rating = int(rating_input.strip())
-                            if 1 <= rating <= 5:
-                                note_input = Prompt.ask(
-                                    "[cyan]Optional note[/cyan] (or Enter to skip)",
-                                    default="",
-                                    show_default=False
-                                )
-                                note = note_input.strip() if note_input.strip() else None
-                                self.submit_feedback(event_id, rating, note)
-                            else:
-                                console.print("[red]Rating must be between 1 and 5[/red]")
-                        else:
-                            console.print("[dim]Skipped feedback[/dim]")
+                            try:
+                                rating = int(rating_input.strip())
+                                if 1 <= rating <= 5:
+                                    self.submit_feedback(event_id, rating)
+                                else:
+                                    console.print("[red]Must be 1-5[/red]")
+                            except ValueError:
+                                pass
                     except (ValueError, KeyboardInterrupt):
-                        console.print("[dim]Skipped feedback[/dim]")
+                        pass
 
             except KeyboardInterrupt:
                 console.print("\n[yellow]Use /exit to quit[/yellow]")
@@ -302,15 +318,11 @@ Type your question or use `/help` for commands.
                 console.print(f"[red]Error:[/red] {e}")
                 continue
 
-
 def main():
     """Entry point."""
     # Check dependencies
     try:
         from rich.console import Console
-        from rich.markdown import Markdown
-        from rich.panel import Panel
-        from rich.prompt import Prompt
     except ImportError:
         print("Error: Missing 'rich' library. Install with: pip install rich")
         sys.exit(1)
@@ -322,7 +334,6 @@ def main():
     # Create and run chat
     chat = ChatCLI(repo=repo, thread_id=thread_id)
     chat.run()
-
 
 if __name__ == '__main__':
     main()

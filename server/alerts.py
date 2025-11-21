@@ -4,11 +4,10 @@
 import logging
 import json
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter, Request, HTTPException, Query
-import time
 
 try:
     import requests  # type: ignore

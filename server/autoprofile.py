@@ -84,7 +84,6 @@ def _infer_quality_score(row: Dict[str, Any], comp_type: str) -> Number:
     Tries to be sensible for performance mode ranking.
     """
     prov = (row.get("provider") or "").lower()
-    fam = (row.get("family") or "").lower()
     model = (row.get("model") or "").lower()
     c = comp_type.upper()
 
@@ -259,4 +258,3 @@ def autoprofile(request: Dict[str, Any], prices: Dict[str, Any]) -> Tuple[Dict[s
         "bias": bias,
     }
     return env, debug
-

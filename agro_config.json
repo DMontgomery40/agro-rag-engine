@@ -1,0 +1,128 @@
+{
+  "retrieval": {
+    "rrf_k_div": 60,
+    "langgraph_final_k": 20,
+    "max_query_rewrites": 3,
+    "fallback_confidence": 0.55,
+    "final_k": 10,
+    "eval_final_k": 5,
+    "conf_top1": 0.62,
+    "conf_avg5": 0.55,
+    "conf_any": 0.55,
+    "eval_multi": 1,
+    "query_expansion_enabled": 1,
+    "bm25_weight": 0.3,
+    "vector_weight": 0.7,
+    "card_search_enabled": 1,
+    "multi_query_m": 4
+  },
+  "scoring": {
+    "card_bonus": 0.12,
+    "filename_boost_exact": 1.5,
+    "filename_boost_partial": 1.2
+  },
+  "layer_bonus": {
+    "gui": 0.15,
+    "retrieval": 0.15,
+    "indexer": 0.15,
+    "vendor_penalty": -0.1,
+    "freshness_bonus": 0.05
+  },
+  "embedding": {
+    "embedding_type": "openai",
+    "embedding_model": "text-embedding-3-large",
+    "embedding_dim": 512,
+    "voyage_model": "voyage-code-3",
+    "embedding_model_local": "all-MiniLM-L6-v2",
+    "embedding_batch_size": 64,
+    "embedding_max_tokens": 8000,
+    "embedding_cache_enabled": 1,
+    "embedding_timeout": 30,
+    "embedding_retry_max": 3
+  },
+  "chunking": {
+    "chunk_size": 1000,
+    "chunk_overlap": 200,
+    "ast_overlap_lines": 20,
+    "max_chunk_size": 2000000,
+    "min_chunk_chars": 50,
+    "greedy_fallback_target": 800,
+    "chunking_strategy": "ast",
+    "preserve_imports": 1
+  },
+  "indexing": {
+    "qdrant_url": "http://127.0.0.1:6333",
+    "collection_name": "",
+    "vector_backend": "qdrant",
+    "indexing_batch_size": 100,
+    "indexing_workers": 4,
+    "bm25_tokenizer": "stemmer",
+    "bm25_stemmer_lang": "english",
+    "index_excluded_exts": ".png,.jpg,.gif,.ico,.svg,.woff,.ttf",
+    "index_max_file_size_mb": 10
+  },
+  "reranking": {
+    "reranker_model": "models/cross-encoder-agro",
+    "agro_reranker_enabled": 1,
+    "agro_reranker_alpha": 0.7,
+    "agro_reranker_topn": 50,
+    "agro_reranker_batch": 16,
+    "agro_reranker_maxlen": 512,
+    "agro_reranker_reload_on_change": 0,
+    "agro_reranker_reload_period_sec": 60,
+    "cohere_rerank_model": "rerank-3.5",
+    "voyage_rerank_model": "rerank-2",
+    "reranker_backend": "local",
+    "reranker_timeout": 10
+  },
+  "generation": {
+    "gen_model": "gpt-4o",
+    "gen_temperature": 0.07,
+    "gen_max_tokens": 2048,
+    "gen_top_p": 1.0,
+    "gen_timeout": 60,
+    "gen_retry_max": 2,
+    "enrich_model": "qwen3-coder:14b",
+    "enrich_backend": "openai",
+    "enrich_disabled": 0,
+    "ollama_num_ctx": 8192
+  },
+  "enrichment": {
+    "cards_enrich_default": 1,
+    "cards_max": 100,
+    "enrich_code_chunks": 1,
+    "enrich_min_chars": 50,
+    "enrich_max_chars": 1000,
+    "enrich_timeout": 30
+  },
+  "keywords": {
+    "keywords_max_per_repo": 50,
+    "keywords_min_freq": 3,
+    "keywords_boost": 1.3,
+    "keywords_auto_generate": 1,
+    "keywords_refresh_hours": 24
+  },
+  "tracing": {
+    "tracing_enabled": 1,
+    "trace_sampling_rate": 1.0,
+    "prometheus_port": 9090,
+    "metrics_enabled": 1,
+    "alert_include_resolved": 1,
+    "alert_webhook_timeout": 5,
+    "log_level": "INFO"
+  },
+  "training": {
+    "reranker_train_epochs": 2,
+    "reranker_train_batch": 16,
+    "reranker_train_lr": 0.00002,
+    "reranker_warmup_ratio": 0.1,
+    "triplets_min_count": 100,
+    "triplets_mine_mode": "replace"
+  },
+  "ui": {
+    "chat_streaming_enabled": 1,
+    "chat_history_max": 50,
+    "editor_port": 4440,
+    "grafana_dashboard_uid": "agro-overview"
+  }
+}

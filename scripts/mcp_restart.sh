@@ -11,10 +11,10 @@ stop_mcp() {
     echo "[mcp] Stopping existing MCP server processes..."
     # Kill processes running server.mcp.server (current/correct path)
     pkill -f "server.mcp.server" 2>/dev/null && echo "[mcp] Killed server.mcp.server processes" || echo "[mcp] No server.mcp.server processes found"
-    
-    # Kill any old mcp_server.py processes (legacy/stale)
-    pkill -f "/Users/davidmontgomery/agro.*mcp_server.py" 2>/dev/null && echo "[mcp] Killed legacy mcp_server.py processes" || echo "[mcp] No legacy processes found"
-    
+
+    # Kill any old mcp_server.py processes (legacy/stale) - matches any path
+    pkill -f "agro.*mcp_server.py" 2>/dev/null && echo "[mcp] Killed legacy mcp_server.py processes" || echo "[mcp] No legacy processes found"
+
     sleep 1
 }
 
@@ -54,11 +54,11 @@ status_mcp() {
     else
         echo "[mcp] ✗ MCP server is not running"
     fi
-    
-    # Check for legacy processes
-    if pgrep -f "/Users/davidmontgomery/agro.*mcp_server.py" >/dev/null; then
+
+    # Check for legacy processes - matches any path
+    if pgrep -f "agro.*mcp_server.py" >/dev/null; then
         echo "[warn] Found legacy mcp_server.py processes (should be cleaned up):"
-        ps aux | grep "/Users/davidmontgomery/agro.*mcp_server.py" | grep -v grep
+        ps aux | grep "agro.*mcp_server.py" | grep -v grep
     fi
 }
 

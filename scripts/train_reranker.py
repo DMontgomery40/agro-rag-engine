@@ -8,6 +8,7 @@ import json
 import random
 import argparse
 import sys
+import warnings
 from pathlib import Path
 from typing import List, Dict, Any
 from sentence_transformers import CrossEncoder, InputExample
@@ -44,6 +45,8 @@ def main():
                     help="Number of training epochs")
     ap.add_argument("--batch", type=int, default=16,
                     help="Batch size for training")
+    ap.add_argument("--max_length", type=int, default=512,
+                    help="Token max_length for the cross-encoder (reduce to lower memory)")
     args = ap.parse_args()
 
     triplets = load_triplets(Path(args.triplets))
@@ -65,10 +68,11 @@ def main():
     print(f"Training on {len(train_pairs)} pairs ({len(train_tr)} triplets)")
     print(f"Dev set: {len(dev_pairs)} pairs ({len(dev_tr)} triplets)")
 
-    model = CrossEncoder(args.base, num_labels=1, max_length=512)
+    model = CrossEncoder(args.base, num_labels=1, max_length=args.max_length)
 
-    train_dl = DataLoader(train_pairs, shuffle=True, batch_size=args.batch)
-    dev_dl = DataLoader(dev_pairs, shuffle=False, batch_size=args.batch)
+    # Explicitly disable pin_memory to avoid CPU-only warning spam
+    train_dl = DataLoader(train_pairs, shuffle=True, batch_size=args.batch, pin_memory=False)
+    dev_dl = DataLoader(dev_pairs, shuffle=False, batch_size=args.batch, pin_memory=False)
 
     # Train with built-in BCE loss; simple accuracy eval on dev pairs
     def eval_acc():
@@ -86,6 +90,11 @@ def main():
     warmup_steps = int(len(train_pairs) / args.batch * args.epochs * 0.1)
     
     print(f"Starting training ({args.epochs} epochs, {warmup_steps} warmup steps)...")
+    warnings.filterwarnings(
+        "ignore",
+        message=r".*'pin_memory' argument is set as true.*",
+        module=r"torch\.utils\.data\.dataloader"
+    )
     
     # Train epoch by epoch to show progress
     for epoch in range(args.epochs):
@@ -100,7 +109,7 @@ def main():
                 warmup_steps=warmup_steps if epoch == 0 else 0,
                 output_path=args.out,
                 use_amp=False,
-                show_progress_bar=False
+                show_progress_bar=False,
             )
             print(f"[EPOCH {epoch+1}/{args.epochs}] Training completed (no dev set for evaluation)")
         else:
@@ -110,7 +119,7 @@ def main():
                 warmup_steps=warmup_steps if epoch == 0 else 0,
                 output_path=args.out,
                 use_amp=False,
-                show_progress_bar=False
+                show_progress_bar=False,
             )
             # Eval after each epoch
             acc = eval_acc()

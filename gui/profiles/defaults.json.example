@@ -1,0 +1,15 @@
+{
+  "name": "_last_applied_",
+  "profile": {
+    "GEN_MODEL": "gpt-4o-mini",
+    "ENRICH_MODEL": "gpt-4o-mini",
+    "ENRICH_BACKEND": "openai",
+    "EMBEDDING_TYPE": "openai",
+    "RERANK_BACKEND": "local",
+    "MQ_REWRITES": "3",
+    "FINAL_K": "10",
+    "TOPK_DENSE": "75",
+    "TOPK_SPARSE": "75",
+    "HYDRATION_MODE": "lazy"
+  }
+}

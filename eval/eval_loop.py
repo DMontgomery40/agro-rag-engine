@@ -9,7 +9,7 @@ import time
 import argparse
 from typing import Dict, Any
 from dotenv import load_dotenv
-from .eval_rag import hit, _resolve_golden_path, USE_MULTI, FINAL_K, MULTI_M
+from eval.eval_rag import hit, _resolve_golden_path, USE_MULTI, FINAL_K, MULTI_M  # type: ignore[import]
 from retrieval.hybrid_search import search_routed, search_routed_multi
 
 load_dotenv()
@@ -17,7 +17,12 @@ load_dotenv()
 # Keep in sync with UI default (ui/ALL_KNOBS.yaml) and server endpoints
 BASELINE_PATH = os.getenv('BASELINE_PATH', 'data/evals/eval_baseline.json')
 
-def run_eval_with_results() -> Dict[str, Any]:
+def run_eval_with_results(sample_limit: int = None) -> Dict[str, Any]:
+    """Run evaluation on golden questions, optionally limited to a sample.
+
+    Args:
+        sample_limit: Maximum number of questions to evaluate. None = all questions.
+    """
     golden_path = _resolve_golden_path()
     if not os.path.exists(golden_path):
         return {"error": f"No golden questions file found at: {golden_path}. Create golden.json with test questions first."}
@@ -43,6 +48,12 @@ def run_eval_with_results() -> Dict[str, Any]:
         valid_questions.append(row)
     if not valid_questions:
         return {"error": f"No valid questions found in {golden_path}. Each question must have a 'q' field."}
+
+    # Apply sample limit if specified
+    if sample_limit and sample_limit > 0:
+        valid_questions = valid_questions[:sample_limit]
+        print(f"[eval] Limiting to sample of {sample_limit} questions (total available: {len(gold)})")
+
     total = len(valid_questions)
     hits_top1 = 0
     hits_topk = 0
@@ -94,3 +105,15 @@ def save_baseline(results: Dict[str, Any]):
     with open(BASELINE_PATH, 'w') as f:
         json.dump(results, f, indent=2)
     print(f"✓ Baseline saved to {BASELINE_PATH}")
+
+
+def save_latest(results: Dict[str, Any]):
+    """Write latest eval results for Grafana/Loki to consume."""
+    latest_path = Path(__file__).resolve().parents[1] / 'data' / 'tracking' / 'evals_latest.json'
+    latest_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with open(latest_path, 'w', encoding='utf-8') as f:
+            json.dump(results, f, indent=2)
+        print(f"✓ Latest eval written to {latest_path}")
+    except Exception:
+        pass

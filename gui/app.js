@@ -1312,6 +1312,7 @@
         bindQuickAction('dash-cards-refresh', refreshCards);
         bindQuickAction('dash-change-repo', changeRepo);
         bindQuickAction('dash-reload-config', reloadConfig);
+        bindQuickAction('dash-refresh-status', refreshDashboard);
         // Keep cost panel in sync with wizard selections
         const map = [
             ['wizard-gen-model','cost-model'],
@@ -1433,6 +1434,11 @@
         } catch {}
 
         try {
+            const stats = await (await fetch(api('/api/index/stats'))).json();
+            const db = document.getElementById('dash-branch'); if (db) db.textContent = stats.current_branch || 'unknown';
+        } catch {}
+
+        try {
             const h = await (await fetch(api('/health'))).json();
             const dh = document.getElementById('dash-health'); if (dh) dh.textContent = `${h.status}${h.graph_loaded? ' (graph ready)':''}`;
         } catch {}
@@ -1465,11 +1471,14 @@
                 if (s.python_stdio_available !== undefined) {
                     parts.push(`py-stdio:${s.python_stdio_available ? 'available' : 'missing'}`);
                 }
-                if (dm) dm.textContent = parts.join(' | ') || 'unknown';
+                if (dm) {
+                    // Create separate spans for each server instead of one cramped line
+                    dm.innerHTML = parts.map(p => `<span>${p}</span>`).join('') || '<span>unknown</span>';
+                }
             } else {
-                if (dm) dm.textContent = 'unknown';
+                if (dm) dm.innerHTML = '<span>unknown</span>';
             }
-        } catch { const dm = document.getElementById('dash-mcp'); if (dm) dm.textContent = 'unknown'; }
+        } catch { const dm = document.getElementById('dash-mcp'); if (dm) dm.innerHTML = '<span>unknown</span>'; }
 
         // Load initial index status to show metadata (delegated)
         try {

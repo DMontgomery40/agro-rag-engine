@@ -9,6 +9,27 @@ import time
 from prometheus_client import (
     Counter, Histogram, Gauge, make_asgi_app
 )
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
+from server.services.config_registry import get_config_registry
+
+# Module-level config caching
+_config_registry = get_config_registry()
+_METRICS_ENABLED = _config_registry.get_int('METRICS_ENABLED', 1)
+_PROMETHEUS_PORT = _config_registry.get_int('PROMETHEUS_PORT', 9090)
+_ALERT_INCLUDE_RESOLVED = _config_registry.get_int('ALERT_INCLUDE_RESOLVED', 1)
+_ALERT_WEBHOOK_TIMEOUT = _config_registry.get_int('ALERT_WEBHOOK_TIMEOUT', 5)
+
+
+def reload_config():
+    """Reload cached config values from registry."""
+    global _METRICS_ENABLED, _PROMETHEUS_PORT, _ALERT_INCLUDE_RESOLVED, _ALERT_WEBHOOK_TIMEOUT
+    _METRICS_ENABLED = _config_registry.get_int('METRICS_ENABLED', 1)
+    _PROMETHEUS_PORT = _config_registry.get_int('PROMETHEUS_PORT', 9090)
+    _ALERT_INCLUDE_RESOLVED = _config_registry.get_int('ALERT_INCLUDE_RESOLVED', 1)
+    _ALERT_WEBHOOK_TIMEOUT = _config_registry.get_int('ALERT_WEBHOOK_TIMEOUT', 5)
+
 
 # Latency buckets tuned for LLM/RAG (seconds)
 LATENCY_BUCKETS = (0.05, 0.1, 0.25, 0.5, 1, 2, 3, 5, 8, 13, 21, 34, 60)
@@ -71,6 +92,12 @@ RERANKER_MARGIN_ABS = Histogram(
     "Absolute reranker-vs-baseline margin (0..1)",
     labelnames=("provider", "model"),
     buckets=(0.0, 0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.5, 0.75, 1.0),
+)
+
+RERANKER_MARGIN_LATEST = Gauge(
+    "agro_reranker_margin_latest",
+    "Latest reranker minus baseline margin (signed)",
+    labelnames=("provider", "model"),
 )
 
 RERANKER_WINNER_TOTAL = Counter(
@@ -164,6 +191,7 @@ def record_canary(provider: str, model: str, passed: bool, margin: Optional[floa
         CANARY_PASS_TOTAL.labels(provider=provider, model=model).inc()
     if margin is not None:
         RERANKER_MARGIN_ABS.labels(provider=provider, model=model).observe(abs(float(margin)))
+        RERANKER_MARGIN_LATEST.labels(provider=provider, model=model).set(float(margin))
     if winner:
         if winner not in ("reranker", "baseline", "tie"):
             winner = "unknown"
@@ -183,10 +211,6 @@ def record_api_call(provider: str, status_code: int = 200, duration_seconds: flo
 # ---------- FastAPI integration ----------
 # This middleware measures end-to-end request time and increments agro_requests_total.
 # It reads provider/model from response headers that your endpoint sets: X-Provider / X-Model.
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import Response
-
 class MetricsMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         route_path = request.url.path

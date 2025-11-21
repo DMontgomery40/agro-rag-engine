@@ -12,21 +12,124 @@
         return;
     }
 
+    // Secret fields that should be masked in the GUI
+    const SECRET_FIELDS = [
+        'OPENAI_API_KEY',
+        'ANTHROPIC_API_KEY',
+        'GOOGLE_API_KEY',
+        'COHERE_API_KEY',
+        'VOYAGE_API_KEY',
+        'LANGSMITH_API_KEY',
+        'HUGGINGFACE_API_KEY',
+        'TOGETHER_API_KEY',
+        'GROQ_API_KEY',
+        'MISTRAL_API_KEY'
+    ];
+
+    const SECRET_MASK = '••••••••••••••••';
+
+    function attachSecretReveal(data) {
+        const env = (data && data.env) || {};
+        const containerSelector = '.input-group';
+        SECRET_FIELDS.forEach((k) => {
+            const field = document.querySelector(`[name="${k}"]`);
+            if (!field) return;
+            if (field.dataset.revealAttached === '1') return;
+            // Create toggle button
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'small-button';
+            btn.textContent = '👁️ Show';
+            btn.style.marginLeft = '6px';
+            btn.addEventListener('click', async () => {
+                try {
+                    if (field.type === 'password') {
+                        // Fetch unmasked env to populate the real value
+                        const r = await fetch(api('/api/config?unmask=1'));
+                        const d = await r.json();
+                        const real = (d.env && d.env[k]) || '';
+                        if (real) field.value = real;
+                        field.type = 'text';
+                        btn.textContent = '🙈 Hide';
+                        field.dataset.revealed = '1';
+                    } else {
+                        // Re-mask
+                        field.type = 'password';
+                        if (env[k]) {
+                            field.value = SECRET_MASK;
+                        } else {
+                            field.value = '';
+                        }
+                        btn.textContent = '👁️ Show';
+                        field.dataset.revealed = '0';
+                    }
+                } catch (e) {
+                    console.warn('[config.js] Failed to toggle secret:', k, e);
+                }
+            });
+            // Insert after input
+            const wrap = field.closest(containerSelector) || field.parentElement;
+            if (wrap) wrap.appendChild(btn);
+            field.dataset.revealAttached = '1';
+        });
+    }
+
+    function setReposLoadingState(state, detail) {
+        const section = document.getElementById('repos-section');
+        if (!section) return;
+        if (state === 'loaded') {
+            section.dataset.state = 'loaded';
+            return;
+        }
+        const isError = state === 'error';
+        const title = isError ? 'Failed to load repositories' : 'Loading repositories…';
+        const message = detail || (isError ? 'Unable to refresh repository metadata.' : 'Fetching latest repository metadata and .env overrides…');
+        const progressAttrs = isError ? 'value="1" max="1"' : 'max="1"';
+        const panel = `
+            <div role="status" aria-live="polite" style="background: var(--card-bg); border: 1px solid var(--line); border-radius: 6px; padding: 12px;">
+                <div style="font-weight:600; color:${isError ? 'var(--err)' : 'var(--fg)'};">${title}</div>
+                <progress ${progressAttrs} style="width:100%; height:8px; margin-top:8px;"></progress>
+                <div class="small" style="margin-top:8px; color:${isError ? 'var(--err)' : 'var(--fg-muted)'};">${message}</div>
+            </div>
+        `;
+        section.innerHTML = panel;
+        section.dataset.state = state;
+    }
+
     /**
      * Load configuration from API and populate form
      */
     async function loadConfig() {
         try {
+            setReposLoadingState('loading');
             try { await fetch(api('/api/env/reload'), { method: 'POST' }); } catch {}
             const r = await fetch(api('/api/config'));
             const d = await r.json();
             state.config = d;
+
+            // Log config precedence for clarity
+            console.log('[config.js] ═══════════════════════════════════════════════');
+            console.log('[config.js] Configuration Precedence:');
+            console.log('[config.js]   1. .env file (HIGHEST - Single Source of Truth)');
+            console.log('[config.js]   2. Docker environment variables');
+            console.log('[config.js]   3. Runtime os.environ');
+            console.log('[config.js]   4. GUI localStorage (browser-specific)');
+            console.log('[config.js]   5. Profiles (ONLY when explicitly applied by user)');
+            console.log('[config.js] ═══════════════════════════════════════════════');
+            console.log('[config.js] IMPORTANT: Profiles are NOT auto-applied.');
+            console.log('[config.js] To change config permanently, use GUI save or edit .env');
+            console.log('[config.js] ═══════════════════════════════════════════════');
+
             populateConfigForm(d);
             // Apply theme after fields are populated so selects reflect env
             if (window.Theme?.initThemeFromEnv) {
                 window.Theme.initThemeFromEnv(d.env || {});
             }
+            const reposSection = document.getElementById('repos-section');
+            if (reposSection) reposSection.dataset.state = 'loaded';
+            return true;
         } catch (e) {
+            state.config = null;
             const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to load configuration', {
                 message: e.message,
                 causes: [
@@ -47,6 +150,8 @@
                 ]
             }) : `Failed to load config: ${e.message}`;
             console.error('[config.js] Failed to load config:', msg);
+            setReposLoadingState('error', e.message);
+            return false;
         }
     }
 
@@ -62,6 +167,27 @@
             const field = document.querySelector(`[name="${k}"]`);
             if (!field) return;
 
+            // Handle secret fields specially to prevent exposing API keys
+            if (SECRET_FIELDS.includes(k)) {
+                if (v && String(v).length > 0) {
+                    // Has a value - show masked
+                    field.value = SECRET_MASK;
+                    field.setAttribute('data-has-secret', 'true');
+                    field.setAttribute('data-secret-length', String(v).length);
+                    field.setAttribute('placeholder', `${String(v).length} characters (hidden for security)`);
+                    field.setAttribute('title', 'API key is set but hidden. Type a new key to replace, or leave as-is to keep existing.');
+                    console.log(`[config.js] Masked secret field: ${k} (${String(v).length} chars)`);
+                } else {
+                    // No value
+                    field.value = '';
+                    field.setAttribute('data-has-secret', 'false');
+                    field.setAttribute('placeholder', 'Enter API key...');
+                    field.setAttribute('title', 'No API key set. Enter one to enable this provider.');
+                }
+                return;
+            }
+
+            // Non-secret fields - normal behavior
             if (field.type === 'checkbox') {
                 field.checked = String(v).toLowerCase() === 'true' || v === '1' || v === true;
             } else if (field.tagName === 'SELECT') {
@@ -70,6 +196,30 @@
                 field.value = v;
             }
         });
+
+        // Runtime Mode select (Infrastructure) - env population above already sets it
+        // Reranker effective state banner
+        try {
+            const eff = data.hints && data.hints.rerank_backend;
+            const warn = document.getElementById('rerank-none-warning');
+            if (warn) {
+                if (eff && eff.backend === 'none') {
+                    warn.style.display = 'block';
+                } else {
+                    warn.style.display = 'none';
+                }
+            }
+            // Default RERANK_BACKEND select to effective if env unset
+            const rrSel = document.querySelector('[name="RERANK_BACKEND"]');
+            if (rrSel && (!env.RERANK_BACKEND || String(env.RERANK_BACKEND).trim() === '')) {
+                if (eff && eff.backend) {
+                    rrSel.value = eff.backend;
+                }
+            }
+        } catch {}
+
+        // Secret reveal toggles
+        attachSecretReveal(data);
 
         // Populate repo select
         const repoSelect = $('#repo-select');
@@ -140,6 +290,9 @@
             window.updateWizardSummary();
         }
 
+        // Populate MCP model datalists
+        populateMCPModelLists();
+
         // Populate repos metadata editor
         const reposSection = $('#repos-section');
         if (reposSection) {
@@ -148,51 +301,217 @@
                 const div = document.createElement('div');
                 div.style.cssText = 'background: var(--card-bg); border: 1px solid var(--line); border-radius: 6px; padding: 16px; margin-bottom: 16px;';
                 const rname = repo.name;
-                div.innerHTML = `
-                    <h4 style="color: var(--accent); font-size: 14px; margin-bottom: 12px;">Repo: ${repo.name}</h4>
-                    <div class="input-group" style="margin-bottom: 12px;">
-                        <label>Path</label>
-                        <input type="text" name="repo_path_${repo.name}" value="${repo.path || ''}" />
-                    </div>
-                    <div class="input-group" style="margin-bottom: 12px;">
-                        <label>Keywords (comma-separated)</label>
-                        <input type="text" name="repo_keywords_${repo.name}" value="${(repo.keywords||[]).join(',')}" list="keywords-list" placeholder="search or type to add" />
-                    </div>
-                    <div class="input-group" style="margin-bottom: 12px;">
-                        <label>Path Boosts (comma-separated)</label>
-                        <input type="text" name="repo_pathboosts_${repo.name}" value="${(repo.path_boosts||[]).join(',')}" />
-                    </div>
-                    <div class="input-group">
-                        <label>Layer Bonuses (JSON)</label>
-                        <textarea name="repo_layerbonuses_${repo.name}" rows="3">${repo.layer_bonuses ? JSON.stringify(repo.layer_bonuses, null, 2) : ''}</textarea>
-                    </div>
-                    <div class="input-group full-width" style="margin-top:12px;">
-                        <label>Keyword Manager</label>
-                        <div style="display:grid; grid-template-columns: 1fr auto 1fr; gap:8px; align-items:center;">
-                            <div>
-                                <div style="display:flex; gap:6px; margin-bottom:6px;">
-                                    <input type="text" id="kw-filter-${rname}" placeholder="filter..." style="width:60%;">
-                                    <select id="kw-src-${rname}">
-                                        <option value="all">All</option>
-                                        <option value="discriminative">Discriminative</option>
-                                        <option value="semantic">Semantic</option>
-                                        <option value="repos">Repo</option>
-                                    </select>
-                                    <button class="small-button" id="kw-new-${rname}" style="background:var(--accent); color: var(--accent-contrast); padding:4px 8px; font-size:11px;" title="Add New Keyword">+</button>
-                                </div>
-                                <select id="kw-all-${rname}" multiple size="8" style="width:100%;"></select>
-                            </div>
-                            <div style="display:flex; flex-direction:column; gap:8px;">
-                                <button class="small-button" id="kw-add-${rname}">&gt;&gt;</button>
-                                <button class="small-button" id="kw-rem-${rname}">&lt;&lt;</button>
-                            </div>
-                            <div>
-                                <div class="small" style="margin-bottom:6px;">Repo Keywords</div>
-                                <select id="kw-repo-${rname}" multiple size="8" style="width:100%;"></select>
-                            </div>
-                        </div>
-                    </div>
-                `;
+
+                // FIXED XSS: Create h4 safely using textContent instead of innerHTML
+                const h4 = document.createElement('h4');
+                h4.style.cssText = 'color: var(--accent); font-size: 14px; margin-bottom: 12px;';
+                h4.textContent = `Repo: ${repo.name}`;
+                div.appendChild(h4);
+
+                // FIXED XSS: Create path input group using DOM methods
+                const pathGroup = document.createElement('div');
+                pathGroup.className = 'input-group';
+                pathGroup.style.cssText = 'margin-bottom: 12px;';
+
+                const pathLabel = document.createElement('label');
+                pathLabel.textContent = 'Path ';
+                const pathStatus = document.createElement('span');
+                pathStatus.className = 'path-validation-status';
+                pathStatus.id = `path-status-${repo.name}`;
+                pathStatus.style.marginLeft = '8px';
+                pathLabel.appendChild(pathStatus);
+                pathGroup.appendChild(pathLabel);
+
+                const pathInput = document.createElement('input');
+                pathInput.type = 'text';
+                pathInput.name = `repo_path_${repo.name}`;
+                pathInput.value = repo.path || '';
+                pathInput.setAttribute('data-repo', repo.name);
+                pathGroup.appendChild(pathInput);
+
+                const pathResolved = document.createElement('div');
+                pathResolved.className = 'small';
+                pathResolved.id = `path-resolved-${repo.name}`;
+                pathResolved.style.cssText = 'color: var(--fg-muted); margin-top: 4px;';
+                pathGroup.appendChild(pathResolved);
+                div.appendChild(pathGroup);
+
+                // FIXED XSS: Create exclude paths group using DOM methods
+                const excludeGroup = document.createElement('div');
+                excludeGroup.className = 'input-group';
+                excludeGroup.style.cssText = 'margin-bottom: 12px;';
+
+                const excludeLabel = document.createElement('label');
+                excludeLabel.textContent = 'Exclude Paths (paths/patterns to skip during indexing)';
+                excludeGroup.appendChild(excludeLabel);
+
+                const excludeContainer = document.createElement('div');
+                excludeContainer.id = `exclude-paths-container-${repo.name}`;
+                excludeContainer.style.cssText = 'display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; min-height: 32px; padding: 8px; background: var(--bg-elev2); border: 1px solid var(--line); border-radius: 4px;';
+                excludeGroup.appendChild(excludeContainer);
+
+                const excludeInputWrapper = document.createElement('div');
+                excludeInputWrapper.style.cssText = 'display: flex; gap: 6px;';
+
+                const excludeInput = document.createElement('input');
+                excludeInput.type = 'text';
+                excludeInput.id = `exclude-path-input-${repo.name}`;
+                excludeInput.placeholder = 'e.g., /website, *.pyc, /node_modules';
+                excludeInput.style.flex = '1';
+                excludeInputWrapper.appendChild(excludeInput);
+
+                const excludeAddBtn = document.createElement('button');
+                excludeAddBtn.type = 'button';
+                excludeAddBtn.className = 'small-button';
+                excludeAddBtn.id = `exclude-path-add-${repo.name}`;
+                excludeAddBtn.style.cssText = 'background: var(--accent); color: var(--accent-contrast); padding: 6px 12px;';
+                excludeAddBtn.textContent = 'Add';
+                excludeInputWrapper.appendChild(excludeAddBtn);
+                excludeGroup.appendChild(excludeInputWrapper);
+
+                const excludeHidden = document.createElement('input');
+                excludeHidden.type = 'hidden';
+                excludeHidden.name = `repo_excludepaths_${repo.name}`;
+                excludeHidden.value = (repo.exclude_paths || []).join(',');
+                excludeGroup.appendChild(excludeHidden);
+                div.appendChild(excludeGroup);
+
+                // FIXED XSS: Create keywords group using DOM methods
+                const keywordsGroup = document.createElement('div');
+                keywordsGroup.className = 'input-group';
+                keywordsGroup.style.cssText = 'margin-bottom: 12px;';
+
+                const keywordsLabel = document.createElement('label');
+                keywordsLabel.textContent = 'Keywords (comma-separated)';
+                keywordsGroup.appendChild(keywordsLabel);
+
+                const keywordsInput = document.createElement('input');
+                keywordsInput.type = 'text';
+                keywordsInput.name = `repo_keywords_${repo.name}`;
+                keywordsInput.value = (repo.keywords || []).join(',');
+                keywordsInput.setAttribute('list', 'keywords-list');
+                keywordsInput.placeholder = 'search or type to add';
+                keywordsGroup.appendChild(keywordsInput);
+                div.appendChild(keywordsGroup);
+
+                // FIXED XSS: Create path boosts group using DOM methods
+                const boostsGroup = document.createElement('div');
+                boostsGroup.className = 'input-group';
+                boostsGroup.style.cssText = 'margin-bottom: 12px;';
+
+                const boostsLabel = document.createElement('label');
+                boostsLabel.textContent = 'Path Boosts (comma-separated)';
+                boostsGroup.appendChild(boostsLabel);
+
+                const boostsInput = document.createElement('input');
+                boostsInput.type = 'text';
+                boostsInput.name = `repo_pathboosts_${repo.name}`;
+                boostsInput.value = (repo.path_boosts || []).join(',');
+                boostsGroup.appendChild(boostsInput);
+                div.appendChild(boostsGroup);
+
+                // FIXED XSS: Create layer bonuses group using DOM methods
+                const layerGroup = document.createElement('div');
+                layerGroup.className = 'input-group';
+
+                const layerLabel = document.createElement('label');
+                layerLabel.textContent = 'Layer Bonuses (JSON)';
+                layerGroup.appendChild(layerLabel);
+
+                const layerTextarea = document.createElement('textarea');
+                layerTextarea.name = `repo_layerbonuses_${repo.name}`;
+                layerTextarea.rows = 3;
+                layerTextarea.value = repo.layer_bonuses ? JSON.stringify(repo.layer_bonuses, null, 2) : '';
+                layerGroup.appendChild(layerTextarea);
+                div.appendChild(layerGroup);
+
+                // FIXED XSS: Create keyword manager group using DOM methods
+                const kwManagerGroup = document.createElement('div');
+                kwManagerGroup.className = 'input-group full-width';
+                kwManagerGroup.style.cssText = 'margin-top:12px;';
+
+                const kwManagerLabel = document.createElement('label');
+                kwManagerLabel.textContent = 'Keyword Manager';
+                kwManagerGroup.appendChild(kwManagerLabel);
+
+                const kwManagerGrid = document.createElement('div');
+                kwManagerGrid.style.cssText = 'display:grid; grid-template-columns: 1fr auto 1fr; gap:8px; align-items:center;';
+
+                // Left column
+                const leftCol = document.createElement('div');
+                const topControls = document.createElement('div');
+                topControls.style.cssText = 'display:flex; gap:6px; margin-bottom:6px;';
+
+                const kwFilter = document.createElement('input');
+                kwFilter.type = 'text';
+                kwFilter.id = `kw-filter-${rname}`;
+                kwFilter.placeholder = 'filter...';
+                kwFilter.style.width = '60%';
+                topControls.appendChild(kwFilter);
+
+                const kwSrc = document.createElement('select');
+                kwSrc.id = `kw-src-${rname}`;
+                ['all', 'discriminative', 'semantic', 'repos'].forEach(val => {
+                    const opt = document.createElement('option');
+                    opt.value = val;
+                    opt.textContent = val.charAt(0).toUpperCase() + val.slice(1);
+                    kwSrc.appendChild(opt);
+                });
+                topControls.appendChild(kwSrc);
+
+                const kwNewBtn = document.createElement('button');
+                kwNewBtn.className = 'small-button';
+                kwNewBtn.id = `kw-new-${rname}`;
+                kwNewBtn.style.cssText = 'background:var(--accent); color: var(--accent-contrast); padding:4px 8px; font-size:11px;';
+                kwNewBtn.title = 'Add New Keyword';
+                kwNewBtn.textContent = '+';
+                topControls.appendChild(kwNewBtn);
+                leftCol.appendChild(topControls);
+
+                const kwAllSelect = document.createElement('select');
+                kwAllSelect.id = `kw-all-${rname}`;
+                kwAllSelect.multiple = true;
+                kwAllSelect.size = 8;
+                kwAllSelect.style.width = '100%';
+                leftCol.appendChild(kwAllSelect);
+                kwManagerGrid.appendChild(leftCol);
+
+                // Middle column (buttons)
+                const midCol = document.createElement('div');
+                midCol.style.cssText = 'display:flex; flex-direction:column; gap:8px;';
+
+                const kwAddBtn = document.createElement('button');
+                kwAddBtn.className = 'small-button';
+                kwAddBtn.id = `kw-add-${rname}`;
+                kwAddBtn.innerHTML = '&gt;&gt;';
+                midCol.appendChild(kwAddBtn);
+
+                const kwRemBtn = document.createElement('button');
+                kwRemBtn.className = 'small-button';
+                kwRemBtn.id = `kw-rem-${rname}`;
+                kwRemBtn.innerHTML = '&lt;&lt;';
+                midCol.appendChild(kwRemBtn);
+                kwManagerGrid.appendChild(midCol);
+
+                // Right column
+                const rightCol = document.createElement('div');
+                const repoKwLabel = document.createElement('div');
+                repoKwLabel.className = 'small';
+                repoKwLabel.style.cssText = 'margin-bottom:6px;';
+                repoKwLabel.textContent = 'Repo Keywords';
+                rightCol.appendChild(repoKwLabel);
+
+                const kwRepoSelect = document.createElement('select');
+                kwRepoSelect.id = `kw-repo-${rname}`;
+                kwRepoSelect.multiple = true;
+                kwRepoSelect.size = 8;
+                kwRepoSelect.style.width = '100%';
+                rightCol.appendChild(kwRepoSelect);
+                kwManagerGrid.appendChild(rightCol);
+
+                kwManagerGroup.appendChild(kwManagerGrid);
+                div.appendChild(kwManagerGroup);
+
                 reposSection.appendChild(div);
 
                 // Hook keyword manager events
@@ -413,6 +732,114 @@
                 // initial fill using existing values + catalog (if loaded later, loadKeywords will repaint)
                 setRepoKws((repo.keywords||[]));
                 if (state.keywordsCatalog) paintSource();
+
+                // Initialize exclude paths UI
+                const excludePathsContainer = div.querySelector(`#exclude-paths-container-${rname}`);
+                const excludePathInput = div.querySelector(`#exclude-path-input-${rname}`);
+                const excludePathAddBtn = div.querySelector(`#exclude-path-add-${rname}`);
+                const excludePathsHidden = div.querySelector(`[name="repo_excludepaths_${rname}"]`);
+
+                function renderExcludePaths() {
+                    const paths = (excludePathsHidden.value || '').split(',').filter(p => p.trim());
+                    excludePathsContainer.innerHTML = '';
+
+                    if (paths.length === 0) {
+                        const emptyMsg = document.createElement('span');
+                        emptyMsg.textContent = 'No exclusions (all files will be indexed)';
+                        emptyMsg.style.cssText = 'color: var(--fg-muted); font-size: 11px; font-style: italic;';
+                        excludePathsContainer.appendChild(emptyMsg);
+                        return;
+                    }
+
+                    paths.forEach(path => {
+                        const chip = document.createElement('div');
+                        chip.style.cssText = 'display: inline-flex; align-items: center; gap: 6px; background: var(--accent); color: var(--accent-contrast); padding: 4px 8px; border-radius: 4px; font-size: 11px;';
+
+                        // FIXED XSS: Create span and button safely using DOM methods
+                        const pathSpan = document.createElement('span');
+                        pathSpan.textContent = path;
+                        chip.appendChild(pathSpan);
+
+                        const removeBtn = document.createElement('button');
+                        removeBtn.type = 'button';
+                        removeBtn.style.cssText = 'background: transparent; border: none; color: var(--accent-contrast); cursor: pointer; padding: 0; font-size: 14px; line-height: 1;';
+                        removeBtn.setAttribute('data-path', path);
+                        removeBtn.innerHTML = '&times;';
+                        chip.appendChild(removeBtn);
+
+                        removeBtn.addEventListener('click', () => {
+                            const currentPaths = (excludePathsHidden.value || '').split(',').filter(p => p.trim());
+                            const newPaths = currentPaths.filter(p => p !== path);
+                            excludePathsHidden.value = newPaths.join(',');
+                            renderExcludePaths();
+                        });
+                        excludePathsContainer.appendChild(chip);
+                    });
+                }
+
+                excludePathAddBtn.addEventListener('click', () => {
+                    const newPath = excludePathInput.value.trim();
+                    if (newPath) {
+                        const currentPaths = (excludePathsHidden.value || '').split(',').filter(p => p.trim());
+                        if (!currentPaths.includes(newPath)) {
+                            currentPaths.push(newPath);
+                            excludePathsHidden.value = currentPaths.join(',');
+                            renderExcludePaths();
+                        }
+                        excludePathInput.value = '';
+                    }
+                });
+
+                excludePathInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        excludePathAddBtn.click();
+                    }
+                });
+
+                renderExcludePaths();
+
+                // Add path validation on blur
+                // Note: pathInput, pathStatus, pathResolved already defined above
+                async function validatePath() {
+                    const pathValue = pathInput.value.trim();
+                    if (!pathValue) {
+                        pathStatus.innerHTML = '';
+                        pathResolved.textContent = '';
+                        return;
+                    }
+
+                    pathStatus.innerHTML = '<span style="color: var(--fg-muted);">⏳ Validating...</span>';
+
+                    try {
+                        const response = await fetch(api(`/api/repos/${rname}/validate-path`), {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ path: pathValue })
+                        });
+
+                        const result = await response.json();
+
+                        if (result.valid) {
+                            pathStatus.innerHTML = '<span style="color: var(--success);">✓ Valid</span>';
+                            pathResolved.textContent = `Resolves to: ${result.resolved}`;
+                        } else {
+                            pathStatus.innerHTML = '<span style="color: var(--error);">✗ Invalid</span>';
+                            pathResolved.textContent = result.error || 'Path validation failed';
+                            pathResolved.style.color = 'var(--error)';
+                        }
+                    } catch (e) {
+                        pathStatus.innerHTML = '<span style="color: var(--warning);">⚠ Check failed</span>';
+                        pathResolved.textContent = 'Could not validate path';
+                        pathResolved.style.color = 'var(--warning)';
+                    }
+                }
+
+                pathInput.addEventListener('blur', validatePath);
+                // Validate on initial load
+                if (pathInput.value.trim()) {
+                    setTimeout(validatePath, 500);
+                }
             });
         }
 
@@ -433,10 +860,36 @@
             const key = field.name;
             let val;
 
+            // Handle secret fields - preserve existing secrets if unchanged
+            if (SECRET_FIELDS.includes(key)) {
+                const hasSecret = field.getAttribute('data-has-secret') === 'true';
+                const currentValue = field.value;
+                const isUnchanged = (currentValue === SECRET_MASK || currentValue === '');
+
+                if (hasSecret && isUnchanged) {
+                    // Secret exists but user didn't change it - don't send (server keeps existing)
+                    console.log(`[config.js] Preserving existing secret: ${key}`);
+                    return;
+                } else if (currentValue && currentValue !== SECRET_MASK) {
+                    // User typed a new value - send it
+                    update.env[key] = currentValue;
+                    console.log(`[config.js] Updating secret: ${key} (${currentValue.length} chars)`);
+                    return;
+                } else if (currentValue === '' && !hasSecret) {
+                    // Empty and no secret - don't send (allows keeping it unset)
+                    return;
+                }
+                // If we get here, fall through to normal handling
+            }
+
+            // Non-secret fields - normal behavior
             if (field.type === 'checkbox') {
-                val = field.checked;
+                val = field.checked ? 1 : 0;  // Backend expects 1/0, not true/false
             } else if (field.type === 'number') {
-                val = field.value;
+                const parsed = parseFloat(field.value);
+                val = isNaN(parsed) ? 0 : parsed;  // Safe conversion with fallback
+            } else if (field.type === 'text' || field.type === 'password') {
+                val = field.value.trim();  // Trim whitespace
             } else {
                 val = field.value;
             }
@@ -459,14 +912,36 @@
                 repoMap[repoName] = { name: repoName };
             }
 
-            if (fieldType === 'keywords' || fieldType === 'pathboosts') {
-                const key = fieldType === 'pathboosts' ? 'path_boosts' : 'keywords';
+            if (fieldType === 'keywords' || fieldType === 'pathboosts' || fieldType === 'excludepaths') {
+                let key = fieldType;
+                if (fieldType === 'pathboosts') key = 'path_boosts';
+                else if (fieldType === 'excludepaths') key = 'exclude_paths';
                 repoMap[repoName][key] = field.value.split(',').map(s => s.trim()).filter(Boolean);
             } else if (fieldType === 'layerbonuses') {
                 try {
                     repoMap[repoName]['layer_bonuses'] = field.value ? JSON.parse(field.value) : {};
                 } catch (e) {
-                    alert(`Invalid JSON for ${repoName} layer_bonuses: ${e.message}`);
+                    const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Invalid Layer Bonuses JSON', {
+                        message: `${repoName} layer_bonuses: ${e.message}`,
+                        causes: [
+                            'Layer bonuses field contains malformed JSON syntax',
+                            'Unmatched braces, brackets, or quotes in JSON',
+                            'Trailing comma in JSON object (not allowed)',
+                            'JavaScript comments in JSON field (not valid JSON)'
+                        ],
+                        fixes: [
+                            'Use a JSON validator to check syntax: jsonlint.com',
+                            'Remove trailing commas from JSON objects',
+                            'Ensure all quotes are properly closed and escaped',
+                            'Use correct JSON format: {\"key\": value} not {key: value}'
+                        ],
+                        links: [
+                            ['JSON Syntax Reference', 'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON'],
+                            ['JSON Validator', 'https://jsonlint.com/'],
+                            ['Layer Configuration', '/docs/CONFIGURATION.md#layers']
+                        ]
+                    }) : `Invalid JSON for ${repoName} layer_bonuses: ${e.message}`;
+                    alert(msg);
                     return null;
                 }
             } else if (fieldType === 'path') {
@@ -493,13 +968,39 @@
             });
 
             if (!r.ok) {
-                alert('Save failed');
+                const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Configuration Save Failed', {
+                    message: r.status + ' ' + r.statusText,
+                    causes: [
+                        'Backend configuration API service is unavailable or crashed',
+                        'Invalid configuration values submitted failed validation',
+                        'Network connection interrupted during save request'
+                    ],
+                    fixes: [
+                        'Check Infrastructure tab to verify backend service is running',
+                        'Review form inputs for invalid values (check browser console)',
+                        'Verify network connectivity and retry saving'
+                    ],
+                    links: [
+                        ['HTTP Status Reference', 'https://developer.mozilla.org/en-US/docs/Web/HTTP/Status'],
+                        ['Configuration Guide', '/docs/CONFIGURATION.md'],
+                        ['Backend Health', '/api/health']
+                    ]
+                }) : `Save failed: HTTP ${r.status}`;
+                alert(msg);
                 return;
             }
 
             const result = await r.json();
             if (result.status === 'success') {
-                alert('Configuration updated successfully!');
+                if (window.UXFeedback && window.UXFeedback.toast) {
+                    window.UXFeedback.toast('Configuration updated successfully', 'success');
+                } else {
+                    console.log('✓ Configuration updated successfully');
+                    // Fallback: Use alert if showToast not available
+                    if (typeof showToast === 'function') {
+                        showToast('Configuration updated successfully', 'success');
+                    }
+                }
                 await loadConfig(); // Reload to confirm
             }
         } catch (e) {
@@ -582,6 +1083,105 @@
         }
     }
 
+    /**
+     * Populate MCP and model dropdowns from prices.json
+     */
+    async function populateMCPModelLists() {
+        try {
+            // Load prices from API
+            const response = await fetch(api('/api/prices'));
+            if (!response.ok) throw new Error('Failed to load prices');
+            const data = await response.json();
+            
+            if (!data.models || !Array.isArray(data.models)) {
+                console.warn('No models found in prices data');
+                return;
+            }
+
+            // Get all unique model names for generation models
+            const generationModels = data.models
+                .filter(m => m.input_per_1k !== undefined || m.provider === 'ollama' || m.provider === 'local')
+                .map(m => m.model)
+                .filter((model, index, arr) => arr.indexOf(model) === index) // Remove duplicates
+                .sort();
+
+            // Populate all generation model select dropdowns
+            const selectIds = [
+                'gen-model-select',
+                'http-model-select', 
+                'mcp-model-select',
+                'cli-model-select',
+                'enrich-model-select',
+                'enrich-model-ollama-select',
+                'http-override-model-select',
+                'mcp-override-model-select',
+                'cli-override-model-select'
+            ];
+
+            // Establish preferred selections from env (preserve current selection if present)
+            const env = (state && state.config && state.config.env) ? state.config.env : {};
+            const preferredById = {
+                'gen-model-select': env.GEN_MODEL,
+                'http-model-select': env.GEN_MODEL_HTTP,
+                'mcp-model-select': env.GEN_MODEL_MCP,
+                'cli-model-select': env.GEN_MODEL_CLI,
+                'enrich-model-select': env.ENRICH_MODEL,
+                'enrich-model-ollama-select': env.ENRICH_MODEL_OLLAMA,
+                'http-override-model-select': env.GEN_MODEL_HTTP,
+                'mcp-override-model-select': env.GEN_MODEL_MCP,
+                'cli-override-model-select': env.GEN_MODEL_CLI,
+            };
+
+            selectIds.forEach(selectId => {
+                const select = document.getElementById(selectId);
+                if (select) {
+                    // Remember current selection before repopulating
+                    const currentValue = select.value;
+                    // Clear existing options except the first one
+                    const firstOption = select.querySelector('option');
+                    select.innerHTML = '';
+                    if (firstOption) {
+                        select.appendChild(firstOption);
+                    } else {
+                        const defaultOption = document.createElement('option');
+                        defaultOption.value = '';
+                        defaultOption.textContent = 'Select a model...';
+                        select.appendChild(defaultOption);
+                    }
+                    
+                    generationModels.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model;
+                        option.textContent = model;
+                        select.appendChild(option);
+                    });
+                    // Restore selection preference: current UI value, then env, else leave default
+                    const preferred = currentValue || preferredById[selectId] || '';
+                    if (preferred && Array.from(select.options).some(o => o.value === preferred)) {
+                        select.value = preferred;
+                    }
+                    console.log(`Populated ${selectId} with ${generationModels.length} models`);
+                }
+            });
+
+            // Populate backend options
+            const backendSelect = document.getElementById('enrich-backend-select');
+            if (backendSelect) {
+                const backends = ['openai', 'anthropic', 'google', 'cohere', 'ollama', 'local'];
+                backends.forEach(backend => {
+                    const option = document.createElement('option');
+                    option.value = backend;
+                    option.textContent = backend.charAt(0).toUpperCase() + backend.slice(1);
+                    backendSelect.appendChild(option);
+                });
+                console.log(`Populated enrich-backend-select with ${backends.length} backends`);
+            }
+
+        } catch (error) {
+            console.error('Failed to populate MCP model lists:', error);
+        }
+    }
+
     // Export to window
     window.Config = {
         loadConfig,
@@ -589,7 +1189,8 @@
         gatherConfigForm,
         saveConfig,
         initConfigRetrieval,
-        initProfilesUI
+        initProfilesUI,
+        populateMCPModelLists
     };
 
     console.log('[config.js] Module loaded with dual registration (rag-retrieval + profiles)');

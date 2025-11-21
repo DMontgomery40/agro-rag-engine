@@ -94,7 +94,24 @@
         const profile = PROFILES[profileKey];
 
         if (!profile) {
-            alert('Invalid profile selected');
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Invalid Profile', {
+                message: 'The selected profile is not available',
+                causes: [
+                    'Profile data is corrupted or missing required fields',
+                    'Selected profile was deleted by another process',
+                    'Profile list failed to load from backend'
+                ],
+                fixes: [
+                    'Refresh the page to reload the profile list',
+                    'Create a new profile instead of using the invalid one',
+                    'Check Settings > Profiles to verify available profiles'
+                ],
+                links: [
+                    ['Profile Configuration', '/docs/PROFILES.md#creating-profiles'],
+                    ['Backend Health', '/api/health']
+                ]
+            }) : 'Invalid profile selected';
+            alert(msg);
             return;
         }
 
@@ -129,10 +146,30 @@
                 }
             }
         } catch (e) {
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to Apply Profile', {
+                message: e.message,
+                causes: [
+                    'Backend profile application API is not responding',
+                    'Selected profile contains invalid configuration values',
+                    'Network connection interrupted during profile application',
+                    'Backend validation rejected the profile settings'
+                ],
+                fixes: [
+                    'Check Infrastructure tab to ensure backend is running',
+                    'Verify profile settings are valid in Settings > Profiles',
+                    'Retry applying the profile after checking network connectivity',
+                    'Review backend logs for specific validation errors'
+                ],
+                links: [
+                    ['Profiles Documentation', '/docs/PROFILES.md'],
+                    ['Configuration Guide', '/docs/CONFIGURATION.md'],
+                    ['Backend Health', '/api/health']
+                ]
+            }) : `Error: ${e.message}`;
             if (window.showStatus) {
                 window.showStatus(`Failed to apply profile: ${e.message}`, 'error');
             } else {
-                alert(`Error: ${e.message}`);
+                alert(msg);
             }
         } finally {
             if (btn) btn.disabled = false;

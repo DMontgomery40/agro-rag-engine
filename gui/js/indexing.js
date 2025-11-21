@@ -130,7 +130,27 @@
             grid.innerHTML = html;
         } catch (e) {
             console.error('[indexing] Failed to load stats:', e);
-            grid.innerHTML = '<div style="color: var(--err); padding: 16px;">Failed to load index stats</div>';
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to Load Index Statistics', {
+                message: e.message,
+                causes: [
+                    'Backend index statistics API endpoint is not responding',
+                    'Qdrant vector database is not running or not accessible',
+                    'Index data is corrupted or database schema mismatch',
+                    'Network timeout while fetching index statistics'
+                ],
+                fixes: [
+                    'Verify backend service is running: check Infrastructure tab',
+                    'Ensure Qdrant is running: check Infrastructure > Services status',
+                    'Refresh the page to retry loading statistics',
+                    'Check backend logs for index/stats endpoint errors'
+                ],
+                links: [
+                    ['Qdrant Collections', 'https://qdrant.tech/documentation/concepts/collections/'],
+                    ['Backend Health', '/api/health'],
+                    ['Indexing Guide', '/docs/INDEXING.md#monitoring']
+                ]
+            }) : 'Failed to load index stats: ' + e.message;
+            grid.innerHTML = '<div style="color: var(--err); padding: 16px;">' + msg + '</div>';
         }
     }
 
@@ -144,7 +164,23 @@
         const skipDenseSelect = $('#index-skip-dense');
         const enrichSelect = $('#index-enrich-chunks');
 
-        const repo = repoSelect ? repoSelect.value : null;
+        // Try to get repo from dropdown, or fall back to config default
+        let repo = repoSelect ? repoSelect.value : null;
+
+        if (!repo || repo === '') {
+            // Fallback to default repo from config or env
+            const config = state.config;
+            if (config && config.env && config.env.REPO) {
+                repo = config.env.REPO;
+                console.log('[indexing] Using default repo from config:', repo);
+            } else if (config && config.default_repo) {
+                repo = config.default_repo;
+                console.log('[indexing] Using default_repo from config:', repo);
+            } else {
+                repo = 'agro'; // Final fallback
+                console.log('[indexing] Using hardcoded fallback repo: agro');
+            }
+        }
 
         if (!repo) {
             if (window.showStatus) {
@@ -335,11 +371,116 @@
         } catch (e) {
             console.error('[indexing] Failed to poll status:', e);
 
+            const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Indexing Status Check Failed', {
+                message: e.message,
+                causes: [
+                    'Backend indexing status API endpoint is not responding',
+                    'Indexing process crashed or was terminated unexpectedly',
+                    'Network connection interrupted during status polling',
+                    'Backend server restarted during indexing operation'
+                ],
+                fixes: [
+                    'Check Infrastructure tab to verify backend service is running',
+                    'Review backend logs for indexing process errors',
+                    'Restart indexing process if it appears stalled',
+                    'Verify network connectivity and retry polling'
+                ],
+                links: [
+                    ['Indexing Process', '/docs/INDEXING.md#monitoring-progress'],
+                    ['Backend Health', '/api/health'],
+                    ['Troubleshooting', '/docs/TROUBLESHOOTING.md#indexing']
+                ]
+            }) : 'Indexing status check failed: ' + e.message;
+
+            if (window.showStatus) {
+                window.showStatus(msg, 'error');
+            }
+
             // Hide progress bar on error
             if (window.UXFeedback) {
                 window.UXFeedback.progress.hide('indexing');
             }
         }
+    }
+
+    /**
+     * Populate indexing repo selector (current repo display)
+     */
+    function populateIndexingRepoSelector() {
+        const select = $('#indexing-repo-selector');
+        if (!select) return;
+
+        const config = state.config;
+        if (!config || !config.repos) {
+            console.warn('[indexing] No config or repos available for indexing repo selector');
+            return;
+        }
+
+        // Clear existing options
+        select.innerHTML = '';
+
+        // Add repos
+        config.repos.forEach((repo) => {
+            const opt = document.createElement('option');
+            opt.value = repo.name;
+            opt.textContent = repo.name;
+            select.appendChild(opt);
+        });
+
+        // Set current repo
+        const currentRepo = config.env && config.env.REPO ? config.env.REPO : config.default_repo || (config.repos[0] && config.repos[0].name);
+        if (currentRepo) {
+            select.value = currentRepo;
+        }
+
+        console.log('[indexing] Populated indexing repo selector with', config.repos.length, 'repos');
+    }
+
+    /**
+     * Update branch display
+     */
+    async function updateBranchDisplay() {
+        const branchDisplay = $('#indexing-branch-display');
+        if (!branchDisplay) return;
+
+        try {
+            const response = await fetch(api('/api/index/stats'));
+            const stats = await response.json();
+
+            if (stats.current_branch) {
+                branchDisplay.textContent = stats.current_branch;
+                branchDisplay.style.color = 'var(--link)';
+            }
+        } catch (e) {
+            console.error('[indexing] Failed to load branch:', e);
+            branchDisplay.textContent = 'unknown';
+            branchDisplay.style.color = 'var(--err)';
+        }
+    }
+
+    /**
+     * Handle repo selector change
+     */
+    function handleRepoSelectorChange() {
+        const selector = $('#indexing-repo-selector');
+        if (!selector) return;
+
+        const newRepo = selector.value;
+        console.log('[indexing] Repo changed to:', newRepo);
+
+        // Sync with other dropdowns
+        const simpleSelect = $('#simple-repo-select');
+        const advancedSelect = $('#index-repo-select');
+
+        if (simpleSelect && simpleSelect.value !== newRepo) {
+            simpleSelect.value = newRepo;
+        }
+        if (advancedSelect && advancedSelect.value !== newRepo) {
+            advancedSelect.value = newRepo;
+        }
+
+        // TODO: Update .env file via backend endpoint if needed
+        // For now, just update the UI
     }
 
     /**
@@ -352,12 +493,16 @@
             window.Config.loadConfig = async function() {
                 await originalLoadConfig.call(window.Config);
                 populateIndexRepoDropdown();
+                populateIndexingRepoSelector();
+                updateBranchDisplay();
             };
         }
 
         // Try to populate immediately if config already loaded
         if (state.config) {
             populateIndexRepoDropdown();
+            populateIndexingRepoSelector();
+            updateBranchDisplay();
         }
 
         // Fallback: fetch config directly if dropdown is still empty after a delay
@@ -392,11 +537,13 @@
         const startBtn = $('#btn-index-start');
         const stopBtn = $('#btn-index-stop');
         const dashStartBtn = $('#dash-index-start');
-        
+        const repoSelector = $('#indexing-repo-selector');
+
         if (refreshBtn) refreshBtn.addEventListener('click', refreshIndexStats);
         if (startBtn) startBtn.addEventListener('click', startIndexing);
         if (stopBtn) stopBtn.addEventListener('click', stopIndexing);
         if (dashStartBtn) dashStartBtn.addEventListener('click', startIndexing);
+        if (repoSelector) repoSelector.addEventListener('change', handleRepoSelectorChange);
 
         // Initial stats load
         refreshIndexStats();

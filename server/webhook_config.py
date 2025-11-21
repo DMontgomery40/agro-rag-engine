@@ -2,9 +2,8 @@
 # Webhook configuration management - Slack/Discord URLs stored in GUI
 
 import json
-import os
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from dataclasses import dataclass, asdict
 
 CONFIG_DIR = Path(__file__).parent.parent / "data" / "config"
@@ -71,9 +70,9 @@ def update_webhooks(updates: Dict[str, Any]) -> Dict[str, bool]:
             if hasattr(config, key):
                 field_type = WebhookConfig.__dataclass_fields__[key].type
                 # Convert value to correct type
-                if field_type == bool:
+                if field_type is bool:
                     converted = str(value).lower() in {"1", "true", "on", "yes"}
-                elif field_type == float:
+                elif field_type is float:
                     converted = float(value)
                 else:
                     converted = str(value)

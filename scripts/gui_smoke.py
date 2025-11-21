@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import os, time, json, tempfile, signal, subprocess
+import os
+import time
+import json
+import tempfile
+import signal
+import subprocess
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
 
@@ -9,7 +14,8 @@ BASE = "http://127.0.0.1:8012"
 
 
 def wait_health(timeout=20):
-    import urllib.request, urllib.error
+    import urllib.request
+    import urllib.error
     start = time.time()
     while time.time() - start < timeout:
         try:
@@ -83,4 +89,3 @@ def main() -> int:
 
 if __name__ == '__main__':
     raise SystemExit(main())
-

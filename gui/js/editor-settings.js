@@ -68,6 +68,27 @@
       }
     } catch (error) {
       console.error('[EditorSettings] Failed to save:', error);
+      const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to Save Editor Settings', {
+        message: error.message,
+        causes: [
+          'Backend editor settings API endpoint is not responding',
+          'Invalid settings values submitted (port out of range, invalid host)',
+          'Network connection interrupted during save request',
+          'Settings file permissions issue on backend server'
+        ],
+        fixes: [
+          'Verify backend service is running: check Infrastructure tab',
+          'Ensure port number is between 1024 and 65535',
+          'Check host value is valid (127.0.0.1 or valid IP address)',
+          'Review backend logs for /api/editor/settings endpoint errors'
+        ],
+        links: [
+          ['Editor Integration', '/docs/EDITOR.md#settings'],
+          ['HTTP Status Codes', 'https://developer.mozilla.org/en-US/docs/Web/HTTP/Status'],
+          ['Backend Health', '/api/health']
+        ]
+      }) : 'Failed to save editor settings: ' + error.message;
+      alert(msg);
       // Revert cache on error
       return false;
     }

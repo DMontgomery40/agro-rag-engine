@@ -4,7 +4,7 @@
 import logging
 import time
 from collections import defaultdict
-from typing import Dict, Tuple, Set
+from typing import Dict, Tuple
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
@@ -90,7 +90,6 @@ class FrequencyAnomalyMiddleware(BaseHTTPMiddleware):
         # Cleanup old entries to prevent memory leak
         if len(_call_history) > CLEANUP_THRESHOLD_CALLS:
             # Remove entries older than 2x the window
-            cutoff_time = now - (2 * FREQUENCY_WINDOW_SECONDS)
             _call_history.clear()  # Simple cleanup: clear all, will rebuild naturally
             _frequency_summary.clear()
 
@@ -109,7 +108,6 @@ def get_frequency_stats() -> Dict:
     }
 
     # Find high-frequency clients
-    current_time = time.time()
     for (client_ip, endpoint), (count, first_seen, last_seen, alert_fired) in _frequency_summary.items():
         if count > ALERT_THRESHOLD_PER_MINUTE:
             window_duration = last_seen - first_seen
@@ -133,4 +131,3 @@ def reset_frequency_tracking():
     _call_history.clear()
     _frequency_summary.clear()
     logger.info("Frequency tracking reset")
-

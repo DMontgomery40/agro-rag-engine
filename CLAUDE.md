@@ -33,6 +33,13 @@
   <section title="Critical: No Commits Without Approval">
     <p>> !!! CRITICAL !!!  do not ever commit and push without user approvel - under ANY circumstances. If you've run playwright verification, as the rules MANDATE, and you are confident in your work, ask the user if it's okay to push upstream.  NEVER commit without user authorization !!! CRITICAL !!!</p>
   </section>
+  <section title="Path Configuration: Always Use Relative Paths or Environment Variables">
+    <ul>
+      <li><b>NEVER hard-code absolute paths</b> like /Users/davidmontgomery/agro-rag-engine - they break in Docker and other environments</li>
+      <li><b>ALWAYS use relative paths</b> (e.g., models/cross-encoder-agro, data/evals/baseline.json) or environment variables with defaults (e.g., ${REPO_ROOT:-/app})</li>
+      <li>This ensures code works in both local development and Docker containers without modification</li>
+    </ul>
+  </section>
   <section title="RAG Preconditions">
     <p>You must verify the server is up, docker is running, and qdrant is accessible, before doing any RAG performance related tests</p>
   </section>
@@ -53,6 +60,24 @@
   </section>
   <section title="Agent Docs Location">
     <p>***All agent-created .md files must go in /agent_docs/, please don't clutter root unnessarily***</p>
+  </section>
+  <section title="Bug Documentation (MANDATORY)">
+    <p>***When you fix a bug that the user VERIFIES as fixed, you MUST document it in agent_docs/bug-resolution.md***</p>
+    <ul>
+      <li>This prevents repeat bugs across different agents and sessions</li>
+      <li>ONLY add entries AFTER user confirms the fix works</li>
+      <li>Include: symptoms, root cause, fix applied, files changed, prevention tips</li>
+      <li>Follow the template in agent_docs/bug-resolution.md</li>
+      <li>Many bugs are repeated by different agents - documentation prevents this</li>
+    </ul>
+    <section title="Common Repeat Bugs to Watch For">
+      <ul>
+        <li><b>Boolean .env values</b>: NEVER use True/true/False/false - always use 1 or 0</li>
+        <li><b>Subtab navigation</b>: data-subtab names must match ID construction pattern</li>
+        <li><b>Absolute paths</b>: Never hardcode /Users/... paths, use relative or env vars</li>
+        <li>Check agent_docs/bug-resolution.md for full list before starting work</li>
+      </ul>
+    </section>
   </section>
   <section title="RAG Server Usage">
     <p>Use the RAG server (API or MCP)</p>
@@ -142,6 +167,23 @@ markdown version
 
 # ***All agent-created .md files must go in /agent_docs/, please don't clutter root unnessarily***
 
+# Bug Documentation (MANDATORY)
+
+***When you fix a bug that the user VERIFIES as fixed, you MUST document it in agent_docs/bug-resolution.md***
+
+  - This prevents repeat bugs across different agents and sessions
+  - ONLY add entries AFTER user confirms the fix works
+  - Include: symptoms, root cause, fix applied, files changed, prevention tips
+  - Follow the template in agent_docs/bug-resolution.md
+  - Many bugs are repeated by different agents - documentation prevents this
+
+## Common Repeat Bugs to Watch For
+
+  - **Boolean .env values**: NEVER use True/true/False/false - always use 1 or 0
+  - **Subtab navigation**: data-subtab names must match ID construction pattern
+  - **Absolute paths**: Never hardcode /Users/... paths, use relative or env vars
+  - Check agent_docs/bug-resolution.md for full list before starting work
+
 # Use the RAG server (API or MCP)
 Prefer `rag_search` for retrieval and `rag_answer` for full answers; it saves tokens and context.
 After `/answer`, please rate via `/feedback` (1–5) to improve quality.
@@ -194,3 +236,36 @@ print(results)
 - Stay on your current branch unless explicitly instructed to switch.
 - Open PRs from `development` → `staging`, and from `staging` → `main` only.
 - Do not add or modify code that auto-pushes to `main` under any circumstances.
+
+# **CRITICAL: Architecture Audit Coordination Rule**
+
+***After EVERY code change (frontend OR backend), you MUST immediately update `agent_docs/___ARCHITECTURE_COMPLETE_AUDIT___.md`***
+
+  - This is a LIVING DOCUMENT that tracks ALL architectural state
+  - Add what you changed: file names, line numbers, exact changes
+  - Update dependency information if imports changed
+  - Mark issues as FIXED when you resolve them
+  - Add new issues when you discover them
+  - This is how multiple agents COORDINATE their work
+  - Without this, agents work blind and break each other's code
+  - **THIS IS MANDATORY** - not optional, not "when you remember"
+  - Update the audit IMMEDIATELY after each edit, before moving to next task
+
+## Why This Matters
+
+  - Frontend and backend agents work simultaneously
+  - They need to know what the other has done
+  - The audit is the SINGLE SOURCE OF TRUTH
+  - Example: Backend adds endpoint → updates audit → Frontend sees it's ready
+  - Example: Frontend adds UI → updates audit → Backend knows what endpoint to add
+  - Without coordination: Duplicate work, conflicts, broken features
+
+## How to Update the Audit
+
+  1. Find the relevant section (use grep or search)
+  2. Add a timestamped entry under "CHANGES LOG"
+  3. Update file line counts if significant changes
+  4. Mark TODOs/issues as resolved
+  5. Add new findings if you discover problems
+  6. Commit the audit WITH your code changes (same commit)
+

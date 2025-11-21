@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Test AGRO GUI Metrics tab with embedded Grafana"""
 import asyncio
-from playwright.async_api import async_playwright
+from playwright.async_api import async_playwright  # type: ignore[import]
 
 async def test_metrics_tab():
     async with async_playwright() as p:

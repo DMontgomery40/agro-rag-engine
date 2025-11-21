@@ -4,7 +4,13 @@
     {
       "name": "agro",
       "slug": "agro",
-      "path": "/Users/davidmontgomery/agro-rag-engine",
+      "path": "${REPO_ROOT:-/}",
+      "exclude_paths": [
+        "/docs",
+        "/agent_docs",
+        "/website",
+        "/assets"
+      ],
       "keywords": [
         "models",
         "python",
@@ -36,7 +42,8 @@
         "eval",
         "indexer",
         "retrieval",
-        "layer"
+        "layer",
+        "stdio"
       ],
       "path_boosts": [
         "/gui",
@@ -45,7 +52,9 @@
         "/retrieval",
         "/scripts",
         "/gui/js",
-        "/gui/index.html"
+        "/gui/index.html",
+        "/infra",
+        "/web"
       ],
       "layer_bonuses": {
         "gui": {

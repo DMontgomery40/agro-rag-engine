@@ -28,10 +28,32 @@
     try {
       const r = await fetch(api('/api/git/hooks/install'), { method: 'POST' });
       const d = await r.json();
-      alert(d.message || 'Hooks installed');
+      if (window.UXFeedback && window.UXFeedback.toast) {
+        window.UXFeedback.toast(d.message || 'Hooks installed successfully', 'success');
+      } else {
+        alert(d.message || 'Hooks installed');
+      }
       await refreshHooksStatus();
     } catch (e) {
-      alert('Failed to install hooks: ' + e.message);
+      const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Git Hooks Installation Failed', {
+        message: e.message,
+        causes: [
+          'Git hooks directory (.git/hooks) is not writable or missing',
+          'Backend git hooks installer service is not responding',
+          'Git repository is not initialized in project directory'
+        ],
+        fixes: [
+          'Verify write permissions: chmod 755 .git/hooks',
+          'Check Infrastructure tab to ensure backend service is running',
+          'Initialize git repository first: git init if needed'
+        ],
+        links: [
+          ['Git Hooks Documentation', 'https://git-scm.com/docs/githooks'],
+          ['Git Hooks Setup', 'https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks'],
+          ['Backend Health', '/api/health']
+        ]
+      }) : 'Failed to install hooks: ' + e.message;
+      alert(msg);
     }
   }
 
