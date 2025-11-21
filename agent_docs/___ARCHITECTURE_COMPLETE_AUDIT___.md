@@ -242,6 +242,78 @@ Verification Artifacts:
 - Font parity logs: tests/compare_fonts.spec.ts (Body fonts match = true; Code fonts differ but use mono stack).
 - GUI smoke screenshots: test-results/react-app-loaded.png, test-results/react-navigation.png, test-results/react-rag-subtabs.png, test-results/react-learning-ranker.png, test-results/react-vscode-tab.png, test-results/react-admin-tab.png
 
+## 2025-11-20 17:50 - Frontend Agent - Chat Wiring Fix + Smoke
+
+Files Modified:
+- web/src/modules/chat.js (add React mount hooks; expose `window.ChatUI.init`; robust init)
+- web/src/components/tabs/ChatTab.tsx (dispatch `agro:chat:mount`; invoke `ChatUI.init()` on mount and subtab change)
+- tests/chat_wiring_smoke.spec.ts (NEW: verifies Chat send wiring; marks settings persistence as fixme pending API)
+
+Changes:
+- Ensured legacy chat module binds after React renders. Listening to `react-ready` and a new `agro:chat:mount` event guarantees inputs and buttons have listeners when Chat is shown.
+- Added manual init bridge `window.ChatUI.init()` that React calls on mount/subtab switch.
+
+Impact:
+- Chat UI is functional: typing and clicking Send triggers activity and a backend `/api/chat` call (retrieval-only fallback when graph not available).
+- Chat Settings UI renders and Save/Reset buttons are bound; persistence will be finalized with a server-side `/chat/config` endpoint in a follow‑up.
+
+Verification:
+- `npx playwright test -c tools/playwright.config.ts tests/chat_wiring_smoke.spec.ts`
+  - UI sends message and shows activity: PASS
+  - Chat settings persistence: FIXME (skipped) – to be completed when API is wired.
+
+## 2025-11-20 18:05 - Frontend Agent - Keywords Manager Visible in Data Quality
+
+Files Modified:
+- web/src/components/RAG/DataQualitySubtab.tsx (added `<datalist id="keywords-list">` and ensured container exists for manager)
+- web/src/components/tabs/RAGTab.tsx (on `data-quality` activate, call `Config.loadConfig()`, `initCards()`, `initCardsBuilder()`, `initKeywords()` to bridge legacy modules)
+- tests/keywords_manager_smoke.spec.ts (NEW – Playwright smoke verifying Keywords Manager list renders)
+
+Impact:
+- Keywords Manager now appears under RAG → Data Quality for repos (driven by `/api/config` + `/api/keywords`).
+- Verified via Playwright smoke.
+
+Verification:
+- `npx playwright test -c tools/playwright.config.ts tests/keywords_manager_smoke.spec.ts` → PASS
+
+## 2025-11-20 18:20 - Frontend Agent - Learning Reranker Wiring + Smoke
+
+Files Modified:
+- web/src/modules/reranker.js (listen for `agro:reranker:mount`; expose `window.RerankerUI.init()`)
+- web/src/components/tabs/RAGTab.tsx (dispatch `agro:reranker:mount` and call `RerankerUI.init()` when `learning-ranker` active)
+- tests/learning_reranker_smoke.spec.ts (NEW – verifies buttons bind and react to clicks)
+
+Impact:
+- Learning Ranker subtab is functional: Mine/Train/Evaluate buttons are bound to backend via the legacy module, triggered after React renders.
+
+Verification:
+- `npx playwright test -c tools/playwright.config.ts tests/learning_reranker_smoke.spec.ts` → PASS
+
+## 2025-11-20 18:35 - Frontend Agent - Indexing Subtab Wiring + Smoke
+
+Files Modified:
+- web/src/components/tabs/RAGTab.tsx (on `indexing` active, call `Config.loadConfig()`, `Indexing.initIndexing()`, `initIndexProfiles()`, `SimpleIndex.loadRepos()`, and bind `simple-index-btn` to `SimpleIndex.runRealIndex()`)
+- web/src/components/RAG/IndexingSubtab.tsx (added `Index Status` panel with `#index-status-display` and `#btn-refresh-index-stats`)
+- tests/indexing_subtab_wiring_smoke.spec.ts (NEW – asserts repo dropdown populated and Simple Index output appears after click)
+
+Impact:
+- Indexing subtab is functional: repo dropdown populated from `/api/config`, Start Indexing wired to `/api/index/start`, Simple Index streams output from `/api/index/run`.
+
+Verification:
+- `npx playwright test -c tools/playwright.config.ts tests/indexing_subtab_wiring_smoke.spec.ts` → PASS
+
+## 2025-11-20 18:45 - Frontend Agent - MCP Subtab Wiring + Smoke
+
+Files Modified:
+- web/src/components/Infrastructure/MCPSubtab.tsx (use `running` from `/api/mcp/http/status`, display host/port/path; relaxed result handling)
+- tests/mcp_subtab_wiring_smoke.spec.ts (NEW – asserts MCP Test Connection button updates result text, whether connected or not)
+
+Impact:
+- MCP page is operational: status checks and test button call backend endpoints; UI reflects result.
+
+Verification:
+- `npx playwright test -c tools/playwright.config.ts tests/mcp_subtab_wiring_smoke.spec.ts` → PASS
+
 ### Config Registry EXPANDED AGAIN: 28 Reranking, Generation & Enrichment Parameters (2025-11-20)
 
 **Completed by Subagent 1:**

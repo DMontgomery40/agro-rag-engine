@@ -17,6 +17,8 @@ export function DataQualitySubtab() {
                     <div class="settings-section">
                         <h3>Repository Configuration</h3>
                         <div id="repos-section"></div>
+                        <!-- Global keywords catalog used by per-repo keyword manager -->
+                        <datalist id="keywords-list"></datalist>
                     </div>
 
                     <!-- Cards Builder & Viewer -->
@@ -157,6 +159,18 @@ export function DataQualitySubtab() {
                             <button id="btn-cards-view-all" style="flex: 1; background: var(--bg-elev2); color: var(--link); border: 1px solid var(--link);">
                                 <span style="margin-right: 4px;">📋</span> View All
                             </button>
+                        </div>
+
+                        <!-- Cards Search + Viewer -->
+                        <div class="input-row" style="margin-bottom: 12px;">
+                            <div class="input-group">
+                                <label>
+                                    Search Cards
+                                    <span class="help-icon" data-tooltip="CARDS_SEARCH">?</span>
+                                </label>
+                                <input type="search" id="cards-search" placeholder="Search semantic cards (title, purpose, details)" style="width: 100%;">
+                                <p class="small" style="color:var(--fg-muted);">Filters the semantic cards below. Uses contains match across purpose, technical details, domain concepts, and file path.</p>
+                            </div>
                         </div>
 
                         <!-- Cards Viewer -->

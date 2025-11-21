@@ -16,7 +16,7 @@ export function IndexingSubtab() {
                     </div>
 
                     <!-- ONE SIMPLE INDEX BUTTON -->
-                    <div class="settings-section" style="border-left: 3px solid var(--ok); padding: 32px;">
+                        <div class="settings-section" style="border-left: 3px solid var(--ok); padding: 32px;">
                         <h2 style="margin: 0 0 24px 0; font-size: 24px; font-weight: 700;">
                             🚀 Index Repository
                         </h2>
@@ -126,6 +126,15 @@ export function IndexingSubtab() {
                                 </select>
                                 <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Generate AI summaries and extract keywords for each code chunk. Improves semantic search but slower.</p>
                             </div>
+                        </div>
+
+                        <!-- Index Status -->
+                        <div class="settings-section" style="margin-top: 16px;">
+                            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                                <h3 style="margin:0;">Index Status</h3>
+                                <button id="btn-refresh-index-stats" class="small-button" style="background: var(--bg-elev2); color: var(--link); border: 1px solid var(--link);">Refresh</button>
+                            </div>
+                            <div id="index-status-display" style="background: var(--card-bg); border: 1px solid var(--line); border-radius: 6px; padding: 12px; min-height: 80px;"></div>
                         </div>
 
                         <div class="input-row" style="display: flex; gap: 8px;">

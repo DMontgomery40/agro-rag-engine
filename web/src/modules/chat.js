@@ -682,6 +682,17 @@ function cleanupChatUI() {
 
 // Register with Navigation API
 if (typeof window !== 'undefined') {
+    function tryInitOnVisible() {
+        // Only initialize if chat UI is present in DOM
+        if (document.getElementById('chat-input') || document.getElementById('tab-chat')) {
+            try { initChatUI(); } catch (e) { console.warn('[chat.js] initChatUI failed:', e); }
+        }
+    }
+
+    // React migration hooks: initialize when React signals readiness or when Chat tab mounts
+    window.addEventListener('react-ready', tryInitOnVisible);
+    window.addEventListener('agro:chat:mount', tryInitOnVisible);
+
     window.addEventListener('DOMContentLoaded', () => {
         // Register view with Navigation system
         if (window.Navigation && typeof window.Navigation.registerView === 'function') {
@@ -690,7 +701,7 @@ if (typeof window !== 'undefined') {
                 title: 'Chat',
                 mount: () => {
                     console.log('[chat.js] Mounted');
-                    initChatUI();
+                    tryInitOnVisible();
                 },
                 unmount: () => {
                     cleanupChatUI();
@@ -702,9 +713,12 @@ if (typeof window !== 'undefined') {
         // This handles backward compatibility with old tab system
         const chatTab = document.getElementById('tab-chat');
         if (chatTab && chatTab.classList.contains('active')) {
-            initChatUI();
+            tryInitOnVisible();
         }
     });
+
+    // Expose manual init for React components to call directly
+    window.ChatUI = Object.assign({}, window.ChatUI || {}, { init: tryInitOnVisible });
 }
 
 // Add fadeIn animation

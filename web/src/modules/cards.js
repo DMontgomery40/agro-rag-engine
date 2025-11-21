@@ -3,6 +3,8 @@
   'use strict';
   const api = (window.CoreUtils && window.CoreUtils.api) ? window.CoreUtils.api : (p=>p);
 
+  let _allCardsCache = null; // cached for search
+
   async function load(){
     try{
       console.log('[cards.js] Starting load...');
@@ -72,6 +74,67 @@
         cardsContainer.innerHTML = `<div style="text-align: center; padding: 24px; color: var(--err);">Error loading cards: ${error.message}</div>`;
       }
     }
+  }
+
+  function renderCardsList(cards){
+    const cardsContainer = document.getElementById('cards-viewer');
+    if (!cardsContainer) return;
+    if (!cards || !cards.length) {
+      cardsContainer.innerHTML = `<div style="text-align: center; padding: 24px; color: var(--fg-muted);">No matching cards</div>`;
+      return;
+    }
+    cardsContainer.innerHTML = cards.map(card => `
+      <div class="card-item" data-filepath="${card.file_path}" data-line="${card.start_line || 1}"
+           style="background: var(--bg-elev2); border: 1px solid var(--line); border-radius: 8px; padding: 16px; cursor: pointer; transition: all 0.2s; min-height: 180px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,0.1);"
+           onmouseover="this.style.borderColor='var(--accent)'; this.style.background='var(--bg-elev1)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)';"
+           onmouseout="this.style.borderColor='var(--line)'; this.style.background='var(--bg-elev2)'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.1)';">
+        <div>
+          <h4 style="margin: 0 0 8px 0; color: var(--accent); font-size: 14px; font-weight: 600; word-break: break-word;">
+            ${(card.symbols && card.symbols[0]) ? card.symbols[0] : (card.file_path || '').split('/').slice(-1)[0]}
+          </h4>
+          <p style="margin: 0 0 8px 0; color: var(--fg-muted); font-size: 12px; line-height: 1.4; word-break: break-word; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">
+            ${card.purpose || 'No description available'}
+          </p>
+        </div>
+        <div style="font-size: 10px; color: var(--fg-muted); word-break: break-all;">
+          <span style="color: var(--link);">${card.file_path || 'Unknown file'}</span>
+          ${card.start_line ? ` : ${card.start_line}` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async function ensureAllCards(){
+    if (_allCardsCache) return _allCardsCache;
+    try{
+      const resp = await fetch(api('/api/cards/all'));
+      const data = await resp.json();
+      _allCardsCache = Array.isArray(data.cards) ? data.cards : [];
+    }catch(e){ _allCardsCache = []; }
+    return _allCardsCache;
+  }
+
+  async function handleCardsSearch(){
+    const box = document.getElementById('cards-search');
+    if (!box) return;
+    const q = (box.value || '').trim().toLowerCase();
+    if (!q){
+      // Reset to preview list
+      try{ const resp = await fetch(api('/api/cards')); const data = await resp.json(); renderCardsList(data.cards||[]); }catch{ renderCardsList([]); }
+      return;
+    }
+    const all = await ensureAllCards();
+    const filtered = all.filter(c => {
+      const parts = [
+        c.purpose || '',
+        (c.technical_details || ''),
+        (Array.isArray(c.domain_concepts)? c.domain_concepts.join(' '): ''),
+        c.file_path || '',
+        (Array.isArray(c.symbols)? c.symbols.join(' '): '')
+      ].join(' ').toLowerCase();
+      return parts.includes(q);
+    }).slice(0, 100);
+    renderCardsList(filtered);
   }
 
   function jumpToLine(filePath, lineNumber){
@@ -172,6 +235,8 @@
     if (btnRefresh && !btnRefresh.dataset.bound){ btnRefresh.dataset.bound='1'; btnRefresh.addEventListener('click', refresh); }
     if (btnBuild && !btnBuild.dataset.bound){ btnBuild.dataset.bound='1'; btnBuild.addEventListener('click', build); }
     if (btnViewAll && !btnViewAll.dataset.bound){ btnViewAll.dataset.bound='1'; btnViewAll.addEventListener('click', viewAllCards); }
+    const searchBox = document.getElementById('cards-search');
+    if (searchBox && !searchBox.dataset.bound){ searchBox.dataset.bound='1'; searchBox.addEventListener('input', handleCardsSearch); }
   }
 
   // Initialization function for data quality view
@@ -213,4 +278,3 @@
 
   console.log('[cards.js] Module loaded (PRIMARY for rag-data-quality, coordinates cards_builder.js + keywords.js)');
 })();
-

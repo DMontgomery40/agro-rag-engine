@@ -1093,6 +1093,12 @@ if (typeof window !== 'undefined') {
         initRerankerUI();
         registerRerankerView();
     });
+    // React bridge: initialize when RAG learning-ranker subtab becomes visible
+    window.addEventListener('agro:reranker:mount', () => {
+        try { initRerankerUI(); } catch (e) { console.warn('[reranker] init failed on mount event:', e); }
+    });
+    // Expose manual init for React components/tests
+    window.RerankerUI = Object.assign({}, window.RerankerUI || {}, { init: initRerankerUI });
 }
 
 console.log('✓ Reranker module loaded');

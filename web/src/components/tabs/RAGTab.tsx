@@ -3,7 +3,7 @@
 // Main RAG configuration tab with subtab navigation
 // Structure matches /gui/index.html exactly with all subtabs rendered and visibility controlled by className
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { RAGSubtabs } from '@/components/RAG/RAGSubtabs';
 import { DataQualitySubtab } from '@/components/RAG/DataQualitySubtab';
 import { RetrievalSubtab } from '@/components/RAG/RetrievalSubtab';
@@ -14,6 +14,43 @@ import { EvaluateSubtab } from '@/components/RAG/EvaluateSubtab';
 
 export default function RAGTab() {
   const [activeSubtab, setActiveSubtab] = useState('data-quality');
+
+  // Bridge legacy modules when subtabs mount
+  useEffect(() => {
+    const initDataQuality = () => {
+      try { (window as any).Config?.loadConfig?.(); } catch {}
+      try { (window as any).initCards?.(); } catch {}
+      try { (window as any).initCardsBuilder?.(); } catch {}
+      try { (window as any).initKeywords?.(); } catch {}
+    };
+    const initLearningRanker = () => {
+      try { window.dispatchEvent(new Event('agro:reranker:mount')); } catch {}
+      try { (window as any).RerankerUI?.init?.(); } catch {}
+    };
+    if (activeSubtab === 'data-quality') {
+      // Allow DOM to paint then initialize
+      setTimeout(initDataQuality, 0);
+    }
+    if (activeSubtab === 'indexing') {
+      const initIndexing = () => {
+        try { (window as any).Config?.loadConfig?.(); } catch {}
+        try { (window as any).Indexing?.initIndexing?.(); } catch {}
+        try { (window as any).initIndexProfiles?.(); } catch {}
+        try { (window as any).SimpleIndex?.loadRepos?.(); } catch {}
+        try {
+          const btn = document.getElementById('simple-index-btn') as HTMLButtonElement | null;
+          if (btn && !btn.dataset.bound) {
+            btn.dataset.bound = '1';
+            btn.addEventListener('click', () => (window as any).SimpleIndex?.runRealIndex?.());
+          }
+        } catch {}
+      };
+      setTimeout(initIndexing, 0);
+    }
+    if (activeSubtab === 'learning-ranker') {
+      setTimeout(initLearningRanker, 0);
+    }
+  }, [activeSubtab]);
 
   return (
     <div id="tab-rag" className="tab-content active">
@@ -47,4 +84,3 @@ export default function RAGTab() {
     </div>
   );
 }
-

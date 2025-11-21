@@ -30,12 +30,12 @@ export function MCPSubtab() {
     try {
       const response = await fetch(api('/api/mcp/http/status'));
       const data = await response.json();
-      if (data.ok) {
-        setServers(prev => prev.map(s => ({
-          ...s,
-          status: 'connected'
-        })));
-      }
+      const running = !!data.running;
+      setServers(prev => prev.map(s => ({
+        ...s,
+        url: data.url || s.url,
+        status: running ? 'connected' : 'disconnected'
+      })));
     } catch (error) {
       setServers(prev => prev.map(s => ({
         ...s,
@@ -49,11 +49,9 @@ export function MCPSubtab() {
     try {
       const response = await fetch(api('/api/mcp/http/status'));
       const data = await response.json();
-      if (data.ok) {
-        setTestResult(`Connected! Host: ${data.host}, Port: ${data.port}, Path: ${data.path}`);
-      } else {
-        setTestResult('Connection failed: Server not responding');
-      }
+      const running = !!data.running;
+      if (running) setTestResult(`Connected! Host: ${data.host} Port: ${data.port} Path: ${data.path}`);
+      else setTestResult(`Not running (Host: ${data.host} Port: ${data.port} Path: ${data.path})`);
     } catch (error: any) {
       setTestResult(`Connection failed: ${error.message}`);
     }

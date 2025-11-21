@@ -1,9 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChatSubtabs } from '@/components/Chat/ChatSubtabs';
 
 // Chat tab with subtabs for UI and Settings
 export default function ChatTab() {
   const [activeSubtab, setActiveSubtab] = useState('ui');
+
+  // Notify legacy module to (re)bind events when this view mounts or switches back to UI
+  useEffect(() => {
+    // Fire a mount event for modules listening
+    window.dispatchEvent(new Event('agro:chat:mount'));
+    // Also try direct init if exposed
+    try { (window as any).ChatUI?.init?.(); } catch {}
+  }, []);
+
+  useEffect(() => {
+    try { (window as any).ChatUI?.init?.(); } catch {}
+  }, [activeSubtab]);
 
   const uiContent = `
                     <div class="settings-section" style="border-left: 3px solid var(--link); padding: 0;">
