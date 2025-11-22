@@ -1,331 +1,34 @@
 {
-  "total": 16,
-  "top1_hits": 9,
-  "topk_hits": 13,
-  "top1_accuracy": 0.562,
-  "topk_accuracy": 0.812,
+  "total": 1,
+  "top1_hits": 0,
+  "topk_hits": 0,
+  "top1_accuracy": 0.0,
+  "topk_accuracy": 0.0,
   "final_k": 5,
   "use_multi": true,
-  "duration_secs": 105.79,
-  "timestamp": "2025-10-12 02:06:38",
+  "duration_secs": 8.34,
+  "timestamp": "2025-11-22 01:33:04",
   "results": [
     {
-      "question": "Where is OAuth token validated?",
+      "question": "Where is the hybrid search implementation that combines BM25 and vector search?",
       "repo": "agro",
       "expect_paths": [
-        "server",
-        "mcp"
+        "retrieval/hybrid_search.py",
+        "server/langgraph_app.py",
+        "server/app.py",
+        "eval/eval_rag.py"
       ],
       "top1_path": [
-        "/Users/davidmontgomery/agro-rag-engine/langgraph_app.py"
-      ],
-      "top1_hit": false,
-      "topk_hit": true,
-      "top_paths": [
-        "/Users/davidmontgomery/agro-rag-engine/langgraph_app.py",
-        "/Users/davidmontgomery/agro-rag-engine/scripts/test_token_comparison.py",
-        "/Users/davidmontgomery/agro-rag-engine/scripts/quick_token_test.py",
-        "/Users/davidmontgomery/agro-rag-engine/infra/tests/test_api.py",
-        "/Users/davidmontgomery/agro-rag-engine/node_mcp/server.js"
-      ]
-    },
-    {
-      "question": "Where is the mcp server?",
-      "repo": "agro",
-      "expect_paths": [
-        "/server/mcp"
-      ],
-      "top1_path": [
-        "/Users/davidmontgomery/agro-rag-engine/mcp_server.py"
-      ],
-      "top1_hit": false,
-      "topk_hit": true,
-      "top_paths": [
-        "/Users/davidmontgomery/agro-rag-engine/mcp_server.py",
-        "/Users/davidmontgomery/agro-rag-engine/mcp_server_http.py",
-        "/Users/davidmontgomery/agro-rag-engine/server/mcp/__init__.py",
-        "/Users/davidmontgomery/agro-rag-engine/server/mcp/server.py",
-        "/Users/davidmontgomery/agro-rag-engine/scripts/full_comparison.py"
-      ]
-    },
-    {
-      "question": "Where is auto-profile wizard rendered?",
-      "repo": "agro",
-      "expect_paths": [
-        "dashboard",
-        "gui",
-        "api",
-        "app.js"
-      ],
-      "top1_path": [
-        "/Users/davidmontgomery/agro-rag-engine/gui/app.js"
-      ],
-      "top1_hit": true,
-      "topk_hit": true,
-      "top_paths": [
-        "/Users/davidmontgomery/agro-rag-engine/gui/app.js",
-        "/Users/davidmontgomery/agro-rag-engine/gui/app.js",
-        "/Users/davidmontgomery/agro-rag-engine/gui/app.js",
-        "/Users/davidmontgomery/agro-rag-engine/gui/app.js",
-        "/Users/davidmontgomery/agro-rag-engine/gui/app.js"
-      ]
-    },
-    {
-      "question": "Test question from curl",
-      "repo": "agro",
-      "expect_paths": [
-        "test",
-        "example"
-      ],
-      "top1_path": [
-        "/Users/davidmontgomery/agro-rag-engine/tests/api.spec.ts"
-      ],
-      "top1_hit": true,
-      "topk_hit": true,
-      "top_paths": [
-        "/Users/davidmontgomery/agro-rag-engine/tests/api.spec.ts",
-        "/Users/davidmontgomery/agro-rag-engine/scripts/test_token_savings.py",
-        "/Users/davidmontgomery/agro-rag-engine/tests/api.spec.ts",
-        "/Users/davidmontgomery/agro-rag-engine/infra/tests/test_interactions.py",
-        "/Users/davidmontgomery/agro-rag-engine/node_mcp/server.js"
-      ]
-    },
-    {
-      "question": "Where is hybrid retrieval implemented?",
-      "repo": "agro",
-      "expect_paths": [
-        "retrieval/hybrid_search.py"
-      ],
-      "top1_path": [
-        "/Users/davidmontgomery/agro-rag-engine/retrieval/__init__.py"
+        "requirements-rag.txt"
       ],
       "top1_hit": false,
       "topk_hit": false,
       "top_paths": [
-        "/Users/davidmontgomery/agro-rag-engine/retrieval/__init__.py",
-        "/Users/davidmontgomery/agro-rag-engine/hybrid_search.py",
-        "/Users/davidmontgomery/agro-rag-engine/scripts/test_token_comparison.py",
-        "/Users/davidmontgomery/agro-rag-engine/scripts/test_token_savings.py",
-        "/Users/davidmontgomery/agro-rag-engine/gui/js/profile_renderer.js"
-      ]
-    },
-    {
-      "question": "Where is keyword generation handled server-side?",
-      "repo": "agro",
-      "expect_paths": [
-        "server/app.py",
-        "keywords/generate"
-      ],
-      "top1_path": [
-        "/Users/davidmontgomery/agro-rag-engine/server/app.py"
-      ],
-      "top1_hit": true,
-      "topk_hit": true,
-      "top_paths": [
-        "/Users/davidmontgomery/agro-rag-engine/server/app.py",
-        "/Users/davidmontgomery/agro-rag-engine/gui/app.js",
-        "/Users/davidmontgomery/agro-rag-engine/gui/app.js",
-        "/Users/davidmontgomery/agro-rag-engine/gui/app.js",
-        "/Users/davidmontgomery/agro-rag-engine/server/app.py"
-      ]
-    },
-    {
-      "question": "Where is the metadata enrichment logic for code/keywords?",
-      "repo": "agro",
-      "expect_paths": [
-        "metadata_enricher.py"
-      ],
-      "top1_path": [
-        "/Users/davidmontgomery/agro-rag-engine/common/metadata.py"
-      ],
-      "top1_hit": false,
-      "topk_hit": false,
-      "top_paths": [
-        "/Users/davidmontgomery/agro-rag-engine/common/metadata.py",
-        "/Users/davidmontgomery/agro-rag-engine/server/app.py",
-        "/Users/davidmontgomery/agro-rag-engine/gui/js/tooltips.js",
-        "/Users/davidmontgomery/agro-rag-engine/gui/app.js",
-        "/Users/davidmontgomery/agro-rag-engine/gui/app.js"
-      ]
-    },
-    {
-      "question": "Where is the indexing pipeline (BM25 and dense) implemented?",
-      "repo": "agro",
-      "expect_paths": [
-        "indexer/index_repo.py"
-      ],
-      "top1_path": [
-        "/Users/davidmontgomery/agro-rag-engine/retrieval/hybrid_search.py"
-      ],
-      "top1_hit": false,
-      "topk_hit": false,
-      "top_paths": [
-        "/Users/davidmontgomery/agro-rag-engine/retrieval/hybrid_search.py",
-        "/Users/davidmontgomery/agro-rag-engine/gui/js/profile_renderer.js",
-        "/Users/davidmontgomery/agro-rag-engine/server/app.py",
-        "/Users/davidmontgomery/agro-rag-engine/hybrid_search.py",
-        "/Users/davidmontgomery/agro-rag-engine/retrieval/hybrid_search.py"
-      ]
-    },
-    {
-      "question": "Where is comprehensive index status computed?",
-      "repo": "agro",
-      "expect_paths": [
-        "server/app.py",
-        "server/index_stats.py",
-        "index/status"
-      ],
-      "top1_path": [
-        "/Users/davidmontgomery/agro-rag-engine/server/app.py"
-      ],
-      "top1_hit": true,
-      "topk_hit": true,
-      "top_paths": [
-        "/Users/davidmontgomery/agro-rag-engine/server/app.py",
-        "/Users/davidmontgomery/agro-rag-engine/gui/app.js",
-        "/Users/davidmontgomery/agro-rag-engine/gui/app.js",
-        "/Users/davidmontgomery/agro-rag-engine/gui/js/index-display.js",
-        "/Users/davidmontgomery/agro-rag-engine/gui/app.js"
-      ]
-    },
-    {
-      "question": "Where are semantic cards built or listed?",
-      "repo": "agro",
-      "expect_paths": [
-        "server/app.py",
-        "api/cards",
-        "indexer/build_cards.py"
-      ],
-      "top1_path": [
-        "/Users/davidmontgomery/agro-rag-engine/indexer/build_cards.py"
-      ],
-      "top1_hit": true,
-      "topk_hit": true,
-      "top_paths": [
-        "/Users/davidmontgomery/agro-rag-engine/indexer/build_cards.py",
-        "/Users/davidmontgomery/agro-rag-engine/build_cards.py",
-        "/Users/davidmontgomery/agro-rag-engine/scripts/analyze_keywords_v2.py",
-        "/Users/davidmontgomery/agro-rag-engine/gui/app.js",
-        "/Users/davidmontgomery/agro-rag-engine/scripts/test_backend.py"
-      ]
-    },
-    {
-      "question": "Where are golden questions API routes defined?",
-      "repo": "agro",
-      "expect_paths": [
-        "server/app.py",
-        "api/golden"
-      ],
-      "top1_path": [
-        "/Users/davidmontgomery/agro-rag-engine/gui/js/golden_questions.js"
-      ],
-      "top1_hit": false,
-      "topk_hit": true,
-      "top_paths": [
-        "/Users/davidmontgomery/agro-rag-engine/gui/js/golden_questions.js",
-        "/Users/davidmontgomery/agro-rag-engine/server/app.py",
-        "/Users/davidmontgomery/agro-rag-engine/gui/js/golden_questions.js",
-        "/Users/davidmontgomery/agro-rag-engine/server/app.py",
-        "/Users/davidmontgomery/agro-rag-engine/gui/js/golden_questions.js"
-      ]
-    },
-    {
-      "question": "Where is the endpoint to test a single golden question?",
-      "repo": "agro",
-      "expect_paths": [
-        "server/app.py",
-        "api/golden/test"
-      ],
-      "top1_path": [
-        "/Users/davidmontgomery/agro-rag-engine/server/app.py"
-      ],
-      "top1_hit": true,
-      "topk_hit": true,
-      "top_paths": [
-        "/Users/davidmontgomery/agro-rag-engine/server/app.py",
-        "/Users/davidmontgomery/agro-rag-engine/server/app.py",
-        "/Users/davidmontgomery/agro-rag-engine/server/app.py",
-        "/Users/davidmontgomery/agro-rag-engine/gui/js/golden_questions.js",
-        "/Users/davidmontgomery/agro-rag-engine/gui/js/golden_questions.js"
-      ]
-    },
-    {
-      "question": "Where are GUI assets mounted and served?",
-      "repo": "agro",
-      "expect_paths": [
-        "server/app.py",
-        "/gui",
-        "gui/index.html"
-      ],
-      "top1_path": [
-        "/Users/davidmontgomery/agro-rag-engine/server/app.py"
-      ],
-      "top1_hit": true,
-      "topk_hit": true,
-      "top_paths": [
-        "/Users/davidmontgomery/agro-rag-engine/server/app.py",
-        "/Users/davidmontgomery/agro-rag-engine/tests/gui.spec.ts",
-        "/Users/davidmontgomery/agro-rag-engine/common/paths.py",
-        "/Users/davidmontgomery/agro-rag-engine/gui/js/tooltips.js",
-        "/Users/davidmontgomery/agro-rag-engine/gui/app.js"
-      ]
-    },
-    {
-      "question": "Where is repository configuration (repos.json) loaded?",
-      "repo": "agro",
-      "expect_paths": [
-        "config_loader.py"
-      ],
-      "top1_path": [
-        "/Users/davidmontgomery/agro-rag-engine/common/config_loader.py"
-      ],
-      "top1_hit": true,
-      "topk_hit": true,
-      "top_paths": [
-        "/Users/davidmontgomery/agro-rag-engine/common/config_loader.py",
-        "/Users/davidmontgomery/agro-rag-engine/scripts/quick_setup.py",
-        "/Users/davidmontgomery/agro-rag-engine/scripts/make_repos_json.py",
-        "/Users/davidmontgomery/agro-rag-engine/server/index_stats.py",
-        "/Users/davidmontgomery/agro-rag-engine/common/config_loader.py"
-      ]
-    },
-    {
-      "question": "Where are MCP stdio tools implemented (rag_answer, rag_search)?",
-      "repo": "agro",
-      "expect_paths": [
-        "server/mcp/server.py"
-      ],
-      "top1_path": [
-        "/Users/davidmontgomery/agro-rag-engine/server/mcp/server.py"
-      ],
-      "top1_hit": true,
-      "topk_hit": true,
-      "top_paths": [
-        "/Users/davidmontgomery/agro-rag-engine/server/mcp/server.py",
-        "/Users/davidmontgomery/agro-rag-engine/scripts/test_token_savings.py",
-        "/Users/davidmontgomery/agro-rag-engine/server/mcp/server.py",
-        "/Users/davidmontgomery/agro-rag-engine/scripts/test_token_comparison.py",
-        "/Users/davidmontgomery/agro-rag-engine/mcp_server_http.py"
-      ]
-    },
-    {
-      "question": "Where can I list or fetch latest LangGraph traces?",
-      "repo": "agro",
-      "expect_paths": [
-        "server/app.py",
-        "api/traces"
-      ],
-      "top1_path": [
-        "/Users/davidmontgomery/agro-rag-engine/gui/app.js"
-      ],
-      "top1_hit": false,
-      "topk_hit": true,
-      "top_paths": [
-        "/Users/davidmontgomery/agro-rag-engine/gui/app.js",
-        "/Users/davidmontgomery/agro-rag-engine/server/langgraph_app.py",
-        "/Users/davidmontgomery/agro-rag-engine/server/tracing.py",
-        "/Users/davidmontgomery/agro-rag-engine/langgraph_app.py",
-        "/Users/davidmontgomery/agro-rag-engine/server/app.py"
+        "requirements-rag.txt",
+        ".worktrees/feature-ui-migration/requirements-rag.txt",
+        "requirements.txt",
+        ".worktrees/feature-ui-migration/requirements.txt",
+        "web/src/modules/tooltips.js"
       ]
     }
   ]

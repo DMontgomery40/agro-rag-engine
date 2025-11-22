@@ -461,6 +461,10 @@ def config_schema() -> Dict[str, Any]:
                     "GEN_MODEL": {"type": "string", "title": "Generative Model"},
                     "GEN_TEMPERATURE": {"type": "number", "title": "Temperature", "minimum": 0, "maximum": 2},
                     "GEN_MAX_TOKENS": {"type": "integer", "title": "Max Tokens", "minimum": 1},
+                    "GEN_TIMEOUT": {"type": "integer", "title": "Generation Timeout (s)", "minimum": 10},
+                    "GEN_RETRY_MAX": {"type": "integer", "title": "Generation Retries", "minimum": 0, "maximum": 10},
+                    "OLLAMA_REQUEST_TIMEOUT": {"type": "integer", "title": "Local Request Timeout (s)", "minimum": 30},
+                    "OLLAMA_STREAM_IDLE_TIMEOUT": {"type": "integer", "title": "Local Stream Idle Timeout (s)", "minimum": 5},
                 },
             },
             "retrieval": {
@@ -546,6 +550,10 @@ def config_schema() -> Dict[str, Any]:
             "GEN_MODEL": registry.get_str("GEN_MODEL", ""),
             "GEN_TEMPERATURE": registry.get_float("GEN_TEMPERATURE", 0.2),
             "GEN_MAX_TOKENS": registry.get_int("GEN_MAX_TOKENS", 2048),
+            "GEN_TIMEOUT": registry.get_int("GEN_TIMEOUT", 60),
+            "GEN_RETRY_MAX": registry.get_int("GEN_RETRY_MAX", 2),
+            "OLLAMA_REQUEST_TIMEOUT": registry.get_int("OLLAMA_REQUEST_TIMEOUT", 300),
+            "OLLAMA_STREAM_IDLE_TIMEOUT": registry.get_int("OLLAMA_STREAM_IDLE_TIMEOUT", 60),
         },
         "retrieval": {
             "FINAL_K": registry.get_int("FINAL_K", registry.get_int("LANGGRAPH_FINAL_K", 10)),

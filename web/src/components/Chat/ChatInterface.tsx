@@ -12,6 +12,7 @@ interface Message {
   timestamp: number;
   citations?: string[];
   traceData?: any;
+  meta?: any; // provider/backend/failover transparency
 }
 
 interface TraceStep {
@@ -26,6 +27,7 @@ export function ChatInterface() {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [streaming, setStreaming] = useState(false);
+  const [typing, setTyping] = useState(false);
   const [selectedRepo, setSelectedRepo] = useState('');
   const [repositories, setRepositories] = useState<string[]>([]);
   const [showTrace, setShowTrace] = useState(false);
@@ -41,6 +43,7 @@ export function ChatInterface() {
   const [maxTokens, setMaxTokens] = useState(1000);
   const [topP, setTopP] = useState(1);
   const [topK, setTopK] = useState(10);
+  const [streamPref, setStreamPref] = useState<boolean>(false);
   const [modelOptions, setModelOptions] = useState<string[]>([]);
   const [fastMode, setFastMode] = useState<boolean>(() => {
     const params = new URLSearchParams(window.location.search || '');
@@ -59,6 +62,8 @@ export function ChatInterface() {
           if (typeof data.maxTokens === 'number') setMaxTokens(data.maxTokens);
           if (typeof data.topP === 'number') setTopP(data.topP);
           if (typeof data.topK === 'number') setTopK(data.topK);
+          if (typeof data.streaming === 'boolean') setStreamPref(Boolean(data.streaming));
+          if (typeof data.showTrace === 'boolean') setShowTrace(Boolean(data.showTrace));
         }
       } catch (e) {
         console.error('[ChatInterface] Failed to load chat config:', e);
@@ -138,10 +143,11 @@ export function ChatInterface() {
     setInput('');
     setSending(true);
     setCurrentTrace([]);
+    setTyping(true);
 
     try {
-      // For now, use regular non-streaming path (SSE optional)
-      const streamingEnabled = false;
+      // Streaming path optional; for now keep regular request to avoid server mismatch
+      const streamingEnabled = false && streamPref;
       if (streamingEnabled) {
         await handleStreamingResponse(userMessage);
       } else {
@@ -161,6 +167,7 @@ export function ChatInterface() {
     } finally {
       setSending(false);
       setStreaming(false);
+      setTyping(false);
     }
   };
 
@@ -274,11 +281,27 @@ export function ChatInterface() {
 
     const data = await response.json();
 
+    // Extract provider metadata for a separate accessibility line
+    let meta: any = undefined;
+    try {
+      meta = data.meta && typeof data.meta === 'object' ? data.meta : {};
+      if (!Object.keys(meta).length) {
+        // Backward compat: some backends return flat fields
+        const prov = data.provider || undefined;
+        const backend = data.backend || prov || undefined;
+        const modelUsed = data.model || undefined;
+        const fail = data.failover || undefined;
+        const ollama = data.ollama || undefined;
+        meta = { backend, provider: prov, model: modelUsed, failover: fail, ollama };
+      }
+    } catch {}
+
     const assistantMessage: Message = {
       id: `assistant-${Date.now()}`,
       role: 'assistant',
-      content: data.answer || '',
-      timestamp: Date.now()
+      content: (data.answer || ''),
+      timestamp: Date.now(),
+      meta
     };
 
     const updatedMessages = [...messages, userMessage, assistantMessage];
@@ -299,8 +322,26 @@ export function ChatInterface() {
         });
       }
       if (data.trace && Array.isArray(data.trace.steps)) {
-        setCurrentTrace(data.trace.steps);
-        setShowTrace(true);
+        const steps = data.trace.steps;
+        if (steps.length > 1) {
+          setCurrentTrace(steps);
+          setShowTrace(true);
+        } else {
+          // Fallback: read latest persisted trace for richer detail
+          try {
+            const lt = await fetch(api('/traces/latest'));
+            if (lt.ok) {
+              const j = await lt.json();
+              if (j && j.trace && Array.isArray(j.trace.events)) {
+                const evs = j.trace.events.map((e: any) => ({ step: e.kind, duration: e.data?.duration_ms, details: e.data || {} }));
+                if (evs.length) {
+                  setCurrentTrace(evs);
+                  setShowTrace(true);
+                }
+              }
+            }
+          } catch {}
+        }
       }
     } catch {}
   };
@@ -594,6 +635,28 @@ export function ChatInterface() {
               ))
             )}
 
+            {/* Provider transparency indicator (accessibility) */}
+            {messages.length > 0 && (
+              <div style={{
+                marginTop: '8px',
+                fontSize: '11px',
+                color: 'var(--fg-muted)'
+              }}>
+                {(() => {
+                  const last = messages[messages.length - 1];
+                  const m = last && last.meta ? last.meta : null;
+                  if (!m) return null;
+                  const parts: string[] = [];
+                  const backend = m.backend || m.provider;
+                  if (backend) parts.push(`backend: ${backend}`);
+                  if (m.model) parts.push(`model: ${m.model}`);
+                  if (m.failover && m.failover.from && m.failover.to) parts.push(`failover: ${m.failover.from} → ${m.failover.to}`);
+                  if (!parts.length) return null;
+                  return (<span>— [{parts.join(' • ')}]</span>);
+                })()}
+              </div>
+            )}
+
             {streaming && (
               <div style={{
                 color: 'var(--fg-muted)',
@@ -610,6 +673,23 @@ export function ChatInterface() {
                   animation: 'pulse 1.5s ease-in-out infinite'
                 }} />
                 Streaming response...
+              </div>
+            )}
+
+            {!streaming && typing && (
+              <div style={{
+                color: 'var(--fg-muted)',
+                fontSize: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <span style={{ display: 'inline-flex', gap: '4px' }} aria-live="polite" aria-label="Assistant is typing">
+                  <span className="dot" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--fg-muted)', opacity: 0.6, animation: 'blink 1.2s infinite 0ms' }} />
+                  <span className="dot" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--fg-muted)', opacity: 0.6, animation: 'blink 1.2s infinite 200ms' }} />
+                  <span className="dot" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--fg-muted)', opacity: 0.6, animation: 'blink 1.2s infinite 400ms' }} />
+                </span>
+                Assistant is thinking…
               </div>
             )}
 

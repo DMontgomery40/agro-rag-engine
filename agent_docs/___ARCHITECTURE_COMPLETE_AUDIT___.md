@@ -78,6 +78,100 @@
 - ✅ config_migration_retrieval_smoke.py (8 tests)
 - ✅ config_migration_reranking_smoke.py (6 tests)
 - ✅ config_migration_indexing_smoke.py (12 tests)
+
+---
+
+## 2025-11-22 21:55 - Backend Agent - Ollama Routing Bug Fix
+
+**Files Modified:**
+- server/env_model.py:155-190, 163-176 (generate_text backend selection)
+
+**Changes:**
+- Ollama path is chosen only when the Ollama server reports the requested model in `/api/tags` (or `/tags` fallback). No brittle colon heuristics.
+- Introduced `_ollama_has_model(base_url, name)` to probe tags with a 1s timeout.
+- Normalizes Ollama endpoint to `/api/generate` whether `OLLAMA_URL` includes `/api` or not.
+- Adds transparency metadata in `generate_text()` meta result: `backend`, `provider`, `model`, `ollama.model_present`, and when applicable, `failover` with `from/to` and reason.
+- Emits trace event `provider.failover` when Ollama is configured but the model is not found/unreachable; visible via `/api/traces/latest`.
+
+**Impact:**
+- Eliminates accidental 60s+ stalls on `/search`, `/answer`, and `/api/chat` when `OLLAMA_URL` is set but a non‑Ollama model (e.g., `gpt-4o-mini`) is selected.
+- Preserves explicit Ollama usage when the model tag indicates Ollama (e.g., `qwen3-coder:14b`).
+
+**Dependencies:**
+- No new imports; internal helper only.
+- OpenAI path remains default when Ollama is not explicitly selected.
+
+**Tests Added:**
+- tests/smoke/test_ollama_routing.py
+  - Verifies non‑Ollama model uses OpenAI client even if `OLLAMA_URL` is set.
+  - Verifies Ollama‑tagged model triggers Ollama streaming path using stubbed `requests.get` for `/api/tags` and streaming `post`.
+
+**Notes:**
+- MLX path remains unchanged (future work: make MLX provider explicit rather than import‑based).
+
+---
+
+## 2025-11-22 22:10 - Backend Agent - ASGI Tracing Middleware Wiring
+
+**Files Modified:**
+- server/asgi.py: added `tracing_middleware` capturing /answer and /api/chat
+
+**Changes:**
+- Starts a per-request trace (subject to `TRACING_ENABLED` and `TRACE_SAMPLING_RATE`) for /answer and /api/chat.
+- Extracts question and repo (via query params or JSON payload for chat), calls `start_trace()` and `end_trace()` safely.
+- Never breaks requests on failure; sampling honored.
+
+**Impact:**
+- Traces now reliably appear in `out/<repo>/traces` and via `/api/traces/latest`.
+- UI trace panel can surface provider failover events emitted by generation.
+
+**Tests Added:**
+- tests/routers/test_tracing_middleware_smoke.py: ensures `/answer` produces a readable latest trace entry.
+
+---
+
+## 2025-11-22 22:25 - UI - Chat Provider Transparency Indicator
+
+**Files Modified:**
+- web/src/components/Chat/ChatInterface.tsx: render provider/backend/failover as a separate accessibility line (no longer appends to content).
+
+**Changes:**
+- If the chat response JSON includes `backend`/`provider`/`model`/`failover`, the UI shows a compact indicator line below the last message: `— [backend: X • model: Y • failover: A → B]`. Content text is not altered, preserving formatting and speech tools behavior.
+- Non-intrusive: if metadata is absent, nothing is rendered.
+
+**Tests Added:**
+- tests/web-smoke/chat-provider-line.spec.ts: Playwright smoke that sends a message and tolerates absence of the indicator but asserts presence if returned.
+
+**Impact:**
+- Improves accessibility and transparency; visible context without opening the trace panel. Full details still available via `/api/traces/latest`.
+
+## 2025-11-22 23:05 - UI - Chat Trace Toggle Respected
+
+**Files Modified:**
+- web/src/components/Chat/ChatInterface.tsx: reads `showTrace` from `/api/chat/config` and uses it to open the trace panel by default when enabled.
+
+**Changes:**
+- Fixes mismatch where the Chat settings toggle for “Show Trace” was ignored by the React Chat UI. Now, when enabled in Settings, the chat opens the trace details automatically after the next answer.
+
+**Impact:**
+- Restores expected behavior per Settings; no manual toggling required.
+
+---
+
+## 2025-11-22 22:35 - Backend - CORS for Web Dev (Vite)
+
+**Files Modified:**
+- server/asgi.py: added FastAPI CORSMiddleware with configurable origins.
+
+**Changes:**
+- Reads `CORS_ALLOW_ORIGINS` from env/registry (CSV), defaulting to `http://localhost:5173,http://127.0.0.1:5173` for Vite dev.
+- Allows all methods/headers; no credentials.
+
+**Impact:**
+- Fixes browser console CORS errors when running web dev server (port 5173) against API on 8012.
+
+**Tests Added:**
+- tests/routers/test_cors_smoke.py: OPTIONS preflight to `/api/chat` with Origin `http://localhost:5173` returns ACAO header.
 - ✅ config_migration_generation_smoke.py (6 tests)
 - ✅ config_migration_services_smoke.py (8 tests)
 - ✅ config_migration_routers_smoke.py (5 tests)
@@ -3038,6 +3132,57 @@ Add useEffect to load from /api/config on mount.
 
 # CHANGES LOG (Updated After Each Modification)
 
+## 2025-11-22 Codex Agent: Hardcoding Audit artifacts added
+
+Status: ✅ COMPLETE (analysis-only, no runtime code changes)
+
+Summary:
+- Added programmatic hardcoding audit outputs and summary plan.
+- CSV of 2,527 categorized hits and a high-level remediation plan covering server/retrieval/web, CLI, tooltips, and registry integration.
+
+Files Modified:
+1. agent_docs/hardcoding_audit.md (NEW)
+   - Lines 1–end: Summary of hotspots and Fix Plan by category; smoke tests to prove fixes.
+2. agent_docs/audit/hardcoding_hits.csv (NEW, generated)
+   - All rows: path, line, summary, category, severity, remediation_hint, test.
+
+Impact:
+- Provides source-of-truth for subsequent refactors to remove hardcoded values.
+- Aligns future changes with ConfigRegistry + Pydantic models + GUI tooltips and CLI help requirements.
+
+## 2025-11-22 Codex Agent: Ollama timeout keys + per-chat Final K
+
+Status: ✅ COMPLETE (backend + web wiring + tooltips)
+
+Summary:
+- Introduced clearer config keys for local (Ollama) timeouts and wired them end-to-end.
+- Added per‑chat Final K control in React Chat Settings; server validates `final_k` with helpful errors.
+- Added tooltips with vetted links for the new keys.
+
+Files Modified:
+1. server/models/agro_config_model.py
+   - GenerationConfig: added `ollama_request_timeout`, `ollama_stream_idle_timeout` fields.
+   - to_flat_dict(): exports `OLLAMA_REQUEST_TIMEOUT`, `OLLAMA_STREAM_IDLE_TIMEOUT`.
+   - from_flat_dict(): reads the two new keys.
+   - AGRO_CONFIG_KEYS: added both keys under Generation params.
+2. server/env_model.py
+   - Cached `_OLLAMA_REQUEST_TIMEOUT`, `_OLLAMA_STREAM_IDLE_TIMEOUT` with registry/env fallbacks.
+   - Ollama call path now uses these values (was 60/300 hardcoded).
+3. server/services/config_store.py
+   - Config schema: added `GEN_TIMEOUT`, `GEN_RETRY_MAX`, `OLLAMA_REQUEST_TIMEOUT`, `OLLAMA_STREAM_IDLE_TIMEOUT` to Generation section.
+   - Values: included the above from registry for UI seeding.
+4. server/services/rag.py
+   - `do_chat()`: validates `final_k` (1..200), returns structured JSON errors with causes/fixes/links on invalid input.
+5. web/src/components/Chat/ChatSettings.tsx
+   - Replaced legacy `topK` with `finalK` (migration shim when loading).
+   - Added Final K numeric input with a descriptive title.
+6. web/src/hooks/useTooltips.ts & gui/js/tooltips.js
+   - Added entries: `OLLAMA_REQUEST_TIMEOUT`, `OLLAMA_STREAM_IDLE_TIMEOUT` with links to Ollama API and HTTP streaming/timeouts references.
+
+Impact:
+- Removes magic 60s/300s from local generation path; makes timeouts user‑tunable via config and GUI.
+- Per‑chat Final K is now configurable in the Chat Settings pane and enforced with clear errors server‑side.
+
 ## 2025-11-21 Agent 7: server/asgi.py Migration to config_registry
 
 **Status:** ✅ COMPLETE - All tests passing (6/6)
@@ -5390,4 +5535,3 @@ Frontend → configApi.uploadSecrets() → POST /api/secrets/ingest → cfg.secr
 Cannot proceed to testing phase until user approves routing conflict resolution approach.
 
 See detailed findings: `/agent_docs/DASHBOARD_WIRING_FINDINGS.md`
-

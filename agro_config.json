@@ -98,8 +98,8 @@
     "enrich_backend": "openai",
     "enrich_disabled": 0,
     "ollama_num_ctx": 8192,
-    "gen_model_cli": "qwen3-coder:14b",
-    "gen_model_ollama": "qwen3-coder:30b"
+    "gen_model_cli": "gpt-4o-mini",
+    "gen_model_ollama": "gpt-4o-mini"
   },
   "enrichment": {
     "cards_enrich_default": 1,

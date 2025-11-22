@@ -15,11 +15,6 @@ export function Sidepanel() {
   // Quick Profile state
   const [selectedProfile, setSelectedProfile] = useState('High Accuracy');
 
-  // Auto-Tune state
-  const [autoTuneEnabled, setAutoTuneEnabled] = useState(false);
-  const [autoTuneMode, setAutoTuneMode] = useState('--');
-  const [autoTuneLastRun, setAutoTuneLastRun] = useState('—');
-
   // Storage state
   const [storageUsed, setStorageUsed] = useState(0);
   const [storageTotal, setStorageTotal] = useState(100);
@@ -119,61 +114,15 @@ export function Sidepanel() {
     }
   };
 
-  const handleAutoTuneToggle = async () => {
-    const newValue = !autoTuneEnabled;
-    setAutoTuneEnabled(newValue);
-
-    try {
-      await fetch('/api/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ AUTOTUNE_ENABLED: newValue ? '1' : '0' }),
-      });
-    } catch (e) {
-      console.error('[Sidepanel] Auto-tune toggle error:', e);
-    }
-  };
-
-  const handleAutoTuneRunNow = async () => {
-    try {
-      const response = await fetch('/api/autotune/run', { method: 'POST' });
-      if (response.ok) {
-        const data = await response.json();
-        setAutoTuneMode(data.mode || 'Balanced');
-        setAutoTuneLastRun(new Date().toLocaleString());
-        alert('Auto-tune completed');
-      }
-    } catch (e) {
-      console.error('[Sidepanel] Auto-tune run error:', e);
-      alert('Auto-tune failed');
-    }
-  };
-
-  const handleRefreshStatus = async () => {
-    try {
-      const response = await fetch('/api/autotune/status');
-      if (response.ok) {
-        const data = await response.json();
-        setAutoTuneMode(data.current_mode || '--');
-        if (data.last_run) {
-          setAutoTuneLastRun(new Date(data.last_run).toLocaleString());
-        }
-      }
-    } catch (e) {
-      console.error('[Sidepanel] Refresh status error:', e);
-    }
-  };
 
   const handleCleanUpStorage = async () => {
     if (!confirm('Clean up storage (remove old indexes, caches)?')) return;
-    
+
     try {
       const response = await fetch('/api/storage/cleanup', { method: 'POST' });
       if (response.ok) {
         const data = await response.json();
         alert(`Cleaned up ${data.bytes_freed || 0} bytes`);
-        // Refresh storage display
-        handleRefreshStatus();
       } else {
         alert('Cleanup failed');
       }
@@ -726,104 +675,6 @@ export function Sidepanel() {
               ))}
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Auto-Tune Widget */}
-      <div
-        style={{
-          background: 'var(--card-bg)',
-          border: '1px solid var(--line)',
-          borderRadius: '8px',
-          padding: '16px',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            marginBottom: '12px',
-          }}
-        >
-          <span style={{ color: 'var(--accent)', fontSize: '8px' }}>●</span>
-          <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--fg)' }}>
-            Auto-Tune
-          </span>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={autoTuneEnabled}
-              onChange={handleAutoTuneToggle}
-              style={{
-                width: '16px',
-                height: '16px',
-                cursor: 'pointer',
-              }}
-            />
-            <span style={{ fontSize: '12px', color: 'var(--fg)' }}>ENABLE AUTO-TUNE</span>
-          </label>
-
-          <div>
-            <div
-              style={{
-                fontSize: '11px',
-                color: 'var(--fg-muted)',
-                marginBottom: '2px',
-              }}
-            >
-              Current Mode
-            </div>
-            <div
-              style={{
-                fontSize: '13px',
-                fontWeight: 500,
-                color: 'var(--fg)',
-              }}
-            >
-              {autoTuneMode}
-            </div>
-          </div>
-
-          <div>
-            <div
-              style={{
-                fontSize: '11px',
-                color: 'var(--fg-muted)',
-                marginBottom: '2px',
-              }}
-            >
-              LAST INDEXED
-            </div>
-            <div
-              style={{
-                fontSize: '11px',
-                fontFamily: 'monospace',
-                color: 'var(--ok)',
-              }}
-            >
-              {autoTuneLastRun}
-            </div>
-          </div>
-
-          <button
-            onClick={handleAutoTuneRunNow}
-            style={{
-              width: '100%',
-              background: 'var(--accent)',
-              color: 'var(--accent-contrast)',
-              border: 'none',
-              padding: '10px',
-              borderRadius: '4px',
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            REFRESH STATUS
-          </button>
         </div>
       </div>
 

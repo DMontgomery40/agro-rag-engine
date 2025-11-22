@@ -613,6 +613,20 @@ class GenerationConfig(BaseModel):
         description="Ollama generation model"
     )
 
+    # Local (Ollama) HTTP timeouts — clear, user-friendly naming
+    ollama_request_timeout: int = Field(
+        default=300,
+        ge=30,
+        le=1200,
+        description="Maximum total time to wait for a local (Ollama) generation request to complete (seconds)"
+    )
+    ollama_stream_idle_timeout: int = Field(
+        default=60,
+        ge=5,
+        le=300,
+        description="Maximum idle time allowed between streamed chunks from local (Ollama) during generation (seconds)"
+    )
+
 
 class EnrichmentConfig(BaseModel):
     """Code enrichment and card generation configuration."""
@@ -1129,6 +1143,8 @@ class AgroConfigRoot(BaseModel):
             'ENRICH_BACKEND': self.generation.enrich_backend,
             'ENRICH_DISABLED': self.generation.enrich_disabled,
             'OLLAMA_NUM_CTX': self.generation.ollama_num_ctx,
+            'OLLAMA_REQUEST_TIMEOUT': self.generation.ollama_request_timeout,
+            'OLLAMA_STREAM_IDLE_TIMEOUT': self.generation.ollama_stream_idle_timeout,
             'GEN_MODEL_CLI': self.generation.gen_model_cli,
             'GEN_MODEL_OLLAMA': self.generation.gen_model_ollama,
             # Enrichment params (6)
@@ -1308,6 +1324,8 @@ class AgroConfigRoot(BaseModel):
                 enrich_backend=data.get('ENRICH_BACKEND', 'openai'),
                 enrich_disabled=data.get('ENRICH_DISABLED', 0),
                 ollama_num_ctx=data.get('OLLAMA_NUM_CTX', 8192),
+                ollama_request_timeout=data.get('OLLAMA_REQUEST_TIMEOUT', 300),
+                ollama_stream_idle_timeout=data.get('OLLAMA_STREAM_IDLE_TIMEOUT', 60),
                 gen_model_cli=data.get('GEN_MODEL_CLI', 'qwen3-coder:14b'),
                 gen_model_ollama=data.get('GEN_MODEL_OLLAMA', 'qwen3-coder:30b'),
             ),
@@ -1471,6 +1489,8 @@ AGRO_CONFIG_KEYS = {
     'ENRICH_BACKEND',
     'ENRICH_DISABLED',
     'OLLAMA_NUM_CTX',
+    'OLLAMA_REQUEST_TIMEOUT',
+    'OLLAMA_STREAM_IDLE_TIMEOUT',
     'GEN_MODEL_CLI',
     'GEN_MODEL_OLLAMA',
     # Enrichment params (6)

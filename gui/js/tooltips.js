@@ -175,6 +175,22 @@
         ['Ollama Docker Setup', 'https://ollama.com/blog/ollama-is-now-available-as-an-official-docker-image'],
         ['Ollama Model Library', 'https://ollama.com/library']
       ]),
+      OLLAMA_REQUEST_TIMEOUT: L(
+        'Local Request Timeout (seconds)',
+        'Maximum total time to wait for a single local (Ollama) generation request to complete. Increase for long answers; decrease to fail fast on slow models or poor connectivity.',
+        [
+          ['Ollama API: Generate', 'https://github.com/ollama/ollama/blob/main/docs/api.md#generate-a-completion'],
+          ['HTTP Timeouts', 'https://developer.mozilla.org/en-US/docs/Web/HTTP/Timeouts']
+        ]
+      ),
+      OLLAMA_STREAM_IDLE_TIMEOUT: L(
+        'Local Stream Idle Timeout (seconds)',
+        'Maximum idle time allowed between streamed chunks from local (Ollama). If no tokens arrive within this window, the request aborts to prevent hanging streams.',
+        [
+          ['Streaming Basics', 'https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream'],
+          ['Ollama Streaming', 'https://github.com/ollama/ollama/blob/main/docs/api.md#streaming']
+        ]
+      ),
       OPENAI_API_KEY: L('OpenAI API Key', 'API key used for OpenAI-based embeddings and/or generation.', [
         ['OpenAI: API Keys', 'https://platform.openai.com/docs/quickstart/step-2-set-up-your-api-key'],
         ['OpenAI Models', 'https://platform.openai.com/docs/models']

@@ -10,7 +10,7 @@ interface ChatConfig {
   temperature: number;
   maxTokens: number;
   topP: number;
-  topK: number;
+  finalK: number;
   frequencyPenalty: number;
   presencePenalty: number;
   streaming: boolean;
@@ -24,7 +24,7 @@ const DEFAULT_CONFIG: ChatConfig = {
   temperature: 0,
   maxTokens: 1000,
   topP: 1,
-  topK: 10,
+  finalK: 10,
   frequencyPenalty: 0,
   presencePenalty: 0,
   streaming: true,
@@ -51,12 +51,20 @@ export function ChatSettings() {
       const response = await fetch(api('chat/config'));
       if (response.ok) {
         const data = await response.json();
-        setConfig({ ...DEFAULT_CONFIG, ...data });
+        // Normalize legacy topK -> finalK if present in stored config
+        const normalized = { ...data };
+        if (normalized.topK && !normalized.finalK) {
+          normalized.finalK = normalized.topK;
+          delete normalized.topK;
+        }
+        setConfig({ ...DEFAULT_CONFIG, ...normalized });
       } else {
         // Fall back to localStorage
         const saved = localStorage.getItem('agro-chat-config');
         if (saved) {
-          setConfig({ ...DEFAULT_CONFIG, ...JSON.parse(saved) });
+          const parsed = JSON.parse(saved);
+          if (parsed.topK && !parsed.finalK) { parsed.finalK = parsed.topK; delete parsed.topK; }
+          setConfig({ ...DEFAULT_CONFIG, ...parsed });
         }
       }
     } catch (error) {
@@ -65,7 +73,9 @@ export function ChatSettings() {
       const saved = localStorage.getItem('agro-chat-config');
       if (saved) {
         try {
-          setConfig({ ...DEFAULT_CONFIG, ...JSON.parse(saved) });
+          const parsed = JSON.parse(saved);
+          if (parsed.topK && !parsed.finalK) { parsed.finalK = parsed.topK; delete parsed.topK; }
+          setConfig({ ...DEFAULT_CONFIG, ...parsed });
         } catch {}
       }
     }
@@ -263,7 +273,7 @@ export function ChatSettings() {
           Model Configuration
         </h3>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <div>
             <label style={{
               display: 'block',
@@ -328,6 +338,34 @@ export function ChatSettings() {
               onChange={(e) => setConfig(prev => ({ ...prev, maxTokens: parseInt(e.target.value) || 1000 }))}
               min="1"
               max="32000"
+              style={{
+                width: '100%',
+                background: 'var(--input-bg)',
+                border: '1px solid var(--line)',
+                color: 'var(--fg)',
+                padding: '8px 12px',
+                borderRadius: '4px',
+                fontSize: '13px'
+              }}
+            />
+          </div>
+          <div>
+            <label style={{
+              display: 'block',
+              fontSize: '12px',
+              fontWeight: '600',
+              color: 'var(--fg-muted)',
+              marginBottom: '6px'
+            }} title="Final K: number of results to keep after fusion and reranking. Higher = broader context, more latency.">
+              Final K (results)
+            </label>
+            <input
+              type="number"
+              id="chat-final-k"
+              value={config.finalK}
+              onChange={(e) => setConfig(prev => ({ ...prev, finalK: Math.max(1, parseInt(e.target.value) || 10) }))}
+              min="1"
+              max="200"
               style={{
                 width: '100%',
                 background: 'var(--input-bg)',

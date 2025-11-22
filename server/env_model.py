@@ -24,11 +24,14 @@ _ENRICH_MODEL = None
 _ENRICH_BACKEND = None
 _ENRICH_DISABLED = None
 _OLLAMA_NUM_CTX = None
+_OLLAMA_REQUEST_TIMEOUT = None
+_OLLAMA_STREAM_IDLE_TIMEOUT = None
 
 def _load_cached_config():
     """Load all generation config values into module-level cache."""
     global _GEN_MODEL, _GEN_TEMPERATURE, _GEN_MAX_TOKENS, _GEN_TOP_P, _GEN_TIMEOUT
     global _GEN_RETRY_MAX, _ENRICH_MODEL, _ENRICH_BACKEND, _ENRICH_DISABLED, _OLLAMA_NUM_CTX
+    global _OLLAMA_REQUEST_TIMEOUT, _OLLAMA_STREAM_IDLE_TIMEOUT
 
     if _config_registry is None:
         # Fallback to env vars
@@ -42,6 +45,8 @@ def _load_cached_config():
         _ENRICH_BACKEND = os.getenv('ENRICH_BACKEND', 'openai')
         _ENRICH_DISABLED = int(os.getenv('ENRICH_DISABLED', '0') or '0')
         _OLLAMA_NUM_CTX = int(os.getenv('OLLAMA_NUM_CTX', '8192') or '8192')
+        _OLLAMA_REQUEST_TIMEOUT = int(os.getenv('OLLAMA_REQUEST_TIMEOUT', '300') or '300')
+        _OLLAMA_STREAM_IDLE_TIMEOUT = int(os.getenv('OLLAMA_STREAM_IDLE_TIMEOUT', '60') or '60')
     else:
         _GEN_MODEL = _config_registry.get_str('GEN_MODEL', 'gpt-4o-mini')
         _GEN_TEMPERATURE = _config_registry.get_float('GEN_TEMPERATURE', 0.0)
@@ -53,6 +58,8 @@ def _load_cached_config():
         _ENRICH_BACKEND = _config_registry.get_str('ENRICH_BACKEND', 'openai')
         _ENRICH_DISABLED = _config_registry.get_int('ENRICH_DISABLED', 0)
         _OLLAMA_NUM_CTX = _config_registry.get_int('OLLAMA_NUM_CTX', 8192)
+        _OLLAMA_REQUEST_TIMEOUT = _config_registry.get_int('OLLAMA_REQUEST_TIMEOUT', 300)
+        _OLLAMA_STREAM_IDLE_TIMEOUT = _config_registry.get_int('OLLAMA_STREAM_IDLE_TIMEOUT', 60)
 
 def reload_config():
     """Reload all cached config values from registry."""
@@ -152,8 +159,44 @@ def generate_text(
         except Exception:
             pass
 
+    # Decide Ollama usage only when the selected model is actually available on the Ollama server.
+    # This avoids brittle string heuristics (e.g., model names that contain ':' but are not Ollama tags).
+    def _ollama_has_model(base_url: str, name: str) -> bool:
+        try:
+            import requests as _rq
+            if not (base_url and name):
+                return False
+            b = str(base_url).rstrip('/')
+            candidates = [f"{b}/api/tags", f"{b}/tags"]
+            for u in candidates:
+                try:
+                    r = _rq.get(u, timeout=1.0)
+                    if r.status_code != 200:
+                        continue
+                    data = r.json()
+                    names: list[str] = []
+                    if isinstance(data, dict) and isinstance(data.get('models'), list):
+                        for m in data['models']:
+                            nm = (m.get('name') or m.get('model') or '').strip()
+                            if nm:
+                                names.append(nm)
+                    elif isinstance(data, list):
+                        for m in data:
+                            if isinstance(m, dict):
+                                nm = (m.get('name') or m.get('model') or '').strip()
+                                if nm:
+                                    names.append(nm)
+                    return name in names
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        return False
+
     OLLAMA_URL = os.getenv("OLLAMA_URL")
-    prefer_ollama = bool(OLLAMA_URL)
+    _ollama_present = bool(OLLAMA_URL)
+    _ollama_has = _ollama_has_model(OLLAMA_URL, str(mdl)) if _ollama_present else False
+    prefer_ollama = _ollama_present and _ollama_has
     if prefer_ollama:
         try:
             import requests
@@ -161,10 +204,14 @@ def generate_text(
             import time
             sys_text = (system_instructions or "").strip()
             prompt = (f"<system>{sys_text}</system>\n" if sys_text else "") + user_input
-            url = OLLAMA_URL.rstrip("/") + "/generate"
-            max_retries = 2
-            chunk_timeout = 60
-            total_timeout = 300
+            # Normalize to /api/generate endpoint regardless of whether OLLAMA_URL includes /api
+            _b = OLLAMA_URL.rstrip("/")
+            if not _b.endswith("/api"):
+                _b = _b + "/api"
+            url = _b + "/generate"
+            max_retries = int(_GEN_RETRY_MAX or 2)
+            chunk_timeout = int(_OLLAMA_STREAM_IDLE_TIMEOUT or 60)
+            total_timeout = int(_OLLAMA_REQUEST_TIMEOUT or 300)
             for attempt in range(max_retries + 1):
                 start_time = time.time()
                 try:
@@ -198,7 +245,17 @@ def generate_text(
                                     break
                         text = ("".join(buf) or "").strip()
                         if text:
-                            return text, (last or {"response": text})
+                            meta = (last or {"response": text})
+                            # annotate backend/provider for transparency
+                            try:
+                                if isinstance(meta, dict):
+                                    meta.setdefault("backend", "ollama")
+                                    meta.setdefault("provider", "ollama")
+                                    meta.setdefault("model", mdl)
+                                    meta.setdefault("ollama", {"url": OLLAMA_URL, "model_present": True})
+                            except Exception:
+                                pass
+                            return text, meta
                     resp = requests.post(url, json={
                         "model": mdl,
                         "prompt": prompt,
@@ -209,6 +266,14 @@ def generate_text(
                     data = resp.json()
                     text = (data.get("response") or "").strip()
                     if text:
+                        try:
+                            if isinstance(data, dict):
+                                data.setdefault("backend", "ollama")
+                                data.setdefault("provider", "ollama")
+                                data.setdefault("model", mdl)
+                                data.setdefault("ollama", {"url": OLLAMA_URL, "model_present": True})
+                        except Exception:
+                            pass
                         return text, data
                 except (requests.Timeout, requests.ConnectionError):
                     if attempt < max_retries:
@@ -247,7 +312,24 @@ def generate_text(
             cost_usd=cost_usd
         )
 
-        return text, resp
+        # Build transparency metadata
+        meta = {"response": resp, "backend": "openai", "provider": "openai", "model": mdl}
+        try:
+            if _ollama_present and not _ollama_has:
+                meta["ollama"] = {"url": OLLAMA_URL, "model_present": False}
+                meta["failover"] = {"from": "ollama", "to": "openai", "reason": "ollama model not found or unreachable"}
+                # Trace event for visibility in UI
+                try:
+                    from server.tracing import get_trace
+                    tr = get_trace()
+                    if tr is not None:
+                        tr.add("provider.failover", {"from": "ollama", "to": "openai", "model": mdl, "ollama_url": OLLAMA_URL})
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        return text, meta
     except Exception:
         try:
             messages = []

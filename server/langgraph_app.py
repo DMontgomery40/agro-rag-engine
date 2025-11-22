@@ -281,7 +281,7 @@ def generate_node(state: RAGState) -> Dict:
     # Use cached system prompt from config
     sys = _SYSTEM_PROMPT
     user = f"Question:\n{q}\n\nContext:\n{context_text}\n\nCitations (paths and line ranges):\n{citations}\n\nAnswer:"
-    content, _ = generate_text(user_input=user, system_instructions=sys, reasoning_effort=None)
+    content, meta = generate_text(user_input=user, system_instructions=sys, reasoning_effort=None)
     content = content or ''
     conf = float(state.get('confidence', 0.0) or 0.0)
     if conf < _FALLBACK_CONFIDENCE:
@@ -293,11 +293,19 @@ def generate_node(state: RAGState) -> Dict:
             context_text2 = "\n\n".join([d.get('code','') for d in ctx2])
             user2 = f"Question:\n{q}\n\nContext:\n{context_text2}\n\nCitations (paths and line ranges):\n{citations2}\n\nAnswer:"
             # Use same cached system prompt as first generation attempt
-            content2, _ = generate_text(user_input=user2, system_instructions=_SYSTEM_PROMPT, reasoning_effort=None)
+            content2, meta2 = generate_text(user_input=user2, system_instructions=_SYSTEM_PROMPT, reasoning_effort=None)
             content = (content2 or content or '')
+            if meta2:
+                meta = meta2
     repo_hdr = state.get('repo') or (ctx[0].get('repo') if ctx else None) or os.getenv('REPO','project')
     header = f"[repo: {repo_hdr}]"
-    return {'generation': header + "\n" + content}
+    out = {'generation': header + "\n" + content}
+    try:
+        if meta is not None:
+            out['gen_meta'] = meta
+    except Exception:
+        pass
+    return out
 
 def fallback_node(state: RAGState) -> Dict:
     repo_hdr = state.get('repo') or (state.get('documents', [])[0].get('repo') if state.get('documents') else None) or os.getenv('REPO','project')

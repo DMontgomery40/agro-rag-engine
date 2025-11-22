@@ -4,12 +4,25 @@
     {
       "name": "agro",
       "slug": "agro",
-      "path": "${REPO_ROOT:-/}",
+      "path": "/Users/davidmontgomery/agro-rag-engine",
       "exclude_paths": [
-        "/docs",
-        "/agent_docs",
-        "/website",
-        "/assets"
+        "docs",
+        "agent_docs",
+        "website",
+        "tests",
+        "assets",
+        "internal_docs.md",
+        "out/",
+        "checkpoints/",
+        "models/",
+        "data/",
+        "telemetry/",
+        "node_mcp/",
+        "public/",
+        "examples/",
+        "bin/",
+        "reports/",
+        "screenshots/"
       ],
       "keywords": [
         "models",
@@ -43,18 +56,25 @@
         "indexer",
         "retrieval",
         "layer",
-        "stdio"
+        "stdio",
+        "reranker",
+        "learning reranker",
+        "golden questions",
+        "editor"
       ],
       "path_boosts": [
-        "/gui",
-        "/server",
-        "/indexer",
-        "/retrieval",
-        "/scripts",
-        "/gui/js",
-        "/gui/index.html",
-        "/infra",
-        "/web"
+        "gui",
+        "server",
+        "indexer",
+        "retrieval",
+        "scripts",
+        "server/routers/",
+        "server/services/",
+        "server/",
+        "web/src/components/",
+        "indexer/",
+        "infra/",
+        "web"
       ],
       "layer_bonuses": {
         "gui": {

@@ -109,6 +109,22 @@ export function useTooltips() {
       OLLAMA_URL: L('Ollama URL', 'Local inference endpoint for Ollama (e.g., http://127.0.0.1:11434/api). Used when GEN_MODEL targets a local model.', [
         ['Ollama API (GitHub)', 'https://github.com/ollama/ollama/blob/main/docs/api.md']
       ]),
+      OLLAMA_REQUEST_TIMEOUT: L(
+        'Local Request Timeout (seconds)',
+        'Maximum total time to wait for a single local (Ollama) generation request to complete. Increase for long answers; decrease to fail fast on slow models or bad connectivity.',
+        [
+          ['Ollama API: Generate', 'https://github.com/ollama/ollama/blob/main/docs/api.md#generate-a-completion'],
+          ['Timeouts vs Latency', 'https://developer.mozilla.org/en-US/docs/Web/HTTP/Timeouts']
+        ]
+      ),
+      OLLAMA_STREAM_IDLE_TIMEOUT: L(
+        'Local Stream Idle Timeout (seconds)',
+        'Maximum idle time allowed between streamed chunks from local (Ollama). If no tokens arrive within this window, the request aborts. Useful to avoid hanging streams.',
+        [
+          ['HTTP Streaming', 'https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream'],
+          ['Ollama Streaming', 'https://github.com/ollama/ollama/blob/main/docs/api.md#streaming']
+        ]
+      ),
       OPENAI_API_KEY: L('OpenAI API Key', 'API key used for OpenAI-based embeddings and/or generation.', [
         ['OpenAI: API Keys', 'https://platform.openai.com/docs/quickstart/step-2-set-up-your-api-key'],
         ['OpenAI Models', 'https://platform.openai.com/docs/models']

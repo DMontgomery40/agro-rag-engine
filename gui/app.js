@@ -1287,10 +1287,11 @@
         const addCost = document.getElementById('btn-add-cost-model');
         if (addCost) addCost.addEventListener('click', addCostModelFlow);
 
-        const btnAuto = document.getElementById('btn-autotune-refresh');
-        if (btnAuto) btnAuto.addEventListener('click', refreshAutotune);
-        const cbAuto = document.getElementById('autotune-enabled');
-        if (cbAuto) cbAuto.addEventListener('change', setAutotuneEnabled);
+        // HIDDEN: Autotune event listeners - Pro feature not yet implemented
+        // const btnAuto = document.getElementById('btn-autotune-refresh');
+        // if (btnAuto) btnAuto.addEventListener('click', refreshAutotune);
+        // const cbAuto = document.getElementById('autotune-enabled');
+        // if (cbAuto) cbAuto.addEventListener('change', setAutotuneEnabled);
 
         const btnIndex = document.getElementById('btn-index-start');
         if (btnIndex) btnIndex.addEventListener('click', () => {

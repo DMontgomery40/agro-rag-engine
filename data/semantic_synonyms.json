@@ -11,7 +11,8 @@
     "qdrant": ["vector-db", "vectordb", "collection", "points"],
     "redis": ["cache", "store", "session", "memory"],
     "bm25": ["sparse", "lexical", "keyword-match", "term-frequency"],
-    "confidence": ["score", "relevance", "ranking", "threshold"]
+    "confidence": ["score", "relevance", "ranking", "threshold"],
+    "editor": ["vscode", "vscode tab", "vscode iframe", "code editor", "embedded editor", "openvscode"]
   }
 }
 

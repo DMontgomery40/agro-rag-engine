@@ -76,6 +76,36 @@ def do_answer(q: str, repo: Optional[str], request: Optional[Request] = None) ->
 
 
 def do_chat(payload: Dict[str, Any], request: Optional[Request] = None) -> JSONResponse:
+    # Validate per-chat parameters early and return exceptional, guided errors
+    try:
+        if payload is not None and isinstance(payload, dict):
+            fk = payload.get('final_k')
+            if fk is not None:
+                try:
+                    fk_i = int(fk)
+                except Exception:
+                    return JSONResponse({
+                        "detail": "Invalid value for final_k: must be an integer",
+                        "causes": ["The provided value cannot be parsed as an integer."],
+                        "fixes": ["Enter a whole number >= 1 for Final K (e.g., 10)."],
+                        "links": [["Top‑K Retrieval (Wikipedia)", "https://en.wikipedia.org/wiki/Information_retrieval"]]
+                    }, status_code=400)
+                if fk_i < 1 or fk_i > 200:
+                    return JSONResponse({
+                        "detail": "final_k must be between 1 and 200",
+                        "causes": [
+                            "Values < 1 are invalid (no results).",
+                            "Very large values can cause excessive latency and memory use."
+                        ],
+                        "fixes": [
+                            "Use a balanced value like 10 (default) or 20 for broader context.",
+                            "For very fast responses, try 5."
+                        ],
+                        "links": [["Retrieval Basics", "https://en.wikipedia.org/wiki/Information_retrieval"]]
+                    }, status_code=400)
+    except Exception:
+        # Never block chat on validator errors
+        pass
     # Apply overrides to env for the invocation lifetime
     overrides = {
         'GEN_MODEL': payload.get('model'),
@@ -208,9 +238,21 @@ def do_chat(payload: Dict[str, Any], request: Optional[Request] = None) -> JSONR
         except Exception:
             pass
         dur = int((_t.time()-t0)*1000)
-        trace = {"steps": [
-            {"step": "graph.invoke", "duration": dur, "details": {}}
-        ]}
+        # Build rich trace from in-memory Trace events when available
+        trace_steps = []
+        try:
+            from server.tracing import get_trace as _gt
+            _tr = _gt()
+            if _tr and isinstance(getattr(_tr, 'events', None), list) and _tr.events:
+                for ev in _tr.events[-200:]:  # cap to avoid huge payloads
+                    kind = str(ev.get('kind') or '')
+                    data = ev.get('data') if isinstance(ev.get('data'), dict) else {}
+                    trace_steps.append({"step": kind, "duration": data.get('duration_ms'), "details": data})
+        except Exception:
+            pass
+        if not trace_steps:
+            trace_steps = [{"step": "graph.invoke", "duration": dur, "details": {}}]
+        trace = {"steps": trace_steps}
         if _is_test_request(request):
             event_id = uuid.uuid4().hex  # avoid contaminating training logs with test queries
         else:
@@ -223,7 +265,9 @@ def do_chat(payload: Dict[str, Any], request: Optional[Request] = None) -> JSONR
                 client_ip=(request.client.host if request and request.client else None),
                 user_agent=(request.headers.get('user-agent') if request else None),
             )
-        return JSONResponse({"answer": answer_text, "confidence": res.get("confidence",0.0), "event_id": event_id, "trace": trace})
+        # Provider metadata if available (propagated via graph state)
+        meta = res.get('gen_meta') if isinstance(res, dict) else None
+        return JSONResponse({"answer": answer_text, "confidence": res.get("confidence",0.0), "event_id": event_id, "trace": trace, "meta": meta})
     finally:
         for k, v in saved.items():
             if v is None:

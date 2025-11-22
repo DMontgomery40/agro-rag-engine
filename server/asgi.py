@@ -5,6 +5,7 @@ from typing import Any, Dict
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
 from common.paths import repo_root, gui_dir, docs_dir, files_root
 from common.config_loader import load_repos
@@ -57,7 +58,34 @@ def create_app() -> FastAPI:
 
     app = FastAPI(title="AGRO RAG + GUI")
 
-    # Metrics + middleware
+    # CORS (dev-friendly defaults; configurable via env/registry)
+    try:
+        raw_origins = _config_registry.get_str("CORS_ALLOW_ORIGINS", "")
+    except Exception:
+        raw_origins = ""
+    try:
+        origin_regex = _config_registry.get_str("CORS_ALLOW_ORIGIN_REGEX", "")
+    except Exception:
+        origin_regex = ""
+    allow_origins = [o.strip() for o in (raw_origins or "").split(",") if o.strip()]
+
+    # Sensible default for dev: allow localhost/127.0.0.1 on any port
+    if not allow_origins and not origin_regex:
+        origin_regex = r"^https?://(localhost|127\\.0\\.0\\.1)(:\\d{1,5})?$"
+
+    cors_kwargs = dict(
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"]
+    )
+    if origin_regex:
+        cors_kwargs["allow_origin_regex"] = origin_regex
+    else:
+        cors_kwargs["allow_origins"] = allow_origins
+
+    app.add_middleware(CORSMiddleware, **cors_kwargs)
+
+    # Metrics + middleware (add after CORS so preflight is handled first)
     init_metrics_fastapi(app)
     app.add_middleware(FrequencyAnomalyMiddleware)
 
@@ -81,6 +109,95 @@ def create_app() -> FastAPI:
         except Exception:
             pass
         return response
+
+    # Tracing middleware: start/end trace around /answer and /api/chat
+    @app.middleware("http")
+    async def tracing_middleware(request: Request, call_next):  # type: ignore[unused-ignore]
+        try:
+            # Config gate and sampling
+            enabled = _config_registry.get_int("TRACING_ENABLED", 1)
+            if not enabled:
+                return await call_next(request)
+            try:
+                rate = float(_config_registry.get_float("TRACE_SAMPLING_RATE", 1.0))
+            except Exception:
+                rate = 1.0
+            if rate < 1.0:
+                import random as _rand
+                if _rand.random() > max(0.0, min(1.0, rate)):
+                    return await call_next(request)
+
+            path = request.url.path or ""
+            if path not in {"/answer", "/api/chat"}:
+                return await call_next(request)
+
+            # Import lazily to avoid cycles at import time
+            try:
+                from server.tracing import start_trace, end_trace
+            except Exception:
+                return await call_next(request)
+
+            repo = _config_registry.get_str("REPO", "agro")
+            question = ""
+
+            if path == "/answer":
+                try:
+                    question = request.query_params.get("q") or ""
+                    repo = request.query_params.get("repo") or repo
+                except Exception:
+                    pass
+                try:
+                    start_trace(repo=repo, question=question)
+                except Exception:
+                    pass
+                try:
+                    response = await call_next(request)
+                finally:
+                    try:
+                        end_trace()
+                    except Exception:
+                        pass
+                return response
+
+            # /api/chat: we need to read and re-inject the body for downstream
+            try:
+                body = await request.body()
+                import json as _json
+                try:
+                    data = _json.loads(body.decode("utf-8")) if body else {}
+                except Exception:
+                    data = {}
+                question = str(data.get("question") or "")
+                repo = str(data.get("repo") or repo)
+
+                # Create a fresh receive channel that returns the original body once
+                async def _receive_once(has=[False]):  # type: ignore[arg-type]
+                    if has[0]:
+                        return {"type": "http.request", "body": b"", "more_body": False}
+                    has[0] = True
+                    return {"type": "http.request", "body": body, "more_body": False}
+
+                from starlette.requests import Request as _Req
+                new_request = _Req(request.scope, _receive_once)
+            except Exception:
+                new_request = request
+
+            try:
+                start_trace(repo=repo, question=question)
+            except Exception:
+                pass
+
+            try:
+                response = await call_next(new_request)
+            finally:
+                try:
+                    end_trace()
+                except Exception:
+                    pass
+            return response
+        except Exception:
+            # Never let tracing break requests
+            return await call_next(request)
 
     ROOT = repo_root()
     GUI_DIR = gui_dir()

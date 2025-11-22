@@ -6273,10 +6273,12 @@
                                         <span>—</span>
                                     </div>
                                 </div>
-                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--card-bg); border-radius: 4px; border: 1px solid var(--line);">
+                                <!-- HIDDEN: Auto-Tune (Pro feature, implementing hardware-idle training detection)
+                                     Backend stub remains at /api/autotune/status for future implementation -->
+                                <!-- <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--card-bg); border-radius: 4px; border: 1px solid var(--line);">
                                     <span style="font-size: 11px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.5px;">Auto-Tune</span>
                                     <span id="dash-autotune" class="mono" style="color: var(--warn); font-weight: 600;">—</span>
-                                </div>
+                                </div> -->
                             </div>
                         </div>
 
@@ -7149,8 +7151,10 @@
             <!-- Profile Preview Tooltip -->
             <div id="profile-tooltip"></div>
 
-            <!-- Auto-Tune (Pro) -->
-            <div class="sidepanel-section">
+            <!-- HIDDEN: Auto-Tune (Pro feature, implementing hardware-idle training detection)
+                 Backend stub remains at /api/autotune/status for future implementation
+                 Re-enable when feature is complete -->
+            <!-- <div class="sidepanel-section">
                 <h4>Auto‑Tune</h4>
                 <div class="input-row" style="margin-bottom: 8px;">
                     <label style="display: flex; align-items: center; gap: 8px;">
@@ -7165,7 +7169,7 @@
                     <div id="last-indexed-display" class="mono" style="font-size: 12px; color: var(--accent); font-weight: 600;">—</div>
                 </div>
                 <button class="small-button" id="btn-autotune-refresh">Refresh Status</button>
-            </div>
+            </div> -->
 
             <!-- Secrets Ingest -->
             <div class="sidepanel-section">
@@ -7257,7 +7261,8 @@
     <script src="/gui/js/git-hooks.js"></script>
     <script src="/gui/js/git-commit-meta.js"></script>
     <script src="/gui/js/keywords.js"></script>
-    <script src="/gui/js/autotune.js"></script>
+    <!-- HIDDEN: autotune.js module - Pro feature not yet implemented -->
+    <!-- <script src="/gui/js/autotune.js"></script> -->
     <script src="/gui/js/search.js"></script>
     <script src="/gui/js/editor.js"></script>
     <script src="/gui/js/secrets.js"></script>

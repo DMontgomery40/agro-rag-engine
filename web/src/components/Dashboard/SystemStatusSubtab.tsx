@@ -11,7 +11,7 @@ export function SystemStatusSubtab() {
   const [branch, setBranch] = useState<string>('—');
   const [cards, setCards] = useState<string>('—');
   const [mcp, setMcp] = useState<string>('—');
-  const [autotune, setAutotune] = useState<string>('—');
+  // const [autotune, setAutotune] = useState<string>('—'); // HIDDEN - Pro feature
   const [docker, setDocker] = useState<string>('—');
   const [gitHooks, setGitHooks] = useState<string>('—');
   const [loading, setLoading] = useState(true);
@@ -28,7 +28,7 @@ export function SystemStatusSubtab() {
         configData,
         cardsData,
         mcpData,
-        autotuneData,
+        // autotuneData, // HIDDEN - Pro feature
         dockerData,
         gitData,
         indexData
@@ -37,7 +37,7 @@ export function SystemStatusSubtab() {
         DashAPI.getConfig(),
         DashAPI.getCards(),
         DashAPI.getMCPStatus(),
-        DashAPI.getAutotuneStatus(),
+        // DashAPI.getAutotuneStatus(), // HIDDEN - Pro feature
         DashAPI.getDockerStatus(),
         DashAPI.getGitHookStatus(),
         DashAPI.getIndexStatus()
@@ -85,13 +85,13 @@ export function SystemStatusSubtab() {
         setMcp(parts.length > 0 ? parts.join(' | ') : 'unknown');
       }
 
-      // Autotune
-      if (autotuneData.status === 'fulfilled') {
-        const a = autotuneData.value;
-        setAutotune(a.enabled ? (a.current_mode || 'enabled') : 'disabled');
-      } else {
-        setAutotune('Pro required');
-      }
+      // Autotune - HIDDEN (Pro feature, implementing hardware-idle training)
+      // if (autotuneData.status === 'fulfilled') {
+      //   const a = autotuneData.value;
+      //   setAutotune(a.enabled ? (a.current_mode || 'enabled') : 'disabled');
+      // } else {
+      //   setAutotune('Pro required');
+      // }
 
       // Docker
       if (dockerData.status === 'fulfilled') {
@@ -218,7 +218,10 @@ export function SystemStatusSubtab() {
                   </div>
                 </div>
 
-                <StatusItem label="Auto-Tune" value={autotune} id="dash-autotune" color="var(--warn)" />
+                {/* HIDDEN: Auto-Tune feature - Pro feature, implementing hardware-idle training detection
+                    Backend stub remains at /api/autotune/status for future implementation
+                    Re-enable when feature is complete */}
+                {/* <StatusItem label="Auto-Tune" value={autotune} id="dash-autotune" color="var(--warn)" /> */}
                 <StatusItem label="Docker" value={docker} id="dash-docker" color="var(--link)" />
                 <StatusItem label="Git Hooks" value={gitHooks} id="dash-git-hooks" color="var(--ok)" />
               </div>
