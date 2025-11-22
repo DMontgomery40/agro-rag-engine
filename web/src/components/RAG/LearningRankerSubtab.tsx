@@ -18,8 +18,6 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useNotification } from '../../hooks/useNotification';
-import { NotificationContainer } from '../Notification';
 
 /**
  * Reranker status object returned from backend
@@ -61,7 +59,6 @@ interface EvalMetrics {
 }
 
 export function LearningRankerSubtab() {
-  const notification = useNotification();
 
   // Configuration state - all inputs wired to /api/config
   const [rerankerEnabled, setRerankerEnabled] = useState<string>('0');
@@ -280,7 +277,7 @@ export function LearningRankerSubtab() {
       await loadConfig();
     } catch (error) {
       console.error(`Error updating ${key}:`, error);
-      notification.error(`Failed to update ${key}`);
+      alert(`Failed to update ${key}`);
     }
   };
 
@@ -440,11 +437,11 @@ export function LearningRankerSubtab() {
       });
       const data = await response.json();
       if (!data.ok) {
-        notification.error(`Mining failed: ${data.error}`);
+        alert(`Mining failed: ${data.error}`);
       }
     } catch (error) {
       console.error('Mining error:', error);
-      notification.error('Mining failed');
+      alert('Mining failed');
     }
   };
 
@@ -464,11 +461,11 @@ export function LearningRankerSubtab() {
       });
       const data = await response.json();
       if (!data.ok) {
-        notification.error(`Training failed: ${data.error}`);
+        alert(`Training failed: ${data.error}`);
       }
     } catch (error) {
       console.error('Training error:', error);
-      notification.error('Training failed');
+      alert('Training failed');
     }
   };
 
@@ -481,11 +478,11 @@ export function LearningRankerSubtab() {
       });
       const data = await response.json();
       if (!data.ok) {
-        notification.error(`Evaluation failed: ${data.error}`);
+        alert(`Evaluation failed: ${data.error}`);
       }
     } catch (error) {
       console.error('Evaluation error:', error);
-      notification.error('Evaluation failed');
+      alert('Evaluation failed');
     }
   };
 
@@ -526,9 +523,9 @@ export function LearningRankerSubtab() {
       const response = await fetch('/api/reranker/baseline/save', { method: 'POST' });
       const data = await response.json();
       if (data.ok) {
-        notification.success('Baseline saved successfully');
+        alert('Baseline saved successfully');
       } else {
-        notification.error(`Failed to save baseline: ${data.error}`);
+        alert(`Failed to save baseline: ${data.error}`);
       }
     } catch (error) {
       console.error('Failed to save baseline:', error);
@@ -541,9 +538,9 @@ export function LearningRankerSubtab() {
       const data = await response.json();
       if (data.ok) {
         const msg = `Baseline Comparison:\n\nBaseline MRR: ${data.baseline.mrr}\nCurrent MRR: ${data.current.mrr}\nDelta: ${data.delta.mrr > 0 ? '+' : ''}${data.delta.mrr}\n\nBaseline Hit@1: ${data.baseline.hit1}\nCurrent Hit@1: ${data.current.hit1}\nDelta: ${data.delta.hit1 > 0 ? '+' : ''}${data.delta.hit1}`;
-        notification.info(msg);
+        alert(msg);
       } else {
-        notification.error(`Comparison failed: ${data.error}`);
+        alert(`Comparison failed: ${data.error}`);
       }
     } catch (error) {
       console.error('Failed to compare baseline:', error);
@@ -558,9 +555,9 @@ export function LearningRankerSubtab() {
       const response = await fetch('/api/reranker/rollback', { method: 'POST' });
       const data = await response.json();
       if (data.ok) {
-        notification.success('Model rolled back successfully');
+        alert('Model rolled back successfully');
       } else {
-        notification.error(`Rollback failed: ${data.error}`);
+        alert(`Rollback failed: ${data.error}`);
       }
     } catch (error) {
       console.error('Rollback failed:', error);
@@ -578,7 +575,7 @@ export function LearningRankerSubtab() {
       if (data.ok) {
         setCronStatus(`Nightly job scheduled for ${data.time}`);
       } else {
-        notification.error(`Failed to setup cron: ${data.error}`);
+        alert(`Failed to setup cron: ${data.error}`);
       }
     } catch (error) {
       console.error('Failed to setup cron:', error);
@@ -592,7 +589,7 @@ export function LearningRankerSubtab() {
       if (data.ok) {
         setCronStatus('Nightly job removed');
       } else {
-        notification.error(`Failed to remove cron: ${data.error}`);
+        alert(`Failed to remove cron: ${data.error}`);
       }
     } catch (error) {
       console.error('Failed to remove cron:', error);
@@ -617,7 +614,7 @@ export function LearningRankerSubtab() {
   };
 
   const handleViewCostDetails = () => {
-    notification.info(`Cost breakdown:\nLast 24h: $${cost24h.toFixed(4)}\nAvg per query: $${costAvg.toFixed(6)}`);
+    alert(`Cost breakdown:\nLast 24h: $${cost24h.toFixed(4)}\nAvg per query: $${costAvg.toFixed(6)}`);
   };
 
   if (loading) {
@@ -626,10 +623,8 @@ export function LearningRankerSubtab() {
 
   return (
     <>
-      <NotificationContainer notifications={notification.notifications} onClose={notification.removeNotification} />
-      <div id="tab-rag-learning-ranker" className="rag-subtab-content" style={{ padding: '24px' }}>
       {/* Header Section */}
-      <div className="settings-section" style={{ borderLeft: '3px solid var(--link)' }}>
+      <div className="settings-section" style={{ borderLeft: '3px solid var(--link)', padding: '24px' }}>
         <h2 style={{ color: 'var(--link)' }}>Learning Reranker System</h2>
         <p className="small">
           Self-improving retrieval through user feedback. Trains a cross-encoder that learns from
@@ -1530,7 +1525,6 @@ export function LearningRankerSubtab() {
           )}
         </div>
       </div>
-    </div>
     </>
   );
 }

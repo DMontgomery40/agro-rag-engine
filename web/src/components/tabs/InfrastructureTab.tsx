@@ -24,7 +24,7 @@ export default function InfrastructureTab() {
   }, [activeSubtab]);
 
   return (
-    <div id="tab-infrastructure" className="tab-content active">
+    <div id="tab-infrastructure" className="tab-content">
       {/* Subtab navigation */}
       <InfrastructureSubtabs activeSubtab={activeSubtab} onSubtabChange={setActiveSubtab} />
 

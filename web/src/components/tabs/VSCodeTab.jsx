@@ -1,6 +1,6 @@
 export default function VSCodeTab() {
   return (
-    <div id="tab-vscode" className="tab-content active">
+    <div id="tab-vscode" className="tab-content">
                 <div className="settings-section">
                     <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
                         <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>

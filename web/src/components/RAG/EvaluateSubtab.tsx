@@ -1,329 +1,518 @@
-// Imported from /gui/index.html - contains all config parameters
-// This component uses dangerouslySetInnerHTML to render the exact HTML from /gui
+// React implementation of EvaluateSubtab - NO legacy JS modules
+import React, { useState, useEffect, useCallback } from 'react';
+import { useAPI } from '@/hooks';
+// Recommended golden questions for AGRO codebase
+const RECOMMENDED_GOLDEN = [
+  { q: 'Where is hybrid retrieval implemented?', repo: 'agro', expect_paths: ['retrieval/hybrid_search.py'] },
+  { q: 'Where is keyword generation handled server-side?', repo: 'agro', expect_paths: ['server/app.py','keywords/generate'] },
+  { q: 'Where is the metadata enrichment logic for code/keywords?', repo: 'agro', expect_paths: ['metadata_enricher.py'] },
+  { q: 'Where is the indexing pipeline (BM25 and dense) implemented?', repo: 'agro', expect_paths: ['indexer/index_repo.py'] },
+  { q: 'Where is comprehensive index status computed?', repo: 'agro', expect_paths: ['server/app.py','server/index_stats.py','index/status'] },
+  { q: 'Where are semantic cards built or listed?', repo: 'agro', expect_paths: ['server/app.py','api/cards','indexer/build_cards.py'] },
+  { q: 'Where are golden questions API routes defined?', repo: 'agro', expect_paths: ['server/app.py','api/golden'] },
+  { q: 'Where is the endpoint to test a single golden question?', repo: 'agro', expect_paths: ['server/app.py','api/golden/test'] },
+  { q: 'Where are GUI assets mounted and served?', repo: 'agro', expect_paths: ['server/app.py','/gui','gui/index.html'] },
+  { q: 'Where is repository configuration (repos.json) loaded?', repo: 'agro', expect_paths: ['config_loader.py'] },
+  { q: 'Where are MCP stdio tools implemented (rag_answer, rag_search)?', repo: 'agro', expect_paths: ['server/mcp/server.py'] },
+  { q: 'Where can I list or fetch latest LangGraph traces?', repo: 'agro', expect_paths: ['server/app.py','api/traces'] }
+];
+
+interface GoldenQuestion {
+  q: string;
+  repo: string;
+  expect_paths: string[];
+}
+
+interface TestResult {
+  top1_hit: boolean;
+  topk_hit: boolean;
+  all_results?: Array<{
+    file_path: string;
+    start_line: number;
+    rerank_score: number;
+  }>;
+}
+
+interface EvalResults {
+  top1_accuracy: number;
+  topk_accuracy: number;
+  duration_secs: number;
+  results?: Array<{
+    question: string;
+    repo: string;
+    expect_paths: string[];
+    top1_hit: boolean;
+    topk_hit: boolean;
+    top_paths: string[];
+  }>;
+}
 
 export function EvaluateSubtab() {
-  const htmlContent = `                    <!-- Golden Questions Manager -->
-                    <div class="settings-section" style="border-left: 3px solid var(--link);">
-                        <h3>
-                            <span class="accent-blue">●</span> Golden Questions Manager
-                            <span class="tooltip-wrap">
-                                <span class="help-icon">?</span>
-                                <div class="tooltip-bubble">
-                                    <span class="tt-title">Golden Questions</span>
-                                    Questions with known-good answers used to measure RAG quality. Each question should have expected file paths that contain the answer.
-                                    <div class="tt-badges">
-                                        <span class="tt-badge info">Quality Assurance</span>
-                                        <span class="tt-badge">No Re-index</span>
-                                    </div>
-                                </div>
-                            </span>
-                        </h3>
-                        <p class="small">Manage test questions for evaluating retrieval quality. Add, edit, test individual questions, or run full evaluation suite.</p>
+  const { api } = useAPI();
+  const [goldenQuestions, setGoldenQuestions] = useState<GoldenQuestion[]>([]);
+  const [newQuestion, setNewQuestion] = useState({ q: '', repo: 'agro', paths: '' });
+  const [testResults, setTestResults] = useState<{ [key: number]: TestResult }>({});
+  const [evalRunning, setEvalRunning] = useState(false);
+  const [evalProgress, setEvalProgress] = useState({ current: 0, total: 0, status: '' });
+  const [evalResults, setEvalResults] = useState<EvalResults | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [evalSettings, setEvalSettings] = useState({
+    useMulti: true,
+    finalK: 5,
+    sampleSize: '',
+    goldenPath: 'data/golden.json',
+    baselinePath: 'data/evals/eval_baseline.json'
+  });
 
-                        <!-- Add New Question Form -->
-                        <div id="golden-add-form" style="background: var(--card-bg); border: 1px solid var(--line); border-radius: 6px; padding: 16px; margin-bottom: 16px;">
-                            <h4 style="font-size: 13px; color: var(--accent); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Add New Question</h4>
-                            <div class="input-group" style="margin-bottom: 12px;">
-                                <label>Question Text</label>
-                                <textarea id="golden-new-q" placeholder="e.g., Where is OAuth token validated?" style="min-height: 60px;"></textarea>
-                            </div>
-                            <div class="input-row" style="margin-bottom: 12px;">
-                                <div class="input-group">
-                                    <label>Repository</label>
-                                    <select id="golden-new-repo">
-                                        <option value="agro">agro</option>
-                                    </select>
-                                </div>
-                                <div class="input-group">
-                                    <label>Expected Paths (comma-separated)</label>
-                                    <input type="text" id="golden-new-paths" placeholder="auth, oauth, token">
-                                </div>
-                            </div>
-                            <div style="display: flex; gap: 8px;">
-                                <button class="small-button" id="btn-golden-add" style="background: var(--accent); color: var(--accent-contrast); border: none; width: auto; flex: 1;">Add Question</button>
-                                <button class="small-button" id="btn-golden-test-new" style="width: auto;">Test First</button>
-                            </div>
-                        </div>
+  const fetchJson = useCallback(async (path: string, options: RequestInit = {}) => {
+    const res = await fetch(api(path), {
+      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+      ...options
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || `Request failed (${res.status})`);
+    }
+    return res.json();
+  }, [api]);
 
-                        <!-- Questions List -->
-                        <div id="golden-questions-list" style="background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: 16px; max-height: 400px; overflow-y: auto;">
-                            <div id="golden-questions-content" style="font-size: 13px; color: var(--fg-muted);">
-                                Loading questions...
-                            </div>
-                        </div>
+  // Load golden questions on mount
+  useEffect(() => {
+    loadGoldenQuestions();
+  }, []);
 
-                        <div class="action-buttons" style="margin-top: 16px; display:flex; gap:8px; flex-wrap:wrap;">
-                            <button id="btn-golden-refresh" style="flex: 1;">Refresh List</button>
-                            <button id="btn-golden-load-recommended" style="flex: 1; background: var(--bg-elev2); color: var(--link); border: 1px solid var(--link);">Load Recommended</button>
-                            <button id="btn-golden-run-tests" style="flex: 1; background: var(--bg-elev2); color: var(--link); border: 1px solid var(--link);">Run All Tests</button>
-                            <button id="btn-golden-export" style="flex: 1; background: var(--bg-elev2); color: var(--accent);">Export JSON</button>
-                        </div>
-                    </div>
+  const loadGoldenQuestions = async () => {
+    try {
+      setLoading(true);
+      const response = await fetchJson('golden');
+      setGoldenQuestions(response.questions || []);
+      setError(null);
+    } catch (err) {
+      setError(`Failed to load golden questions: ${err}`);
+      console.error('Failed to load golden questions:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-                    <!-- Evaluation Runner -->
-                    <div class="settings-section" style="border-left: 3px solid var(--link);">
-                        <h3>
-                            <span class="accent-purple">●</span> Evaluation Runner
-                            <span class="tooltip-wrap">
-                                <span class="help-icon">?</span>
-                                <div class="tooltip-bubble">
-                                    <span class="tt-title">Evaluation System</span>
-                                    Runs all golden questions and measures retrieval accuracy. Tracks regressions vs. saved baseline.
-                                    <div class="tt-badges">
-                                        <span class="tt-badge info">Accuracy Metrics</span>
-                                        <span class="tt-badge warn">Can Be Slow</span>
-                                    </div>
-                                </div>
-                            </span>
-                        </h3>
-                        <p class="small">Run full evaluation suite to measure RAG quality. Compare against baseline to detect regressions.</p>
+  const addGoldenQuestion = async () => {
+    if (!newQuestion.q.trim()) {
+      alert('Please enter a question');
+      return;
+    }
 
-                        <!-- Settings -->
-                        <div class="input-row" style="margin-bottom: 16px;">
-                            <div class="input-group">
-                                <label>
-                                    Use Multi-Query
-                                    <span class="tooltip-wrap">
-                                        <span class="help-icon">?</span>
-                                        <div class="tooltip-bubble">
-                                            <span class="tt-title">Multi-Query Expansion</span>
-                                            Generate multiple query variations for better recall. Increases API costs but improves accuracy. Recommended: enabled.
-                                            <div class="tt-badges">
-                                                <span class="tt-badge info">Better Recall</span>
-                                                <span class="tt-badge warn">Higher Cost</span>
-                                            </div>
-                                        </div>
-                                    </span>
-                                </label>
-                                <select id="eval-use-multi">
-                                    <option value="1">Yes</option>
-                                    <option value="0">No</option>
-                                </select>
-                            </div>
-                            <div class="input-group">
-                                <label>
-                                    Final K Results
-                                    <span class="tooltip-wrap">
-                                        <span class="help-icon">?</span>
-                                        <div class="tooltip-bubble">
-                                            <span class="tt-title">Results Count</span>
-                                            Number of results to return per question. Higher = more context but more noise. Recommended: 5-10.
-                                        </div>
-                                    </span>
-                                </label>
-                                <input type="number" id="eval-final-k" name="EVAL_FINAL_K" value="5" min="1" max="20">
-                            </div>
-                            <div class="input-group">
-                                <label>
-                                    Sample Size
-                                    <span class="help-icon" data-tooltip="EVAL_SAMPLE_SIZE">?</span>
-                                </label>
-                                <select id="eval-sample-size" name="eval_sample_size">
-                                    <option value="">Full (All Questions)</option>
-                                    <option value="10">Quick (10 Questions)</option>
-                                    <option value="25">Medium (25 Questions)</option>
-                                    <option value="50">Large (50 Questions)</option>
-                                </select>
-                            </div>
-                        </div>
+    const expect_paths = newQuestion.paths.split(',').map(p => p.trim()).filter(p => p);
 
-                        <!-- Eval Paths -->
-                        <div class="input-row" style="margin-bottom: 16px;">
-                            <div class="input-group" style="flex: 2;">
-                                <label>
-                                    Golden Questions Path
-                                    <span class="tooltip-wrap">
-                                        <span class="help-icon">?</span>
-                                        <div class="tooltip-bubble">
-                                            <span class="tt-title">GOLDEN_PATH</span>
-                                            Path to your evaluation questions JSON. Defaults to data/golden.json.
-                                        </div>
-                                    </span>
-                                </label>
-                                <input type="text" id="eval-golden-path" name="EVAL_GOLDEN_PATH" placeholder="data/golden.json">
-                            </div>
-                            <div class="input-group" style="flex: 2;">
-                                <label>
-                                    Baseline Path
-                                    <span class="tooltip-wrap">
-                                        <span class="help-icon">?</span>
-                                        <div class="tooltip-bubble">
-                                            <span class="tt-title">BASELINE_PATH</span>
-                                            Where evaluation baselines are saved/compared. Defaults to data/evals/eval_baseline.json.
-                                        </div>
-                                    </span>
-                                </label>
-                                <input type="text" id="eval-baseline-path" name="EVAL_BASELINE_PATH" placeholder="data/evals/eval_baseline.json">
-                            </div>
-                        </div>
+    try {
+      await fetchJson('golden', {
+        method: 'POST',
+        body: JSON.stringify({
+          q: newQuestion.q,
+          repo: newQuestion.repo,
+          expect_paths
+        })
+      });
+      setNewQuestion({ q: '', repo: 'agro', paths: '' });
+      await loadGoldenQuestions();
+    } catch (err) {
+      alert(`Failed to add question: ${err}`);
+    }
+  };
 
-                        <div class="input-row" style="margin-bottom: 16px; justify-content: flex-end;">
-                            <button id="btn-eval-save-settings" class="small-button" style="background: var(--bg-elev2); color: var(--link); border: 1px solid var(--link); padding: 8px 12px; border-radius: 4px; cursor: pointer;">
-                                Save Eval Settings
-                            </button>
-                        </div>
+  const testQuestion = async (index: number) => {
+    const q = goldenQuestions[index];
+    try {
+      const result = await fetchJson('golden/test', {
+        method: 'POST',
+        body: JSON.stringify({
+          q: q.q,
+          repo: q.repo,
+          expect_paths: q.expect_paths,
+          final_k: 5,
+          use_multi: true
+        })
+      });
+      setTestResults(prev => ({ ...prev, [index]: result }));
+    } catch (err) {
+      console.error('Test failed:', err);
+      alert(`Test failed: ${err}`);
+    }
+  };
 
-                        <!-- Run Button -->
-                        <button class="action-buttons" id="btn-eval-run" style="width: 100%; background: var(--link); color: var(--accent-contrast); font-size: 15px; padding: 14px;">
-                            Run Full Evaluation
-                        </button>
+  const deleteQuestion = async (index: number) => {
+    if (!confirm('Delete this question?')) return;
 
-                        <!-- Progress -->
-                        <div id="eval-progress" style="margin-top: 16px; display: none;">
-                            <div style="background: var(--card-bg); border: 1px solid var(--line); border-radius: 4px; height: 8px; overflow: hidden; margin-bottom: 8px;">
-                                <div id="eval-progress-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, var(--link) 0%, var(--accent) 100%); transition: width 0.3s ease;"></div>
-                            </div>
-                            <div id="eval-status" class="mono" style="font-size: 12px; color: var(--fg-muted); text-align: center;">—</div>
-                        </div>
+    try {
+      await fetchJson(`golden/${index}`, { method: 'DELETE' });
+      await loadGoldenQuestions();
+    } catch (err) {
+      alert(`Failed to delete: ${err}`);
+    }
+  };
 
-                        <!-- Results Display -->
-                        <div id="eval-results" style="margin-top: 16px; display: none;">
-                            <!-- Overall Metrics -->
-                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px;">
-                                <div style="background: var(--card-bg); border: 1px solid var(--line); border-radius: 6px; padding: 12px; text-align: center;">
-                                    <div style="font-size: 11px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Top-1 Accuracy</div>
-                                    <div id="eval-top1-acc" class="mono" style="font-size: 24px; color: var(--accent); font-weight: 700;">—</div>
-                                </div>
-                                <div style="background: var(--card-bg); border: 1px solid var(--line); border-radius: 6px; padding: 12px; text-align: center;">
-                                    <div style="font-size: 11px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Top-K Accuracy</div>
-                                    <div id="eval-topk-acc" class="mono" style="font-size: 24px; color: var(--accent); font-weight: 700;">—</div>
-                                </div>
-                                <div style="background: var(--card-bg); border: 1px solid var(--line); border-radius: 6px; padding: 12px; text-align: center;">
-                                    <div style="font-size: 11px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Duration</div>
-                                    <div id="eval-duration" class="mono" style="font-size: 24px; color: var(--link); font-weight: 700;">—</div>
-                                </div>
-                            </div>
+  const loadRecommendedQuestions = async () => {
+    try {
+      let added = 0;
+      for (const q of RECOMMENDED_GOLDEN) {
+        try {
+          await fetchJson('golden', {
+            method: 'POST',
+            body: JSON.stringify(q)
+          });
+          added++;
+        } catch (err) {
+          console.warn(`Failed to add question: ${q.q}`, err);
+        }
+      }
+      await loadGoldenQuestions();
+      alert(`Loaded ${added} recommended questions`);
+    } catch (err) {
+      alert(`Failed to load recommended questions: ${err}`);
+    }
+  };
 
-                            <!-- Per-Question Results -->
-                            <div id="eval-details" style="background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: 16px; max-height: 300px; overflow-y: auto;"></div>
+  const runAllTests = async () => {
+    if (goldenQuestions.length === 0) {
+      alert('No questions to test');
+      return;
+    }
 
-                            <!-- Baseline Actions -->
-                            <div class="action-buttons" style="margin-top: 16px;">
-                                <button id="btn-eval-save-baseline" style="flex: 1;">Save as Baseline</button>
-                                <button id="btn-eval-compare" style="flex: 1; background: var(--bg-elev2); color: var(--accent);">Compare to Baseline</button>
-                                <button id="btn-eval-export" style="flex: 1; background: var(--bg-elev2); color: var(--accent);">Export Results</button>
-                            </div>
-                        </div>
+    setEvalRunning(true);
+    setEvalProgress({ current: 0, total: goldenQuestions.length, status: 'Starting...' });
 
-                        <!-- Comparison Results -->
-                        <div id="eval-comparison" style="margin-top: 16px; display: none;"></div>
+    try {
+      let top1 = 0, topk = 0;
 
-                        <!-- Evaluation Run History -->
-                        <div style="margin-top: 24px; background: var(--card-bg); border: 1px solid var(--line); border-radius: 8px; padding: 20px;">
-                            <h4 style="margin: 0 0 8px 0; color: var(--fg); display: flex; align-items: center; gap: 8px;">
-                                <span style="color: var(--accent-green);">●</span>
-                                Evaluation Run History
-                            </h4>
-                            <p class="small" style="color: var(--fg-muted); margin: 0 0 16px 0;">Compare BM25-only baseline vs trained cross-encoder performance across runs.</p>
+      for (let i = 0; i < goldenQuestions.length; i++) {
+        const q = goldenQuestions[i];
+        setEvalProgress(prev => ({ ...prev, current: i + 1, status: `Testing: ${q.q}` }));
 
-                            <div style="overflow-x: auto;">
-                                <table id="eval-history-table" style="width: 100%; font-size: 12px; border-collapse: collapse; background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px;">
-                                    <thead>
-                                        <tr style="background: var(--bg-elev2); border-bottom: 2px solid var(--line);">
-                                            <th style="padding: 10px; text-align: left; color: var(--fg-muted); font-weight: 600;">Timestamp</th>
-                                            <th style="padding: 10px; text-align: left; color: var(--fg-muted); font-weight: 600;">Configuration</th>
-                                            <th style="padding: 10px; text-align: center; color: var(--fg-muted); font-weight: 600;">Top-1</th>
-                                            <th style="padding: 10px; text-align: center; color: var(--fg-muted); font-weight: 600;">Top-5</th>
-                                            <th style="padding: 10px; text-align: center; color: var(--fg-muted); font-weight: 600;">Time (s)</th>
-                                            <th style="padding: 10px; text-align: center; color: var(--fg-muted); font-weight: 600;">Δ Top-5</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="eval-history-tbody">
-                                        <tr>
-                                            <td colspan="6" style="padding: 20px; text-align: center; color: var(--fg-muted);">No evaluation history yet. Run evaluations to see comparisons.</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
+        const result = await fetchJson('golden/test', {
+          method: 'POST',
+          body: JSON.stringify({
+            q: q.q,
+            repo: q.repo,
+            expect_paths: q.expect_paths || [],
+            final_k: 5,
+            use_multi: true
+          })
+        });
 
-                            <div style="margin-top: 12px; display: flex; gap: 8px;">
-                                <button id="btn-eval-history-refresh" style="flex: 1; background: var(--bg-elev2); color: var(--link); border: 1px solid var(--link); padding: 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">Refresh History</button>
-                                <button id="btn-eval-history-clear" style="flex: 1; background: var(--bg-elev2); color: var(--warn); border: 1px solid var(--warn); padding: 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">Clear History</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        if (result.top1_hit) top1++;
+        if (result.topk_hit) topk++;
+
+        setTestResults(prev => ({ ...prev, [i]: result }));
+      }
+
+      const msg = `Tests complete: Top-1: ${top1}/${goldenQuestions.length}, Top-K: ${topk}/${goldenQuestions.length}`;
+      alert(msg);
+      setEvalProgress(prev => ({ ...prev, status: msg }));
+    } catch (err) {
+      alert(`Test run failed: ${err}`);
+    } finally {
+      setEvalRunning(false);
+    }
+  };
+
+  const runFullEvaluation = async () => {
+    setEvalRunning(true);
+    setEvalProgress({ current: 0, total: 0, status: 'Starting evaluation...' });
+
+    try {
+      const payload: any = {
+        use_multi: evalSettings.useMulti,
+        final_k: evalSettings.finalK
+      };
+
+      if (evalSettings.sampleSize) {
+        payload.sample_limit = parseInt(evalSettings.sampleSize);
+      }
+
+      const response = await fetchJson('eval/run', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+
+      // Start polling for status
+      const pollInterval = setInterval(async () => {
+        try {
+          const status = await fetchJson('eval/status');
+          if (status.running) {
+            setEvalProgress({
+              current: status.progress || 0,
+              total: status.total || 0,
+              status: `Running... ${status.progress}/${status.total} questions`
+            });
+          } else {
+            clearInterval(pollInterval);
+            // Load results
+            const results = await fetchJson('eval/results');
+            setEvalResults(results);
+            setEvalRunning(false);
+          }
+        } catch (err) {
+          clearInterval(pollInterval);
+          setEvalRunning(false);
+          alert(`Evaluation failed: ${err}`);
+        }
+      }, 1000);
+    } catch (err) {
+      setEvalRunning(false);
+      alert(`Failed to start evaluation: ${err}`);
+    }
+  };
+
+  const exportQuestions = () => {
+    const dataStr = JSON.stringify(goldenQuestions, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'golden_questions_export.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div style={{ padding: '20px' }}>
+      {/* Golden Questions Manager */}
+      <div className="settings-section" style={{ borderLeft: '3px solid var(--link)', marginBottom: '24px' }}>
+        <h3>
+          <span className="accent-blue">●</span> Golden Questions Manager
+        </h3>
+        <p className="small">
+          Manage test questions for evaluating retrieval quality. Add, edit, test individual questions, or run full evaluation suite.
+        </p>
+
+        {/* Add New Question Form */}
+        <div style={{ background: 'var(--card-bg)', border: '1px solid var(--line)', borderRadius: '6px', padding: '16px', marginBottom: '16px' }}>
+          <h4 style={{ fontSize: '13px', color: 'var(--accent)', marginBottom: '12px' }}>Add New Question</h4>
+
+          <div className="input-group" style={{ marginBottom: '12px' }}>
+            <label>Question Text</label>
+            <textarea
+              value={newQuestion.q}
+              onChange={e => setNewQuestion(prev => ({ ...prev, q: e.target.value }))}
+              placeholder="e.g., Where is OAuth token validated?"
+              style={{ minHeight: '60px', width: '100%' }}
+            />
+          </div>
+
+          <div className="input-row" style={{ marginBottom: '12px' }}>
+            <div className="input-group">
+              <label>Repository</label>
+              <select
+                value={newQuestion.repo}
+                onChange={e => setNewQuestion(prev => ({ ...prev, repo: e.target.value }))}
+              >
+                <option value="agro">agro</option>
+              </select>
             </div>
+            <div className="input-group">
+              <label>Expected Paths (comma-separated)</label>
+              <input
+                type="text"
+                value={newQuestion.paths}
+                onChange={e => setNewQuestion(prev => ({ ...prev, paths: e.target.value }))}
+                placeholder="auth, oauth, token"
+              />
+            </div>
+          </div>
 
-            <!-- Tab: Profiles (NEW - consolidates analytics-cost + settings-profiles) -->
-            <div id="tab-profiles" class="tab-content">
-                <div id="tab-profiles-budget" class="section-subtab active">
-                <!-- Budget Calculator & Cost Tracking (from analytics-cost) -->
-                <div class="settings-section" style="border-left: 3px solid var(--warn);">
-                    <h3>⚠️ Cost & Token Burn Alerts</h3>
-                    <p class="small">Set thresholds to receive alerts when costs or token consumption spike or sustain high rates.</p>
+          <button
+            className="small-button"
+            onClick={addGoldenQuestion}
+            style={{ background: 'var(--accent)', color: 'var(--accent-contrast)', border: 'none', width: '100%' }}
+          >
+            Add Question
+          </button>
+        </div>
 
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label>
-                                Cost Spike Alert (USD/hour)
-                                <span class="help-icon" data-tooltip="ALERT_COST_BURN_SPIKE_USD_PER_HOUR">?</span>
-                            </label>
-                            <input type="number" id="alert_cost_burn_spike_usd_per_hour" min="0.01" max="100" step="0.01" placeholder="0.10">
-                            <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Alert when hourly burn exceeds this amount</p>
-                        </div>
-                        <div class="input-group">
-                            <label>
-                                Token Spike (tokens/min)
-                                <span class="help-icon" data-tooltip="ALERT_TOKEN_BURN_SPIKE_PER_MINUTE">?</span>
-                            </label>
-                            <input type="number" id="alert_token_burn_spike_per_minute" min="100" max="100000" step="100" placeholder="5000">
-                            <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Alert on sudden spike above this rate</p>
-                        </div>
+        {/* Questions List */}
+        <div style={{ background: 'var(--code-bg)', border: '1px solid var(--line)', borderRadius: '6px', padding: '16px', maxHeight: '400px', overflowY: 'auto', marginBottom: '16px' }}>
+          {loading ? (
+            <div style={{ textAlign: 'center', color: 'var(--fg-muted)' }}>Loading questions...</div>
+          ) : error ? (
+            <div style={{ color: 'var(--err)' }}>{error}</div>
+          ) : goldenQuestions.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '24px', color: 'var(--fg-muted)' }}>
+              No golden questions yet. Add one above!
+            </div>
+          ) : (
+            goldenQuestions.map((q, index) => (
+              <div key={index} style={{ background: 'var(--card-bg)', border: '1px solid var(--line)', borderRadius: '4px', padding: '12px', marginBottom: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '8px' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, color: 'var(--fg)', marginBottom: '4px', wordBreak: 'break-word' }}>
+                      {q.q}
                     </div>
-
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label>
-                                Token Burn Sustained (tokens/min)
-                                <span class="help-icon" data-tooltip="ALERT_TOKEN_BURN_SUSTAINED_PER_MINUTE">?</span>
-                            </label>
-                            <input type="number" id="alert_token_burn_sustained_per_minute" min="100" max="100000" step="100" placeholder="2000">
-                            <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Alert if sustained for 15+ minutes</p>
-                        </div>
+                    <div style={{ fontSize: '11px', color: 'var(--fg-muted)' }}>
+                      <span style={{ background: 'var(--bg-elev2)', padding: '2px 6px', borderRadius: '3px', marginRight: '6px' }}>
+                        {q.repo}
+                      </span>
+                      {(q.expect_paths || []).map(p => (
+                        <span key={p} style={{ color: 'var(--accent)' }}>{p} </span>
+                      ))}
                     </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', marginLeft: '12px' }}>
+                    <button
+                      onClick={() => testQuestion(index)}
+                      style={{ background: 'var(--bg-elev2)', color: 'var(--link)', border: '1px solid var(--link)', padding: '4px 8px', borderRadius: '3px', fontSize: '11px', cursor: 'pointer' }}
+                    >
+                      Test
+                    </button>
+                    <button
+                      onClick={() => deleteQuestion(index)}
+                      style={{ background: 'var(--bg-elev2)', color: 'var(--err)', border: '1px solid var(--err)', padding: '4px 8px', borderRadius: '3px', fontSize: '11px', cursor: 'pointer' }}
+                    >
+                      ✗
+                    </button>
+                  </div>
                 </div>
+                {testResults[index] && (
+                  <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--line)', fontSize: '12px' }}>
+                    <span style={{ color: testResults[index].top1_hit ? 'var(--accent)' : 'var(--err)', fontWeight: 600 }}>
+                      {testResults[index].top1_hit ? '✓' : '✗'} Top-1
+                    </span>
+                    <span style={{ marginLeft: '12px', color: testResults[index].topk_hit ? 'var(--accent)' : 'var(--warn)', fontWeight: 600 }}>
+                      {testResults[index].topk_hit ? '✓' : '✗'} Top-K
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
 
-                <!-- Budget Alerts -->
-                <div class="settings-section" style="border-left: 3px solid var(--accent);">
-                    <h3>💰 Budget Alerts</h3>
-                    <p class="small">Set monthly budget limits and warning thresholds.</p>
+        {/* Action Buttons */}
+        <div className="action-buttons" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button onClick={loadGoldenQuestions} style={{ flex: 1 }}>
+            Refresh List
+          </button>
+          <button
+            onClick={loadRecommendedQuestions}
+            style={{ flex: 1, background: 'var(--bg-elev2)', color: 'var(--link)', border: '1px solid var(--link)' }}
+          >
+            Load Recommended
+          </button>
+          <button
+            onClick={runAllTests}
+            disabled={evalRunning || goldenQuestions.length === 0}
+            style={{ flex: 1, background: 'var(--bg-elev2)', color: 'var(--link)', border: '1px solid var(--link)' }}
+          >
+            Run All Tests
+          </button>
+          <button
+            onClick={exportQuestions}
+            style={{ flex: 1, background: 'var(--bg-elev2)', color: 'var(--accent)' }}
+          >
+            Export JSON
+          </button>
+        </div>
 
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label>
-                                Monthly Budget (USD)
-                                <span class="help-icon" data-tooltip="ALERT_MONTHLY_BUDGET_USD">?</span>
-                            </label>
-                            <input type="number" id="alert_monthly_budget_usd" min="1" max="10000" step="1" placeholder="500">
-                            <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Hard limit for monthly spending</p>
-                        </div>
-                        <div class="input-group">
-                            <label>
-                                Budget Warning Level (USD)
-                                <span class="help-icon" data-tooltip="ALERT_BUDGET_WARNING_USD">?</span>
-                            </label>
-                            <input type="number" id="alert_budget_warning_usd" min="1" max="10000" step="1" placeholder="400">
-                            <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Alert when spending exceeds this</p>
-                        </div>
-                    </div>
+        {/* Progress indicator for running tests */}
+        {evalRunning && evalProgress.total > 0 && (
+          <div style={{ marginTop: '16px', padding: '12px', background: 'var(--card-bg)', border: '1px solid var(--line)', borderRadius: '4px' }}>
+            <div style={{ marginBottom: '8px', fontSize: '12px', color: 'var(--fg-muted)' }}>
+              {evalProgress.status}
+            </div>
+            <div style={{ background: 'var(--bg)', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
+              <div
+                style={{
+                  height: '100%',
+                  width: `${(evalProgress.current / evalProgress.total) * 100}%`,
+                  background: 'var(--link)',
+                  transition: 'width 0.3s ease'
+                }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
 
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label>
-                                Budget Critical Level (USD)
-                                <span class="help-icon" data-tooltip="ALERT_BUDGET_CRITICAL_USD">?</span>
-                            </label>
-                            <input type="number" id="alert_budget_critical_usd" min="1" max="10000" step="1" placeholder="450">
-                            <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Critical alert when spending exceeds this</p>
-                        </div>
-                    </div>
+      {/* Evaluation Runner */}
+      <div className="settings-section" style={{ borderLeft: '3px solid var(--link)' }}>
+        <h3>
+          <span className="accent-purple">●</span> Evaluation Runner
+        </h3>
+        <p className="small">
+          Run full evaluation suite to measure RAG quality. Compare against baseline to detect regressions.
+        </p>
+
+        {/* Settings */}
+        <div className="input-row" style={{ marginBottom: '16px' }}>
+          <div className="input-group">
+            <label>Use Multi-Query</label>
+            <select
+              value={evalSettings.useMulti ? '1' : '0'}
+              onChange={e => setEvalSettings(prev => ({ ...prev, useMulti: e.target.value === '1' }))}
+            >
+              <option value="1">Yes</option>
+              <option value="0">No</option>
+            </select>
+          </div>
+          <div className="input-group">
+            <label>Final K Results</label>
+            <input
+              type="number"
+              value={evalSettings.finalK}
+              onChange={e => setEvalSettings(prev => ({ ...prev, finalK: parseInt(e.target.value) || 5 }))}
+              min="1"
+              max="20"
+            />
+          </div>
+          <div className="input-group">
+            <label>Sample Size</label>
+            <select
+              value={evalSettings.sampleSize}
+              onChange={e => setEvalSettings(prev => ({ ...prev, sampleSize: e.target.value }))}
+            >
+              <option value="">Full (All Questions)</option>
+              <option value="10">Quick (10 Questions)</option>
+              <option value="25">Medium (25 Questions)</option>
+              <option value="50">Large (50 Questions)</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Run Button */}
+        <button
+          className="action-buttons"
+          onClick={runFullEvaluation}
+          disabled={evalRunning}
+          style={{ width: '100%', background: 'var(--link)', color: 'var(--accent-contrast)', fontSize: '15px', padding: '14px' }}
+        >
+          {evalRunning ? 'Running...' : 'Run Full Evaluation'}
+        </button>
+
+        {/* Results Display */}
+        {evalResults && (
+          <div style={{ marginTop: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+              <div style={{ background: 'var(--card-bg)', border: '1px solid var(--line)', borderRadius: '6px', padding: '12px', textAlign: 'center' }}>
+                <div style={{ fontSize: '11px', color: 'var(--fg-muted)', marginBottom: '4px' }}>Top-1 Accuracy</div>
+                <div style={{ fontSize: '24px', color: 'var(--accent)', fontWeight: 700 }}>
+                  {(evalResults.top1_accuracy * 100).toFixed(1)}%
                 </div>
-
-                <!-- Storage Calculator -->
-                <div id="storage-calculator-container"></div>
-
-`;
-
-  return <div dangerouslySetInnerHTML={{ __html: htmlContent }} />;
+              </div>
+              <div style={{ background: 'var(--card-bg)', border: '1px solid var(--line)', borderRadius: '6px', padding: '12px', textAlign: 'center' }}>
+                <div style={{ fontSize: '11px', color: 'var(--fg-muted)', marginBottom: '4px' }}>Top-K Accuracy</div>
+                <div style={{ fontSize: '24px', color: 'var(--accent)', fontWeight: 700 }}>
+                  {(evalResults.topk_accuracy * 100).toFixed(1)}%
+                </div>
+              </div>
+              <div style={{ background: 'var(--card-bg)', border: '1px solid var(--line)', borderRadius: '6px', padding: '12px', textAlign: 'center' }}>
+                <div style={{ fontSize: '11px', color: 'var(--fg-muted)', marginBottom: '4px' }}>Duration</div>
+                <div style={{ fontSize: '24px', color: 'var(--link)', fontWeight: 700 }}>
+                  {evalResults.duration_secs}s
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }

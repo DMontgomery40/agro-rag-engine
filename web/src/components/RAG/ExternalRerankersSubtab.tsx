@@ -44,7 +44,7 @@ export function ExternalRerankersSubtab() {
       // Extract values from env object
       const env = data.env || {};
       setRerankBackend(env.RERANKER_BACKEND || 'local');
-      setRerankerModel(env.RERANKER_MODEL || 'cross-encoder/ms-marco-MiniLM-L-12-v2');
+      setRerankerModel(env.RERANKER_MODEL || '');
       setCohereModel(env.COHERE_RERANK_MODEL || 'rerank-3.5');
       // Don't populate password field with masked value
       setCohereApiKey(env.COHERE_API_KEY === '••••••••••••••••' ? '' : (env.COHERE_API_KEY || ''));
@@ -81,6 +81,9 @@ export function ExternalRerankersSubtab() {
         const errorText = await response.text();
         throw new Error(`Failed to update ${key}: ${response.status} ${errorText}`);
       }
+
+      // Reload config to ensure backend picks up changes
+      await fetch('/api/env/reload', { method: 'POST' });
 
       // Reload config after update to get latest values
       await loadConfig();
@@ -143,14 +146,14 @@ export function ExternalRerankersSubtab() {
 
   if (loading) {
     return (
-      <div id="tab-rag-ext-rerankers" className="rag-subtab-content" style={{ padding: '24px' }}>
+      <div style={{ padding: '24px' }}>
         <div style={{ textAlign: 'center', color: 'var(--fg-muted)' }}>Loading reranker configuration...</div>
       </div>
     );
   }
 
   return (
-    <div id="tab-rag-ext-rerankers" className="rag-subtab-content" style={{ padding: '24px' }}>
+    <>
       {/* Error Display */}
       {error && (
         <div
@@ -168,22 +171,75 @@ export function ExternalRerankersSubtab() {
         </div>
       )}
 
-      <div className="settings-section" style={{ borderLeft: '3px solid var(--link)' }}>
+      <div className="settings-section" style={{ borderLeft: '3px solid var(--accent)', padding: '24px' }}>
         <h3>
-          <span className="accent-pink">●</span> Reranking (Local & External)
-          <span className="tooltip-wrap">
-            <span className="help-icon">?</span>
-            <div className="tooltip-bubble">
-              <span className="tt-title">Cross-Encoder Reranking</span>
-              Configure reranking backend and models. Supports local (HuggingFace), HF API, and Cohere. Set to "none" for offline/BM25-only operation.
-              <div className="tt-badges">
-                <span className="tt-badge info">Quality Boost</span>
-                <span className="tt-badge warn">May require downloads</span>
-              </div>
-            </div>
-          </span>
+          <span className="accent-pink">●</span> Reranker Selection
+          <span className="help-icon" data-tooltip="RERANKER_BACKEND">?</span>
         </h3>
-        <div className="input-row">
+        <p style={{ fontSize: '13px', color: 'var(--fg-muted)', marginBottom: '20px', lineHeight: '1.6' }}>
+          Choose which reranker to use for improving retrieval results. You can use the built-in AGRO Learning Reranker (recommended),
+          an alternative local model, or an external API service.
+        </p>
+
+        {/* Current Reranker Display - Move to top */}
+        <div className="input-row" style={{ marginBottom: '24px' }}>
+          <div className="input-group full-width" style={{ background: 'var(--card-bg)', border: '1px solid var(--line)', borderRadius: '6px', padding: '12px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', fontWeight: 600 }}>
+              ✓ Currently Active Reranker (Server)
+            </div>
+            <div className="mono" id="reranker-info-panel-ext" style={{ fontSize: '12px', lineHeight: '1.6' }}>
+              {rerankerInfo ? (
+                <>
+                  <div><strong>Enabled:</strong> <span id="reranker-info-enabled-ext">{rerankerInfo.enabled ? 'true' : 'false'}</span></div>
+                  <div><strong>Model Path:</strong> <span id="reranker-info-path-ext">{rerankerInfo.path || '—'}</span></div>
+                  <div><strong>Device:</strong> <span id="reranker-info-device-ext">{rerankerInfo.device || '—'}</span></div>
+                  <div>
+                    <strong>Alpha:</strong> <span id="reranker-info-alpha-ext">{rerankerInfo.alpha || '—'}</span> •
+                    <strong>TopN:</strong> <span id="reranker-info-topn-ext">{rerankerInfo.topn || '—'}</span> •
+                    <strong>Batch:</strong> <span id="reranker-info-batch-ext">{rerankerInfo.batch || '—'}</span> •
+                    <strong>MaxLen:</strong> <span id="reranker-info-maxlen-ext">{rerankerInfo.maxlen || '—'}</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div><strong>Enabled:</strong> <span id="reranker-info-enabled-ext">—</span></div>
+                  <div><strong>Model Path:</strong> <span id="reranker-info-path-ext">—</span></div>
+                  <div><strong>Device:</strong> <span id="reranker-info-device-ext">—</span></div>
+                  <div><strong>Alpha:</strong> <span id="reranker-info-alpha-ext">—</span> • <strong>TopN:</strong> <span id="reranker-info-topn-ext">—</span> • <strong>Batch:</strong> <span id="reranker-info-batch-ext">—</span> • <strong>MaxLen:</strong> <span id="reranker-info-maxlen-ext">—</span></div>
+                </>
+              )}
+            </div>
+            <div
+              id="rerank-none-warning"
+              style={{
+                display: showNoneWarning ? 'block' : 'none',
+                marginTop: '10px',
+                padding: '10px',
+                borderRadius: '6px',
+                background: 'rgba(255, 170, 0, 0.1)',
+                border: '1px dashed var(--warn)',
+                color: 'var(--warn)',
+                fontSize: '12px'
+              }}
+            >
+              ⚠️ No reranker is effectively enabled. Searches will use raw BM25/vector fusion. Configure a reranker below.
+            </div>
+          </div>
+        </div>
+
+        {/* Section 1: Local Reranker Options */}
+        <div style={{ marginBottom: '24px', padding: '16px', background: 'rgba(40, 200, 64, 0.05)', border: '1px solid rgba(40, 200, 64, 0.2)', borderRadius: '8px' }}>
+          <h4 style={{ marginTop: 0, marginBottom: '8px', fontSize: '14px', color: 'var(--accent)' }}>
+            📍 Local Reranker Models
+          </h4>
+          <p style={{ fontSize: '12px', color: 'var(--fg-muted)', marginBottom: '16px', lineHeight: '1.5' }}>
+            <strong>AGRO Learning Reranker (Recommended):</strong> Built-in 3B parameter cross-encoder model at <code style={{ background: 'var(--card-bg)', padding: '2px 6px', borderRadius: '3px' }}>models/cross-encoder-agro</code>
+            that improves over time with usage. <a href="/files/models/cross-encoder-agro/README.md" target="_blank" style={{ color: 'var(--link)' }}>Learn more →</a>
+            <br /><br />
+            <strong>Alternative Local Models:</strong> Use different HuggingFace cross-encoder models like <code style={{ background: 'var(--card-bg)', padding: '2px 6px', borderRadius: '3px' }}>baai/bge-reranker-base</code> or <code style={{ background: 'var(--card-bg)', padding: '2px 6px', borderRadius: '3px' }}>cross-encoder/ms-marco-*</code>.
+          </p>
+
+          <div className="input-row">
           <div className="input-group">
             <label>
               Rerank Backend (RERANKER_BACKEND)
@@ -203,64 +259,63 @@ export function ExternalRerankersSubtab() {
           </div>
           <div className="input-group">
             <label>
-              Local/HF Model (RERANKER_MODEL)
+              Alternative Local Model (RERANKER_MODEL)
               <span className="help-icon" data-tooltip="RERANKER_MODEL">?</span>
             </label>
             <input
               type="text"
               name="RERANKER_MODEL"
-              placeholder="cross-encoder/ms-marco-MiniLM-L-12-v2"
+              placeholder="e.g., baai/bge-reranker-base or cross-encoder/ms-marco-*"
               value={rerankerModel}
               onChange={handleModelChange}
               onBlur={handleModelBlur}
             />
           </div>
         </div>
-        <div className="input-row" style={{ marginTop: '8px' }}>
-          <div className="input-group full-width" style={{ background: 'var(--card-bg)', border: '1px solid var(--line)', borderRadius: '6px', padding: '10px' }}>
-            <div style={{ fontSize: '11px', color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
-              Current Reranker (Server)
-            </div>
-            <div className="mono" id="reranker-info-panel-ext" style={{ fontSize: '12px', lineHeight: '1.6' }}>
-              {rerankerInfo ? (
-                <>
-                  <div>Enabled: <span id="reranker-info-enabled-ext">{rerankerInfo.enabled ? 'true' : 'false'}</span></div>
-                  <div>Model Path: <span id="reranker-info-path-ext">{rerankerInfo.path || '—'}</span></div>
-                  <div>Device: <span id="reranker-info-device-ext">{rerankerInfo.device || '—'}</span></div>
-                  <div>
-                    Alpha: <span id="reranker-info-alpha-ext">{rerankerInfo.alpha || '—'}</span> •
-                    TopN: <span id="reranker-info-topn-ext">{rerankerInfo.topn || '—'}</span> •
-                    Batch: <span id="reranker-info-batch-ext">{rerankerInfo.batch || '—'}</span> •
-                    MaxLen: <span id="reranker-info-maxlen-ext">{rerankerInfo.maxlen || '—'}</span>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div>Enabled: <span id="reranker-info-enabled-ext">—</span></div>
-                  <div>Model Path: <span id="reranker-info-path-ext">—</span></div>
-                  <div>Device: <span id="reranker-info-device-ext">—</span></div>
-                  <div>Alpha: <span id="reranker-info-alpha-ext">—</span> • TopN: <span id="reranker-info-topn-ext">—</span> • Batch: <span id="reranker-info-batch-ext">—</span> • MaxLen: <span id="reranker-info-maxlen-ext">—</span></div>
-                </>
-              )}
-            </div>
-            <div
-              id="rerank-none-warning"
-              style={{
-                display: showNoneWarning ? 'block' : 'none',
-                marginTop: '8px',
-                padding: '8px',
-                borderRadius: '6px',
-                background: 'rgba(255, 170, 0, 0.1)',
-                border: '1px dashed var(--warn)',
-                color: 'var(--warn)',
-                fontSize: '12px'
-              }}
+          <div className="input-row">
+          <div className="input-group">
+            <label>
+              HF Trust Remote Code (TRANSFORMERS_TRUST_REMOTE_CODE)
+              <span className="help-icon" data-tooltip="TRANSFORMERS_TRUST_REMOTE_CODE">?</span>
+            </label>
+            <select
+              name="TRANSFORMERS_TRUST_REMOTE_CODE"
+              value={trustRemoteCode}
+              onChange={handleTrustRemoteCodeChange}
             >
-              ⚠️ No reranker is effectively enabled. Searches will use raw BM25/vector fusion. Configure <strong>Rerank Backend</strong> or <strong>Cohere API Key</strong>.
-            </div>
+              <option value="1">1 (Yes)</option>
+              <option value="0">0 (No)</option>
+            </select>
+          </div>
+          <div className="input-group">
+            <label>
+              Input Snippet Chars (RERANK_INPUT_SNIPPET_CHARS)
+              <span className="help-icon" data-tooltip="RERANK_INPUT_SNIPPET_CHARS">?</span>
+            </label>
+            <input
+              type="number"
+              name="RERANK_INPUT_SNIPPET_CHARS"
+              value={snippetChars}
+              min="200"
+              max="2000"
+              step="50"
+              onChange={handleSnippetCharsChange}
+              onBlur={handleSnippetCharsBlur}
+            />
           </div>
         </div>
-        <div className="input-row">
+        </div>
+
+        {/* Section 2: External API Rerankers */}
+        <div style={{ padding: '16px', background: 'rgba(64, 160, 255, 0.05)', border: '1px solid rgba(64, 160, 255, 0.2)', borderRadius: '8px' }}>
+          <h4 style={{ marginTop: 0, marginBottom: '8px', fontSize: '14px', color: 'var(--link)' }}>
+            🌐 External API Rerankers
+          </h4>
+          <p style={{ fontSize: '12px', color: 'var(--fg-muted)', marginBottom: '16px', lineHeight: '1.5' }}>
+            Use cloud-based reranking APIs instead of local models. Currently supports Cohere and Voyage AI.
+          </p>
+
+          <div className="input-row">
           <div className="input-group">
             <label>
               Cohere Model (COHERE_RERANK_MODEL)
@@ -293,39 +348,8 @@ export function ExternalRerankersSubtab() {
             />
           </div>
         </div>
-        <div className="input-row">
-          <div className="input-group">
-            <label>
-              HF Trust Remote Code (TRANSFORMERS_TRUST_REMOTE_CODE)
-              <span className="help-icon" data-tooltip="TRANSFORMERS_TRUST_REMOTE_CODE">?</span>
-            </label>
-            <select
-              name="TRANSFORMERS_TRUST_REMOTE_CODE"
-              value={trustRemoteCode}
-              onChange={handleTrustRemoteCodeChange}
-            >
-              <option value="1">1</option>
-              <option value="0">0</option>
-            </select>
-          </div>
-          <div className="input-group">
-            <label>
-              Input Snippet Chars (RERANK_INPUT_SNIPPET_CHARS)
-              <span className="help-icon" data-tooltip="RERANK_INPUT_SNIPPET_CHARS">?</span>
-            </label>
-            <input
-              type="number"
-              name="RERANK_INPUT_SNIPPET_CHARS"
-              value={snippetChars}
-              min="200"
-              max="2000"
-              step="50"
-              onChange={handleSnippetCharsChange}
-              onBlur={handleSnippetCharsBlur}
-            />
-          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

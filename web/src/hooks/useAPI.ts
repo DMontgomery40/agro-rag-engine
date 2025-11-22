@@ -12,8 +12,8 @@ export function useAPI() {
       const q = new URLSearchParams(u.search);
       const override = q.get('api');
       if (override) return override.replace(/\/$/, '');
-      // If on vite dev server (5173), always point to backend (8012)
-      if (u.port === '5173') return 'http://127.0.0.1:8012/api';
+      // If on vite dev server (5173/4/5), use relative URLs to go through Vite proxy
+      if (u.port === '5173' || u.port === '5174' || u.port === '5175') return '';
       if (u.protocol.startsWith('http')) return (u.origin.replace(/\/$/, '')) + '/api';
       return 'http://127.0.0.1:8012/api';
     } catch {

@@ -10,6 +10,7 @@ export { useModuleLoader } from './useModuleLoader';
 export { useEventBus } from './useEventBus';
 export { useGlobalState } from './useGlobalState';
 export { useApplyButton } from './useApplyButton';
+export { useNotification } from './useNotification';
 
 // Core utility hooks (converted from legacy modules)
 export { useAPI } from './useAPI';

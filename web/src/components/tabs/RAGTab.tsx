@@ -53,7 +53,7 @@ export default function RAGTab() {
   }, [activeSubtab]);
 
   return (
-    <div id="tab-rag" className="tab-content active">
+    <div id="tab-rag" className="tab-content">
       {/* Subtab navigation */}
       <RAGSubtabs activeSubtab={activeSubtab} onSubtabChange={setActiveSubtab} />
 

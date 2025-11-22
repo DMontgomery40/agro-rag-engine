@@ -214,6 +214,11 @@ def record_api_call(provider: str, status_code: int = 200, duration_seconds: flo
 class MetricsMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         route_path = request.url.path
+
+        # Skip metrics for SSE streaming endpoints
+        if route_path.startswith("/api/stream/") or route_path.startswith("/ws/"):
+            return await call_next(request)
+
         start = time.perf_counter()
         success = "false"
         provider = ""

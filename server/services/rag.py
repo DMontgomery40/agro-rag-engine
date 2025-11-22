@@ -40,8 +40,15 @@ def do_search(q: str, repo: Optional[str], top_k: Optional[int], request: Option
         except Exception:
             top_k = 10
 
+    trace_obj = None
+    try:
+        from server.tracing import get_trace as _gt
+        trace_obj = _gt()
+    except Exception:
+        trace_obj = None
+
     with stage("retrieve"):
-        docs = list(search_routed_multi(q, repo_override=repo, m=4, final_k=top_k))
+        docs = list(search_routed_multi(q, repo_override=repo, m=4, final_k=top_k, trace=trace_obj))
 
     results: List[Dict[str, Any]] = []
     for d in docs:
@@ -116,6 +123,12 @@ def do_chat(payload: Dict[str, Any], request: Optional[Request] = None) -> JSONR
         'SYSTEM_PROMPT': payload.get('system_prompt'),
     }
     saved = {k: os.environ.get(k) for k in overrides.keys()}
+    trace_obj = None
+    try:
+        from server.tracing import get_trace as _gt
+        trace_obj = _gt()
+    except Exception:
+        trace_obj = None
     try:
         for k, v in overrides.items():
             if v is None:
@@ -152,7 +165,10 @@ def do_chat(payload: Dict[str, Any], request: Optional[Request] = None) -> JSONR
             os.environ['VECTOR_BACKEND'] = os.environ.get('VECTOR_BACKEND') or 'faiss'
             os.environ['MQ_REWRITES'] = '1'
             from retrieval.hybrid_search import search_routed
-            sr = search_routed(payload.get('question',''), repo_override=payload.get('repo'))
+            import time as _t
+            t0 = _t.time()
+            sr = search_routed(payload.get('question',''), repo_override=payload.get('repo'), trace=trace_obj)
+            fast_retrieve_ms = int((_t.time()-t0)*1000)
             lines = []
             retrieved = []
             for d in sr[:5]:
@@ -163,6 +179,32 @@ def do_chat(payload: Dict[str, Any], request: Optional[Request] = None) -> JSONR
                 lines.append(f"- {fp}:{sl}-{el}")
                 if doc_id:
                     retrieved.append({"doc_id": doc_id, "score": float(d.get('rerank_score', 0.0) or 0.0)})
+            trace_steps: List[Dict[str, Any]] = []
+            try:
+                if trace_obj and getattr(trace_obj, 'events', None):
+                    for ev in trace_obj.events[-200:]:
+                        kind = str(ev.get('kind') or '')
+                        data = ev.get('data') if isinstance(ev.get('data'), dict) else {}
+                        if kind in {'retriever.retrieve', 'vector_search', 'bm25_search', 'rrf_fusion', 'hydrate', 'rerank'}:
+                            trace_steps.append({"step": kind, "duration": data.get('duration_ms'), "details": data})
+            except Exception:
+                trace_steps = []
+            if not trace_steps:
+                hydrated = sum(1 for d in sr if d.get('code'))
+                trace_steps = [
+                    {"step": "retrieve", "duration": fast_retrieve_ms, "details": {"results": len(sr)}},
+                    {"step": "bm25_search", "duration": None, "details": {"results": len(sr)}},
+                    {"step": "vector_search", "duration": None, "details": {"results": len(sr)}},
+                    {"step": "rrf_fusion", "duration": None, "details": {"results": len(sr)}},
+                    {"step": "hydrate", "duration": None, "details": {"hydrated": hydrated, "candidates": len(sr)}},
+                ]
+            citations = []
+            for d in sr[:5]:
+                fp = d.get('file_path','') or ''
+                sl = int(d.get('start_line',0) or 0)
+                el = int(d.get('end_line',0) or 0)
+                if fp:
+                    citations.append(f"{fp}:{sl}-{el}")
             answer_text = "Retrieval-only (fast mode)\n" + "\n".join(lines)
             event_id = (uuid.uuid4().hex if _is_test_request(request) else log_query_event(
                 query_raw=payload.get('question',''),
@@ -173,7 +215,7 @@ def do_chat(payload: Dict[str, Any], request: Optional[Request] = None) -> JSONR
                 client_ip=(request.client.host if request and request.client else None),
                 user_agent=(request.headers.get('user-agent') if request else None),
             ))
-            return JSONResponse({"answer": answer_text, "confidence": 0.0, "event_id": event_id})
+            return JSONResponse({"answer": answer_text, "confidence": 0.0, "event_id": event_id, "trace": {"steps": trace_steps}, "citations": citations})
 
         g = _get_graph()
         if g is None:
@@ -192,6 +234,13 @@ def do_chat(payload: Dict[str, Any], request: Optional[Request] = None) -> JSONR
                 lines.append(f"- {fp}:{sl}-{el}")
                 if doc_id:
                     retrieved.append({"doc_id": doc_id, "score": float(d.get('rerank_score', 0.0) or 0.0)})
+            citations = []
+            for d in top:
+                fp = d.get('file_path', '') or ''
+                sl = int(d.get('start_line', 0) or 0)
+                el = int(d.get('end_line', 0) or 0)
+                if fp:
+                    citations.append(f"{fp}:{sl}-{el}")
             answer_text = "Retrieval-only (no model available)\n" + "\n".join(lines)
             # Minimal local trace for UI panel
             trace = {"steps": [
@@ -210,7 +259,7 @@ def do_chat(payload: Dict[str, Any], request: Optional[Request] = None) -> JSONR
                     client_ip=(request.client.host if request and request.client else None),
                     user_agent=(request.headers.get('user-agent') if request else None),
                 )
-            return JSONResponse({"answer": answer_text, "confidence": 0.0, "event_id": event_id, "trace": trace})
+            return JSONResponse({"answer": answer_text, "confidence": 0.0, "event_id": event_id, "trace": trace, "citations": citations})
 
         state = {
             "question": payload.get('question',''),
@@ -238,11 +287,23 @@ def do_chat(payload: Dict[str, Any], request: Optional[Request] = None) -> JSONR
         except Exception:
             pass
         dur = int((_t.time()-t0)*1000)
+        citations: List[str] = []
+        try:
+            for d in docs[:5]:
+                fp = d.get('file_path') or d.get('path') or ''
+                sl = int(d.get('start_line', 0) or 0)
+                el = int(d.get('end_line', 0) or 0)
+                if fp:
+                    citations.append(f"{fp}:{sl}-{el}")
+        except Exception:
+            citations = []
         # Build rich trace from in-memory Trace events when available
         trace_steps = []
         try:
-            from server.tracing import get_trace as _gt
-            _tr = _gt()
+            _tr = trace_obj
+            if _tr is None:
+                from server.tracing import get_trace as _gt
+                _tr = _gt()
             if _tr and isinstance(getattr(_tr, 'events', None), list) and _tr.events:
                 for ev in _tr.events[-200:]:  # cap to avoid huge payloads
                     kind = str(ev.get('kind') or '')
@@ -267,7 +328,7 @@ def do_chat(payload: Dict[str, Any], request: Optional[Request] = None) -> JSONR
             )
         # Provider metadata if available (propagated via graph state)
         meta = res.get('gen_meta') if isinstance(res, dict) else None
-        return JSONResponse({"answer": answer_text, "confidence": res.get("confidence",0.0), "event_id": event_id, "trace": trace, "meta": meta})
+        return JSONResponse({"answer": answer_text, "confidence": res.get("confidence",0.0), "event_id": event_id, "trace": trace, "meta": meta, "citations": citations})
     finally:
         for k, v in saved.items():
             if v is None:

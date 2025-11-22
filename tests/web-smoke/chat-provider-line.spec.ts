@@ -1,8 +1,10 @@
 import { test, expect } from '@playwright/test';
 
+const baseUrl = process.env.AGRO_WEB_URL || '/';
+
 test('Chat shows provider line below answer (smoke)', async ({ page }) => {
-  // Web dist is mounted under / if built; smoke only checks non-black render and basic chat UI presence
-  await page.goto('http://127.0.0.1:8012/');
+  // Web dist is mounted under /web when built; smoke only checks non-black render and basic chat UI presence
+  await page.goto(baseUrl);
 
   // Ensure nav renders and Chat tab is accessible
   await expect(page.locator('body')).toBeVisible();
@@ -10,7 +12,8 @@ test('Chat shows provider line below answer (smoke)', async ({ page }) => {
   // Click Chat in app nav if present
   const chatNav = page.locator('text=Chat');
   if (await chatNav.count()) {
-    await chatNav.first().click();
+    await chatNav.first().scrollIntoViewIfNeeded();
+    await chatNav.first().click({ force: true });
   }
 
   // Find chat input and send a trivial query
@@ -32,4 +35,3 @@ test('Chat shows provider line below answer (smoke)', async ({ page }) => {
     expect(text).toContain('— [');
   }
 });
-

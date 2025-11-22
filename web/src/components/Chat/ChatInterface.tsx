@@ -2,8 +2,10 @@
 // Main chat UI with message list, input, streaming, and trace panel
 // Reference: /assets/chat tab.png, /assets/chat_built_in.png
 
-import { useState, useEffect, useRef } from 'react';
+import type React from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAPI } from '@/hooks';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 interface Message {
   id: string;
@@ -11,17 +13,24 @@ interface Message {
   content: string;
   timestamp: number;
   citations?: string[];
+  confidence?: number;
   traceData?: any;
   meta?: any; // provider/backend/failover transparency
 }
 
-interface TraceStep {
+export interface TraceStep {
   step: string;
   duration: number;
   details: any;
 }
 
-export function ChatInterface() {
+interface ChatInterfaceProps {
+  traceOpen?: boolean;
+  onTraceUpdate?: (steps: TraceStep[], open: boolean, source?: 'config' | 'response' | 'clear') => void;
+  onTracePreferenceChange?: (open: boolean) => void;
+}
+
+export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChange }: ChatInterfaceProps) {
   const { api } = useAPI();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -30,12 +39,14 @@ export function ChatInterface() {
   const [typing, setTyping] = useState(false);
   const [selectedRepo, setSelectedRepo] = useState('');
   const [repositories, setRepositories] = useState<string[]>([]);
-  const [showTrace, setShowTrace] = useState(false);
+  const [tracePreference, setTracePreference] = useState<boolean>(() => Boolean(traceOpen));
   const [currentTrace, setCurrentTrace] = useState<TraceStep[]>([]);
   const [showSettings, setShowSettings] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const typingStartedAtRef = useRef<number | null>(null);
+  const streamingSupportedRef = useRef<boolean | null>(null);
 
   // Chat settings state
   const [model, setModel] = useState('gpt-4o-mini');
@@ -43,12 +54,23 @@ export function ChatInterface() {
   const [maxTokens, setMaxTokens] = useState(1000);
   const [topP, setTopP] = useState(1);
   const [topK, setTopK] = useState(10);
-  const [streamPref, setStreamPref] = useState<boolean>(false);
+  const [streamPref, setStreamPref] = useState<boolean>(true);
+  const [showConfidence, setShowConfidence] = useState<boolean>(false);
+  const [showCitations, setShowCitations] = useState<boolean>(true);
+  const traceRef = useRef<TraceStep[]>([]);
   const [modelOptions, setModelOptions] = useState<string[]>([]);
   const [fastMode, setFastMode] = useState<boolean>(() => {
     const params = new URLSearchParams(window.location.search || '');
     return params.get('fast') === '1' || params.get('smoke') === '1';
   });
+
+  // Define notifyTrace before useEffects that use it
+  const notifyTrace = useCallback((steps: TraceStep[], open: boolean, source: 'config' | 'response' | 'clear' = 'response') => {
+    setCurrentTrace(steps);
+    traceRef.current = steps;
+    const effectiveOpen = source === 'response' ? (open && tracePreference) : open;
+    onTraceUpdate?.(steps, effectiveOpen, source);
+  }, [onTraceUpdate, tracePreference]);
 
   // Load chat config + model options
   useEffect(() => {
@@ -63,7 +85,13 @@ export function ChatInterface() {
           if (typeof data.topP === 'number') setTopP(data.topP);
           if (typeof data.topK === 'number') setTopK(data.topK);
           if (typeof data.streaming === 'boolean') setStreamPref(Boolean(data.streaming));
-          if (typeof data.showTrace === 'boolean') setShowTrace(Boolean(data.showTrace));
+          if (typeof data.showTrace === 'boolean') {
+            setTracePreference(Boolean(data.showTrace));
+            onTracePreferenceChange?.(Boolean(data.showTrace));
+            notifyTrace(traceRef.current, Boolean(data.showTrace), 'config');
+          }
+          if (typeof data.showConfidence === 'boolean') setShowConfidence(Boolean(data.showConfidence));
+          if (typeof data.showCitations === 'boolean') setShowCitations(Boolean(data.showCitations));
         }
       } catch (e) {
         console.error('[ChatInterface] Failed to load chat config:', e);
@@ -80,7 +108,27 @@ export function ChatInterface() {
         }
       } catch {}
     })();
-  }, []);
+  }, [api, notifyTrace]);
+
+  // React to config updates from ChatSettings (cross-component sync)
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent).detail || {};
+      if (detail && typeof detail === 'object') {
+        if (Object.prototype.hasOwnProperty.call(detail, 'streaming')) setStreamPref(Boolean(detail.streaming));
+        if (Object.prototype.hasOwnProperty.call(detail, 'showConfidence')) setShowConfidence(Boolean(detail.showConfidence));
+        if (Object.prototype.hasOwnProperty.call(detail, 'showCitations')) setShowCitations(Boolean(detail.showCitations));
+        if (Object.prototype.hasOwnProperty.call(detail, 'showTrace')) {
+          const pref = Boolean(detail.showTrace);
+          setTracePreference(pref);
+          onTracePreferenceChange?.(pref);
+          notifyTrace(traceRef.current, pref, 'config');
+        }
+      }
+    };
+    window.addEventListener('agro-chat-config-updated', handler as EventListener);
+    return () => window.removeEventListener('agro-chat-config-updated', handler as EventListener);
+  }, [notifyTrace, onTracePreferenceChange]);
 
   // Load repositories
   useEffect(() => {
@@ -127,6 +175,23 @@ export function ChatInterface() {
     }
   };
 
+  const startThinking = () => {
+    typingStartedAtRef.current = Date.now();
+    setTyping(true);
+  };
+
+  const stopThinking = () => {
+    const elapsed = typingStartedAtRef.current ? Date.now() - typingStartedAtRef.current : 0;
+    const remaining = Math.max(0, 750 - elapsed);
+    setTimeout(() => setTyping(false), remaining);
+  };
+
+  const formatConfidence = (value?: number | null) => {
+    if (value === undefined || value === null || Number.isNaN(value)) return null;
+    const pct = value <= 1 ? value * 100 : value;
+    return `${pct.toFixed(1)}%`;
+  };
+
   const handleSend = async () => {
     if (!input.trim() || sending) return;
 
@@ -142,14 +207,19 @@ export function ChatInterface() {
     saveChatHistory(newMessages);
     setInput('');
     setSending(true);
-    setCurrentTrace([]);
-    setTyping(true);
+    notifyTrace([], false, 'clear');
+    startThinking();
 
     try {
-      // Streaming path optional; for now keep regular request to avoid server mismatch
-      const streamingEnabled = false && streamPref;
+      const streamingEnabled = streamPref && streamingSupportedRef.current !== false;
       if (streamingEnabled) {
-        await handleStreamingResponse(userMessage);
+        try {
+          await handleStreamingResponse(userMessage);
+          streamingSupportedRef.current = true;
+        } catch (err) {
+          streamingSupportedRef.current = false;
+          await handleRegularResponse(userMessage);
+        }
       } else {
         await handleRegularResponse(userMessage);
       }
@@ -167,7 +237,7 @@ export function ChatInterface() {
     } finally {
       setSending(false);
       setStreaming(false);
-      setTyping(false);
+      stopThinking();
     }
   };
 
@@ -198,6 +268,7 @@ export function ChatInterface() {
     let assistantMessageId = `assistant-${Date.now()}`;
     let citations: string[] = [];
     let traceData: any = null;
+    let confidence: number | undefined;
 
     if (!reader) {
       throw new Error('Response body is not readable');
@@ -223,9 +294,12 @@ export function ChatInterface() {
             if (parsed.citations) {
               citations = parsed.citations;
             }
+            if (typeof parsed.confidence === 'number') {
+              confidence = parsed.confidence;
+            }
             if (parsed.trace) {
               traceData = parsed.trace;
-              setCurrentTrace(parsed.trace.steps || []);
+              notifyTrace(parsed.trace.steps || [], tracePreference, 'response');
             }
 
             // Update message in real-time
@@ -235,7 +309,8 @@ export function ChatInterface() {
               content: accumulatedContent,
               timestamp: Date.now(),
               citations,
-              traceData
+              traceData,
+              confidence
             };
 
             setMessages(prev => {
@@ -254,6 +329,13 @@ export function ChatInterface() {
       saveChatHistory(prev);
       return prev;
     });
+    if (tracePreference) {
+      requestAnimationFrame(() => {
+        try {
+          (window as any).Trace?.loadLatestTrace?.('chat-trace-output');
+        } catch {}
+      });
+    }
   };
 
   const handleRegularResponse = async (userMessage: Message) => {
@@ -296,12 +378,30 @@ export function ChatInterface() {
       }
     } catch {}
 
+    const confidenceValue = typeof data.confidence === 'number'
+      ? data.confidence
+      : (typeof (meta?.confidence) === 'number' ? meta.confidence : undefined);
+    let citations: string[] = Array.isArray(data.citations) ? data.citations : [];
+    if (!citations.length && Array.isArray(data.documents)) {
+      citations = data.documents
+        .map((d: any) => {
+          const fp = d?.file_path || d?.path;
+          const sl = d?.start_line ?? d?.start;
+          const el = d?.end_line ?? d?.end;
+          if (!fp) return null;
+          return `${fp}:${sl ?? 0}-${el ?? sl ?? 0}`;
+        })
+        .filter(Boolean) as string[];
+    }
+
     const assistantMessage: Message = {
       id: `assistant-${Date.now()}`,
       role: 'assistant',
       content: (data.answer || ''),
       timestamp: Date.now(),
-      meta
+      meta,
+      citations,
+      confidence: confidenceValue
     };
 
     const updatedMessages = [...messages, userMessage, assistantMessage];
@@ -313,35 +413,37 @@ export function ChatInterface() {
       const evtId = data.event_id;
       if (evtId && typeof (window as any).addFeedbackButtons === 'function') {
         requestAnimationFrame(() => {
-          const container = document.getElementById('chat-messages');
-          if (container) {
-            const nodes = container.querySelectorAll('[data-role="assistant"]');
-            const last = nodes[nodes.length - 1] as HTMLElement | undefined;
-            if (last) (window as any).addFeedbackButtons(last, evtId);
+          const target = document.getElementById(`feedback-${assistantMessage.id}`) || document.getElementById('chat-messages');
+          if (target) {
+            try { (target as HTMLElement).innerHTML = ''; } catch {}
+            (window as any).addFeedbackButtons(target, evtId);
           }
         });
       }
       if (data.trace && Array.isArray(data.trace.steps)) {
         const steps = data.trace.steps;
-        if (steps.length > 1) {
-          setCurrentTrace(steps);
-          setShowTrace(true);
-        } else {
-          // Fallback: read latest persisted trace for richer detail
-          try {
-            const lt = await fetch(api('/traces/latest'));
-            if (lt.ok) {
-              const j = await lt.json();
-              if (j && j.trace && Array.isArray(j.trace.events)) {
-                const evs = j.trace.events.map((e: any) => ({ step: e.kind, duration: e.data?.duration_ms, details: e.data || {} }));
-                if (evs.length) {
-                  setCurrentTrace(evs);
-                  setShowTrace(true);
-                }
+        notifyTrace(steps, true, 'response');
+      } else {
+        // Fallback: read latest persisted trace for richer detail
+        try {
+          const lt = await fetch(api('/traces/latest'));
+          if (lt.ok) {
+            const j = await lt.json();
+            if (j && j.trace && Array.isArray(j.trace.events)) {
+              const evs = j.trace.events.map((e: any) => ({ step: e.kind, duration: e.data?.duration_ms, details: e.data || {} }));
+              if (evs.length) {
+                notifyTrace(evs, true, 'response');
               }
             }
+          }
+        } catch {}
+      }
+      if (tracePreference) {
+        requestAnimationFrame(() => {
+          try {
+            (window as any).Trace?.loadLatestTrace?.('chat-trace-output');
           } catch {}
-        }
+        });
       }
     } catch {}
   };
@@ -349,7 +451,7 @@ export function ChatInterface() {
   const handleClear = () => {
     if (confirm('Clear all messages?')) {
       setMessages([]);
-      setCurrentTrace([]);
+      notifyTrace([], false, 'clear');
       localStorage.removeItem('agro-chat-history');
     }
   };
@@ -586,10 +688,11 @@ export function ChatInterface() {
                       whiteSpace: 'pre-wrap',
                       wordBreak: 'break-word'
                     }}>
+                      {message.role === 'assistant' && showConfidence && message.confidence !== undefined ? `[Confidence: ${formatConfidence(message.confidence)}] ` : ''}
                       {message.content}
                     </div>
 
-                    {message.citations && message.citations.length > 0 && (
+                    {showCitations && message.citations && message.citations.length > 0 && (
                       <div style={{
                         marginTop: '8px',
                         paddingTop: '8px',
@@ -631,6 +734,17 @@ export function ChatInterface() {
                       </button>
                     </div>
                   </div>
+                  {message.role === 'assistant' && (
+                    <div
+                      id={`feedback-${message.id}`}
+                      className="chat-feedback-slot"
+                      style={{
+                        marginTop: '6px',
+                        paddingLeft: '4px',
+                        maxWidth: '78%'
+                      }}
+                    />
+                  )}
                 </div>
               ))
             )}
@@ -683,13 +797,9 @@ export function ChatInterface() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px'
-              }}>
-                <span style={{ display: 'inline-flex', gap: '4px' }} aria-live="polite" aria-label="Assistant is typing">
-                  <span className="dot" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--fg-muted)', opacity: 0.6, animation: 'blink 1.2s infinite 0ms' }} />
-                  <span className="dot" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--fg-muted)', opacity: 0.6, animation: 'blink 1.2s infinite 200ms' }} />
-                  <span className="dot" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--fg-muted)', opacity: 0.6, animation: 'blink 1.2s infinite 400ms' }} />
-                </span>
-                Assistant is thinking…
+              }} aria-live="polite" aria-label="Assistant is typing">
+                <LoadingSpinner variant="dots" size="md" color="accent" />
+                <span>Assistant is thinking…</span>
               </div>
             )}
 
@@ -750,59 +860,9 @@ export function ChatInterface() {
             </div>
 
             <div style={{ fontSize: '11px', color: 'var(--fg-muted)', marginBottom: '8px' }}>
-              Press Ctrl+Enter to send • Citations will appear as clickable file links
+              Press Ctrl+Enter to send • Citations appear as clickable file links when enabled in settings
             </div>
 
-            {/* Trace panel */}
-            {currentTrace.length > 0 && (
-              <details
-                open={showTrace}
-                onToggle={(e: any) => setShowTrace(e.target.open)}
-                style={{ marginTop: '8px' }}
-              >
-                <summary style={{
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  color: 'var(--accent)'
-                }}>
-                  Routing Trace ({currentTrace.length} steps)
-                </summary>
-                <div style={{
-                  marginTop: '8px',
-                  background: 'var(--code-bg)',
-                  border: '1px solid var(--line)',
-                  borderRadius: '4px',
-                  padding: '12px',
-                  fontSize: '11px',
-                  fontFamily: 'monospace',
-                  maxHeight: '200px',
-                  overflowY: 'auto'
-                }}>
-                  {currentTrace.map((step, idx) => (
-                    <div key={idx} style={{ marginBottom: '8px' }}>
-                      <div style={{ color: 'var(--accent)', fontWeight: '600' }}>
-                        {idx + 1}. {step.step}
-                      </div>
-                      <div style={{ color: 'var(--fg-muted)', marginLeft: '16px' }}>
-                        Duration: {step.duration}ms
-                      </div>
-                      {step.details && (
-                        <pre style={{
-                          marginLeft: '16px',
-                          marginTop: '4px',
-                          fontSize: '10px',
-                          color: 'var(--fg)',
-                          whiteSpace: 'pre-wrap'
-                        }}>
-                          {JSON.stringify(step.details, null, 2)}
-                        </pre>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </details>
-            )}
           </div>
         </div>
 

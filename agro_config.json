@@ -37,7 +37,7 @@
     "freshness_bonus": 0.05
   },
   "embedding": {
-    "embedding_type": "openai",
+    "embedding_type": "local",
     "embedding_model": "text-embedding-3-large",
     "embedding_dim": 3072,
     "voyage_model": "voyage-code-3",
@@ -60,7 +60,7 @@
   },
   "indexing": {
     "qdrant_url": "http://127.0.0.1:6333",
-    "collection_name": "",
+    "collection_name": "code_chunks_agro_shared",
     "vector_backend": "qdrant",
     "indexing_batch_size": 100,
     "indexing_workers": 4,
@@ -68,12 +68,12 @@
     "bm25_stemmer_lang": "english",
     "index_excluded_exts": ".png,.jpg,.gif,.ico,.svg,.woff,.ttf",
     "index_max_file_size_mb": 10,
-    "skip_dense": 0,
+    "skip_dense": 1,
     "out_dir_base": "./out",
     "repos_file": "./repos.json"
   },
   "reranking": {
-    "reranker_model": "cross-encoder/ms-marco-MiniLM-L-12-v2",
+    "reranker_model": "models/cross-encoder-agro",
     "agro_reranker_enabled": 1,
     "agro_reranker_alpha": 0.7,
     "agro_reranker_topn": 50,
@@ -83,13 +83,13 @@
     "agro_reranker_reload_period_sec": 60,
     "cohere_rerank_model": "rerank-3.5",
     "voyage_rerank_model": "rerank-2",
-    "reranker_backend": "local",
+    "reranker_backend": "cohere",
     "reranker_timeout": 10,
     "rerank_input_snippet_chars": 700
   },
   "generation": {
-    "gen_model": "gpt-4o-mini",
-    "gen_temperature": 0.0,
+    "gen_model": "gpt-5",
+    "gen_temperature": 0.1,
     "gen_max_tokens": 2048,
     "gen_top_p": 1.0,
     "gen_timeout": 60,
@@ -99,12 +99,14 @@
     "enrich_disabled": 0,
     "ollama_num_ctx": 8192,
     "gen_model_cli": "gpt-4o-mini",
-    "gen_model_ollama": "gpt-4o-mini"
+    "gen_model_ollama": "gpt-4o-mini",
+    "ollama_request_timeout": 300,
+    "ollama_stream_idle_timeout": 60
   },
   "enrichment": {
     "cards_enrich_default": 1,
-    "cards_max": 100,
-    "enrich_code_chunks": 1,
+    "cards_max": 20,
+    "enrich_code_chunks": 0,
     "enrich_min_chars": 50,
     "enrich_max_chars": 1000,
     "enrich_timeout": 30

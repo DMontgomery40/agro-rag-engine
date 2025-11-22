@@ -1,9 +1,11 @@
 // AGRO - System Status Subtab
 // Real-time system health, status, and quick overview
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import * as DashAPI from '@/api/dashboard';
 import { QuickActions } from './QuickActions';
+import { LiveTerminal } from '../LiveTerminal';
+import { TerminalService } from '../../services/TerminalService';
 
 export function SystemStatusSubtab() {
   const [health, setHealth] = useState<string>('—');

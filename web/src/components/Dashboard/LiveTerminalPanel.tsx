@@ -2,6 +2,7 @@
 // Dropdown terminal that slides down with bezier animation
 
 import React, { useEffect, useRef, useState } from 'react';
+import { LiveTerminal, LiveTerminalHandle } from '../LiveTerminal';
 
 interface LiveTerminalPanelProps {
   containerId: string;
@@ -9,21 +10,14 @@ interface LiveTerminalPanelProps {
 }
 
 export function LiveTerminalPanel({ containerId, isVisible }: LiveTerminalPanelProps) {
-  const terminalRef = useRef<any>(null);
+  const terminalRef = useRef<LiveTerminalHandle>(null);
 
   useEffect(() => {
-    if (isVisible && !terminalRef.current) {
-      const w = window as any;
-      if (w.LiveTerminal) {
-        try {
-          terminalRef.current = new w.LiveTerminal(containerId);
-          console.log(`[LiveTerminalPanel] Initialized: ${containerId}`);
-        } catch (e) {
-          console.error(`[LiveTerminalPanel] Failed to init ${containerId}:`, e);
-        }
-      }
+    // Store terminal reference on window for QuickActions to use
+    if (terminalRef.current) {
+      (window as any)._dashboardTerminal = terminalRef.current;
     }
-  }, [isVisible, containerId]);
+  }, []);
 
   return (
     <div
@@ -35,7 +29,13 @@ export function LiveTerminalPanel({ containerId, isVisible }: LiveTerminalPanelP
         transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease',
         marginTop: isVisible ? '12px' : '0',
       }}
-    />
+    >
+      <LiveTerminal
+        ref={terminalRef}
+        title="Dashboard Operations"
+        initialContent={['Ready for operations...']}
+      />
+    </div>
   );
 }
 

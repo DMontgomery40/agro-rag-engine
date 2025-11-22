@@ -17,7 +17,7 @@ SECRET_FIELDS = {
     'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GOOGLE_API_KEY',
     'COHERE_API_KEY', 'VOYAGE_API_KEY', 'LANGSMITH_API_KEY',
     'LANGCHAIN_API_KEY', 'LANGTRACE_API_KEY', 'NETLIFY_API_KEY',
-    'OAUTH_TOKEN', 'GRAFANA_API_KEY'
+    'OAUTH_TOKEN', 'GRAFANA_API_KEY', 'GRAFANA_AUTH_TOKEN'
 }
 
 
@@ -297,6 +297,7 @@ def repos_get(repo_name: str) -> Optional[Dict[str, Any]]:
 
 
 def repos_patch(repo_name: str, payload: Dict[str, Any]) -> bool:
+    """Update repository configuration in repos.json (not Pydantic - repos.json is separate from agro_config.json)."""
     repos_path = repo_root() / "repos.json"
     cfg = _read_json(repos_path, {"default_repo": None, "repos": []})
     for repo in cfg.get("repos", []):
@@ -509,6 +510,11 @@ def config_schema() -> Dict[str, Any]:
                 "properties": {
                     "GRAFANA_BASE_URL": {"type": "string", "title": "Base URL"},
                     "GRAFANA_DASHBOARD_UID": {"type": "string", "title": "Dashboard UID"},
+                    "GRAFANA_DASHBOARD_SLUG": {"type": "string", "title": "Dashboard Slug"},
+                    "GRAFANA_REFRESH": {"type": "string", "title": "Refresh Interval"},
+                    "GRAFANA_KIOSK": {"type": "string", "title": "Kiosk Mode"},
+                    "GRAFANA_AUTH_MODE": {"type": "string", "title": "Auth Mode"},
+                    "GRAFANA_ORG_ID": {"type": "integer", "title": "Org ID", "minimum": 1},
                     "GRAFANA_EMBED_ENABLED": {"type": "boolean", "title": "Enable Embed"},
                 },
             },
@@ -583,6 +589,11 @@ def config_schema() -> Dict[str, Any]:
         "grafana": {
             "GRAFANA_BASE_URL": registry.get_str("GRAFANA_BASE_URL", "http://127.0.0.1:3000"),
             "GRAFANA_DASHBOARD_UID": registry.get_str("GRAFANA_DASHBOARD_UID", "agro-overview"),
+            "GRAFANA_DASHBOARD_SLUG": registry.get_str("GRAFANA_DASHBOARD_SLUG", registry.get_str("GRAFANA_DASHBOARD_UID", "agro-overview")),
+            "GRAFANA_REFRESH": registry.get_str("GRAFANA_REFRESH", "10s"),
+            "GRAFANA_KIOSK": registry.get_str("GRAFANA_KIOSK", "tv"),
+            "GRAFANA_AUTH_MODE": registry.get_str("GRAFANA_AUTH_MODE", "anonymous"),
+            "GRAFANA_ORG_ID": registry.get_int("GRAFANA_ORG_ID", 1),
             "GRAFANA_EMBED_ENABLED": registry.get_bool("GRAFANA_EMBED_ENABLED", True),
         },
         "repo": {

@@ -13,7 +13,7 @@ export default function AdminTab() {
   const [activeSubtab, setActiveSubtab] = useState('general');
 
   return (
-    <div id="tab-admin" className="tab-content active">
+    <div id="tab-admin" className="tab-content">
       {/* Subtab navigation */}
       <AdminSubtabs activeSubtab={activeSubtab} onSubtabChange={setActiveSubtab} />
 

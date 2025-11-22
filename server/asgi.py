@@ -31,6 +31,7 @@ from server.routers.onboarding import router as onboarding_router
 from server.routers.golden import router as golden_router
 from server.routers.eval import router as eval_router
 from server.routers.cost import router as cost_router
+from server.routers.data_quality import router as data_quality_router
 from server.routers.cards import router as cards_router
 from server.routers.profiles import router as profiles_router
 from server.routers.autotune import router as autotune_router
@@ -40,6 +41,8 @@ from server.routers.observability import router as observability_router
 from server.routers.reranker_ops import router as reranker_ops_router
 from server.routers.mcp_ops import router as mcp_ops_router
 from server.routers.chat import router as chat_router
+from server.routers.stream_logs import router as stream_logs_router
+from server.routers.grafana import router as grafana_router
 
 # Module-level config registry cache
 _config_registry = get_config_registry()
@@ -291,6 +294,7 @@ def create_app() -> FastAPI:
     app.include_router(golden_router)
     app.include_router(eval_router)
     app.include_router(cost_router)
+    app.include_router(data_quality_router)
     app.include_router(cards_router)
     app.include_router(profiles_router)
     app.include_router(autotune_router)
@@ -300,6 +304,8 @@ def create_app() -> FastAPI:
     app.include_router(reranker_ops_router)
     app.include_router(mcp_ops_router)
     app.include_router(chat_router)
+    app.include_router(stream_logs_router)
+    app.include_router(grafana_router)
 
     # Include existing routers
     app.include_router(feedback_router)

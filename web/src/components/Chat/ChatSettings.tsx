@@ -14,6 +14,8 @@ interface ChatConfig {
   frequencyPenalty: number;
   presencePenalty: number;
   streaming: boolean;
+  showConfidence: boolean;
+  showCitations: boolean;
   showTrace: boolean;
   autoSave: boolean;
 }
@@ -28,6 +30,8 @@ const DEFAULT_CONFIG: ChatConfig = {
   frequencyPenalty: 0,
   presencePenalty: 0,
   streaming: true,
+  showConfidence: false,
+  showCitations: true,
   showTrace: false,
   autoSave: true
 };
@@ -38,6 +42,9 @@ export function ChatSettings() {
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string>('');
   const [modelOptions, setModelOptions] = useState<string[]>([]);
+  const broadcastConfig = (cfg: ChatConfig) => {
+    window.dispatchEvent(new CustomEvent('agro-chat-config-updated', { detail: cfg }));
+  };
 
   // Load config on mount
   useEffect(() => {
@@ -122,6 +129,7 @@ export function ChatSettings() {
 
       if (response.ok) {
         setSaveStatus('Settings saved successfully!');
+        broadcastConfig(config);
       } else {
         throw new Error('API save failed');
       }
@@ -130,6 +138,7 @@ export function ChatSettings() {
       // Fallback to localStorage
       localStorage.setItem('agro-chat-config', JSON.stringify(config));
       setSaveStatus('Settings saved locally');
+      broadcastConfig(config);
     } finally {
       setSaving(false);
       setTimeout(() => setSaveStatus(''), 3000);
@@ -141,6 +150,7 @@ export function ChatSettings() {
       setConfig(DEFAULT_CONFIG);
       localStorage.removeItem('agro-chat-config');
       setSaveStatus('Settings reset to defaults');
+      broadcastConfig(DEFAULT_CONFIG);
       setTimeout(() => setSaveStatus(''), 3000);
     }
   };
@@ -544,8 +554,9 @@ export function ChatSettings() {
             gap: '8px',
             cursor: 'pointer',
             fontSize: '13px'
-          }}>
+          }} title="Stream tokens as they generate (requires streaming backend)">
             <input
+              id="chat-streaming"
               type="checkbox"
               checked={config.streaming}
               onChange={(e) => setConfig(prev => ({ ...prev, streaming: e.target.checked }))}
@@ -563,8 +574,9 @@ export function ChatSettings() {
             gap: '8px',
             cursor: 'pointer',
             fontSize: '13px'
-          }}>
+          }} title="Show retrieval trace steps beneath chat responses">
             <input
+              id="chat-show-trace"
               type="checkbox"
               checked={config.showTrace}
               onChange={(e) => setConfig(prev => ({ ...prev, showTrace: e.target.checked }))}
@@ -573,6 +585,46 @@ export function ChatSettings() {
             Show routing trace
             <span style={{ fontSize: '11px', color: 'var(--fg-muted)', marginLeft: 'auto' }}>
               (displays retrieval steps)
+            </span>
+          </label>
+
+          <label style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            cursor: 'pointer',
+            fontSize: '13px'
+          }} title="Prefix answers with confidence when available">
+            <input
+              id="chat-show-confidence"
+              type="checkbox"
+              checked={config.showConfidence}
+              onChange={(e) => setConfig(prev => ({ ...prev, showConfidence: e.target.checked }))}
+              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+            />
+            Show confidence score
+            <span style={{ fontSize: '11px', color: 'var(--fg-muted)', marginLeft: 'auto' }}>
+              (adds [Confidence: XX%] before answers)
+            </span>
+          </label>
+
+          <label style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            cursor: 'pointer',
+            fontSize: '13px'
+          }} title="Toggle citations under each answer">
+            <input
+              id="chat-show-citations"
+              type="checkbox"
+              checked={config.showCitations}
+              onChange={(e) => setConfig(prev => ({ ...prev, showCitations: e.target.checked }))}
+              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+            />
+            Show citations
+            <span style={{ fontSize: '11px', color: 'var(--fg-muted)', marginLeft: 'auto' }}>
+              (file paths + line ranges)
             </span>
           </label>
 

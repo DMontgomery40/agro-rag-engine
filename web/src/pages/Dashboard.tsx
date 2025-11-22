@@ -32,7 +32,7 @@ export function Dashboard() {
   }, [searchParams, activeSubtab]);
 
   return (
-    <div id="tab-dashboard" className="tab-content active">
+    <div id="tab-dashboard" className="tab-content">
       {/* Subtab navigation */}
       <DashboardSubtabs activeSubtab={activeSubtab} onSubtabChange={setActiveSubtab} />
 

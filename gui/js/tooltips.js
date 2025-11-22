@@ -170,6 +170,15 @@
         ['OpenAI Models', 'https://platform.openai.com/docs/models'],
         ['Ollama API (GitHub)', 'https://github.com/ollama/ollama/blob/main/docs/api.md']
       ], [['Affects latency','info']]),
+      GEN_TEMPERATURE: L(
+        'Generation Temperature',
+        'Controls randomness for generation across chat and evaluators. Lower values (0.0-0.3) yield deterministic, code-safe answers. Mid values (0.35-0.6) add variety for summaries or docs. High values (>0.7) are creative but can drift off-topic. For code Q&A, stay at 0.0-0.3; for brainstorming or narrative responses, try 0.4-0.6. Adjust alongside GEN_MAX_TOKENS to keep outputs concise.',
+        [
+          ['Retrieval Augmented Generation (RAG) - LangChain Concepts', 'https://python.langchain.com/docs/concepts/rag/'],
+          ['Evaluation Best Practices', 'https://platform.openai.com/docs/guides/evaluation-best-practices']
+        ],
+        [['Affects tone', 'info']]
+      ),
       OLLAMA_URL: L('Ollama URL', 'Local inference endpoint for Ollama running on your machine (e.g., http://127.0.0.1:11434/api). Used when GEN_MODEL targets a local model like llama2, mistral, qwen, or neural-chat. Requires Ollama installed and running: ollama serve', [
         ['Ollama REST API', 'https://github.com/ollama/ollama/blob/main/docs/api.md'],
         ['Ollama Docker Setup', 'https://ollama.com/blog/ollama-is-now-available-as-an-official-docker-image'],
@@ -232,8 +241,76 @@
         ],
         [['Free (no API costs)', 'info'], ['Requires download', 'warn']]
       ),
+      RERANKER_BACKEND: L(
+        'Reranker Backend',
+        'Provider used for cross-encoder reranking. Options: "none" (skip rerank, fastest), "local"/"hf" (HuggingFace model path, free but requires downloads/VRAM), "cohere" (hosted, strong quality, paid), "voyage" (hosted, strong quality, paid). Choose local/hf for air‑gapped or cost-controlled setups, cohere/voyage for best ordering when latency/cost budgets allow, and none when you only want BM25 + dense fusion. Switches take effect immediately but may reload models/API clients.',
+        [
+          ['Cohere Rerank model docs', 'https://docs.cohere.com/docs/rerank'],
+          ['Voyage AI reranker docs', 'https://docs.voyageai.com/docs/reranker'],
+          ['SentenceTransformers cross-encoder guide', 'https://www.sbert.net/examples/applications/cross-encoder/README.html']
+        ],
+        [['Quality vs cost', 'info'], ['Requires model or API key', 'warn']]
+      ),
+      RERANK_INPUT_SNIPPET_CHARS: L(
+        'Rerank Snippet Length',
+        'Maximum characters from each candidate chunk sent to the reranker. Keeps payloads within provider limits and focuses scoring on the most relevant prefix. Typical range: 400-1200 chars. Use 400-600 when providers reject long inputs or latency is critical; 800-1200 when answers depend on longer doc/context blocks. If set too low, quality drops from missing context; too high increases latency and rerank cost per request.',
+        [
+          ['Voyage reranker token limits', 'https://docs.voyageai.com/docs/reranker'],
+          ['Cohere rerank context length', 'https://docs.cohere.com/docs/rerank']
+        ],
+        [['Affects latency/cost', 'warn'], ['Context guardrail', 'info']]
+      ),
 
       // Reranker Inference (live search blending)
+      AGRO_RERANKER_ENABLED: L(
+        'Agro Reranker Enabled',
+        'Toggle the self-hosted Agro learning reranker (1=yes, 0=no). When enabled, retrieval uses your fine-tuned cross-encoder at AGRO_RERANKER_MODEL_PATH instead of external APIs. Keep on once a trained model is cached locally; turn off while collecting feedback, when falling back to hosted rerankers, or when the local model is unavailable. Requires the model files to be present and readable.',
+        [
+          ['SentenceTransformers cross-encoder guide', 'https://www.sbert.net/examples/applications/cross-encoder/README.html'],
+          ['Voyage reranker docs', 'https://docs.voyageai.com/docs/reranker']
+        ],
+        [['Quality boost', 'info'], ['Requires local model', 'warn']]
+      ),
+      AGRO_RERANKER_MODEL_PATH: L(
+        'Agro Reranker Model Path',
+        'Filesystem path to the fine-tuned Agro reranker checkpoint (e.g., models/cross-encoder-agro). Must be a directory loadable by transformers.from_pretrained. Update after training or syncing a new checkpoint; reload the reranker to apply. Keep paths relative to repo or mounted volume for Docker compatibility.',
+        [
+          ['Transformers from_pretrained (local path) docs', 'https://huggingface.co/docs/transformers/main_classes/model#transformers.PreTrainedModel.from_pretrained']
+        ],
+        [['Requires download', 'warn'], ['Keep portable paths', 'info']]
+      ),
+      AGRO_LOG_PATH: L(
+        'Agro Reranker Log Path',
+        'Directory for reranker mining/training logs and metrics. Use a persistent, writable location so progress and diagnostics survive restarts. Large runs can create hundreds of MB of logs; rotate or archive when finished. Keep this on a shared volume in Docker to avoid losing history.',
+        [
+          ['Python logging HOWTO', 'https://docs.python.org/3/howto/logging.html']
+        ],
+        [['Diagnostics', 'info']]
+      ),
+      AGRO_TRIPLETS_PATH: L(
+        'Triplets Dataset Path',
+        'Path to the mined triplets file used for Agro reranker training (query, positive, negative). Store on durable storage so mining and training share the same dataset. Useful for maintaining separate datasets per repo or branch (e.g., data/reranker/triplets.jsonl). Back up before destructive operations.',
+        [
+          ['SentenceTransformers triplet training (Quora)', 'https://www.sbert.net/examples/training/quora_duplicate_questions/README.html']
+        ],
+        [['Data quality critical', 'warn']]
+      ),
+      AGRO_RERANKER_MINE_MODE: L(
+        'Triplet Mining Mode',
+        'Negative mining strategy for generating new training triplets. "random" = safest baseline, fast but easy negatives. "semi-hard" = balanced default, uses mid-ranked negatives that teach nuance. "hard" = most challenging negatives; best quality when labels are clean but risky if feedback is noisy. Adjust based on data quality and training stability.',
+        [
+          ['SentenceTransformers triplet training workflow', 'https://www.sbert.net/examples/training/quora_duplicate_questions/README.html']
+        ],
+        [['Tune for data quality', 'warn']]
+      ),
+      AGRO_RERANKER_MINE_RESET: L(
+        'Reset Mined Triplets',
+        'Reset flag for the miner to clear previously gathered triplets before the next mining run (1=yes, 0=no). Use when switching repositories, changing mining rules, or starting a clean dataset. Back up AGRO_TRIPLETS_PATH first—reset discards accumulated positives/negatives.',
+        [
+          ['SentenceTransformers triplet training workflow', 'https://www.sbert.net/examples/training/quora_duplicate_questions/README.html']
+        ],
+        [['Destructive operation', 'warn']]
+      ),
       AGRO_RERANKER_ALPHA: L(
         'Reranker Blend Alpha',
         'Weight of the cross-encoder reranker score during final fusion. Higher alpha prioritizes semantic pairwise scoring; lower alpha relies more on initial hybrid retrieval (BM25 + dense). Typical range 0.6–0.8. Increasing alpha can improve ordering for nuanced queries but may surface false positives if your model is undertrained.',
@@ -299,6 +376,14 @@
         [
           ['Tokenization & Truncation', 'https://huggingface.co/docs/tokenizers/index'],
           ['Cross-Encoder Training', 'https://www.sbert.net/examples/training/cross-encoder/README.html']
+        ],
+        [['Memory sensitive', 'warn']]
+      ),
+      RERANKER_TRAIN_MAX_LENGTH: L(
+        'Training Max Sequence Length (Alias)',
+        'Alias for RERANKER_TRAIN_MAXLEN. Caps tokens per (query, document) pair during training to control VRAM/CPU use. Increase (384-512) when you need longer context; decrease (128-256) when hitting OOM or Colima container exits. Inputs above this value are truncated by the tokenizer.',
+        [
+          ['Transformers tokenizer model_max_length', 'https://huggingface.co/docs/transformers/main_classes/tokenizer#transformers.PreTrainedTokenizerBase.model_max_length']
         ],
         [['Memory sensitive', 'warn']]
       ),
@@ -468,6 +553,15 @@
         ],
         [['Affects latency','info'], ['Higher cost', 'warn']]
       ),
+      USE_SEMANTIC_SYNONYMS: L(
+        'Use Semantic Synonyms',
+        'Expands queries with curated synonyms/aliases from semantic_synonyms.json before retrieval. Helps match acronyms and domain terms (e.g., "auth" → authentication, oauth, jwt). Keeps BM25 and vector search aligned on the expanded terms. Enable for domain-heavy repos; disable if expansions introduce false positives. No re-index required—changes apply on the next query.',
+        [
+          ['Hybrid Search - LangChain', 'https://python.langchain.com/docs/how_to/hybrid/'],
+          ['Search - Qdrant Concepts', 'https://qdrant.tech/documentation/concepts/search/']
+        ],
+        [['Recall boost', 'info'], ['May add noise', 'warn']]
+      ),
       TOPK_DENSE: L(
         'Top‑K Dense',
         'Number of candidate results to retrieve from Qdrant vector (semantic) search before hybrid fusion. Higher values (100-150) improve recall for semantic matches but increase query latency and memory usage. Lower values (40-60) are faster but may miss relevant results. Must be >= FINAL_K. Recommended: 75 for balanced performance, 100-120 for high recall scenarios.',
@@ -477,6 +571,15 @@
           ['Top-K Retrieval', 'https://en.wikipedia.org/wiki/Nearest_neighbor_search#k-nearest_neighbors']
         ],
         [['Affects latency','info'], ['Semantic matches', 'info']]
+      ),
+      VECTOR_BACKEND: L(
+        'Vector Backend',
+        'Vector database used for dense search. "qdrant" (default) provides HNSW indexing, filtering, and distributed storage—best for production. "faiss" is in-process, good for offline or air‑gapped testing but lacks server-side filtering and persistence across restarts unless you manage snapshots. Switching backends requires rebuilding indexes so embeddings and collections are compatible.',
+        [
+          ['Qdrant vector search overview', 'https://qdrant.tech/documentation/overview/vector-search/'],
+          ['Faiss similarity search documentation', 'https://faiss.ai/']
+        ],
+        [['Core retrieval', 'info'], ['Requires reindex', 'reindex']]
       ),
       TOPK_SPARSE: L(
         'Top‑K Sparse',
@@ -1208,6 +1311,30 @@
         ],
         [['CPU utilization', 'info'], ['Faster indexing', 'info']]
       ),
+      INDEX_MAX_WORKERS: L(
+        'Indexing Max Workers',
+        'Upper bound on worker threads the indexer will spin up. Caps auto-tuned worker counts so shared machines are not saturated. Set near available CPU cores (e.g., 8 on an 8–12 core box) for predictable throughput; lower (2-4) on laptops or CI to avoid fan/thermal throttling. If INDEXING_WORKERS exceeds this cap, the cap wins. Increase when CPU is underutilized; decrease if indexing causes contention with Docker/Qdrant.',
+        [
+          ['Python ThreadPoolExecutor reference', 'https://docs.python.org/3/library/concurrent.futures.html#threadpoolexecutor']
+        ],
+        [['CPU/IO load', 'warn'], ['Performance guardrail', 'info']]
+      ),
+      INDEXING_PROCESS: L(
+        'Indexing Process',
+        'Runs the full pipeline: chunk source files, build BM25 sparse index, generate embeddings, and write vectors to Qdrant. Use after code changes, config changes (CHUNK_SIZE, EMBEDDING_TYPE, COLLECTION_NAME), or when switching repos/profiles. Expect heavier CPU/network usage; ensure Qdrant and embedding providers are reachable. Re-run to refresh stale indices or after cleaning the output directory.',
+        [
+          ['Qdrant indexing concepts', 'https://qdrant.tech/documentation/concepts/indexing/']
+        ],
+        [['Core workflow', 'info'], ['Requires reindex', 'reindex']]
+      ),
+      INDEX_PROFILES: L(
+        'Index Profiles',
+        'Preset index configurations for different scenarios (e.g., shared/BM25-only for speed, full hybrid for quality, dev for small subsets). Switching profiles updates indexing knobs in one click and may trigger a rebuild to match the selected profile. Use shared for quick smoke tests, full for production-quality retrieval, and dev when iterating on pipeline changes without reindexing the entire repo.',
+        [
+          ['Qdrant collections and optimizer overview', 'https://qdrant.tech/documentation/concepts/collections/']
+        ],
+        [['Profile switch', 'info'], ['May require reindex', 'warn']]
+      ),
       BM25_STEMMER_LANG: L(
         'BM25 Stemmer Language',
         'Language for stemming/normalization in BM25 sparse indexing. Common values: "en" (English - default), "multilingual" (multiple languages), "none" (disable stemming). Stemming reduces words to root forms (e.g., "running" -> "run") to improve keyword matching. English stemming works well for code comments, docs, and variable names. Use "none" for non-English repos or when exact keyword matching is critical (e.g., API names, error codes).\n\nRecommended: "en" for English codebases, "multilingual" for international teams, "none" for strict keyword matching.',
@@ -1313,6 +1440,24 @@
         ],
         [['Index quality control', 'info'], ['Requires reindex', 'reindex']]
       ),
+      CHUNK_SIZE: L(
+        'Chunk Size (chars)',
+        'Target size in characters for each chunk during indexing. Larger chunks (1500-2500) preserve more surrounding code context (good for flows across functions/classes) but reduce granularity and increase embedding cost. Smaller chunks (600-1200) improve precision and lower cost but may split logic across chunks. Tune with CHUNK_OVERLAP to avoid cutting important boundaries. Changing this requires a full re-index to regenerate chunks and embeddings.',
+        [
+          ['Cohere embeddings guide (chunking section)', 'https://docs.cohere.com/docs/embeddings#chunking'],
+          ['Qdrant indexing concepts', 'https://qdrant.tech/documentation/concepts/indexing/']
+        ],
+        [['Requires reindex', 'reindex'], ['Context vs precision', 'info']]
+      ),
+      CHUNK_OVERLAP: L(
+        'Chunk Overlap (chars)',
+        'Number of overlapping characters to keep between adjacent chunks. Prevents context loss when functions, classes, or paragraphs straddle chunk boundaries. Typical range: 100-400. Use 250-400 for long functions/docs so references carry across chunks; 100-200 to reduce duplicate content and index size. Too much overlap inflates storage and can surface near-duplicate hits. Adjust alongside CHUNK_SIZE, then re-index.',
+        [
+          ['Cohere embeddings guide (chunking section)', 'https://docs.cohere.com/docs/embeddings#chunking'],
+          ['Qdrant indexing concepts', 'https://qdrant.tech/documentation/concepts/indexing/']
+        ],
+        [['Requires reindex', 'reindex'], ['Controls recall', 'info']]
+      ),
       GREEDY_FALLBACK_TARGET: L(
         'Greedy Fallback Target (Chars)',
         'Target chunk size (in characters) for greedy fallback chunking when AST-based chunking fails or encounters oversized logical units. Greedy chunking splits text at line boundaries to hit this approximate size. Used as a safety mechanism when: (1) file syntax is unparseable, (2) a single function/class exceeds MAX_CHUNK_SIZE, (3) non-code files (markdown, text) are indexed.\n\nSweet spot: 500-800 characters for fallback chunks. This roughly corresponds to 100-150 tokens, providing reasonable context when AST chunking isn\'t possible. Use 800-1200 for larger fallback chunks (more context but less precise boundaries). Use 300-500 for smaller fallback chunks (tighter boundaries, less context). Greedy chunking is less semantic than AST chunking - it splits at line breaks regardless of code structure.\n\nExample: If a 3000-char function exceeds MAX_CHUNK_SIZE and can\'t be split structurally, greedy fallback divides it into ~4 chunks of ~750 chars each (based on GREEDY_FALLBACK_TARGET=800). This preserves some of the function in each chunk. Greedy fallback is rare in well-formed code but essential for robustness.\n\n• Range: 300-1500 characters (typical)\n• Small: 300-500 chars (tight boundaries, less context)\n• Balanced: 500-800 chars (recommended, ~100-150 tokens)\n• Large: 800-1200 chars (more context per fallback chunk)\n• Very large: 1200-1500 chars (maximum context, rare use)\n• When used: Syntax errors, oversized units, non-code files',
@@ -1415,8 +1560,70 @@
     });
   }
 
+  function getTooltipHtml(map, key, fallbackLabel) {
+    const html = map[key];
+    if (html) return html;
+    const label = fallbackLabel || key;
+    return `<span class=\"tt-title\">${label}</span><div>No detailed tooltip available yet. See our docs for related settings.</div><div class=\"tt-links\"><a href=\"/README.md\" target=\"_blank\" rel=\"noopener\">Main README</a> <a href=\"/docs/README_INDEX.md\" target=\"_blank\" rel=\"noopener\">Docs Index</a></div>`;
+  }
+
+  function ensureTooltipWrap(icon) {
+    let wrap = icon.closest('.tooltip-wrap');
+    if (!wrap) {
+      wrap = document.createElement('span');
+      wrap.className = 'tooltip-wrap';
+      icon.replaceWith(wrap);
+      wrap.appendChild(icon);
+    }
+    return wrap;
+  }
+
+  function attachDataTooltipIcon(icon, map, fallbackLabel) {
+    const key = (icon.dataset.tooltip || '').trim();
+    if (!key || icon.dataset.tooltipAttached === 'true') return;
+    const wrap = ensureTooltipWrap(icon);
+    let bubble = wrap.querySelector('.tooltip-bubble');
+    const html = getTooltipHtml(map, key, fallbackLabel || icon.textContent || key);
+    if (!bubble) {
+      bubble = document.createElement('div');
+      bubble.className = 'tooltip-bubble';
+      bubble.setAttribute('role', 'tooltip');
+      wrap.appendChild(bubble);
+    }
+    bubble.innerHTML = html;
+    if (!icon.hasAttribute('tabindex')) icon.setAttribute('tabindex', '0');
+    if (!icon.getAttribute('aria-label')) icon.setAttribute('aria-label', `Help: ${key}`);
+    icon.dataset.tooltipAttached = 'true';
+    attachTooltipListeners(icon, bubble, wrap);
+  }
+
+  function attachDataTooltipIcons(map) {
+    const labeledIcons = document.querySelectorAll('.help-icon[data-tooltip]');
+    labeledIcons.forEach((icon) => {
+      attachDataTooltipIcon(icon, map, icon.closest('label')?.textContent?.trim());
+    });
+
+    const labelsWithData = document.querySelectorAll('label[data-tooltip]');
+    labelsWithData.forEach((label) => {
+      const key = (label.dataset.tooltip || '').trim();
+      if (!key) return;
+      const existingIcon = label.querySelector('.help-icon[data-tooltip]');
+      if (existingIcon) {
+        attachDataTooltipIcon(existingIcon, map, label.textContent?.trim());
+        return;
+      }
+      const icon = document.createElement('span');
+      icon.className = 'help-icon';
+      icon.dataset.tooltip = key;
+      icon.textContent = '?';
+      label.appendChild(icon);
+      attachDataTooltipIcon(icon, map, label.textContent?.trim());
+    });
+  }
+
   function attachTooltips(){
     const map = buildTooltipMap();
+    attachDataTooltipIcons(map);
     const fields = document.querySelectorAll('[name]');
     fields.forEach((field) => {
       const name = field.getAttribute('name');
@@ -1424,7 +1631,13 @@
       if (!name || !parent) return;
       const label = parent.querySelector('label');
       if (!label) return;
-      if (label.querySelector('.help-icon')) return;
+      const existingIcon = label.querySelector('.help-icon');
+      if (existingIcon) {
+        if (existingIcon.dataset.tooltip && existingIcon.dataset.tooltipAttached !== 'true') {
+          attachDataTooltipIcon(existingIcon, map, label.textContent || name);
+        }
+        return;
+      }
       
       // Skip labels that are part of toggle controls - they have special structure
       if (label.classList.contains('toggle')) {
@@ -1438,10 +1651,7 @@
             const type = name.split('_')[1];
             key = 'repo_' + type;
           }
-          let htmlContent = map[key];
-          if (!htmlContent) {
-            htmlContent = `<span class=\"tt-title\">${name}</span><div>No detailed tooltip available yet. See our docs for related settings.</div><div class=\"tt-links\"><a href=\"/README.md\" target=\"_blank\" rel=\"noopener\">Main README</a> <a href=\"/docs/README_INDEX.md\" target=\"_blank\" rel=\"noopener\">Docs Index</a></div>`;
-          }
+          const htmlContent = getTooltipHtml(map, key, name);
           const spanText = document.createElement('span');
           spanText.className = 'label-text';
           spanText.textContent = existingText.textContent;
@@ -1471,10 +1681,7 @@
         const type = name.split('_')[1];
         key = 'repo_' + type;
       }
-      let html = map[key];
-      if (!html) {
-        html = `<span class=\"tt-title\">${name}</span><div>No detailed tooltip available yet. See our docs for related settings.</div><div class=\"tt-links\"><a href=\"/README.md\" target=\"_blank\" rel=\"noopener\">Main README</a> <a href=\"/docs/README_INDEX.md\" target=\"_blank\" rel=\"noopener\">Docs Index</a></div>`;
-      }
+      const html = getTooltipHtml(map, key, name);
       const spanText = document.createElement('span');
       spanText.className = 'label-text';
       spanText.textContent = label.textContent;
@@ -1514,10 +1721,7 @@
       if (!parent) return;
       const label = parent.querySelector('label');
       if (!label || label.querySelector('.help-icon')) return;
-      let html = map[key];
-      if (!html) {
-        html = `<span class=\"tt-title\">${label.textContent || key}</span><div>No detailed tooltip available yet. See our docs for related settings.</div><div class=\"tt-links\"><a href=\"/README.md\" target=\"_blank\" rel=\"noopener\">Main README</a> <a href=\"/docs/README_INDEX.md\" target=\"_blank\" rel=\"noopener\">Docs Index</a></div>`;
-      }
+      const html = getTooltipHtml(map, key, label.textContent || key);
       const spanText = document.createElement('span');
       spanText.className = 'label-text';
       spanText.textContent = label.textContent;

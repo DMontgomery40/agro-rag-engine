@@ -1,8 +1,10 @@
 import { test, expect } from '@playwright/test';
 
+const baseUrl = process.env.AGRO_WEB_URL || '/';
+
 test.describe('Top-level Tabs Smoke', () => {
   test('nav shows core tabs and subtabs render', async ({ page }) => {
-    await page.goto('/');
+    await page.goto(baseUrl);
 
     // Top-level tabs visible
     for (const label of ['Get Started', 'Dashboard', 'Chat', 'VS Code', 'Grafana', 'RAG', 'Profiles', 'Infrastructure', 'Admin']) {

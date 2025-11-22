@@ -53,20 +53,20 @@ export function KeywordManager({ repo }: KeywordManagerProps) {
     return filtered.slice(0, 500);
   }, [keywordsCatalog, sourceFilter, filterText, repoKeywords]);
 
-  const handleAddToRepo = () => {
+  const handleAddToRepo = async () => {
     if (selectedAvailable.length === 0) return;
 
     const updatedKeywords = Array.from(new Set([...repoKeywords, ...selectedAvailable]));
-    updateRepo(repo.name, { keywords: updatedKeywords });
+    await updateRepo(repo.name, { keywords: updatedKeywords });
     setSelectedAvailable([]);
   };
 
-  const handleRemoveFromRepo = () => {
+  const handleRemoveFromRepo = async () => {
     if (selectedRepo.length === 0) return;
 
     const removeSet = new Set(selectedRepo);
     const updatedKeywords = repoKeywords.filter(kw => !removeSet.has(kw));
-    updateRepo(repo.name, { keywords: updatedKeywords });
+    await updateRepo(repo.name, { keywords: updatedKeywords });
     setSelectedRepo([]);
   };
 

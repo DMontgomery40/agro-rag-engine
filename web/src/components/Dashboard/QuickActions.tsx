@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { QuickActionButton } from './QuickActionButton';
 import { LiveTerminalPanel } from './LiveTerminalPanel';
+import { TerminalService } from '../../services/TerminalService';
 
 export function QuickActions() {
   const [terminalVisible, setTerminalVisible] = useState(false);
@@ -88,23 +89,60 @@ export function QuickActions() {
     const terminal = (window as any)._dashboardTerminal;
     if (terminal) {
       terminal.setTitle('Run Indexer');
-      terminal.appendLine('🚀 Starting indexer...\n');
+      terminal.clear();
+      terminal.appendLine('🚀 Starting indexer...');
     }
 
     try {
       const response = await fetch('/api/index/start', { method: 'POST' });
-      if (response.ok) {
-        setStatusMessage('✓ Indexer started');
+
+      if (!response.ok) {
+        const error = await response.text();
+        setStatusMessage(`✗ Error: ${error}`);
         if (terminal) {
-          terminal.appendLine('✓ Indexer started successfully\n');
+          terminal.appendLine(`\x1b[31m✗ Failed to start indexer: ${error}\x1b[0m`);
         }
-        // Poll for progress
-        pollIndexStatus(terminal);
+        return;
       }
+
+      setStatusMessage('✓ Indexer started');
+      if (terminal) {
+        terminal.appendLine('✓ Indexer started, connecting to log stream...');
+      }
+
+      // Connect to SSE stream for real logs
+      TerminalService.streamOperation('dashboard_indexer', 'index', {
+        onLine: (line) => {
+          if (terminal) {
+            terminal.appendLine(line);
+          }
+        },
+        onProgress: (percent, message) => {
+          setProgress(percent);
+          setStatusMessage(message || `Indexing: ${Math.round(percent)}%`);
+          if (terminal) {
+            terminal.updateProgress(percent, message);
+          }
+        },
+        onError: (error) => {
+          setStatusMessage(`✗ Error: ${error}`);
+          if (terminal) {
+            terminal.appendLine(`\x1b[31m✗ Error: ${error}\x1b[0m`);
+          }
+        },
+        onComplete: () => {
+          setProgress(100);
+          setStatusMessage('✓ Indexing complete');
+          if (terminal) {
+            terminal.updateProgress(100, 'Complete');
+            terminal.appendLine('\x1b[32m✓ Indexing complete\x1b[0m');
+          }
+        }
+      });
     } catch (e) {
       setStatusMessage(`✗ Failed: ${e}`);
       if (terminal) {
-        terminal.appendLine(`✗ Error: ${e}\n`);
+        terminal.appendLine(`\x1b[31m✗ Error: ${e}\x1b[0m`);
       }
     }
   };
@@ -169,11 +207,13 @@ export function QuickActions() {
     setEvalDropdownOpen(false);
     setTerminalVisible(true);
     setStatusMessage(`Running evaluation with ${backend}...`);
+    setProgress(0);
 
     const terminal = (window as any)._dashboardTerminal;
     if (terminal) {
       terminal.setTitle(`Run Eval (${backend})`);
-      terminal.appendLine(`🧪 Running evaluation with ${backend} backend...\n`);
+      terminal.clear();
+      terminal.appendLine(`🧪 Running evaluation with ${backend} backend...`);
     }
 
     try {
@@ -186,13 +226,44 @@ export function QuickActions() {
       if (response.ok) {
         setStatusMessage('✓ Evaluation started');
         if (terminal) {
-          terminal.appendLine('✓ Evaluation started\n');
+          terminal.appendLine('✓ Evaluation started, connecting to log stream...');
         }
+
+        // Connect to SSE stream for real logs
+        TerminalService.streamOperation('dashboard_eval', 'eval', {
+          backend,
+          onLine: (line) => {
+            if (terminal) {
+              terminal.appendLine(line);
+            }
+          },
+          onProgress: (percent, message) => {
+            setProgress(percent);
+            setStatusMessage(message || `Evaluating: ${Math.round(percent)}%`);
+            if (terminal) {
+              terminal.updateProgress(percent, message);
+            }
+          },
+          onError: (error) => {
+            setStatusMessage(`✗ Error: ${error}`);
+            if (terminal) {
+              terminal.appendLine(`\x1b[31m✗ Error: ${error}\x1b[0m`);
+            }
+          },
+          onComplete: () => {
+            setProgress(100);
+            setStatusMessage('✓ Evaluation complete');
+            if (terminal) {
+              terminal.updateProgress(100, 'Complete');
+              terminal.appendLine('\x1b[32m✓ Evaluation complete\x1b[0m');
+            }
+          }
+        });
       }
     } catch (e) {
       setStatusMessage(`✗ Failed: ${e}`);
       if (terminal) {
-        terminal.appendLine(`✗ Error: ${e}\n`);
+        terminal.appendLine(`\x1b[31m✗ Error: ${e}\x1b[0m`);
       }
     }
   };

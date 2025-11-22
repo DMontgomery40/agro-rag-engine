@@ -18,7 +18,7 @@ function App() {
   // Initialize hooks
   const { isInitialized, initError } = useAppInit();
   const { modulesLoaded, loadError, loadProgress } = useModuleLoader();
-  const { handleApply, isDirty, isSaving, saveError } = useApplyButton();
+  const { handleApply: handleSaveAllChanges, isDirty, isSaving, saveError } = useApplyButton();
 
   useEffect(() => {
     // Initial health check
@@ -98,8 +98,7 @@ function App() {
           import('./modules/profile_logic.js'),
           import('./modules/profile_renderer.js'),
           import('./modules/autoprofile_v2.js'),
-          // Temporarily disabled: golden_questions.js has bindGoldenQuestions error
-          // React components in EvaluateSubtab.tsx provide full UI functionality
+          // REMOVED: Legacy JS modules - EvaluateSubtab now uses pure React/TypeScript
           // import('./modules/golden_questions.js'),
           // import('./modules/eval_runner.js'),
           import('./modules/eval_history.js'),
@@ -220,12 +219,41 @@ function App() {
       {/* Main Layout */}
       <div className="layout">
         <div className="resize-handle"></div>
-        <div className="content">
+        <div className="content" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
           {/* Tab Bar - React Router navigation */}
           <TabBar />
 
-          {/* Routes - All tab routing */}
-          <TabRouter />
+          {/* Scrollable content wrapper */}
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            {/* Routes - All tab routing */}
+            <TabRouter />
+          </div>
+
+          {/* Apply All Changes button - Fixed footer outside scrollable area */}
+          <div className="action-buttons" style={{
+            background: 'var(--bg)',
+            padding: '12px 24px',
+            borderTop: '1px solid var(--accent)',
+            flexShrink: 0
+          }}>
+            <button
+              id="save-btn"
+              onClick={handleSaveAllChanges}
+              disabled={!isDirty || isSaving}
+              style={{
+                opacity: (!isDirty || isSaving) ? 0.6 : 1,
+                cursor: (!isDirty || isSaving) ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {isSaving ? 'Saving...' : 'Apply All Changes'}
+              {isDirty && !isSaving && ' *'}
+            </button>
+            {saveError && (
+              <span style={{ color: 'var(--err)', marginLeft: '12px' }}>
+                Error: {saveError}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Sidepanel */}

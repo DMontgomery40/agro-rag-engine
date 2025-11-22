@@ -283,6 +283,6 @@ export default function StartTab() {
   `;
 
   return (
-    <div id="tab-start" className="tab-content active" dangerouslySetInnerHTML={{ __html: inner }} />
+    <div id="tab-start" className="tab-content" dangerouslySetInnerHTML={{ __html: inner }} />
   );
 }

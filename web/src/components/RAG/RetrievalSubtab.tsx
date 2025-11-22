@@ -1,11 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useNotification } from '../../hooks/useNotification';
-import { NotificationContainer } from '../Notification';
 
 // RetrievalSubtab: Main retrieval and RAG configuration component
 // Converted from legacy HTML to proper TypeScript React
 export function RetrievalSubtab() {
-  const notification = useNotification();
 
   // ============================================================================
   // STATE - First 50% (Generation Models + Retrieval Parameters sections)
@@ -32,7 +29,7 @@ export function RetrievalSubtab() {
   const [enrichDisabled, setEnrichDisabled] = useState<string>('0');
 
   // Retrieval Parameters section
-  const [mqRewrites, setMqRewrites] = useState<number>(2);
+  const [multiQueryRewrites, setMultiQueryRewrites] = useState<number>(2);
   const [finalK, setFinalK] = useState<number>(10);
   const [useSemanticSynonyms, setUseSemanticSynonyms] = useState<string>('1');
   const [topkDense, setTopkDense] = useState<number>(75);
@@ -92,12 +89,12 @@ export function RetrievalSubtab() {
 
   const loadModels = async () => {
     try {
-      const response = await fetch('/prices.json');
+      const response = await fetch('/api/prices');
       const data = await response.json();
       const models = data.models.map((m: any) => m.model);
       setAvailableModels(models);
     } catch (error) {
-      console.error('Failed to load models from prices.json:', error);
+      console.error('Failed to load models from /api/prices:', error);
     }
   };
 
@@ -128,7 +125,7 @@ export function RetrievalSubtab() {
       setEnrichDisabled(env.ENRICH_DISABLED || '0');
 
       // Retrieval Parameters section
-      setMqRewrites(parseInt(env.MQ_REWRITES || '2', 10));
+      setMultiQueryRewrites(parseInt(env.MAX_QUERY_REWRITES || '2', 10));
       setFinalK(parseInt(env.FINAL_K || '10', 10));
       setUseSemanticSynonyms(env.USE_SEMANTIC_SYNONYMS || '1');
       setTopkDense(parseInt(env.TOPK_DENSE || '75', 10));
@@ -197,9 +194,12 @@ export function RetrievalSubtab() {
       if (!response.ok) {
         throw new Error(`Failed to update ${key}`);
       }
+
+      // Reload config to ensure backend picks up changes
+      await fetch('/api/env/reload', { method: 'POST' });
     } catch (error) {
       console.error(`Error updating ${key}:`, error);
-      notification.error(`Failed to update ${key}`);
+      alert(`Failed to update ${key}`);
     }
   };
 
@@ -209,7 +209,6 @@ export function RetrievalSubtab() {
 
   return (
     <>
-      <NotificationContainer notifications={notification.notifications} onClose={notification.removeNotification} />
       {/* Generation Models and Retrieval Parameters */}
 
       <div className="settings-section">
@@ -614,10 +613,10 @@ export function RetrievalSubtab() {
       </label>
       <input
         type="number"
-        name="MQ_REWRITES"
-        value={mqRewrites}
-        onChange={(e) => setMqRewrites(parseInt(e.target.value, 10) || 2)}
-        onBlur={() => updateConfig('MQ_REWRITES', mqRewrites)}
+        name="MAX_QUERY_REWRITES"
+        value={multiQueryRewrites}
+        onChange={(e) => setMultiQueryRewrites(parseInt(e.target.value, 10) || 2)}
+        onBlur={() => updateConfig('MAX_QUERY_REWRITES', multiQueryRewrites)}
         min={1}
       />
     </div>

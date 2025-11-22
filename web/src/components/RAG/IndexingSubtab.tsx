@@ -1,6 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNotification } from '../../hooks/useNotification';
-import { NotificationContainer } from '../Notification';
 
 interface IndexStats {
   chunks?: number;
@@ -16,8 +14,6 @@ interface RepoInfo {
 }
 
 export function IndexingSubtab() {
-  const notification = useNotification();
-
   // Simple indexing state
   const [simpleRepo, setSimpleRepo] = useState<string>('');
   const [simpleDense, setSimpleDense] = useState<boolean>(true);
@@ -156,7 +152,7 @@ export function IndexingSubtab() {
 
   const handleSimpleIndex = async () => {
     if (!simpleRepo) {
-      notification.error('Please select a repository');
+      alert('Please select a repository');
       return;
     }
 
@@ -185,7 +181,7 @@ export function IndexingSubtab() {
 
   const handleStartIndexing = async () => {
     if (!indexRepo) {
-      notification.error('Please select a repository');
+      alert('Please select a repository');
       return;
     }
 
@@ -301,14 +297,14 @@ export function IndexingSubtab() {
       });
 
       if (response.ok) {
-        notification.success('Settings saved successfully');
+        alert('Settings saved successfully');
       } else {
         const error = await response.text();
-        notification.error(`Failed to save settings: ${error}`);
+        alert(`Failed to save settings: ${error}`);
       }
     } catch (error) {
       console.error('Failed to save settings:', error);
-      notification.error(`Error: ${error}`);
+      alert(`Error: ${error}`);
     }
   };
 
@@ -342,7 +338,7 @@ export function IndexingSubtab() {
       });
 
       if (response.ok) {
-        notification.success(`Applied ${activeProfile} profile`);
+        alert(`Applied ${activeProfile} profile`);
         await loadConfig();
       }
     } catch (error) {
@@ -356,8 +352,6 @@ export function IndexingSubtab() {
 
   return (
     <>
-      <NotificationContainer notifications={notification.notifications} onClose={notification.removeNotification} />
-      <div id="tab-rag-indexing" className="rag-subtab-content" style={{ padding: '24px' }}>
       {/* Current Repo Display */}
       <div style={{ background: 'var(--bg-elev1)', border: '2px solid var(--ok)', borderRadius: '8px', padding: '16px 24px', marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -472,21 +466,7 @@ export function IndexingSubtab() {
       <div className="settings-section" style={{ borderLeft: '3px solid var(--link)' }}>
         <h3>
           <span style={{ color: 'var(--link)' }}>●</span> Build Index
-          <span className="tooltip-wrap">
-            <span className="help-icon">?</span>
-            <div className="tooltip-bubble">
-              <span className="tt-title">Indexing Process</span>
-              Indexing processes your codebase to enable RAG:
-              <ul style={{ marginTop: '8px', paddingLeft: '16px' }}>
-                <li>Chunks code into semantic segments</li>
-                <li>Creates BM25 sparse index</li>
-                <li>Generates embeddings (OpenAI or local)</li>
-                <li>Stores vectors in Qdrant</li>
-              </ul>
-              <br />
-              Run after code changes for fresh results.
-            </div>
-          </span>
+          <span className="help-icon" data-tooltip="INDEXING_PROCESS">?</span>
         </h3>
 
         <div className="input-row">
@@ -1115,18 +1095,7 @@ export function IndexingSubtab() {
       <div className="settings-section" style={{ borderLeft: '3px solid var(--err)' }}>
         <h3>
           <span style={{ color: 'var(--err)' }}>●</span> Index Profiles
-          <span className="tooltip-wrap">
-            <span className="help-icon">?</span>
-            <div className="tooltip-bubble">
-              <span className="tt-title">Index Profiles</span>
-              Different index configurations for different use cases:
-              <ul style={{ marginTop: '8px', paddingLeft: '16px' }}>
-                <li><strong>shared:</strong> Fast BM25-only, no API calls</li>
-                <li><strong>full:</strong> BM25 + dense embeddings (best quality)</li>
-                <li><strong>dev:</strong> Small subset for testing</li>
-              </ul>
-            </div>
-          </span>
+          <span className="help-icon" data-tooltip="INDEX_PROFILES">?</span>
         </h3>
 
         <div className="input-row">
@@ -1162,7 +1131,6 @@ export function IndexingSubtab() {
           {activeProfile === 'dev' && 'Lightweight development profile for testing.'}
         </div>
       </div>
-    </div>
     </>
   );
 }

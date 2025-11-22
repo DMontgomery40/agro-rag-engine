@@ -26,6 +26,7 @@ def get_repo(repo_name: str):
 
 @router.patch("/api/repos/{repo_name}")
 def patch_repo(repo_name: str, payload: Dict[str, Any]):
+    """Update repository configuration in repos.json (not Pydantic - repos.json is separate from agro_config.json)."""
     ok = cfg.repos_patch(repo_name, payload)
     if not ok:
         return JSONResponse({"ok": False, "error": f"Repo '{repo_name}' not found"}, status_code=404)

@@ -6,10 +6,28 @@ import { useState, useEffect } from 'react';
 import { useAPI } from '@/hooks';
 
 interface GrafanaConfig {
-  url: string;
-  dashboardId: string;
-  apiKey?: string;
+  baseUrl: string;
+  dashboardUid: string;
+  dashboardSlug: string;
+  refresh?: string;
+  kiosk?: string;
+  authMode?: string;
+  orgId?: number;
+  embedEnabled?: boolean;
+  authToken?: string;
 }
+
+const DEFAULT_GRAFANA: GrafanaConfig = {
+  baseUrl: 'http://127.0.0.1:3000',
+  dashboardUid: 'agro-overview',
+  dashboardSlug: 'agro-overview',
+  refresh: '10s',
+  kiosk: 'tv',
+  authMode: 'anonymous',
+  orgId: 1,
+  embedEnabled: true,
+  authToken: ''
+};
 
 export function GrafanaDashboard() {
   const { api } = useAPI();
@@ -17,12 +35,12 @@ export function GrafanaDashboard() {
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('5m');
   const [refreshInterval, setRefreshInterval] = useState(30);
-  const [fullscreen, setFullscreen] = useState(false);
+  const [fullscreen, setFullscreen] = useState(true);
   const [iframeKey, setIframeKey] = useState(0);
 
   // Load Grafana configuration
   useEffect(() => {
-    loadConfig();
+    void loadConfig();
   }, []);
 
   const loadConfig = async () => {
@@ -31,21 +49,23 @@ export function GrafanaDashboard() {
       const response = await fetch(api('/grafana/config'));
       if (response.ok) {
         const data = await response.json();
-        setConfig(data);
-      } else {
-        // Use default config if API fails
         setConfig({
-          url: 'http://localhost:3000',
-          dashboardId: 'd/agro-metrics/agro-rag-metrics'
+          baseUrl: data.url || DEFAULT_GRAFANA.baseUrl,
+          dashboardUid: data.dashboardUid || DEFAULT_GRAFANA.dashboardUid,
+          dashboardSlug: data.dashboardSlug || data.dashboardId || DEFAULT_GRAFANA.dashboardSlug,
+          refresh: data.refresh || DEFAULT_GRAFANA.refresh,
+          kiosk: data.kiosk || DEFAULT_GRAFANA.kiosk,
+          authMode: data.authMode || DEFAULT_GRAFANA.authMode,
+          orgId: data.orgId !== undefined ? Number(data.orgId) : DEFAULT_GRAFANA.orgId,
+          embedEnabled: Boolean(data.embedEnabled ?? DEFAULT_GRAFANA.embedEnabled),
+          authToken: data.authToken || DEFAULT_GRAFANA.authToken
         });
+      } else {
+        setConfig(DEFAULT_GRAFANA);
       }
     } catch (error) {
       console.error('[GrafanaDashboard] Failed to load config:', error);
-      // Use default config
-      setConfig({
-        url: 'http://localhost:3000',
-        dashboardId: 'd/agro-metrics/agro-rag-metrics'
-      });
+      setConfig(DEFAULT_GRAFANA);
     } finally {
       setLoading(false);
     }
@@ -63,16 +83,22 @@ export function GrafanaDashboard() {
   const getGrafanaUrl = () => {
     if (!config) return '';
 
-    const baseUrl = config.url.replace(/\/$/, '');
+    const baseUrl = config.baseUrl.replace(/\/$/, '');
+    const slug = config.dashboardSlug || config.dashboardUid;
+    const authToken = config.authToken && config.authToken.includes('•') ? '' : (config.authToken || '');
     const params = new URLSearchParams({
       from: `now-${timeRange}`,
       to: 'now',
       refresh: `${refreshInterval}s`,
-      kiosk: 'tv',
-      theme: 'dark'
+      kiosk: config.kiosk || 'tv',
+      theme: 'dark',
     });
+    if (config.orgId) params.set('orgId', String(config.orgId));
+    if (authToken && (config.authMode || '').toLowerCase() === 'token') {
+      params.set('auth_token', authToken);
+    }
 
-    return `${baseUrl}/${config.dashboardId}?${params.toString()}`;
+    return `${baseUrl}/d/${encodeURIComponent(config.dashboardUid)}/${encodeURIComponent(slug)}?${params.toString()}`;
   };
 
   if (loading) {
@@ -122,6 +148,25 @@ export function GrafanaDashboard() {
         <div style={{ fontSize: '16px', color: 'var(--fg)' }}>Grafana Not Configured</div>
         <div style={{ fontSize: '13px', color: 'var(--fg-muted)' }}>
           Configure Grafana connection in the Config tab
+        </div>
+      </div>
+    );
+  }
+
+  if (config.embedEnabled === false) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+        padding: '24px',
+        border: '1px solid var(--line)',
+        borderRadius: '6px',
+        background: 'var(--card-bg)'
+      }}>
+        <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--fg)' }}>Grafana embedding is disabled</div>
+        <div style={{ fontSize: '13px', color: 'var(--fg-muted)' }}>
+          Enable embedding in the Config subtab to load the dashboard iframe.
         </div>
       </div>
     );
@@ -184,6 +229,7 @@ export function GrafanaDashboard() {
               fontSize: '12px'
             }}
             aria-label="Time range selector"
+            title="Select how far back Grafana should query data for the embedded dashboard"
           >
             <option value="5m">Last 5 minutes</option>
             <option value="15m">Last 15 minutes</option>
@@ -219,6 +265,7 @@ export function GrafanaDashboard() {
               fontSize: '12px'
             }}
             aria-label="Refresh interval selector"
+            title="How often the embedded dashboard should auto-refresh"
           >
             <option value="5">5s</option>
             <option value="10">10s</option>
@@ -246,6 +293,7 @@ export function GrafanaDashboard() {
             gap: '4px'
           }}
           aria-label="Refresh dashboard"
+          title="Force the Grafana iframe to reload now"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polyline points="23 4 23 10 17 10" />
@@ -272,6 +320,7 @@ export function GrafanaDashboard() {
             gap: '4px'
           }}
           aria-label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+          title={fullscreen ? 'Exit fullscreen view' : 'Open Grafana iframe fullscreen'}
         >
           {fullscreen ? (
             <>
@@ -309,6 +358,7 @@ export function GrafanaDashboard() {
             alignItems: 'center',
             gap: '4px'
           }}
+          title="Open this dashboard in a new browser tab"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
@@ -324,6 +374,7 @@ export function GrafanaDashboard() {
         <iframe
           key={iframeKey}
           src={getGrafanaUrl()}
+          id="grafana-iframe"
           style={{
             width: '100%',
             height: '100%',

@@ -726,13 +726,13 @@ def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final
     # SPAN: Vector Search (Qdrant)
     dense_pairs = []
     _vs_start = _time.time()
+    backend = _config_registry.get_str('VECTOR_BACKEND','qdrant').lower()
     if _tracer:
         with _tracer.start_as_current_span("agro.vector_search", attributes={"query": expanded_query, "topk": topk_dense}) as span:
             qc = QdrantClient(url=QDRANT_URL)
             coll = _config_registry.get_str('COLLECTION_NAME', f'code_chunks_{repo}')
             try:
                 e = _get_embedding(expanded_query, kind="query")
-                backend = _config_registry.get_str('VECTOR_BACKEND','qdrant').lower()
                 if backend != 'faiss':
                     dres = qc.query_points(
                         collection_name=coll,
@@ -759,7 +759,6 @@ def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final
             print(f"[hybrid_search] WARNING: Failed to get embedding for query: {ex}")
             e = []
         try:
-            backend = _config_registry.get_str('VECTOR_BACKEND','qdrant').lower()
             if backend == 'faiss':
                 dense_pairs = []
             else:
@@ -787,6 +786,17 @@ def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final
         # Mirror as API call metric (no cost/tokens for DB query)
         track_api_call(provider=APIProvider.QDRANT, endpoint="/query_points", method="POST",
                        duration_ms=vs_ms, status_code=200, tokens_estimated=0, cost_usd=0.0)
+    except Exception:
+        pass
+    # Emit trace event for vector search
+    try:
+        if trace is not None and hasattr(trace, 'add'):
+            trace.add('vector_search', {
+                'duration_ms': (_time.time() - _vs_start) * 1000,
+                'results': len(dense_pairs),
+                'repo': repo,
+                'backend': backend
+            })
     except Exception:
         pass
 
@@ -849,6 +859,15 @@ def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final
                     extra={"results": len(sparse_pairs), "repo": repo})
     except Exception:
         pass
+    try:
+        if trace is not None and hasattr(trace, 'add'):
+            trace.add('bm25_search', {
+                'duration_ms': (_time.time() - _bm_start) * 1000,
+                'results': len(sparse_pairs),
+                'repo': repo
+            })
+    except Exception:
+        pass
 
     card_chunk_ids: set = set()
     cards_retr = _load_cards_bm25(repo)
@@ -888,6 +907,16 @@ def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final
                     extra={"dense": len(dense_ids), "sparse": len(sparse_ids), "repo": repo})
     except Exception:
         pass
+    try:
+        if trace is not None and hasattr(trace, 'add'):
+            trace.add('rrf_fusion', {
+                'duration_ms': (_time.time() - _rrf0) * 1000,
+                'dense': len(dense_ids),
+                'sparse': len(sparse_ids),
+                'repo': repo
+            })
+    except Exception:
+        pass
     
     by_id = {pid: p for pid, p in (dense_pairs + sparse_pairs)}
     docs = [by_id[pid] for pid in fused if pid in by_id]
@@ -898,6 +927,16 @@ def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final
             from server.api_tracker import track_trace
             track_trace(step="hydrate", provider="local", model="chunks.jsonl", duration_ms=((_time.time()-_h0)*1000),
                         extra={"hydrated": sum(1 for d in docs if d.get('code')), "candidates": len(docs), "repo": repo})
+        except Exception:
+            pass
+        try:
+            if trace is not None and hasattr(trace, 'add'):
+                trace.add('hydrate', {
+                    'duration_ms': (_time.time() - _h0) * 1000,
+                    'hydrated': sum(1 for d in docs if d.get('code')),
+                    'candidates': len(docs),
+                    'repo': repo
+                })
         except Exception:
             pass
     # tracing: pre-rerank candidate snapshot
@@ -979,6 +1018,16 @@ def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final
                             extra={"candidates": len(docs), "top_k": final_k, "repo": repo})
             except Exception:
                 pass
+        try:
+            if trace is not None and hasattr(trace, 'add'):
+                trace.add('rerank', {
+                    'duration_ms': (_time.time() - _t0) * 1000,
+                    'candidates': len(docs),
+                    'top_k': final_k,
+                    'repo': repo
+                })
+        except Exception:
+            pass
 
     # Apply all scoring bonuses (CRITICAL: Must happen regardless of reranker backend)
     intent = _classify_query(query)
