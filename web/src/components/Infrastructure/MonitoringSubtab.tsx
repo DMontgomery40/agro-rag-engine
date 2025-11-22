@@ -1,7 +1,7 @@
 // AGRO - Monitoring Subtab Component
 // Grafana metrics display and alert configuration
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export function MonitoringSubtab() {
   const [errorRateThreshold, setErrorRateThreshold] = useState('5.0');
@@ -11,19 +11,77 @@ export function MonitoringSubtab() {
   const [endpointCallFreq, setEndpointCallFreq] = useState('10');
   const [sustainedDuration, setSustainedDuration] = useState('2');
   const [cohereRerankCalls, setCohereRerankCalls] = useState('30');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    loadAlertConfig();
+  }, []);
+
+  const api = (path: string) => {
+    const base = (window as any).API_BASE_URL || '';
+    return `${base}${path}`;
+  };
+
+  async function loadAlertConfig() {
+    try {
+      const response = await fetch(api('/monitoring/alert-thresholds'));
+      const data = await response.json();
+
+      // Load values from backend
+      setErrorRateThreshold(String(data.error_rate_threshold_percent || 5.0));
+      setLatencyP99(String(data.request_latency_p99_seconds || 5.0));
+      setTimeoutErrors(String(data.timeout_errors_per_5min || 10));
+      setRateLimitErrors(String(data.rate_limit_errors_per_5min || 5));
+      setEndpointCallFreq(String(data.endpoint_call_frequency_per_minute || 10));
+      setSustainedDuration(String(data.endpoint_frequency_sustained_minutes || 2));
+      setCohereRerankCalls(String(data.cohere_rerank_calls_per_minute || 30));
+
+      setLoading(false);
+    } catch (error) {
+      console.error('Failed to load alert config:', error);
+      setLoading(false);
+    }
+  }
 
   async function saveAlertConfig() {
-    const config = {
-      error_rate_threshold_percent: parseFloat(errorRateThreshold),
-      request_latency_p99_seconds: parseFloat(latencyP99),
-      timeout_errors_per_5min: parseInt(timeoutErrors),
-      rate_limit_errors_per_5min: parseInt(rateLimitErrors),
-      endpoint_call_frequency_per_minute: parseInt(endpointCallFreq),
-      endpoint_frequency_sustained_minutes: parseInt(sustainedDuration),
-      cohere_rerank_calls_per_minute: parseInt(cohereRerankCalls)
-    };
+    setSaving(true);
+    try {
+      const config = {
+        error_rate_threshold_percent: parseFloat(errorRateThreshold),
+        request_latency_p99_seconds: parseFloat(latencyP99),
+        timeout_errors_per_5min: parseInt(timeoutErrors),
+        rate_limit_errors_per_5min: parseInt(rateLimitErrors),
+        endpoint_call_frequency_per_minute: parseInt(endpointCallFreq),
+        endpoint_frequency_sustained_minutes: parseInt(sustainedDuration),
+        cohere_rerank_calls_per_minute: parseInt(cohereRerankCalls)
+      };
 
-    alert(`Alert configuration saved!\n${JSON.stringify(config, null, 2)}`);
+      const response = await fetch(api('/monitoring/alert-thresholds'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+      });
+
+      const data = await response.json();
+      if (data.status === 'ok') {
+        alert(`Alert configuration saved successfully! Updated ${data.updated} threshold(s).`);
+      } else {
+        alert(`Failed to save alert configuration: ${data.message || 'Unknown error'}`);
+      }
+    } catch (error: any) {
+      alert(`Error saving alert configuration: ${error.message}`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div style={{ padding: '20px', textAlign: 'center', color: 'var(--fg-muted)' }}>
+        Loading alert configuration...
+      </div>
+    );
   }
 
   return (
@@ -287,6 +345,7 @@ export function MonitoringSubtab() {
       <button
         className="small-button"
         onClick={saveAlertConfig}
+        disabled={saving}
         style={{
           width: '100%',
           background: 'var(--accent)',
@@ -295,7 +354,7 @@ export function MonitoringSubtab() {
           padding: '12px'
         }}
       >
-        Save Alert Configuration
+        {saving ? 'Saving...' : 'Save Alert Configuration'}
       </button>
     </div>
   );

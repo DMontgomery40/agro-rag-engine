@@ -172,15 +172,18 @@
         if (embList) setOpts(embList, embModels);
 
         // Default provider only; leave model empty so datalist shows all options on first focus
-        if (!$('#cost-provider').value && providers.length) $('#cost-provider').value = providers[0];
-        if (!$('#cost-model').value) $('#cost-model').value = '';
+        const costProvider = $('#cost-provider');
+        const costModel = $('#cost-model');
+        if (costProvider && !costProvider.value && providers.length) costProvider.value = providers[0];
+        if (costModel && !costModel.value) costModel.value = '';
 
         // Filter model options when provider changes AND update the input value
         const onProv = () => {
             const modelInput = $('#cost-model');
-            if (!modelInput || !modelList) return;
+            const costProviderEl = $('#cost-provider');
+            if (!modelInput || !modelList || !costProviderEl) return;
 
-            const p = $('#cost-provider').value.trim().toLowerCase();
+            const p = costProviderEl.value.trim().toLowerCase();
             const provModels = unique(models.filter(m => (m.provider||'').toLowerCase()===p && isGen(m)).map(m => m.model));
             if (!provModels.length) {
                 // Fall back to all inference models so the dropdown is still usable
@@ -765,6 +768,10 @@
 
             const ul = $('#profiles-ul');
             const tooltip = $('#profile-tooltip');
+            if (!ul) {
+                // Element doesn't exist in React app, skip DOM manipulation
+                return;
+            }
             ul.innerHTML = '';
 
             state.profiles.forEach((name) => {

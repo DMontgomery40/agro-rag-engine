@@ -9,15 +9,26 @@ from retrieval.hybrid_search import search_routed, search_routed_multi
 
 load_dotenv()
 
+# Module-level cached configuration
+try:
+    from server.services.config_registry import get_config_registry
+    _config_registry = get_config_registry()
+except ImportError:
+    _config_registry = None
+
 def _resolve_golden_path() -> str:
     """Resolve the golden questions path robustly.
 
     Priority:
-      1) Respect $GOLDEN_PATH if it exists
-      2) If $GOLDEN_PATH is a relative file that doesn't exist, try under data/
+      1) Respect config registry or $GOLDEN_PATH if it exists
+      2) If path is relative and doesn't exist, try under data/
       3) Fallback to repo-standard 'data/golden.json'
     """
-    env_val = os.getenv('GOLDEN_PATH')
+    if _config_registry is not None:
+        env_val = _config_registry.get_str('GOLDEN_PATH', 'data/evaluation_dataset.json')
+    else:
+        env_val = os.getenv('GOLDEN_PATH', 'data/evaluation_dataset.json')
+
     if env_val:
         p = Path(env_val)
         if p.exists():
@@ -31,9 +42,16 @@ def _resolve_golden_path() -> str:
     return 'data/golden.json'
 
 GOLDEN_PATH = _resolve_golden_path()
-USE_MULTI = os.getenv('EVAL_MULTI','1') == '1'
-FINAL_K = int(os.getenv('EVAL_FINAL_K','5'))
-MULTI_M = int(os.getenv('EVAL_MULTI_M', '10'))  # Multi-query expansion count
+
+# Load eval config from registry
+if _config_registry is not None:
+    USE_MULTI = _config_registry.get_int('EVAL_MULTI', 1) == 1
+    FINAL_K = _config_registry.get_int('EVAL_FINAL_K', 5)
+    MULTI_M = _config_registry.get_int('EVAL_MULTI_M', 10)
+else:
+    USE_MULTI = os.getenv('EVAL_MULTI','1') == '1'
+    FINAL_K = int(os.getenv('EVAL_FINAL_K','5'))
+    MULTI_M = int(os.getenv('EVAL_MULTI_M', '10'))
 
 """
 Golden file format (golden.json):
@@ -59,6 +77,7 @@ def main():
     t0 = time.time()
     for i, row in enumerate(gold, 1):
         q = row['q']
+        # REPO is infrastructure, not tunable - keep as env var
         repo = row.get('repo') or os.getenv('REPO','project')
         expect = row.get('expect_paths') or []
         if USE_MULTI:

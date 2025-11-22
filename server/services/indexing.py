@@ -7,6 +7,10 @@ from typing import Any, Dict, List
 
 from common.paths import repo_root
 from server.index_stats import get_index_stats as _get_index_stats
+from server.services.config_registry import get_config_registry
+
+# Module-level config registry
+_config_registry = get_config_registry()
 
 _INDEX_STATUS: List[str] = []
 _INDEX_METADATA: Dict[str, Any] = {}
@@ -21,7 +25,7 @@ def start(payload: Dict[str, Any] | None = None) -> Dict[str, Any]:
     def run_index():
         global _INDEX_STATUS, _INDEX_METADATA
         try:
-            repo = os.getenv("REPO", "agro")
+            repo = _config_registry.get_str("REPO", "agro")
             _INDEX_STATUS.append(f"Indexing repository: {repo}")
             # Ensure the indexer resolves repo paths correctly and uses the same interpreter
             env = {**os.environ, "REPO": repo, "REPO_ROOT": str(repo_root())}

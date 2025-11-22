@@ -6,8 +6,23 @@ from server.env_model import generate_text
 from common.config_loader import out_dir
 
 load_dotenv()
+
+# Module-level cached configuration
+try:
+    from server.services.config_registry import get_config_registry
+    _config_registry = get_config_registry()
+except ImportError:
+    _config_registry = None
+
+# REPO is infrastructure (not tunable) - keep as env var
 REPO = os.getenv('REPO','project').strip()
-MAX_CHUNKS = int(os.getenv('CARDS_MAX') or '0')
+
+# CARDS_MAX is tunable - load from config registry
+if _config_registry is not None:
+    MAX_CHUNKS = _config_registry.get_int('CARDS_MAX', 100)
+else:
+    MAX_CHUNKS = int(os.getenv('CARDS_MAX') or '0')
+
 BASE = out_dir(REPO)
 CHUNKS = os.path.join(BASE, 'chunks.jsonl')
 CARDS = os.path.join(BASE, 'cards.jsonl')

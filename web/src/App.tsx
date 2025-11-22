@@ -68,7 +68,8 @@ function App() {
         await import('./modules/config.js');
         await import('./modules/health.js');
 
-        // 7. Feature modules (order doesn't matter as much)
+        // 7. Feature modules (ensure feedback tools load before chat)
+        await import('./modules/reranker.js');
         await Promise.all([
           import('./modules/git-hooks.js'),
           import('./modules/git-commit-meta.js'),
@@ -102,11 +103,10 @@ function App() {
           // import('./modules/golden_questions.js'),
           // import('./modules/eval_runner.js'),
           import('./modules/eval_history.js'),
-          import('./modules/chat.js'),
+          // Chat is React-native now; keep legacy reranker feedback only
           import('./modules/error-helpers.js'),
           import('./modules/layout_fix.js'),
           import('./modules/live-terminal.js'),
-          import('./modules/reranker.js'),
           import('./modules/trace.js'),
           import('./modules/alerts.js'),
           import('./modules/ux-feedback.js'),

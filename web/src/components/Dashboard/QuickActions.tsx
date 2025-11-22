@@ -432,7 +432,7 @@ export function QuickActions() {
           )}
         </div>
 
-        <style jsx>{`
+        <style>{`
           @keyframes shine {
             0% {
               transform: translateX(-100%);

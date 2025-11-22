@@ -1,9 +1,11 @@
 import click
 import os
 from rich.console import Console
+from server.services.config_registry import get_config_registry
 from cli.commands.utils import post, get
 
 console = Console()
+_config_registry = get_config_registry()
 
 HELP = {
     "title": "Reranker",
@@ -62,11 +64,11 @@ def status():
     console.print(get("/api/reranker/status"))
 
 @click.command()
-@click.option("--epochs", default=int(os.getenv("RERANKER_TRAIN_EPOCHS", "2")), help="Number of training epochs")
-@click.option("--batch", default=int(os.getenv("RERANKER_TRAIN_BATCH", "16")), help="Training batch size")
-@click.option("--max-length", default=int(os.getenv("RERANKER_TRAIN_MAXLEN", "512")), help="Max sequence length")
-@click.option("--triplets", default=os.getenv("AGRO_TRIPLETS_PATH"), help="Path to triplets.jsonl")
-@click.option("--out", default=os.getenv("AGRO_RERANKER_MODEL_PATH"), help="Output directory for model")
+@click.option("--epochs", default=lambda: _config_registry.get_int("RERANKER_TRAIN_EPOCHS", 2), help="Number of training epochs")
+@click.option("--batch", default=lambda: _config_registry.get_int("RERANKER_TRAIN_BATCH", 16), help="Training batch size")
+@click.option("--max-length", default=lambda: _config_registry.get_int("AGRO_RERANKER_MAXLEN", 512), help="Max sequence length")
+@click.option("--triplets", default=lambda: _config_registry.get_str("AGRO_TRIPLETS_PATH", "data/training/triplets.jsonl"), help="Path to triplets.jsonl")
+@click.option("--out", default=lambda: _config_registry.get_str("AGRO_RERANKER_MODEL_PATH", "models/cross-encoder-agro"), help="Output directory for model")
 @click.option("--base", help="Base model to fine-tune")
 def train(epochs, batch, max_length, triplets, out, base):
     """Trigger reranker training."""
@@ -82,10 +84,10 @@ def train(epochs, batch, max_length, triplets, out, base):
     console.print(res)
 
 @click.command()
-@click.option("--log-path", default=os.getenv("AGRO_LOG_PATH"), help="Source logs path")
-@click.option("--out-path", default=os.getenv("AGRO_TRIPLETS_PATH"), help="Output triplets path")
-@click.option("--mode", type=click.Choice(["append", "replace"]), default=os.getenv("AGRO_RERANKER_MINE_MODE", "append"), help="Mining mode")
-@click.option("--reset", is_flag=True, default=os.getenv("AGRO_RERANKER_MINE_RESET", "0") == "1", help="Reset output file before mining")
+@click.option("--log-path", default=lambda: _config_registry.get_str("AGRO_LOG_PATH", "data/logs/queries.jsonl"), help="Source logs path")
+@click.option("--out-path", default=lambda: _config_registry.get_str("AGRO_TRIPLETS_PATH", "data/training/triplets.jsonl"), help="Output triplets path")
+@click.option("--mode", type=click.Choice(["append", "replace"]), default=lambda: _config_registry.get_str("AGRO_RERANKER_MINE_MODE", "append"), help="Mining mode")
+@click.option("--reset", is_flag=True, default=lambda: _config_registry.get_bool("AGRO_RERANKER_MINE_RESET", False), help="Reset output file before mining")
 def mine(log_path, out_path, mode, reset):
     """Trigger triplet mining from logs."""
     payload = {}

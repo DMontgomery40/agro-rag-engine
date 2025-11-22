@@ -106,6 +106,17 @@ _LAYER_BONUS_RETRIEVAL = _config_registry.get_float('LAYER_BONUS_RETRIEVAL', 0.1
 _LAYER_BONUS_INDEXER = _config_registry.get_float('LAYER_BONUS_INDEXER', 0.15)
 _VENDOR_PENALTY = _config_registry.get_float('VENDOR_PENALTY', -0.1)
 _FRESHNESS_BONUS = _config_registry.get_float('FRESHNESS_BONUS', 0.05)
+_USE_SEMANTIC_SYNONYMS = _config_registry.get_int('USE_SEMANTIC_SYNONYMS', 1)
+_TOPK_DENSE = _config_registry.get_int('TOPK_DENSE', 75)
+_TOPK_SPARSE = _config_registry.get_int('TOPK_SPARSE', 75)
+_VENDOR_MODE = _config_registry.get_str('VENDOR_MODE', 'prefer_first_party')
+_HYDRATION_MODE = _config_registry.get_str('HYDRATION_MODE', 'lazy')
+_HYDRATION_MAX_CHARS = _config_registry.get_int('HYDRATION_MAX_CHARS', 2000)
+_DISABLE_RERANK = _config_registry.get_int('DISABLE_RERANK', 0)
+_PROJECT_PATH_BOOSTS = _config_registry.get_str('project_PATH_BOOSTS', 'app/,lib/,config/,scripts/,server/,api/,api/app,app/services,app/routers,api/admin_ui,app/plugins')
+_QDRANT_URL = _config_registry.get_str('QDRANT_URL', 'http://127.0.0.1:6333')
+_REPO = _config_registry.get_str('REPO', 'project')
+_COLLECTION_NAME = _config_registry.get_str('COLLECTION_NAME', f'code_chunks_{_config_registry.get_str("REPO", "project")}')
 
 
 def reload_config():
@@ -118,6 +129,9 @@ def reload_config():
     global _FINAL_K, _BM25_WEIGHT, _VECTOR_WEIGHT, _CARD_SEARCH_ENABLED, _MULTI_QUERY_M
     global _QUERY_EXPANSION_ENABLED, _LAYER_BONUS_GUI, _LAYER_BONUS_RETRIEVAL
     global _LAYER_BONUS_INDEXER, _VENDOR_PENALTY, _FRESHNESS_BONUS
+    global _USE_SEMANTIC_SYNONYMS, _TOPK_DENSE, _TOPK_SPARSE, _VENDOR_MODE
+    global _HYDRATION_MODE, _HYDRATION_MAX_CHARS, _DISABLE_RERANK
+    global _PROJECT_PATH_BOOSTS, _QDRANT_URL, _REPO, _COLLECTION_NAME
     _RRF_K_DIV = _config_registry.get_int('RRF_K_DIV', 60)
     _CARD_BONUS = _config_registry.get_float('CARD_BONUS', 0.08)
     _FILENAME_BOOST_EXACT = _config_registry.get_float('FILENAME_BOOST_EXACT', 1.5)
@@ -133,6 +147,17 @@ def reload_config():
     _LAYER_BONUS_INDEXER = _config_registry.get_float('LAYER_BONUS_INDEXER', 0.15)
     _VENDOR_PENALTY = _config_registry.get_float('VENDOR_PENALTY', -0.1)
     _FRESHNESS_BONUS = _config_registry.get_float('FRESHNESS_BONUS', 0.05)
+    _USE_SEMANTIC_SYNONYMS = _config_registry.get_int('USE_SEMANTIC_SYNONYMS', 1)
+    _TOPK_DENSE = _config_registry.get_int('TOPK_DENSE', 75)
+    _TOPK_SPARSE = _config_registry.get_int('TOPK_SPARSE', 75)
+    _VENDOR_MODE = _config_registry.get_str('VENDOR_MODE', 'prefer_first_party')
+    _HYDRATION_MODE = _config_registry.get_str('HYDRATION_MODE', 'lazy')
+    _HYDRATION_MAX_CHARS = _config_registry.get_int('HYDRATION_MAX_CHARS', 2000)
+    _DISABLE_RERANK = _config_registry.get_int('DISABLE_RERANK', 0)
+    _PROJECT_PATH_BOOSTS = _config_registry.get_str('project_PATH_BOOSTS', 'app/,lib/,config/,scripts/,server/,api/,api/app,app/services,app/routers,api/admin_ui,app/plugins')
+    _QDRANT_URL = _config_registry.get_str('QDRANT_URL', 'http://127.0.0.1:6333')
+    _REPO = _config_registry.get_str('REPO', 'project')
+    _COLLECTION_NAME = _config_registry.get_str('COLLECTION_NAME', f'code_chunks_{_config_registry.get_str("REPO", "project")}')
 
 
 def _classify_query(q: str) -> str:
@@ -383,10 +408,9 @@ def _path_bonus(fp: str, repo: str | None = None) -> float:
 
 
 def _project_path_boost(fp: str, repo_tag: str) -> float:
-    import os as _os
     if (repo_tag or '').lower() != 'project':
         return 0.0
-    cfg = _os.getenv('project_PATH_BOOSTS', 'app/,lib/,config/,scripts/,server/,api/,api/app,app/services,app/routers,api/admin_ui,app/plugins')
+    cfg = _PROJECT_PATH_BOOSTS
     tokens = [t.strip().lower() for t in cfg.split(',') if t.strip()]
     s = (fp or '').lower()
     bonus = 0.0
@@ -409,10 +433,11 @@ try:
 except Exception:
     pass
 
-QDRANT_URL = os.getenv('QDRANT_URL', 'http://127.0.0.1:6333')
-REPO = os.getenv('REPO', 'project')
-VENDOR_MODE = os.getenv('VENDOR_MODE', 'prefer_first_party')
-COLLECTION = os.getenv('COLLECTION_NAME', f'code_chunks_{REPO}')
+# Use cached config values instead of os.getenv()
+QDRANT_URL = _QDRANT_URL
+REPO = _REPO
+VENDOR_MODE = _VENDOR_MODE
+COLLECTION = _COLLECTION_NAME
 
 
 def _lazy_import_openai():
@@ -458,7 +483,7 @@ def _get_embedding(text: str, kind: str = "query") -> list[float]:
     Returns:
         Embedding vector as list of floats
     """
-    et = (os.getenv("EMBEDDING_TYPE", "openai") or "openai").lower()
+    et = _config_registry.get_str("EMBEDDING_TYPE", "openai").lower()
     if et == "mxbai":
         global _mxbai_embed_model
         if _mxbai_embed_model is None:
@@ -473,7 +498,7 @@ def _get_embedding(text: str, kind: str = "query") -> list[float]:
             prefixed_text = text
             
         # Get configurable dimensions (MXBAI supports Matryoshka)
-        dim = int(os.getenv("EMBEDDING_DIM", "1024"))
+        dim = _config_registry.get_int("EMBEDDING_DIM", 1024)
         embedding = _mxbai_embed_model.encode([prefixed_text], normalize_embeddings=True, show_progress_bar=False)[0]
         
         # Truncate to desired dimensions if needed
@@ -486,7 +511,7 @@ def _get_embedding(text: str, kind: str = "query") -> list[float]:
         from server.api_tracker import track_api_call, APIProvider
 
         vo = _lazy_import_voyage()
-        voyage_model = os.getenv('VOYAGE_MODEL', 'voyage-code-3')
+        voyage_model = _config_registry.get_str('VOYAGE_MODEL', 'voyage-code-3')
         start = time.time()
         out = vo.embed([text], model=voyage_model, input_type=kind, output_dimension=512)
         duration_ms = (time.time() - start) * 1000
@@ -512,14 +537,14 @@ def _get_embedding(text: str, kind: str = "query") -> list[float]:
         if _local_embed_model is None:
             from sentence_transformers import SentenceTransformer
             # Use configurable local embedding model
-            local_model = os.getenv('EMBEDDING_MODEL_LOCAL', 'BAAI/bge-small-en-v1.5')
+            local_model = _config_registry.get_str('EMBEDDING_MODEL_LOCAL', 'BAAI/bge-small-en-v1.5')
             _local_embed_model = SentenceTransformer(local_model)
         return _local_embed_model.encode([text], normalize_embeddings=True, show_progress_bar=False)[0].tolist()
     import time
     from server.api_tracker import track_api_call, APIProvider
 
     client = _lazy_import_openai()
-    embedding_model = os.getenv('EMBEDDING_MODEL', 'text-embedding-3-large')
+    embedding_model = _config_registry.get_str('EMBEDDING_MODEL', 'text-embedding-3-large')
 
     start = time.time()
     resp = client.embeddings.create(input=text, model=embedding_model)
@@ -695,7 +720,7 @@ def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final
         return []
     
     # Apply synonym expansion if enabled
-    use_synonyms = str(os.getenv('USE_SEMANTIC_SYNONYMS', '1')).strip().lower() in {'1', 'true', 'on'}
+    use_synonyms = bool(_USE_SEMANTIC_SYNONYMS)
     expanded_query = expand_query_with_synonyms(query, repo, max_expansions=3) if use_synonyms else query
     
     # SPAN: Vector Search (Qdrant)
@@ -704,10 +729,10 @@ def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final
     if _tracer:
         with _tracer.start_as_current_span("agro.vector_search", attributes={"query": expanded_query, "topk": topk_dense}) as span:
             qc = QdrantClient(url=QDRANT_URL)
-            coll = os.getenv('COLLECTION_NAME', f'code_chunks_{repo}')
+            coll = _config_registry.get_str('COLLECTION_NAME', f'code_chunks_{repo}')
             try:
                 e = _get_embedding(expanded_query, kind="query")
-                backend = (os.getenv('VECTOR_BACKEND','qdrant') or 'qdrant').lower()
+                backend = _config_registry.get_str('VECTOR_BACKEND','qdrant').lower()
                 if backend != 'faiss':
                     dres = qc.query_points(
                         collection_name=coll,
@@ -727,14 +752,14 @@ def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final
     else:
         # No tracing
         qc = QdrantClient(url=QDRANT_URL)
-        coll = os.getenv('COLLECTION_NAME', f'code_chunks_{repo}')
+        coll = _config_registry.get_str('COLLECTION_NAME', f'code_chunks_{repo}')
         try:
             e = _get_embedding(expanded_query, kind="query")
         except Exception as ex:
             print(f"[hybrid_search] WARNING: Failed to get embedding for query: {ex}")
             e = []
         try:
-            backend = (os.getenv('VECTOR_BACKEND','qdrant') or 'qdrant').lower()
+            backend = _config_registry.get_str('VECTOR_BACKEND','qdrant').lower()
             if backend == 'faiss':
                 dense_pairs = []
             else:
@@ -757,7 +782,7 @@ def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final
     try:
         from server.api_tracker import track_trace, track_api_call, APIProvider
         vs_ms = (_time.time() - _vs_start) * 1000
-        track_trace(step="vector_search", provider="qdrant", model=os.getenv('COLLECTION_NAME', f'code_chunks_{repo}'),
+        track_trace(step="vector_search", provider="qdrant", model=_config_registry.get_str('COLLECTION_NAME', f'code_chunks_{repo}'),
                     duration_ms=vs_ms, extra={"results": len(dense_pairs), "repo": repo})
         # Mirror as API call metric (no cost/tokens for DB query)
         track_api_call(provider=APIProvider.QDRANT, endpoint="/query_points", method="POST",
@@ -866,8 +891,7 @@ def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final
     
     by_id = {pid: p for pid, p in (dense_pairs + sparse_pairs)}
     docs = [by_id[pid] for pid in fused if pid in by_id]
-    HYDRATION_MODE = (os.getenv('HYDRATION_MODE', 'lazy') or 'lazy').lower()
-    if HYDRATION_MODE != 'none':
+    if _HYDRATION_MODE.lower() != 'none':
         _h0 = _time.time()
         _hydrate_docs_inplace(repo, docs)
         try:
@@ -925,7 +949,7 @@ def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final
     
     # SPAN: Cross-Encoder Reranking
     # Skip local reranking if Cohere will be used in search_routed_multi()
-    rerank_backend = (os.getenv('RERANK_BACKEND', 'local') or 'local').lower()
+    rerank_backend = _config_registry.get_str('RERANKER_BACKEND', 'local').lower()
     skip_local_rerank = (rerank_backend == 'cohere')  # Cohere will rerank later
     
     if not skip_local_rerank:
@@ -940,8 +964,8 @@ def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final
                 span.set_attribute("reranked_count", len(docs))
                 try:
                     from server.api_tracker import track_trace
-                    track_trace(step="cross_encoder_rerank", provider=os.getenv('RERANK_BACKEND','local'),
-                                model=os.getenv('RERANKER_MODEL', ''), duration_ms=((_time.time()-_t0)*1000),
+                    track_trace(step="cross_encoder_rerank", provider=_config_registry.get_str('RERANKER_BACKEND','local'),
+                                model=_config_registry.get_str('RERANKER_MODEL', ''), duration_ms=((_time.time()-_t0)*1000),
                                 extra={"candidates": len(docs), "top_k": final_k, "repo": repo})
                 except Exception:
                     pass
@@ -950,8 +974,8 @@ def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final
             docs = ce_rerank(query, docs, top_k=final_k, trace=trace)
             try:
                 from server.api_tracker import track_trace
-                track_trace(step="cross_encoder_rerank", provider=os.getenv('RERANK_BACKEND','local'),
-                            model=os.getenv('RERANKER_MODEL', ''), duration_ms=((_time.time()-_t0)*1000),
+                track_trace(step="cross_encoder_rerank", provider=_config_registry.get_str('RERANKER_BACKEND','local'),
+                            model=_config_registry.get_str('RERANKER_MODEL', ''), duration_ms=((_time.time()-_t0)*1000),
                             extra={"candidates": len(docs), "top_k": final_k, "repo": repo})
             except Exception:
                 pass
@@ -984,7 +1008,7 @@ def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final
         score += _path_bonus(fp, repo)
         score += _project_layer_bonus(layer, intent)
         score += _provider_plugin_hint(fp, d.get('code', '') or '')
-        score += _origin_bonus(d.get('origin', ''), os.getenv('VENDOR_MODE', VENDOR_MODE))
+        score += _origin_bonus(d.get('origin', ''), _VENDOR_MODE)
         score += _feature_bonus(query, fp, d.get('code', '') or '')
         d['rerank_score'] = score
     
@@ -1019,7 +1043,7 @@ def _hydrate_docs_inplace(repo: str, docs: list[dict]) -> None:
     if not needed_ids and not needed_hashes:
         return
     jl = os.path.join(out_dir(repo), 'chunks.jsonl')
-    max_chars = int(os.getenv('HYDRATION_MAX_CHARS', '2000') or '2000')
+    max_chars = _HYDRATION_MAX_CHARS
     found_by_id: dict[str, str] = {}
     found_by_hash: dict[str, str] = {}
     try:
@@ -1119,7 +1143,7 @@ def route_repo(query: str, default_repo: str | None = None) -> str:
             cand = cand.strip()
             if cand:
                 return cand
-        return (default_repo or os.getenv('REPO', 'project') or 'project').strip()
+        return (default_repo or _REPO or 'project').strip()
 
 
 def search_routed(query: str, repo_override: str | None = None, final_k: int = 10, trace: object | None = None):
@@ -1142,7 +1166,7 @@ def search_routed(query: str, repo_override: str | None = None, final_k: int = 1
     Returns:
         Search results
     """
-    repo = (repo_override or route_repo(query, default_repo=os.getenv('REPO', 'project')) or os.getenv('REPO', 'project')).strip()
+    repo = (repo_override or route_repo(query, default_repo=_REPO) or _REPO).strip()
     return search(query, repo=repo, final_k=final_k, trace=trace)
 
 
@@ -1201,7 +1225,7 @@ def search_routed_multi(query: str, repo_override: str | None = None, m: int = 4
     Returns:
         Top-k ranked search results
     """
-    repo = (repo_override or route_repo(query) or os.getenv('REPO', 'project')).strip()
+    repo = (repo_override or route_repo(query) or _REPO).strip()
     variants = expand_queries(query, m=m)
     try:
         if trace is not None and hasattr(trace, 'add'):
@@ -1211,10 +1235,10 @@ def search_routed_multi(query: str, repo_override: str | None = None, m: int = 4
                 'query_original': query,
                 'query_rewrites': variants[1:] if len(variants) > 1 else [],
                 'knobs': {
-                    'topk_sparse': int(os.getenv('TOPK_SPARSE', '75') or 75),
-                    'topk_dense': int(os.getenv('TOPK_DENSE', '75') or 75),
+                    'topk_sparse': _TOPK_SPARSE,
+                    'topk_dense': _TOPK_DENSE,
                     'final_k': int(final_k),
-                    'hydration_mode': (os.getenv('HYDRATION_MODE', 'lazy') or 'lazy'),
+                    'hydration_mode': _HYDRATION_MODE,
                 },
             })
     except Exception:
@@ -1241,6 +1265,9 @@ def search_routed_multi(query: str, repo_override: str | None = None, m: int = 4
         uniq = code_docs + other_docs  # Code first
     
     try:
+        # Allow callers to disable reranking for fast smoke paths
+        if bool(_DISABLE_RERANK):
+            return uniq[:final_k]
         from .rerank import rerank_results as _rr
         reranked = _rr(query, uniq, top_k=final_k)
         _apply_filename_boosts(reranked, query)

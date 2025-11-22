@@ -97,8 +97,10 @@
 
         // Seed cost panel defaults from pricing if fields are empty
         if (state.prices && Array.isArray(state.prices.models) && state.prices.models.length) {
-            if (!$('#cost-provider').value) $('#cost-provider').value = state.prices.models[0].provider || '';
-            if (!$('#cost-model').value) $('#cost-model').value = state.prices.models[0].model || '';
+            const costProviderEl = $('#cost-provider');
+            const costModelEl = $('#cost-model');
+            if (costProviderEl && !costProviderEl.value) costProviderEl.value = state.prices.models[0].provider || '';
+            if (costModelEl && !costModelEl.value) costModelEl.value = state.prices.models[0].model || '';
         }
 
         // Cost panel autopopulate from env
@@ -113,8 +115,14 @@
             else if (env.OPENAI_API_KEY) provGuess = 'openai';
             else if (env.ANTHROPIC_API_KEY) provGuess = 'anthropic';
             else if (env.GOOGLE_API_KEY) provGuess = 'google';
-            if (provGuess) $('#cost-provider').value = provGuess;
-            if (env.GEN_MODEL) $('#cost-model').value = env.GEN_MODEL;
+            if (provGuess) {
+                const provEl = $('#cost-provider');
+                if (provEl) provEl.value = provGuess;
+            }
+            if (env.GEN_MODEL) {
+                const modelEl = $('#cost-model');
+                if (modelEl) modelEl.value = env.GEN_MODEL;
+            }
 
             // Embeddings
             if (env.EMBEDDING_TYPE) {

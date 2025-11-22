@@ -16,8 +16,15 @@ except Exception:  # fallback stub to avoid crashes if requests not present
 
 logger = logging.getLogger(__name__)
 
+# Module-level cached configuration
+try:
+    from server.services.config_registry import get_config_registry
+    _config_registry = get_config_registry()
+except ImportError:
+    _config_registry = None
+
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
-monitoring_router = APIRouter(prefix="/monitoring", tags=["monitoring"])
+monitoring_router = APIRouter(prefix="/api/monitoring", tags=["monitoring"])
 
 # Alert history log file
 ALERT_LOG = Path(__file__).parent.parent / "data" / "logs" / "alerts.jsonl"
@@ -391,7 +398,11 @@ async def get_frequency_monitoring() -> Dict[str, Any]:
 @monitoring_router.get("/top-queries")
 async def get_top_queries(limit: int = 20) -> Dict[str, Any]:
     """Return top queries and basic attribution from logs to spot spam like 'test'."""
-    log_path = Path(os.getenv("AGRO_LOG_PATH", "data/logs/queries.jsonl"))
+    if _config_registry is not None:
+        log_path_str = _config_registry.get_str("AGRO_LOG_PATH", "data/logs/queries.jsonl")
+    else:
+        log_path_str = os.getenv("AGRO_LOG_PATH", "data/logs/queries.jsonl")
+    log_path = Path(log_path_str)
     counts: Dict[str, int] = {}
     by_query_route: Dict[str, Dict[str, int]] = {}
     by_query_ip: Dict[str, Dict[str, int]] = {}

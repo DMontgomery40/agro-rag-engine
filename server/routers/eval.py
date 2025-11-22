@@ -10,8 +10,10 @@ from typing import Dict, Any
 from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from server.utils import atomic_write_json, read_json
+from server.services.config_registry import get_config_registry
 
 router = APIRouter()
+_config = get_config_registry()
 
 # Module-level state (shared within process)
 _EVAL_STATUS: Dict[str, Any] = {
@@ -58,13 +60,9 @@ def eval_baseline_save() -> Dict[str, Any]:
     if _EVAL_STATUS["results"] is None:
         raise HTTPException(status_code=400, detail="No evaluation results to save")
 
-    # Prefer data/evals, fallback to root if overridden or missing
-    env_bp = os.getenv("BASELINE_PATH")
-    if env_bp:
-        baseline_path = Path(env_bp)
-    else:
-        candidate = Path("data/evals/eval_baseline.json")
-        baseline_path = candidate if candidate.parent.exists() else Path("eval_baseline.json")
+    # Get baseline path from config registry
+    baseline_path = Path(_config.get_str("BASELINE_PATH", "data/evals/eval_baseline.json"))
+    baseline_path.parent.mkdir(parents=True, exist_ok=True)
     atomic_write_json(baseline_path, _EVAL_STATUS["results"])
     return {"ok": True, "path": str(baseline_path)}
 
@@ -74,12 +72,8 @@ def eval_baseline_compare() -> Dict[str, Any]:
     if _EVAL_STATUS["results"] is None:
         raise HTTPException(status_code=400, detail="No current evaluation results")
 
-    env_bp = os.getenv("BASELINE_PATH")
-    if env_bp:
-        baseline_path = Path(env_bp)
-    else:
-        candidate = Path("data/evals/eval_baseline.json")
-        baseline_path = candidate if candidate.exists() else Path("eval_baseline.json")
+    # Get baseline path from config registry
+    baseline_path = Path(_config.get_str("BASELINE_PATH", "data/evals/eval_baseline.json"))
     if not baseline_path.exists():
         return {"ok": False, "message": "No baseline found"}
 

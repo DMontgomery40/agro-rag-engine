@@ -17,20 +17,20 @@ export default function AdminTab() {
       {/* Subtab navigation */}
       <AdminSubtabs activeSubtab={activeSubtab} onSubtabChange={setActiveSubtab} />
 
-      {/* All subtabs rendered with visibility controlled by className */}
-      <div id="tab-admin-general" className={`admin-subtab-content ${activeSubtab === 'general' ? 'active' : ''}`}>
+      {/* All subtabs rendered with visibility controlled by style */}
+      <div id="tab-admin-general" style={{ display: activeSubtab === 'general' ? 'block' : 'none' }}>
         <GeneralSubtab />
       </div>
 
-      <div id="tab-admin-git" className={`admin-subtab-content ${activeSubtab === 'git' ? 'active' : ''}`}>
+      <div id="tab-admin-git" style={{ display: activeSubtab === 'git' ? 'block' : 'none' }}>
         <GitIntegrationSubtab />
       </div>
 
-      <div id="tab-admin-secrets" className={`admin-subtab-content ${activeSubtab === 'secrets' ? 'active' : ''}`}>
+      <div id="tab-admin-secrets" style={{ display: activeSubtab === 'secrets' ? 'block' : 'none' }}>
         <SecretsSubtab />
       </div>
 
-      <div id="tab-admin-integrations" className={`admin-subtab-content ${activeSubtab === 'integrations' ? 'active' : ''}`}>
+      <div id="tab-admin-integrations" style={{ display: activeSubtab === 'integrations' ? 'block' : 'none' }}>
         <IntegrationsSubtab />
       </div>
     </div>

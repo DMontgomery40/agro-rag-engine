@@ -2,6 +2,7 @@
 // MCP Server connection and configuration
 
 import { useState, useEffect } from 'react';
+import { configApi } from '@/api/config';
 
 interface MCPServer {
   name: string;
@@ -16,15 +17,30 @@ export function MCPSubtab() {
   const [serverUrl, setServerUrl] = useState('http://127.0.0.1:8013/mcp');
   const [apiKey, setApiKey] = useState('');
   const [testResult, setTestResult] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     checkMCPStatus();
+    loadMCPConfig();
   }, []);
 
   const api = (path: string) => {
     const base = (window as any).API_BASE_URL || '';
     return `${base}${path}`;
   };
+
+  async function loadMCPConfig() {
+    try {
+      const config = await configApi.load();
+      const host = config.env?.MCP_HTTP_HOST || '127.0.0.1';
+      const port = config.env?.MCP_HTTP_PORT || '8013';
+      const path = config.env?.MCP_HTTP_PATH || '/mcp';
+      setServerUrl(`http://${host}:${port}${path}`);
+    } catch (error) {
+      console.error('Failed to load MCP config:', error);
+    }
+  }
 
   async function checkMCPStatus() {
     try {
@@ -54,6 +70,86 @@ export function MCPSubtab() {
       else setTestResult(`Not running (Host: ${data.host} Port: ${data.port} Path: ${data.path})`);
     } catch (error: any) {
       setTestResult(`Connection failed: ${error.message}`);
+    }
+  }
+
+  async function startMCPServer() {
+    setIsLoading(true);
+    try {
+      const response = await fetch(api('/api/mcp/http/start'), { method: 'POST' });
+      const data = await response.json();
+      if (data.success) {
+        alert('MCP HTTP Server started successfully on port 8013');
+        await checkMCPStatus();
+      } else {
+        alert(`Failed to start MCP server: ${data.error || 'Unknown error'}`);
+      }
+    } catch (error: any) {
+      alert(`Error starting MCP server: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function stopMCPServer() {
+    setIsLoading(true);
+    try {
+      const response = await fetch(api('/api/mcp/http/stop'), { method: 'POST' });
+      const data = await response.json();
+      if (data.success) {
+        alert('MCP HTTP Server stopped successfully');
+        await checkMCPStatus();
+      } else {
+        alert(`Failed to stop MCP server: ${data.error || 'Unknown error'}`);
+      }
+    } catch (error: any) {
+      alert(`Error stopping MCP server: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function restartMCPServer() {
+    setIsLoading(true);
+    try {
+      const response = await fetch(api('/api/mcp/http/restart'), { method: 'POST' });
+      const data = await response.json();
+      if (data.success) {
+        alert('MCP HTTP Server restarted successfully');
+        await checkMCPStatus();
+      } else {
+        alert(`Failed to restart MCP server: ${data.error || 'Unknown error'}`);
+      }
+    } catch (error: any) {
+      alert(`Error restarting MCP server: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function saveMCPSettings() {
+    setIsSaving(true);
+    try {
+      // Parse URL to extract host, port, and path
+      const url = new URL(serverUrl);
+      const host = url.hostname;
+      const port = url.port || '8013';
+      const path = url.pathname;
+
+      // Save to config
+      await configApi.saveConfig({
+        env: {
+          MCP_HTTP_HOST: host,
+          MCP_HTTP_PORT: port,
+          MCP_HTTP_PATH: path,
+        }
+      });
+
+      alert('MCP settings saved successfully! Restart the MCP server for changes to take effect.');
+    } catch (error: any) {
+      alert(`Error saving MCP settings: ${error.message}`);
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -111,7 +207,8 @@ export function MCPSubtab() {
               {server.status === 'disconnected' && (
                 <button
                   className="small-button"
-                  onClick={() => alert('Reconnect feature coming soon')}
+                  onClick={startMCPServer}
+                  disabled={isLoading}
                   style={{
                     flex: '1',
                     background: 'var(--bg-elev2)',
@@ -119,22 +216,38 @@ export function MCPSubtab() {
                     border: '1px solid var(--accent)'
                   }}
                 >
-                  Connect
+                  {isLoading ? 'Starting...' : 'Start Server'}
                 </button>
               )}
               {server.status === 'connected' && (
-                <button
-                  className="small-button"
-                  onClick={() => alert('Disconnect feature coming soon')}
-                  style={{
-                    flex: '1',
-                    background: 'var(--bg-elev2)',
-                    color: 'var(--err)',
-                    border: '1px solid var(--err)'
-                  }}
-                >
-                  Disconnect
-                </button>
+                <>
+                  <button
+                    className="small-button"
+                    onClick={stopMCPServer}
+                    disabled={isLoading}
+                    style={{
+                      flex: '1',
+                      background: 'var(--bg-elev2)',
+                      color: 'var(--err)',
+                      border: '1px solid var(--err)'
+                    }}
+                  >
+                    {isLoading ? 'Stopping...' : 'Stop Server'}
+                  </button>
+                  <button
+                    className="small-button"
+                    onClick={restartMCPServer}
+                    disabled={isLoading}
+                    style={{
+                      flex: '1',
+                      background: 'var(--bg-elev2)',
+                      color: 'var(--warn)',
+                      border: '1px solid var(--warn)'
+                    }}
+                  >
+                    {isLoading ? 'Restarting...' : 'Restart'}
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -206,7 +319,8 @@ export function MCPSubtab() {
           </button>
           <button
             className="small-button"
-            onClick={() => alert('Save feature will persist settings to config')}
+            onClick={saveMCPSettings}
+            disabled={isSaving}
             style={{
               flex: '1',
               background: 'var(--accent)',
@@ -215,7 +329,7 @@ export function MCPSubtab() {
               padding: '10px'
             }}
           >
-            Save Settings
+            {isSaving ? 'Saving...' : 'Save Settings'}
           </button>
         </div>
 

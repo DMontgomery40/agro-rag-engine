@@ -7,8 +7,14 @@ from fastapi.responses import JSONResponse
 
 from retrieval.hybrid_search import search_routed_multi
 from server.metrics import stage
+from server.telemetry import log_query_event
+from server.services.config_registry import get_config_registry
+import uuid
 
 logger = logging.getLogger("agro.api")
+
+# Module-level config registry
+_config_registry = get_config_registry()
 
 _graph = None
 CFG = {"configurable": {"thread_id": "http"}}
@@ -29,7 +35,8 @@ def _get_graph():
 def do_search(q: str, repo: Optional[str], top_k: Optional[int], request: Optional[Request] = None) -> Dict[str, Any]:
     if top_k is None:
         try:
-            top_k = int(os.getenv('FINAL_K', os.getenv('LANGGRAPH_FINAL_K', '10') or 10))
+            # Try FINAL_K first, fall back to LANGGRAPH_FINAL_K
+            top_k = _config_registry.get_int('FINAL_K', _config_registry.get_int('LANGGRAPH_FINAL_K', 10))
         except Exception:
             top_k = 10
 
@@ -43,7 +50,7 @@ def do_search(q: str, repo: Optional[str], top_k: Optional[int], request: Option
         except Exception:
             results.append({k: d.get(k) for k in ("file_path","start_line","end_line","rerank_score","code") if k in d})
 
-    return {"results": results, "repo": repo or os.getenv('REPO', 'agro'), "count": len(results)}
+    return {"results": results, "repo": repo or _config_registry.get_str('REPO', 'agro'), "count": len(results)}
 
 
 def do_answer(q: str, repo: Optional[str], request: Optional[Request] = None) -> Dict[str, Any]:
@@ -84,13 +91,96 @@ def do_chat(payload: Dict[str, Any], request: Optional[Request] = None) -> JSONR
             if v is None:
                 continue
             os.environ[k] = str(v)
+        # Reload module-level caches so overrides take effect immediately
+        try:
+            from server import env_model as _envm
+            _envm.reload_config()
+        except Exception:
+            pass
+        try:
+            from retrieval import hybrid_search as _hs
+            _hs.reload_config()
+        except Exception:
+            pass
+        try:
+            from retrieval import rerank as _rr
+            _rr.reload_config()
+        except Exception:
+            pass
+        try:
+            from server import langgraph_app as _lg
+            if hasattr(_lg, 'reload_config'):
+                _lg.reload_config()
+        except Exception:
+            pass
+        # Fast mode for GUI tests: disable heavy pipeline
+        fast = bool(payload.get('fast_mode')) or (
+            bool(request) and (request.query_params.get('fast') in {'1','true','on'})
+        )
+        if fast:
+            os.environ['DISABLE_RERANK'] = '1'
+            os.environ['VECTOR_BACKEND'] = os.environ.get('VECTOR_BACKEND') or 'faiss'
+            os.environ['MQ_REWRITES'] = '1'
+            from retrieval.hybrid_search import search_routed
+            sr = search_routed(payload.get('question',''), repo_override=payload.get('repo'))
+            lines = []
+            retrieved = []
+            for d in sr[:5]:
+                fp = d.get('file_path','')
+                sl = int(d.get('start_line',0) or 0)
+                el = int(d.get('end_line',0) or 0)
+                doc_id = f"{fp}:{sl}-{el}" if fp else ''
+                lines.append(f"- {fp}:{sl}-{el}")
+                if doc_id:
+                    retrieved.append({"doc_id": doc_id, "score": float(d.get('rerank_score', 0.0) or 0.0)})
+            answer_text = "Retrieval-only (fast mode)\n" + "\n".join(lines)
+            event_id = (uuid.uuid4().hex if _is_test_request(request) else log_query_event(
+                query_raw=payload.get('question',''),
+                query_rewritten=None,
+                retrieved=retrieved,
+                answer_text=answer_text,
+                route='chat/fast',
+                client_ip=(request.client.host if request and request.client else None),
+                user_agent=(request.headers.get('user-agent') if request else None),
+            ))
+            return JSONResponse({"answer": answer_text, "confidence": 0.0, "event_id": event_id})
+
         g = _get_graph()
         if g is None:
-            res = do_search(payload.get('question',''), payload.get('repo'), None, request)
-            text = "Retrieval-only (no model available)\n" + "\n".join(
-                [f"- {d.get('file_path','')}:{d.get('start_line',0)}-{d.get('end_line',0)}" for d in res.get('results', [])[:5]]
-            )
-            return JSONResponse({"answer": text, "confidence": 0.0, "event_id": None})
+            # Retrieval-only fallback: collect basic retrieval info for logging
+            import time as _t
+            t0 = _t.time()
+            sr = do_search(payload.get('question',''), payload.get('repo'), None, request)
+            top = sr.get('results', [])[:5]
+            lines = []
+            retrieved = []
+            for d in top:
+                fp = d.get('file_path', '') or ''
+                sl = int(d.get('start_line', 0) or 0)
+                el = int(d.get('end_line', 0) or 0)
+                doc_id = f"{fp}:{sl}-{el}" if fp else ''
+                lines.append(f"- {fp}:{sl}-{el}")
+                if doc_id:
+                    retrieved.append({"doc_id": doc_id, "score": float(d.get('rerank_score', 0.0) or 0.0)})
+            answer_text = "Retrieval-only (no model available)\n" + "\n".join(lines)
+            # Minimal local trace for UI panel
+            trace = {"steps": [
+                {"step": "retrieve", "duration": int((_t.time()-t0)*1000), "details": {"candidates": len(sr.get('results', []))}}
+            ]}
+            # Log event to enable feedback correlation
+            if _is_test_request(request):
+                event_id = uuid.uuid4().hex  # Do not write test traffic to training logs
+            else:
+                event_id = log_query_event(
+                    query_raw=payload.get('question',''),
+                    query_rewritten=None,
+                    retrieved=retrieved,
+                    answer_text=answer_text,
+                    route='chat/fallback',
+                    client_ip=(request.client.host if request and request.client else None),
+                    user_agent=(request.headers.get('user-agent') if request else None),
+                )
+            return JSONResponse({"answer": answer_text, "confidence": 0.0, "event_id": event_id, "trace": trace})
 
         state = {
             "question": payload.get('question',''),
@@ -98,13 +188,82 @@ def do_chat(payload: Dict[str, Any], request: Optional[Request] = None) -> JSONR
             "generation": "",
             "iteration": 0,
             "confidence": 0.0,
-            "repo": (payload.get('repo','').strip() or None),
+            "repo": ((payload.get('repo') or '').strip() or None),
         }
+        import time as _t
+        t0 = _t.time()
         res = g.invoke(state, CFG)
-        return JSONResponse({"answer": res.get("generation",""), "confidence": res.get("confidence",0.0), "event_id": None})
+        answer_text = res.get("generation", "")
+        # Attempt to capture retrieval details if present on state/res
+        retrieved = []
+        try:
+            docs = (res.get('documents') or state.get('documents') or [])
+            for d in docs[:10]:
+                fp = d.get('file_path') or d.get('path') or ''
+                sl = int(d.get('start_line', 0) or 0)
+                el = int(d.get('end_line', 0) or 0)
+                doc_id = f"{fp}:{sl}-{el}" if fp else ''
+                if doc_id:
+                    retrieved.append({"doc_id": doc_id, "score": float(d.get('rerank_score', 0.0) or 0.0)})
+        except Exception:
+            pass
+        dur = int((_t.time()-t0)*1000)
+        trace = {"steps": [
+            {"step": "graph.invoke", "duration": dur, "details": {}}
+        ]}
+        if _is_test_request(request):
+            event_id = uuid.uuid4().hex  # avoid contaminating training logs with test queries
+        else:
+            event_id = log_query_event(
+                query_raw=payload.get('question',''),
+                query_rewritten=None,
+                retrieved=retrieved,
+                answer_text=answer_text,
+                route='chat/graph',
+                client_ip=(request.client.host if request and request.client else None),
+                user_agent=(request.headers.get('user-agent') if request else None),
+            )
+        return JSONResponse({"answer": answer_text, "confidence": res.get("confidence",0.0), "event_id": event_id, "trace": trace})
     finally:
         for k, v in saved.items():
             if v is None:
                 os.environ.pop(k, None)
             else:
                 os.environ[k] = v
+        # Reload again to restore caches to baseline values
+        try:
+            from server import env_model as _envm
+            _envm.reload_config()
+        except Exception:
+            pass
+        try:
+            from retrieval import hybrid_search as _hs
+            _hs.reload_config()
+        except Exception:
+            pass
+        try:
+            from retrieval import rerank as _rr
+            _rr.reload_config()
+        except Exception:
+            pass
+        try:
+            from server import langgraph_app as _lg
+            if hasattr(_lg, 'reload_config'):
+                _lg.reload_config()
+        except Exception:
+            pass
+def _is_test_request(request: Optional[Request]) -> bool:
+    try:
+        if not request:
+            return False
+        ua = (request.headers.get('user-agent') or '').lower()
+        if 'playwright' in ua:
+            return True
+        if (request.headers.get('x-agro-test') or '').strip() in {'1','true','yes','on'}:
+            return True
+        ref = request.headers.get('referer') or ''
+        if 'agro_test=1' in ref or '__test=1' in ref:
+            return True
+    except Exception:
+        pass
+    return False

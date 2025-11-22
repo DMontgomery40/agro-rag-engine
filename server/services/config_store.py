@@ -95,7 +95,8 @@ def _effective_rerank_backend() -> Dict[str, Any]:
         def get_reranker_info():
             return {}
     import time
-    backend_env = (os.getenv("RERANK_BACKEND", "").strip().lower() or "")
+    registry = get_config_registry()
+    backend_env = (registry.get_str("RERANK_BACKEND", "").strip().lower() or "")
     now = time.time()
     try:
         info = get_reranker_info()
@@ -104,8 +105,9 @@ def _effective_rerank_backend() -> Dict[str, Any]:
     explicit = backend_env in {"cohere", "local", "hf", "none"}
     mtime = float(info.get("model_dir_mtime") or 0.0)
     recent = (now - mtime) <= (7 * 24 * 3600) if mtime > 0 else False
+    # COHERE_API_KEY is a secret, keep os.getenv
     cohere = bool((os.getenv("COHERE_API_KEY", "") or "").strip())
-    path = info.get("resolved_path") or info.get("path") or os.getenv("AGRO_RERANKER_MODEL_PATH", "models/cross-encoder-agro")
+    path = info.get("resolved_path") or info.get("path") or registry.get_str("AGRO_RERANKER_MODEL_PATH", "models/cross-encoder-agro")
     local_present = bool(str(path)) and os.path.exists(str(path))
     if explicit:
         return {"backend": backend_env, "reason": "explicit_env"}
@@ -436,10 +438,6 @@ def config_schema() -> Dict[str, Any]:
     import os
     from pathlib import Path
 
-    def _bool_env(name: str, default: str = "0") -> bool:
-        v = (os.getenv(name, default) or default).strip().lower()
-        return v in {"1", "true", "yes", "on"}
-
     def _read_editor_settings() -> Dict[str, Any]:
         try:
             p = Path(__file__).parent.parent / "out" / "editor" / "settings.json"
@@ -542,31 +540,32 @@ def config_schema() -> Dict[str, Any]:
     }
 
     ed = _read_editor_settings()
+    registry = get_config_registry()
     values: Dict[str, Any] = {
         "generation": {
-            "GEN_MODEL": os.getenv("GEN_MODEL"),
-            "GEN_TEMPERATURE": float(os.getenv("GEN_TEMPERATURE", "0.2") or 0.2),
-            "GEN_MAX_TOKENS": int(os.getenv("GEN_MAX_TOKENS", "2048") or 2048),
+            "GEN_MODEL": registry.get_str("GEN_MODEL", ""),
+            "GEN_TEMPERATURE": registry.get_float("GEN_TEMPERATURE", 0.2),
+            "GEN_MAX_TOKENS": registry.get_int("GEN_MAX_TOKENS", 2048),
         },
         "retrieval": {
-            "FINAL_K": int(os.getenv("FINAL_K", os.getenv("LANGGRAPH_FINAL_K", "10") or 10)),
-            "LANGGRAPH_FINAL_K": int(os.getenv("LANGGRAPH_FINAL_K", os.getenv("FINAL_K", "10") or 10)),
-            "MQ_REWRITES": int(os.getenv("MQ_REWRITES", "2") or 2),
-            "SKIP_DENSE": _bool_env("SKIP_DENSE", "0"),
+            "FINAL_K": registry.get_int("FINAL_K", registry.get_int("LANGGRAPH_FINAL_K", 10)),
+            "LANGGRAPH_FINAL_K": registry.get_int("LANGGRAPH_FINAL_K", registry.get_int("FINAL_K", 10)),
+            "MQ_REWRITES": registry.get_int("MQ_REWRITES", 2),
+            "SKIP_DENSE": registry.get_bool("SKIP_DENSE", False),
         },
         "reranker": {
-            "AGRO_RERANKER_ENABLED": _bool_env("AGRO_RERANKER_ENABLED", "0"),
-            "RERANK_BACKEND": os.getenv("RERANK_BACKEND", ""),
-            "RERANK_MODEL": os.getenv("RERANK_MODEL"),
-            "COHERE_RERANK_MODEL": os.getenv("COHERE_RERANK_MODEL"),
-            "VOYAGE_RERANK_MODEL": os.getenv("VOYAGE_RERANK_MODEL"),
-            "RERANK_TOP_K": int(os.getenv("RERANK_TOP_K", "0") or 0) or None,
+            "AGRO_RERANKER_ENABLED": registry.get_bool("AGRO_RERANKER_ENABLED", False),
+            "RERANK_BACKEND": registry.get_str("RERANK_BACKEND", ""),
+            "RERANK_MODEL": registry.get_str("RERANK_MODEL", ""),
+            "COHERE_RERANK_MODEL": registry.get_str("COHERE_RERANK_MODEL", ""),
+            "VOYAGE_RERANK_MODEL": registry.get_str("VOYAGE_RERANK_MODEL", ""),
+            "RERANK_TOP_K": registry.get_int("RERANK_TOP_K", 0) or None,
         },
         "enrichment": {
-            "ENRICH_CODE_CHUNKS": _bool_env("ENRICH_CODE_CHUNKS", "0"),
-            "ENRICH_BACKEND": os.getenv("ENRICH_BACKEND", ""),
-            "ENRICH_MODEL": os.getenv("ENRICH_MODEL"),
-            "ENRICH_MODEL_OLLAMA": os.getenv("ENRICH_MODEL_OLLAMA"),
+            "ENRICH_CODE_CHUNKS": registry.get_bool("ENRICH_CODE_CHUNKS", False),
+            "ENRICH_BACKEND": registry.get_str("ENRICH_BACKEND", ""),
+            "ENRICH_MODEL": registry.get_str("ENRICH_MODEL", ""),
+            "ENRICH_MODEL_OLLAMA": registry.get_str("ENRICH_MODEL_OLLAMA", ""),
         },
         "vscode": {
             "ENABLED": bool(ed.get("enabled", True)),
@@ -574,13 +573,13 @@ def config_schema() -> Dict[str, Any]:
             "PORT": int(ed.get("port", 4440)),
         },
         "grafana": {
-            "GRAFANA_BASE_URL": os.getenv("GRAFANA_BASE_URL", "http://127.0.0.1:3000"),
-            "GRAFANA_DASHBOARD_UID": os.getenv("GRAFANA_DASHBOARD_UID", "agro-overview"),
-            "GRAFANA_EMBED_ENABLED": os.getenv("GRAFANA_EMBED_ENABLED", "true").lower() in {"1","true","yes","on"},
+            "GRAFANA_BASE_URL": registry.get_str("GRAFANA_BASE_URL", "http://127.0.0.1:3000"),
+            "GRAFANA_DASHBOARD_UID": registry.get_str("GRAFANA_DASHBOARD_UID", "agro-overview"),
+            "GRAFANA_EMBED_ENABLED": registry.get_bool("GRAFANA_EMBED_ENABLED", True),
         },
         "repo": {
-            "REPO": os.getenv("REPO", default_repo),
-            "GIT_BRANCH": os.getenv("GIT_BRANCH"),
+            "REPO": registry.get_str("REPO", default_repo or "agro"),
+            "GIT_BRANCH": registry.get_str("GIT_BRANCH", ""),
             "default_repo": default_repo,
         },
     }
@@ -590,9 +589,10 @@ def config_schema() -> Dict[str, Any]:
             values.setdefault("secrets", {})[k] = "••••••••••••••••"
 
     for th in ("CONF_TOP1", "CONF_AVG5", "CONF_ANY"):
-        if os.getenv(th) is not None:
+        val = registry.get(th)
+        if val is not None:
             try:
-                values.setdefault("retrieval", {})[th] = float(os.getenv(th))
+                values.setdefault("retrieval", {})[th] = float(val)
             except Exception:
                 pass
 

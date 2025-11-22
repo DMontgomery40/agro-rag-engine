@@ -16,6 +16,12 @@ def api_env_reload() -> Dict[str, Any]:
     return cfg.env_reload()
 
 
+@router.post("/api/env/save")
+def api_env_save(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Save environment variables"""
+    return cfg.set_config(payload)
+
+
 @router.post("/api/secrets/ingest")
 async def api_secrets_ingest(
     file: UploadFile = File(...),
@@ -44,3 +50,9 @@ def get_prices():
 @router.post("/api/prices/upsert")
 def upsert_price(item: Dict[str, Any]) -> Dict[str, Any]:
     return cfg.prices_upsert(item)
+
+
+@router.post("/api/integrations/save")
+def save_integrations(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Save integration settings (LangSmith, Grafana, webhooks, etc.)"""
+    return cfg.set_config(payload)

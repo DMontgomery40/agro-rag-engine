@@ -10,7 +10,6 @@ Using Pydantic provides:
 """
 
 from pydantic import BaseModel, Field, field_validator, model_validator
-from typing import Optional
 
 
 class RetrievalConfig(BaseModel):
@@ -121,6 +120,47 @@ class RetrievalConfig(BaseModel):
         description="Query variants for multi-query"
     )
 
+    use_semantic_synonyms: int = Field(
+        default=1,
+        ge=0,
+        le=1,
+        description="Enable semantic synonym expansion"
+    )
+
+    topk_dense: int = Field(
+        default=75,
+        ge=10,
+        le=200,
+        description="Top-K for dense vector search"
+    )
+
+    topk_sparse: int = Field(
+        default=75,
+        ge=10,
+        le=200,
+        description="Top-K for sparse BM25 search"
+    )
+
+    hydration_mode: str = Field(
+        default="lazy",
+        pattern="^(lazy|eager|off)$",
+        description="Result hydration mode"
+    )
+
+    hydration_max_chars: int = Field(
+        default=2000,
+        ge=500,
+        le=10000,
+        description="Max characters for result hydration"
+    )
+
+    disable_rerank: int = Field(
+        default=0,
+        ge=0,
+        le=1,
+        description="Disable reranking completely"
+    )
+
     @field_validator('rrf_k_div')
     @classmethod
     def validate_rrf_k_div(cls, v):
@@ -160,6 +200,17 @@ class ScoringConfig(BaseModel):
         ge=1.0,
         le=3.0,
         description="Score multiplier when path components match query terms"
+    )
+
+    vendor_mode: str = Field(
+        default="prefer_first_party",
+        pattern="^(prefer_first_party|prefer_vendor|neutral)$",
+        description="Vendor code preference"
+    )
+
+    path_boosts: str = Field(
+        default="/gui,/server,/indexer,/retrieval",
+        description="Comma-separated path prefixes to boost"
     )
 
     @model_validator(mode='after')
@@ -380,6 +431,20 @@ class IndexingConfig(BaseModel):
         le=100,
         description="Max file size to index (MB)"
     )
+    skip_dense: int = Field(
+        default=0,
+        ge=0,
+        le=1,
+        description="Skip dense vector indexing"
+    )
+    out_dir_base: str = Field(
+        default="./out",
+        description="Base output directory"
+    )
+    repos_file: str = Field(
+        default="./repos.json",
+        description="Repository configuration file"
+    )
 
 
 class RerankingConfig(BaseModel):
@@ -462,6 +527,13 @@ class RerankingConfig(BaseModel):
         description="Reranker API timeout (seconds)"
     )
 
+    rerank_input_snippet_chars: int = Field(
+        default=700,
+        ge=200,
+        le=2000,
+        description="Snippet chars for reranking input"
+    )
+
 
 class GenerationConfig(BaseModel):
     """LLM generation configuration."""
@@ -529,6 +601,16 @@ class GenerationConfig(BaseModel):
         ge=2048,
         le=32768,
         description="Context window for Ollama"
+    )
+
+    gen_model_cli: str = Field(
+        default="qwen3-coder:14b",
+        description="CLI generation model"
+    )
+
+    gen_model_ollama: str = Field(
+        default="qwen3-coder:30b",
+        description="Ollama generation model"
     )
 
 
@@ -668,6 +750,36 @@ class TracingConfig(BaseModel):
         description="Logging level"
     )
 
+    tracing_mode: str = Field(
+        default="langsmith",
+        pattern="^(langsmith|local|none)$",
+        description="Tracing backend mode"
+    )
+
+    trace_auto_ls: int = Field(
+        default=1,
+        ge=0,
+        le=1,
+        description="Auto-enable LangSmith tracing"
+    )
+
+    trace_retention: int = Field(
+        default=50,
+        ge=10,
+        le=500,
+        description="Number of traces to retain"
+    )
+
+    agro_log_path: str = Field(
+        default="data/logs/queries.jsonl",
+        description="Query log file path"
+    )
+
+    alert_notify_severities: str = Field(
+        default="critical,warning",
+        description="Alert severities to notify"
+    )
+
 
 class TrainingConfig(BaseModel):
     """Reranker training configuration."""
@@ -713,6 +825,29 @@ class TrainingConfig(BaseModel):
         description="Triplet mining mode"
     )
 
+    agro_reranker_model_path: str = Field(
+        default="models/cross-encoder-agro",
+        description="Reranker model path"
+    )
+
+    agro_reranker_mine_mode: str = Field(
+        default="replace",
+        pattern="^(replace|append)$",
+        description="Triplet mining mode"
+    )
+
+    agro_reranker_mine_reset: int = Field(
+        default=0,
+        ge=0,
+        le=1,
+        description="Reset triplets file before mining"
+    )
+
+    agro_triplets_path: str = Field(
+        default="data/training/triplets.jsonl",
+        description="Training triplets file path"
+    )
+
 
 class UIConfig(BaseModel):
     """User interface configuration."""
@@ -743,6 +878,118 @@ class UIConfig(BaseModel):
         description="Default Grafana dashboard UID"
     )
 
+    grafana_dashboard_slug: str = Field(
+        default="agro-overview",
+        description="Grafana dashboard slug"
+    )
+
+    grafana_base_url: str = Field(
+        default="http://127.0.0.1:3000",
+        description="Grafana base URL"
+    )
+
+    grafana_auth_mode: str = Field(
+        default="anonymous",
+        description="Grafana authentication mode"
+    )
+
+    grafana_embed_enabled: int = Field(
+        default=1,
+        ge=0,
+        le=1,
+        description="Enable Grafana embedding"
+    )
+
+    grafana_kiosk: str = Field(
+        default="tv",
+        description="Grafana kiosk mode"
+    )
+
+    grafana_org_id: int = Field(
+        default=1,
+        description="Grafana organization ID"
+    )
+
+    grafana_refresh: str = Field(
+        default="10s",
+        description="Grafana refresh interval"
+    )
+
+    editor_bind: str = Field(
+        default="local",
+        description="Editor bind mode"
+    )
+
+    editor_embed_enabled: int = Field(
+        default=1,
+        ge=0,
+        le=1,
+        description="Enable editor embedding"
+    )
+
+    editor_enabled: int = Field(
+        default=1,
+        ge=0,
+        le=1,
+        description="Enable embedded editor"
+    )
+
+    editor_image: str = Field(
+        default="agro-vscode:latest",
+        description="Editor Docker image"
+    )
+
+    theme_mode: str = Field(
+        default="dark",
+        pattern="^(light|dark|auto)$",
+        description="UI theme mode"
+    )
+
+    open_browser: int = Field(
+        default=1,
+        ge=0,
+        le=1,
+        description="Auto-open browser on start"
+    )
+
+
+class HydrationConfig(BaseModel):
+    """Context hydration configuration."""
+    
+    hydration_mode: str = Field(
+        default="lazy",
+        pattern="^(lazy|eager|none)$",
+        description="Context hydration mode"
+    )
+    
+    hydration_max_chars: int = Field(
+        default=2000,
+        ge=500,
+        le=10000,
+        description="Max characters to hydrate"
+    )
+
+
+class EvaluationConfig(BaseModel):
+    """Evaluation dataset configuration."""
+    
+    golden_path: str = Field(
+        default="data/evaluation_dataset.json",
+        description="Golden evaluation dataset path"
+    )
+    
+    baseline_path: str = Field(
+        default="data/evals/eval_baseline.json",
+        description="Baseline results path"
+    )
+    
+    eval_multi_m: int = Field(
+        default=10,
+        ge=1,
+        le=20,
+        description="Multi-query variants for evaluation"
+    )
+
 
 class AgroConfigRoot(BaseModel):
     """Root configuration model for agro_config.json.
@@ -764,6 +1011,8 @@ class AgroConfigRoot(BaseModel):
     tracing: TracingConfig = Field(default_factory=TracingConfig)
     training: TrainingConfig = Field(default_factory=TrainingConfig)
     ui: UIConfig = Field(default_factory=UIConfig)
+    hydration: HydrationConfig = Field(default_factory=HydrationConfig)
+    evaluation: EvaluationConfig = Field(default_factory=EvaluationConfig)
 
     class Config:
         # Allow extra fields for forward compatibility
@@ -806,10 +1055,16 @@ class AgroConfigRoot(BaseModel):
             'VECTOR_WEIGHT': self.retrieval.vector_weight,
             'CARD_SEARCH_ENABLED': self.retrieval.card_search_enabled,
             'MULTI_QUERY_M': self.retrieval.multi_query_m,
+            'USE_SEMANTIC_SYNONYMS': self.retrieval.use_semantic_synonyms,
+            'TOPK_DENSE': self.retrieval.topk_dense,
+            'TOPK_SPARSE': self.retrieval.topk_sparse,
+            'DISABLE_RERANK': self.retrieval.disable_rerank,
             # Scoring params
             'CARD_BONUS': self.scoring.card_bonus,
             'FILENAME_BOOST_EXACT': self.scoring.filename_boost_exact,
             'FILENAME_BOOST_PARTIAL': self.scoring.filename_boost_partial,
+            'VENDOR_MODE': self.scoring.vendor_mode,
+            'PATH_BOOSTS': self.scoring.path_boosts,
             # Layer bonus params
             'LAYER_BONUS_GUI': self.layer_bonus.gui,
             'LAYER_BONUS_RETRIEVAL': self.layer_bonus.retrieval,
@@ -846,7 +1101,10 @@ class AgroConfigRoot(BaseModel):
             'BM25_STEMMER_LANG': self.indexing.bm25_stemmer_lang,
             'INDEX_EXCLUDED_EXTS': self.indexing.index_excluded_exts,
             'INDEX_MAX_FILE_SIZE_MB': self.indexing.index_max_file_size_mb,
-            # Reranking params (12)
+            'SKIP_DENSE': self.indexing.skip_dense,
+            'OUT_DIR_BASE': self.indexing.out_dir_base,
+            'REPOS_FILE': self.indexing.repos_file,
+    # Reranking params (13)
             'RERANKER_MODEL': self.reranking.reranker_model,
             'AGRO_RERANKER_ENABLED': self.reranking.agro_reranker_enabled,
             'AGRO_RERANKER_ALPHA': self.reranking.agro_reranker_alpha,
@@ -859,7 +1117,8 @@ class AgroConfigRoot(BaseModel):
             'VOYAGE_RERANK_MODEL': self.reranking.voyage_rerank_model,
             'RERANKER_BACKEND': self.reranking.reranker_backend,
             'RERANKER_TIMEOUT': self.reranking.reranker_timeout,
-            # Generation params (10)
+            'RERANK_INPUT_SNIPPET_CHARS': self.reranking.rerank_input_snippet_chars,
+    # Generation params (12)
             'GEN_MODEL': self.generation.gen_model,
             'GEN_TEMPERATURE': self.generation.gen_temperature,
             'GEN_MAX_TOKENS': self.generation.gen_max_tokens,
@@ -870,6 +1129,8 @@ class AgroConfigRoot(BaseModel):
             'ENRICH_BACKEND': self.generation.enrich_backend,
             'ENRICH_DISABLED': self.generation.enrich_disabled,
             'OLLAMA_NUM_CTX': self.generation.ollama_num_ctx,
+            'GEN_MODEL_CLI': self.generation.gen_model_cli,
+            'GEN_MODEL_OLLAMA': self.generation.gen_model_ollama,
             # Enrichment params (6)
             'CARDS_ENRICH_DEFAULT': self.enrichment.cards_enrich_default,
             'CARDS_MAX': self.enrichment.cards_max,
@@ -883,7 +1144,7 @@ class AgroConfigRoot(BaseModel):
             'KEYWORDS_BOOST': self.keywords.keywords_boost,
             'KEYWORDS_AUTO_GENERATE': self.keywords.keywords_auto_generate,
             'KEYWORDS_REFRESH_HOURS': self.keywords.keywords_refresh_hours,
-            # Tracing params (7)
+    # Tracing params (12)
             'TRACING_ENABLED': self.tracing.tracing_enabled,
             'TRACE_SAMPLING_RATE': self.tracing.trace_sampling_rate,
             'PROMETHEUS_PORT': self.tracing.prometheus_port,
@@ -891,18 +1152,47 @@ class AgroConfigRoot(BaseModel):
             'ALERT_INCLUDE_RESOLVED': self.tracing.alert_include_resolved,
             'ALERT_WEBHOOK_TIMEOUT': self.tracing.alert_webhook_timeout,
             'LOG_LEVEL': self.tracing.log_level,
-            # Training params (6)
+            'TRACING_MODE': self.tracing.tracing_mode,
+            'TRACE_AUTO_LS': self.tracing.trace_auto_ls,
+            'TRACE_RETENTION': self.tracing.trace_retention,
+            'AGRO_LOG_PATH': self.tracing.agro_log_path,
+            'ALERT_NOTIFY_SEVERITIES': self.tracing.alert_notify_severities,
+    # Training params (10)
             'RERANKER_TRAIN_EPOCHS': self.training.reranker_train_epochs,
             'RERANKER_TRAIN_BATCH': self.training.reranker_train_batch,
             'RERANKER_TRAIN_LR': self.training.reranker_train_lr,
             'RERANKER_WARMUP_RATIO': self.training.reranker_warmup_ratio,
             'TRIPLETS_MIN_COUNT': self.training.triplets_min_count,
             'TRIPLETS_MINE_MODE': self.training.triplets_mine_mode,
-            # UI params (4)
+            'AGRO_RERANKER_MODEL_PATH': self.training.agro_reranker_model_path,
+            'AGRO_RERANKER_MINE_MODE': self.training.agro_reranker_mine_mode,
+            'AGRO_RERANKER_MINE_RESET': self.training.agro_reranker_mine_reset,
+            'AGRO_TRIPLETS_PATH': self.training.agro_triplets_path,
+    # UI params (17)
             'CHAT_STREAMING_ENABLED': self.ui.chat_streaming_enabled,
             'CHAT_HISTORY_MAX': self.ui.chat_history_max,
             'EDITOR_PORT': self.ui.editor_port,
             'GRAFANA_DASHBOARD_UID': self.ui.grafana_dashboard_uid,
+            'GRAFANA_DASHBOARD_SLUG': self.ui.grafana_dashboard_slug,
+            'GRAFANA_BASE_URL': self.ui.grafana_base_url,
+            'GRAFANA_AUTH_MODE': self.ui.grafana_auth_mode,
+            'GRAFANA_EMBED_ENABLED': self.ui.grafana_embed_enabled,
+            'GRAFANA_KIOSK': self.ui.grafana_kiosk,
+            'GRAFANA_ORG_ID': self.ui.grafana_org_id,
+            'GRAFANA_REFRESH': self.ui.grafana_refresh,
+            'EDITOR_BIND': self.ui.editor_bind,
+            'EDITOR_EMBED_ENABLED': self.ui.editor_embed_enabled,
+            'EDITOR_ENABLED': self.ui.editor_enabled,
+            'EDITOR_IMAGE': self.ui.editor_image,
+            'THEME_MODE': self.ui.theme_mode,
+            'OPEN_BROWSER': self.ui.open_browser,
+            # Hydration params (2)
+            'HYDRATION_MODE': self.hydration.hydration_mode,
+            'HYDRATION_MAX_CHARS': self.hydration.hydration_max_chars,
+            # Evaluation params (3)
+            'GOLDEN_PATH': self.evaluation.golden_path,
+            'BASELINE_PATH': self.evaluation.baseline_path,
+            'EVAL_MULTI_M': self.evaluation.eval_multi_m,
         }
 
     @classmethod
@@ -935,11 +1225,19 @@ class AgroConfigRoot(BaseModel):
                 vector_weight=data.get('VECTOR_WEIGHT', 0.7),
                 card_search_enabled=data.get('CARD_SEARCH_ENABLED', 1),
                 multi_query_m=data.get('MULTI_QUERY_M', 4),
+                use_semantic_synonyms=data.get('USE_SEMANTIC_SYNONYMS', 1),
+                topk_dense=data.get('TOPK_DENSE', 75),
+                topk_sparse=data.get('TOPK_SPARSE', 75),
+                hydration_mode=data.get('HYDRATION_MODE', 'lazy'),
+                hydration_max_chars=data.get('HYDRATION_MAX_CHARS', 2000),
+                disable_rerank=data.get('DISABLE_RERANK', 0),
             ),
             scoring=ScoringConfig(
                 card_bonus=data.get('CARD_BONUS', 0.08),
                 filename_boost_exact=data.get('FILENAME_BOOST_EXACT', 1.5),
                 filename_boost_partial=data.get('FILENAME_BOOST_PARTIAL', 1.2),
+                vendor_mode=data.get('VENDOR_MODE', 'prefer_first_party'),
+                path_boosts=data.get('PATH_BOOSTS', '/gui,/server,/indexer,/retrieval'),
             ),
             layer_bonus=LayerBonusConfig(
                 gui=data.get('LAYER_BONUS_GUI', 0.15),
@@ -980,6 +1278,9 @@ class AgroConfigRoot(BaseModel):
                 bm25_stemmer_lang=data.get('BM25_STEMMER_LANG', 'english'),
                 index_excluded_exts=data.get('INDEX_EXCLUDED_EXTS', '.png,.jpg,.gif,.ico,.svg,.woff,.ttf'),
                 index_max_file_size_mb=data.get('INDEX_MAX_FILE_SIZE_MB', 10),
+                skip_dense=data.get('SKIP_DENSE', 0),
+                out_dir_base=data.get('OUT_DIR_BASE', './out'),
+                repos_file=data.get('REPOS_FILE', './repos.json'),
             ),
             reranking=RerankingConfig(
                 reranker_model=data.get('RERANKER_MODEL', 'cross-encoder/ms-marco-MiniLM-L-12-v2'),
@@ -994,6 +1295,7 @@ class AgroConfigRoot(BaseModel):
                 voyage_rerank_model=data.get('VOYAGE_RERANK_MODEL', 'rerank-2'),
                 reranker_backend=data.get('RERANKER_BACKEND', 'local'),
                 reranker_timeout=data.get('RERANKER_TIMEOUT', 10),
+                rerank_input_snippet_chars=data.get('RERANK_INPUT_SNIPPET_CHARS', 700),
             ),
             generation=GenerationConfig(
                 gen_model=data.get('GEN_MODEL', 'gpt-4o-mini'),
@@ -1006,6 +1308,8 @@ class AgroConfigRoot(BaseModel):
                 enrich_backend=data.get('ENRICH_BACKEND', 'openai'),
                 enrich_disabled=data.get('ENRICH_DISABLED', 0),
                 ollama_num_ctx=data.get('OLLAMA_NUM_CTX', 8192),
+                gen_model_cli=data.get('GEN_MODEL_CLI', 'qwen3-coder:14b'),
+                gen_model_ollama=data.get('GEN_MODEL_OLLAMA', 'qwen3-coder:30b'),
             ),
             enrichment=EnrichmentConfig(
                 cards_enrich_default=data.get('CARDS_ENRICH_DEFAULT', 1),
@@ -1030,6 +1334,11 @@ class AgroConfigRoot(BaseModel):
                 alert_include_resolved=data.get('ALERT_INCLUDE_RESOLVED', 1),
                 alert_webhook_timeout=data.get('ALERT_WEBHOOK_TIMEOUT', 5),
                 log_level=data.get('LOG_LEVEL', 'INFO'),
+                tracing_mode=data.get('TRACING_MODE', 'langsmith'),
+                trace_auto_ls=data.get('TRACE_AUTO_LS', 1),
+                trace_retention=data.get('TRACE_RETENTION', 50),
+                agro_log_path=data.get('AGRO_LOG_PATH', 'data/logs/queries.jsonl'),
+                alert_notify_severities=data.get('ALERT_NOTIFY_SEVERITIES', 'critical,warning'),
             ),
             training=TrainingConfig(
                 reranker_train_epochs=data.get('RERANKER_TRAIN_EPOCHS', 2),
@@ -1038,12 +1347,29 @@ class AgroConfigRoot(BaseModel):
                 reranker_warmup_ratio=data.get('RERANKER_WARMUP_RATIO', 0.1),
                 triplets_min_count=data.get('TRIPLETS_MIN_COUNT', 100),
                 triplets_mine_mode=data.get('TRIPLETS_MINE_MODE', 'replace'),
+                agro_reranker_model_path=data.get('AGRO_RERANKER_MODEL_PATH', 'models/cross-encoder-agro'),
+                agro_reranker_mine_mode=data.get('AGRO_RERANKER_MINE_MODE', 'replace'),
+                agro_reranker_mine_reset=data.get('AGRO_RERANKER_MINE_RESET', 0),
+                agro_triplets_path=data.get('AGRO_TRIPLETS_PATH', 'data/training/triplets.jsonl'),
             ),
             ui=UIConfig(
                 chat_streaming_enabled=data.get('CHAT_STREAMING_ENABLED', 1),
                 chat_history_max=data.get('CHAT_HISTORY_MAX', 50),
                 editor_port=data.get('EDITOR_PORT', 4440),
                 grafana_dashboard_uid=data.get('GRAFANA_DASHBOARD_UID', 'agro-overview'),
+                grafana_dashboard_slug=data.get('GRAFANA_DASHBOARD_SLUG', 'agro-overview'),
+                grafana_base_url=data.get('GRAFANA_BASE_URL', 'http://127.0.0.1:3000'),
+                grafana_auth_mode=data.get('GRAFANA_AUTH_MODE', 'anonymous'),
+                grafana_embed_enabled=data.get('GRAFANA_EMBED_ENABLED', 1),
+                grafana_kiosk=data.get('GRAFANA_KIOSK', 'tv'),
+                grafana_org_id=data.get('GRAFANA_ORG_ID', 1),
+                grafana_refresh=data.get('GRAFANA_REFRESH', '10s'),
+                editor_bind=data.get('EDITOR_BIND', 'local'),
+                editor_embed_enabled=data.get('EDITOR_EMBED_ENABLED', 1),
+                editor_enabled=data.get('EDITOR_ENABLED', 1),
+                editor_image=data.get('EDITOR_IMAGE', 'agro-vscode:latest'),
+                theme_mode=data.get('THEME_MODE', 'dark'),
+                open_browser=data.get('OPEN_BROWSER', 1),
             )
         )
 
@@ -1053,7 +1379,7 @@ DEFAULT_CONFIG = AgroConfigRoot()
 
 # Set of keys that belong in agro_config.json (not .env)
 AGRO_CONFIG_KEYS = {
-    # Retrieval params (15)
+    # Retrieval params (21 - added 6 new)
     'RRF_K_DIV',
     'LANGGRAPH_FINAL_K',
     'MAX_QUERY_REWRITES',
@@ -1069,10 +1395,18 @@ AGRO_CONFIG_KEYS = {
     'VECTOR_WEIGHT',
     'CARD_SEARCH_ENABLED',
     'MULTI_QUERY_M',
-    # Scoring params (3)
+    'USE_SEMANTIC_SYNONYMS',
+    'TOPK_DENSE',
+    'TOPK_SPARSE',
+    'HYDRATION_MODE',
+    'HYDRATION_MAX_CHARS',
+    'DISABLE_RERANK',
+    # Scoring params (5 - added 2 new)
     'CARD_BONUS',
     'FILENAME_BOOST_EXACT',
     'FILENAME_BOOST_PARTIAL',
+    'VENDOR_MODE',
+    'PATH_BOOSTS',
     # Layer bonus params (5)
     'LAYER_BONUS_GUI',
     'LAYER_BONUS_RETRIEVAL',
@@ -1099,7 +1433,7 @@ AGRO_CONFIG_KEYS = {
     'GREEDY_FALLBACK_TARGET',
     'CHUNKING_STRATEGY',
     'PRESERVE_IMPORTS',
-    # Indexing params (9)
+    # Indexing params (12)
     'QDRANT_URL',
     'COLLECTION_NAME',
     'VECTOR_BACKEND',
@@ -1109,7 +1443,10 @@ AGRO_CONFIG_KEYS = {
     'BM25_STEMMER_LANG',
     'INDEX_EXCLUDED_EXTS',
     'INDEX_MAX_FILE_SIZE_MB',
-    # Reranking params (12)
+    'SKIP_DENSE',
+    'OUT_DIR_BASE',
+    'REPOS_FILE',
+    # Reranking params (13)
     'RERANKER_MODEL',
     'AGRO_RERANKER_ENABLED',
     'AGRO_RERANKER_ALPHA',
@@ -1122,7 +1459,8 @@ AGRO_CONFIG_KEYS = {
     'VOYAGE_RERANK_MODEL',
     'RERANKER_BACKEND',
     'RERANKER_TIMEOUT',
-    # Generation params (10)
+    'RERANK_INPUT_SNIPPET_CHARS',
+    # Generation params (12)
     'GEN_MODEL',
     'GEN_TEMPERATURE',
     'GEN_MAX_TOKENS',
@@ -1133,6 +1471,8 @@ AGRO_CONFIG_KEYS = {
     'ENRICH_BACKEND',
     'ENRICH_DISABLED',
     'OLLAMA_NUM_CTX',
+    'GEN_MODEL_CLI',
+    'GEN_MODEL_OLLAMA',
     # Enrichment params (6)
     'CARDS_ENRICH_DEFAULT',
     'CARDS_MAX',
@@ -1146,7 +1486,7 @@ AGRO_CONFIG_KEYS = {
     'KEYWORDS_BOOST',
     'KEYWORDS_AUTO_GENERATE',
     'KEYWORDS_REFRESH_HOURS',
-    # Tracing params (7)
+    # Tracing params (12)
     'TRACING_ENABLED',
     'TRACE_SAMPLING_RATE',
     'PROMETHEUS_PORT',
@@ -1154,16 +1494,45 @@ AGRO_CONFIG_KEYS = {
     'ALERT_INCLUDE_RESOLVED',
     'ALERT_WEBHOOK_TIMEOUT',
     'LOG_LEVEL',
-    # Training params (6)
+    'TRACING_MODE',
+    'TRACE_AUTO_LS',
+    'TRACE_RETENTION',
+    'AGRO_LOG_PATH',
+    'ALERT_NOTIFY_SEVERITIES',
+    # Training params (10)
     'RERANKER_TRAIN_EPOCHS',
     'RERANKER_TRAIN_BATCH',
     'RERANKER_TRAIN_LR',
     'RERANKER_WARMUP_RATIO',
     'TRIPLETS_MIN_COUNT',
     'TRIPLETS_MINE_MODE',
-    # UI params (4)
+    'AGRO_RERANKER_MODEL_PATH',
+    'AGRO_RERANKER_MINE_MODE',
+    'AGRO_RERANKER_MINE_RESET',
+    'AGRO_TRIPLETS_PATH',
+    # UI params (17)
     'CHAT_STREAMING_ENABLED',
     'CHAT_HISTORY_MAX',
     'EDITOR_PORT',
     'GRAFANA_DASHBOARD_UID',
+    'GRAFANA_DASHBOARD_SLUG',
+    'GRAFANA_BASE_URL',
+    'GRAFANA_AUTH_MODE',
+    'GRAFANA_EMBED_ENABLED',
+    'GRAFANA_KIOSK',
+    'GRAFANA_ORG_ID',
+    'GRAFANA_REFRESH',
+    'EDITOR_BIND',
+    'EDITOR_EMBED_ENABLED',
+    'EDITOR_ENABLED',
+    'EDITOR_IMAGE',
+    'THEME_MODE',
+    'OPEN_BROWSER',
+    # Hydration params (2)
+    'HYDRATION_MODE',
+    'HYDRATION_MAX_CHARS',
+    # Evaluation params (3)
+    'GOLDEN_PATH',
+    'BASELINE_PATH',
+    'EVAL_MULTI_M',
 }

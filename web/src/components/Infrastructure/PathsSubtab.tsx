@@ -2,6 +2,7 @@
 // Directory paths and storage configuration
 
 import { useState, useEffect } from 'react';
+import { configApi } from '@/api/config';
 
 interface PathConfig {
   QDRANT_URL: string;
@@ -32,16 +33,30 @@ export function PathsSubtab() {
     loadConfig();
   }, []);
 
-  const api = (path: string) => {
-    const base = (window as any).API_BASE_URL || '';
-    return `${base}${path}`;
-  };
-
   async function loadConfig() {
     try {
-      const response = await fetch(api('/api/config'));
-      const data = await response.json();
-      setConfig(data);
+      const data = await configApi.load();
+      // Extract relevant fields from env
+      const pathConfig: Partial<PathConfig> = {
+        QDRANT_URL: data.env?.QDRANT_URL || '',
+        REDIS_URL: data.env?.REDIS_URL || '',
+        REPO_ROOT: data.env?.REPO_ROOT || '',
+        FILES_ROOT: data.env?.FILES_ROOT || '',
+        REPO: data.env?.REPO || '',
+        COLLECTION_SUFFIX: data.env?.COLLECTION_SUFFIX || '',
+        COLLECTION_NAME: data.env?.COLLECTION_NAME || '',
+        REPO_PATH: data.env?.REPO_PATH || '',
+        GUI_DIR: data.env?.GUI_DIR || '',
+        DOCS_DIR: data.env?.DOCS_DIR || '',
+        DATA_DIR: data.env?.DATA_DIR || '',
+        REPOS_FILE: data.env?.REPOS_FILE || '',
+        OUT_DIR_BASE: data.env?.OUT_DIR_BASE || '',
+        RAG_OUT_BASE: data.env?.RAG_OUT_BASE || '',
+        MCP_HTTP_HOST: data.env?.MCP_HTTP_HOST || '',
+        MCP_HTTP_PORT: data.env?.MCP_HTTP_PORT || '',
+        MCP_HTTP_PATH: data.env?.MCP_HTTP_PATH || '',
+      };
+      setConfig(pathConfig);
       setLoading(false);
     } catch (error) {
       console.error('Failed to load config:', error);
@@ -52,17 +67,16 @@ export function PathsSubtab() {
   async function saveConfig() {
     setSaving(true);
     try {
-      const response = await fetch(api('/api/config'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config)
-      });
-      const data = await response.json();
-      if (data.ok) {
-        alert('Configuration saved successfully!');
-      } else {
-        alert(`Failed to save configuration: ${data.error}`);
+      // Build env update object with only non-empty values
+      const envUpdate: Record<string, string> = {};
+      for (const [key, value] of Object.entries(config)) {
+        if (value !== undefined && value !== null) {
+          envUpdate[key] = String(value);
+        }
       }
+
+      await configApi.saveConfig({ env: envUpdate });
+      alert('Configuration saved successfully!');
     } catch (error: any) {
       alert(`Error saving configuration: ${error.message}`);
     } finally {

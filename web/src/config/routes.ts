@@ -45,8 +45,11 @@ export const routes: RouteConfig[] = [
     icon: '📊',
     order: 2,
     subtabs: [
-      { id: 'overview', title: 'Overview' },
-      { id: 'help', title: 'Help & Glossary' }
+      { id: 'system', title: 'System Status' },
+      { id: 'monitoring', title: 'Monitoring' },
+      { id: 'storage', title: 'Storage' },
+      { id: 'help', title: 'Help' },
+      { id: 'glossary', title: 'Glossary' }
     ]
   },
   {

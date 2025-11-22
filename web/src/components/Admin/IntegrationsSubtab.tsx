@@ -2,6 +2,7 @@
 // External service integrations and webhooks
 
 import { useState } from 'react';
+import { configApi } from '@/api/config';
 
 export function IntegrationsSubtab() {
   // LangSmith settings
@@ -36,8 +37,56 @@ export function IntegrationsSubtab() {
   const [notifyInfo, setNotifyInfo] = useState(false);
   const [includeResolved, setIncludeResolved] = useState(true);
 
+  // Status
+  const [saveStatus, setSaveStatus] = useState<string>('');
+
   async function saveIntegrationSettings() {
-    alert('Integration settings would be saved here');
+    setSaveStatus('');
+    const integrations: Record<string, any> = {};
+
+    // LangSmith
+    if (langsmithEndpoint) integrations.LANGSMITH_ENDPOINT = langsmithEndpoint;
+    if (langsmithKey) integrations.LANGSMITH_API_KEY = langsmithKey;
+    if (langsmithKeyAlias) integrations.LANGCHAIN_API_KEY = langsmithKeyAlias;
+    if (langsmithProject) integrations.LANGSMITH_PROJECT = langsmithProject;
+    integrations.LANGCHAIN_TRACING_V2 = langchainTracingV2 ? '1' : '0';
+
+    // Grafana
+    if (grafanaUrl) integrations.GRAFANA_BASE_URL = grafanaUrl;
+    if (grafanaApiKey) integrations.GRAFANA_API_KEY = grafanaApiKey;
+
+    // VS Code
+    integrations.VSCODE_ENABLED = vscodeEnabled ? '1' : '0';
+    if (vscodePort) integrations.VSCODE_PORT = vscodePort;
+
+    // MCP & Channels
+    if (httpModel) integrations.HTTP_MODEL = httpModel;
+    if (mcpModel) integrations.MCP_MODEL = mcpModel;
+    if (cliModel) integrations.CLI_MODEL = cliModel;
+    if (mcpHttpHost) integrations.MCP_HTTP_HOST = mcpHttpHost;
+    if (mcpHttpPort) integrations.MCP_HTTP_PORT = mcpHttpPort;
+    if (mcpHttpPath) integrations.MCP_HTTP_PATH = mcpHttpPath;
+
+    // Webhooks
+    if (slackWebhook) integrations.SLACK_WEBHOOK_URL = slackWebhook;
+    if (discordWebhook) integrations.DISCORD_WEBHOOK_URL = discordWebhook;
+    integrations.NOTIFICATIONS_ENABLED = notificationsEnabled ? '1' : '0';
+    integrations.NOTIFY_CRITICAL = notifyCritical ? '1' : '0';
+    integrations.NOTIFY_WARNING = notifyWarning ? '1' : '0';
+    integrations.NOTIFY_INFO = notifyInfo ? '1' : '0';
+    integrations.INCLUDE_RESOLVED = includeResolved ? '1' : '0';
+
+    try {
+      const result = await configApi.saveIntegrations(integrations);
+      if (result.status === 'success') {
+        setSaveStatus('Integration settings saved successfully!');
+        setTimeout(() => setSaveStatus(''), 3000);
+      } else {
+        setSaveStatus(`Failed to save: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error: any) {
+      setSaveStatus(`Error saving integration settings: ${error.message}`);
+    }
   }
 
   async function testLangSmith() {
@@ -92,6 +141,23 @@ export function IntegrationsSubtab() {
       <p className="small" style={{ marginBottom: '24px' }}>
         Configure external services and integrations.
       </p>
+
+      {/* Status Messages */}
+      {saveStatus && (
+        <div
+          data-testid="integrations-save-status"
+          style={{
+            padding: '12px',
+            marginBottom: '16px',
+            borderRadius: '6px',
+            background: saveStatus.includes('Error') || saveStatus.includes('Failed') ? 'var(--err)' : 'var(--ok)',
+            color: 'var(--accent-contrast)',
+            fontWeight: '500'
+          }}
+        >
+          {saveStatus}
+        </div>
+      )}
 
       {/* MCP & Channels */}
       <div
@@ -270,6 +336,7 @@ export function IntegrationsSubtab() {
               value={langsmithKey}
               onChange={(e) => setLangsmithKey(e.target.value)}
               placeholder="Enter API key"
+              data-testid="langsmith-api-key"
               style={{
                 width: '100%',
                 padding: '8px',
@@ -581,6 +648,7 @@ export function IntegrationsSubtab() {
       <button
         className="small-button"
         onClick={saveIntegrationSettings}
+        data-testid="save-integrations-btn"
         style={{
           width: '100%',
           background: 'var(--accent)',

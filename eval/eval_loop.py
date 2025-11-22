@@ -9,13 +9,24 @@ import time
 import argparse
 from typing import Dict, Any
 from dotenv import load_dotenv
+from pathlib import Path
 from eval.eval_rag import hit, _resolve_golden_path, USE_MULTI, FINAL_K, MULTI_M  # type: ignore[import]
 from retrieval.hybrid_search import search_routed, search_routed_multi
 
 load_dotenv()
 
-# Keep in sync with UI default (ui/ALL_KNOBS.yaml) and server endpoints
-BASELINE_PATH = os.getenv('BASELINE_PATH', 'data/evals/eval_baseline.json')
+# Module-level cached configuration
+try:
+    from server.services.config_registry import get_config_registry
+    _config_registry = get_config_registry()
+except ImportError:
+    _config_registry = None
+
+# Load BASELINE_PATH from config registry (tunable parameter)
+if _config_registry is not None:
+    BASELINE_PATH = _config_registry.get_str('BASELINE_PATH', 'data/evals/eval_baseline.json')
+else:
+    BASELINE_PATH = os.getenv('BASELINE_PATH', 'data/evals/eval_baseline.json')
 
 def run_eval_with_results(sample_limit: int = None) -> Dict[str, Any]:
     """Run evaluation on golden questions, optionally limited to a sample.
@@ -61,6 +72,7 @@ def run_eval_with_results(sample_limit: int = None) -> Dict[str, Any]:
     t0 = time.time()
     for i, row in enumerate(valid_questions, 1):
         q = row['q']
+        # REPO is infrastructure, not tunable - keep as env var
         repo = row.get('repo') or os.getenv('REPO', 'agro')
         expect = row.get('expect_paths') or []
         try:

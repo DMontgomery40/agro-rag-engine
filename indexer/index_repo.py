@@ -63,6 +63,11 @@ try:
             load_dotenv(dotenv_path=alt, override=False)
 except Exception:
     pass
+
+# Initialize config registry for tunable parameters
+from server.services.config_registry import get_config_registry
+_config = get_config_registry()
+
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 if OPENAI_API_KEY and OPENAI_API_KEY.strip().upper() in {"SK-REPLACE", "REPLACE"}:
     OPENAI_API_KEY = None
@@ -302,9 +307,10 @@ def main() -> None:
     t_chunk = _time.time() - t_chunk0
     print(f'Prepared {len(chunks)} chunks.')
 
-    ENRICH = (os.getenv('ENRICH_CODE_CHUNKS', 'false') or 'false').lower() == 'true'
+    ENRICH = _config.get_bool('ENRICH_CODE_CHUNKS', False)
     enrich = None  # type: ignore[assignment]
-    enrich_stats = {"count": 0, "seconds": 0.0, "tokens": 0, "cost_usd": 0.0, "model": os.getenv('GEN_MODEL', os.getenv('ENRICH_MODEL', ''))}
+    gen_model = _config.get_str('GEN_MODEL', _config.get_str('ENRICH_MODEL', ''))
+    enrich_stats = {"count": 0, "seconds": 0.0, "tokens": 0, "cost_usd": 0.0, "model": gen_model}
     if ENRICH:
         try:
             from common.metadata import enrich  # type: ignore
@@ -415,7 +421,7 @@ def main() -> None:
         pass
 
     embed_stats: Dict[str, any] = {"provider": None, "model": None, "tokens": 0, "cost_usd": 0.0, "cache_hits": 0, "fresh": 0}
-    if (os.getenv('SKIP_DENSE','0') or '0').strip() == '1':
+    if _config.get_bool('SKIP_DENSE', False):
         print('Skipping dense embeddings and Qdrant upsert (SKIP_DENSE=1).')
         # Persist tracking event for BM25-only runs
         try:
@@ -450,20 +456,21 @@ def main() -> None:
         else:
             texts.append(c['code'])
     embs: List[List[float]] = []
-    et = (os.getenv('EMBEDDING_TYPE','openai') or 'openai').lower()
+    et = _config.get_str('EMBEDDING_TYPE', 'openai').lower()
     if et == 'voyage':
         try:
-            voyage_model = os.getenv('VOYAGE_MODEL', 'voyage-code-3')
-            embs = embed_texts_voyage(texts, model=voyage_model, batch=64, output_dimension=int(os.getenv('VOYAGE_EMBED_DIM','512')))
+            voyage_model = _config.get_str('VOYAGE_MODEL', 'voyage-code-3')
+            voyage_dim = _config.get_int('VOYAGE_EMBED_DIM', 512)
+            embs = embed_texts_voyage(texts, model=voyage_model, batch=64, output_dimension=voyage_dim)
         except Exception as e:
             print(f"Voyage embedding failed ({e}); falling back to local embeddings.")
             embs = []
         if not embs:
             embs = embed_texts_local(texts)
-        embed_stats.update({"provider": "voyage", "model": os.getenv('VOYAGE_MODEL', 'voyage-code-3')})
+        embed_stats.update({"provider": "voyage", "model": _config.get_str('VOYAGE_MODEL', 'voyage-code-3')})
     elif et == 'mxbai':
         try:
-            dim = int(os.getenv('EMBEDDING_DIM', '512'))
+            dim = _config.get_int('EMBEDDING_DIM', 512)
             embs = embed_texts_mxbai(texts, dim=dim)
         except Exception as e:
             print(f"MXBAI embedding failed ({e}); falling back to local embeddings.")
@@ -477,7 +484,7 @@ def main() -> None:
             try:
                 cache = EmbeddingCache(OUTDIR)
                 hashes = [c['hash'] for c in chunks]
-                embedding_model = os.getenv('EMBEDDING_MODEL', 'text-embedding-3-large')
+                embedding_model = _config.get_str('EMBEDDING_MODEL', 'text-embedding-3-large')
                 # Pre-count cache hits before embedding
                 _hits = sum(1 for h in hashes if cache.get(h) is not None)
                 from tiktoken import get_encoding
@@ -542,7 +549,7 @@ def main() -> None:
                 'bm25_index_dir': os.path.join(OUTDIR, 'bm25_index'),
                 'chunk_count': len(chunks),
                 'collection_name': COLLECTION,
-                'embedding_type': (os.getenv('EMBEDDING_TYPE','openai') or 'openai').lower(),
+                'embedding_type': _config.get_str('EMBEDDING_TYPE', 'openai').lower(),
                 'embedding_dim': len(embs[0]) if embs and embs[0] else None,
             }
             with open(os.path.join(OUTDIR, 'last_index.json'), 'w', encoding='utf-8') as mf:

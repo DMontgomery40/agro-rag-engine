@@ -3,9 +3,11 @@ import os
 from rich.console import Console
 from rich.table import Table
 from rich.prompt import Prompt
+from server.services.config_registry import get_config_registry
 from cli.commands.utils import post, get
 
 console = Console()
+_config_registry = get_config_registry()
 
 HELP = {
     "title": "Config",
@@ -83,27 +85,27 @@ def set(key, value):
 def wizard():
     """Interactive configuration wizard."""
     console.print("[bold]AGRO Configuration Wizard[/bold]")
-    
+
     # Generation
     console.print("\n[cyan]Generation Settings[/cyan]")
-    gen_model = Prompt.ask("Generation Model", default=os.getenv("GEN_MODEL", "gpt-4o-mini"))
+    gen_model = Prompt.ask("Generation Model", default=_config_registry.get_str("GEN_MODEL", "gpt-4o-mini"))
     post("/api/config", {"GEN_MODEL": gen_model})
-    
+
     if "gpt" in gen_model and not os.getenv("OPENAI_API_KEY"):
         key = Prompt.ask("OpenAI API Key", password=True)
         if key: post("/api/config", {"OPENAI_API_KEY": key})
 
     # Retrieval
     console.print("\n[cyan]Retrieval Settings[/cyan]")
-    final_k = Prompt.ask("Final Top-K Results", default=os.getenv("FINAL_K", "10"))
+    final_k = Prompt.ask("Final Top-K Results", default=str(_config_registry.get_int("FINAL_K", 10)))
     post("/api/config", {"FINAL_K": final_k})
-    
+
     # Reranker
     console.print("\n[cyan]Reranker Settings[/cyan]")
-    curr_rr = "yes" if os.getenv("AGRO_RERANKER_ENABLED", "0") == "1" else "no"
+    curr_rr = "yes" if _config_registry.get_bool("AGRO_RERANKER_ENABLED", False) else "no"
     enable_rr = Prompt.ask("Enable Reranker?", choices=["yes", "no"], default=curr_rr)
     post("/api/config", {"AGRO_RERANKER_ENABLED": "1" if enable_rr == "yes" else "0"})
-    
+
     console.print("[green]Configuration updated![/green]")
 
 @click.command()

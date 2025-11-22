@@ -24,7 +24,7 @@ const DEFAULT_CONFIG: ChatConfig = {
   temperature: 0,
   maxTokens: 1000,
   topP: 1,
-  topK: 50,
+  topK: 10,
   frequencyPenalty: 0,
   presencePenalty: 0,
   streaming: true,
@@ -37,16 +37,18 @@ export function ChatSettings() {
   const [config, setConfig] = useState<ChatConfig>(DEFAULT_CONFIG);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string>('');
+  const [modelOptions, setModelOptions] = useState<string[]>([]);
 
   // Load config on mount
   useEffect(() => {
     loadConfig();
+    loadModelOptions();
   }, []);
 
   const loadConfig = async () => {
     try {
       // Try to load from API
-      const response = await fetch(api('/chat/config'));
+      const response = await fetch(api('chat/config'));
       if (response.ok) {
         const data = await response.json();
         setConfig({ ...DEFAULT_CONFIG, ...data });
@@ -69,13 +71,40 @@ export function ChatSettings() {
     }
   };
 
+  const loadModelOptions = async () => {
+    try {
+      const r = await fetch(api('/api/prices'));
+      if (!r.ok) return;
+      const d = await r.json();
+      const list: string[] = (d.models || [])
+        .filter((m: any) => {
+          const comps = Array.isArray(m.components) ? m.components : [];
+          const unit = String(m.unit || '').toLowerCase();
+          return comps.includes('GEN') || unit === '1k_tokens' || unit === 'request';
+        })
+        .map((m: any) => String(m.model || '').trim())
+        .filter(Boolean);
+      const uniq = Array.from(new Set(list));
+      // Put OpenAI/GPT family first for sanity; preserve others
+      uniq.sort((a, b) => {
+        const ao = a.toLowerCase().includes('gpt') ? 0 : 1;
+        const bo = b.toLowerCase().includes('gpt') ? 0 : 1;
+        return ao - bo || a.localeCompare(b);
+      });
+      setModelOptions(uniq);
+    } catch (e) {
+      // Silent fallback to text input
+      console.debug('[ChatSettings] prices fetch failed:', e);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setSaveStatus('');
 
     try {
       // Save to API
-      const response = await fetch(api('/chat/config'), {
+      const response = await fetch(api('chat/config'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config)
@@ -115,7 +144,7 @@ export function ChatSettings() {
     if (!templateName) return;
 
     try {
-      await fetch(api('/chat/templates'), {
+      await fetch(api('chat/templates'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -163,6 +192,7 @@ export function ChatSettings() {
         </h3>
 
         <textarea
+          id="chat-system-prompt"
           value={config.systemPrompt}
           onChange={(e) => setConfig(prev => ({ ...prev, systemPrompt: e.target.value }))}
           style={{
@@ -244,21 +274,41 @@ export function ChatSettings() {
             }}>
               Model
             </label>
-            <input
-              type="text"
-              value={config.model}
-              onChange={(e) => setConfig(prev => ({ ...prev, model: e.target.value }))}
-              style={{
-                width: '100%',
-                background: 'var(--input-bg)',
-                border: '1px solid var(--line)',
-                color: 'var(--fg)',
-                padding: '8px 12px',
-                borderRadius: '4px',
-                fontSize: '13px'
-              }}
-              placeholder="gpt-4o-mini"
-            />
+            {modelOptions.length > 0 ? (
+              <select
+                id="chat-model"
+                value={config.model}
+                onChange={(e) => setConfig(prev => ({ ...prev, model: e.target.value }))}
+                style={{
+                  width: '100%',
+                  background: 'var(--input-bg)',
+                  border: '1px solid var(--line)',
+                  color: 'var(--fg)',
+                  padding: '8px 12px',
+                  borderRadius: '4px',
+                  fontSize: '13px'
+                }}
+              >
+                {modelOptions.map(m => (<option key={m} value={m}>{m}</option>))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                id="chat-model"
+                value={config.model}
+                onChange={(e) => setConfig(prev => ({ ...prev, model: e.target.value }))}
+                style={{
+                  width: '100%',
+                  background: 'var(--input-bg)',
+                  border: '1px solid var(--line)',
+                  color: 'var(--fg)',
+                  padding: '8px 12px',
+                  borderRadius: '4px',
+                  fontSize: '13px'
+                }}
+                placeholder="gpt-4o-mini"
+              />
+            )}
           </div>
 
           <div>
@@ -273,6 +323,7 @@ export function ChatSettings() {
             </label>
             <input
               type="number"
+              id="chat-max-tokens"
               value={config.maxTokens}
               onChange={(e) => setConfig(prev => ({ ...prev, maxTokens: parseInt(e.target.value) || 1000 }))}
               min="1"
@@ -288,6 +339,34 @@ export function ChatSettings() {
               }}
             />
           </div>
+          <div>
+            <label style={{
+              display: 'block',
+              fontSize: '12px',
+              fontWeight: '600',
+              color: 'var(--fg-muted)',
+              marginBottom: '6px'
+            }}>
+              Top-K (results)
+            </label>
+            <input
+              type="number"
+              id="chat-top-k"
+              value={config.topK}
+              onChange={(e) => setConfig(prev => ({ ...prev, topK: Math.max(1, parseInt(e.target.value) || DEFAULT_CONFIG.topK) }))}
+              min="1"
+              max="100"
+              style={{
+                width: '100%',
+                background: 'var(--input-bg)',
+                border: '1px solid var(--line)',
+                color: 'var(--fg)',
+                padding: '8px 12px',
+                borderRadius: '4px',
+                fontSize: '13px'
+              }}
+            />
+          </div>
 
           <div>
             <label style={{
@@ -297,17 +376,39 @@ export function ChatSettings() {
               color: 'var(--fg-muted)',
               marginBottom: '6px'
             }}>
-              Temperature: {config.temperature.toFixed(1)}
+              Temperature
             </label>
-            <input
-              type="range"
-              min="0"
-              max="2"
-              step="0.1"
-              value={config.temperature}
-              onChange={(e) => setConfig(prev => ({ ...prev, temperature: parseFloat(e.target.value) }))}
-              style={{ width: '100%' }}
-            />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px', gap: '8px', alignItems: 'center' }}>
+              <input
+                type="range"
+                min="0"
+                max="2"
+                step="0.1"
+                value={config.temperature}
+                onChange={(e) => setConfig(prev => ({ ...prev, temperature: parseFloat(e.target.value) }))}
+                style={{ width: '100%' }}
+                aria-label="Temperature"
+              />
+              <input
+                id="chat-temperature"
+                type="number"
+                min={0}
+                max={2}
+                step={0.1}
+                value={config.temperature}
+                onChange={(e) => setConfig(prev => ({ ...prev, temperature: Math.max(0, Math.min(2, parseFloat(e.target.value) || 0)) }))}
+                style={{
+                  width: '100%',
+                  background: 'var(--input-bg)',
+                  border: '1px solid var(--line)',
+                  color: 'var(--fg)',
+                  padding: '8px 12px',
+                  borderRadius: '4px',
+                  fontSize: '13px'
+                }}
+                aria-label="Temperature input"
+              />
+            </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--fg-muted)' }}>
               <span>Focused</span>
               <span>Creative</span>
@@ -335,33 +436,7 @@ export function ChatSettings() {
             />
           </div>
 
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: '12px',
-              fontWeight: '600',
-              color: 'var(--fg-muted)',
-              marginBottom: '6px'
-            }}>
-              Top-k
-            </label>
-            <input
-              type="number"
-              value={config.topK}
-              onChange={(e) => setConfig(prev => ({ ...prev, topK: parseInt(e.target.value) || 50 }))}
-              min="1"
-              max="100"
-              style={{
-                width: '100%',
-                background: 'var(--input-bg)',
-                border: '1px solid var(--line)',
-                color: 'var(--fg)',
-                padding: '8px 12px',
-                borderRadius: '4px',
-                fontSize: '13px'
-              }}
-            />
-          </div>
+          {/* Duplicate Top-K removed; single control above with id=chat-top-k */}
 
           <div>
             <label style={{
@@ -491,6 +566,7 @@ export function ChatSettings() {
         justifyContent: 'flex-end'
       }}>
         <button
+          id="chat-reset-settings"
           onClick={handleReset}
           style={{
             background: 'var(--bg-elev2)',
@@ -507,6 +583,7 @@ export function ChatSettings() {
         </button>
 
         <button
+          id="chat-save-settings"
           onClick={handleSave}
           disabled={saving}
           style={{

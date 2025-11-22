@@ -1,9 +1,11 @@
 import click
 import os
 from rich.console import Console
+from server.services.config_registry import get_config_registry
 from cli.commands.utils import post, get
 
 console = Console()
+_config_registry = get_config_registry()
 
 HELP = {
     "title": "Index",
@@ -22,7 +24,7 @@ HELP = {
 }
 
 @click.command()
-@click.option("--repo", default=os.getenv("REPO", "agro"), help="Repository to index")
+@click.option("--repo", default=lambda: _config_registry.get_str("REPO", "agro"), help="Repository to index")
 @click.option("--dense/--no-dense", default=True, help="Enable dense embeddings")
 def index(repo, dense):
     """Trigger indexing for a repository."""

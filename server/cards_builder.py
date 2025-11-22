@@ -25,21 +25,46 @@ _CARDS_ENRICH_DEFAULT = None
 _CARDS_MAX = None
 _ENRICH_CODE_CHUNKS = None
 _ENRICH_TIMEOUT = None
+_OUT_DIR_BASE = None
+_EMBEDDING_TYPE = None
+_ENRICH_MODEL = None
+_GEN_MODEL = None
+_RERANK_BACKEND = None
+_COHERE_RERANK_MODEL = None
+_RERANKER_MODEL = None
 
 def _load_cached_config():
     """Load cards config values into module-level cache."""
     global _CARDS_ENRICH_DEFAULT, _CARDS_MAX, _ENRICH_CODE_CHUNKS, _ENRICH_TIMEOUT
+    global _OUT_DIR_BASE, _EMBEDDING_TYPE, _ENRICH_MODEL, _GEN_MODEL
+    global _RERANK_BACKEND, _COHERE_RERANK_MODEL, _RERANKER_MODEL
 
     if _config_registry is None:
+        # Fallback to os.getenv only when registry unavailable
         _CARDS_ENRICH_DEFAULT = int(os.getenv('CARDS_ENRICH_DEFAULT', '1') or '1')
         _CARDS_MAX = int(os.getenv('CARDS_MAX', '100') or '100')
         _ENRICH_CODE_CHUNKS = int(os.getenv('ENRICH_CODE_CHUNKS', '1') or '1')
         _ENRICH_TIMEOUT = int(os.getenv('ENRICH_TIMEOUT', '30') or '30')
+        _OUT_DIR_BASE = os.getenv("OUT_DIR_BASE") or str(Path(__file__).resolve().parents[1] / "out")
+        _EMBEDDING_TYPE = (os.getenv("EMBEDDING_TYPE", "openai") or "openai").lower()
+        _ENRICH_MODEL = os.getenv("ENRICH_MODEL") or os.getenv("GEN_MODEL") or "gpt-4o-mini"
+        _GEN_MODEL = os.getenv("GEN_MODEL") or "gpt-4o-mini"
+        _RERANK_BACKEND = (os.getenv("RERANK_BACKEND", "local") or "local").lower()
+        _COHERE_RERANK_MODEL = os.getenv("COHERE_RERANK_MODEL", "rerank-3.5")
+        _RERANKER_MODEL = os.getenv("RERANKER_MODEL", "BAAI/bge-reranker-v2-m3")
     else:
+        # Use config_registry (preferred path)
         _CARDS_ENRICH_DEFAULT = _config_registry.get_int('CARDS_ENRICH_DEFAULT', 1)
         _CARDS_MAX = _config_registry.get_int('CARDS_MAX', 100)
         _ENRICH_CODE_CHUNKS = _config_registry.get_int('ENRICH_CODE_CHUNKS', 1)
         _ENRICH_TIMEOUT = _config_registry.get_int('ENRICH_TIMEOUT', 30)
+        _OUT_DIR_BASE = _config_registry.get_str('OUT_DIR_BASE', str(Path(__file__).resolve().parents[1] / "out"))
+        _EMBEDDING_TYPE = _config_registry.get_str('EMBEDDING_TYPE', 'openai').lower()
+        _ENRICH_MODEL = _config_registry.get_str('ENRICH_MODEL', '') or _config_registry.get_str('GEN_MODEL', 'gpt-4o-mini')
+        _GEN_MODEL = _config_registry.get_str('GEN_MODEL', 'gpt-4o-mini')
+        _RERANK_BACKEND = _config_registry.get_str('RERANK_BACKEND', 'local').lower()
+        _COHERE_RERANK_MODEL = _config_registry.get_str('COHERE_RERANK_MODEL', 'rerank-3.5')
+        _RERANKER_MODEL = _config_registry.get_str('RERANKER_MODEL', 'BAAI/bge-reranker-v2-m3')
 
 def reload_config():
     """Reload all cached config values from registry."""
@@ -59,32 +84,30 @@ QUICK_TIPS = [
 
 
 def _progress_dir(repo: str) -> Path:
-    base = Path(os.getenv("OUT_DIR_BASE") or Path(__file__).resolve().parents[1] / "out")
+    base = Path(_OUT_DIR_BASE)
     return base / "cards" / repo
 
 
 def _logs_path() -> Path:
-    base = Path(os.getenv("OUT_DIR_BASE") or Path(__file__).resolve().parents[1] / "out")
+    base = Path(_OUT_DIR_BASE)
     return base / "logs" / "cards_build.log"
 
 
 def _model_info() -> Dict[str, str]:
     # Embed
-    et = (os.getenv("EMBEDDING_TYPE", "openai") or "openai").lower()
-    if et == "voyage":
+    if _EMBEDDING_TYPE == "voyage":
         embed = "voyage-code-3"
-    elif et == "local":
+    elif _EMBEDDING_TYPE == "local":
         embed = "BAAI/bge-small-en-v1.5"
     else:
         embed = "text-embedding-3-large"
     # Enrich
-    enrich = os.getenv("ENRICH_MODEL") or os.getenv("GEN_MODEL") or "gpt-4o-mini"
+    enrich = _ENRICH_MODEL
     # Rerank
-    rr_backend = (os.getenv("RERANK_BACKEND", "local") or "local").lower()
-    if rr_backend == "cohere":
-        rerank = os.getenv("COHERE_RERANK_MODEL", "rerank-3.5")
+    if _RERANK_BACKEND == "cohere":
+        rerank = _COHERE_RERANK_MODEL
     else:
-        rerank = os.getenv("RERANKER_MODEL", "BAAI/bge-reranker-v2-m3")
+        rerank = _RERANKER_MODEL
     return {"embed": embed, "enrich": str(enrich), "rerank": rerank}
 
 
@@ -254,7 +277,7 @@ class CardsBuildJob:
             self.done = 0
             self._emit_progress(QUICK_TIPS[2])
 
-            max_chunks = int(os.getenv("CARDS_MAX", "0") or "0")
+            max_chunks = _CARDS_MAX
             written = 0
             skipped = 0
             with paths["cards"].open("w", encoding="utf-8") as out_json, paths["cards_txt"].open("w", encoding="utf-8") as out_txt:

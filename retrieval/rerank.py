@@ -39,13 +39,17 @@ _COHERE_RERANK_MODEL = None
 _VOYAGE_RERANK_MODEL = None
 _RERANKER_BACKEND = None
 _RERANKER_TIMEOUT = None
+_RERANK_BACKEND = None
+_RERANK_INPUT_SNIPPET_CHARS = None
+_COHERE_RERANK_TOP_N = None
 
 def _load_cached_config():
     """Load all reranking config values into module-level cache."""
     global _RERANKER_MODEL, _AGRO_RERANKER_ENABLED, _AGRO_RERANKER_ALPHA, _AGRO_RERANKER_TOPN
     global _AGRO_RERANKER_BATCH, _AGRO_RERANKER_MAXLEN, _AGRO_RERANKER_RELOAD_ON_CHANGE
     global _AGRO_RERANKER_RELOAD_PERIOD_SEC, _COHERE_RERANK_MODEL, _VOYAGE_RERANK_MODEL
-    global _RERANKER_BACKEND, _RERANKER_TIMEOUT
+    global _RERANKER_BACKEND, _RERANKER_TIMEOUT, _RERANK_BACKEND, _RERANK_INPUT_SNIPPET_CHARS
+    global _COHERE_RERANK_TOP_N
 
     if _config_registry is None:
         # Fallback to env vars if registry not available
@@ -61,6 +65,9 @@ def _load_cached_config():
         _VOYAGE_RERANK_MODEL = os.getenv('VOYAGE_RERANK_MODEL', 'rerank-2')
         _RERANKER_BACKEND = os.getenv('RERANKER_BACKEND', 'local')
         _RERANKER_TIMEOUT = int(os.getenv('RERANKER_TIMEOUT', '10') or '10')
+        _RERANK_BACKEND = os.getenv('RERANK_BACKEND', 'local')
+        _RERANK_INPUT_SNIPPET_CHARS = int(os.getenv('RERANK_INPUT_SNIPPET_CHARS', '600') or '600')
+        _COHERE_RERANK_TOP_N = int(os.getenv('COHERE_RERANK_TOP_N', '50') or '50')
     else:
         _RERANKER_MODEL = _config_registry.get_str('RERANKER_MODEL', 'cross-encoder/ms-marco-MiniLM-L-12-v2')
         _AGRO_RERANKER_ENABLED = _config_registry.get_int('AGRO_RERANKER_ENABLED', 1)
@@ -74,6 +81,9 @@ def _load_cached_config():
         _VOYAGE_RERANK_MODEL = _config_registry.get_str('VOYAGE_RERANK_MODEL', 'rerank-2')
         _RERANKER_BACKEND = _config_registry.get_str('RERANKER_BACKEND', 'local')
         _RERANKER_TIMEOUT = _config_registry.get_int('RERANKER_TIMEOUT', 10)
+        _RERANK_BACKEND = _config_registry.get_str('RERANK_BACKEND', 'local')
+        _RERANK_INPUT_SNIPPET_CHARS = _config_registry.get_int('RERANK_INPUT_SNIPPET_CHARS', 600)
+        _COHERE_RERANK_TOP_N = _config_registry.get_int('COHERE_RERANK_TOP_N', 50)
 
 def reload_config():
     """Reload all cached config values from registry."""
@@ -177,23 +187,16 @@ def rerank_results(query: str, results: List[Dict[str, Any]], top_k: int = 10, t
         cohere_top_n = settings.top_n_cloud
         cohere_key_present = settings.cohere_api_key_present
     else:
-        backend = (os.getenv('RERANK_BACKEND', 'local') or 'local').lower()
+        # Use cached config values instead of os.getenv
+        backend = (_RERANK_BACKEND or 'local').lower()
         enabled = backend not in ('none', 'off', 'disabled')
-        model_name = os.getenv('RERANKER_MODEL', DEFAULT_MODEL)
+        model_name = _RERANKER_MODEL or DEFAULT_MODEL
         metrics_label = f"cohere:{COHERE_MODEL}" if backend == 'cohere' else f"local:{model_name}"
-        try:
-            snippet_local = int(os.getenv('RERANK_INPUT_SNIPPET_CHARS', '600') or '600')
-        except Exception:
-            snippet_local = 600
-        try:
-            snippet_cohere = int(os.getenv('RERANK_INPUT_SNIPPET_CHARS', '700') or '700')
-        except Exception:
-            snippet_cohere = 700
-        cohere_model = os.getenv('COHERE_RERANK_MODEL', COHERE_MODEL)
-        try:
-            cohere_top_n = int(os.getenv('COHERE_RERANK_TOP_N', '50') or '50')
-        except Exception:
-            cohere_top_n = 50
+        snippet_local = _RERANK_INPUT_SNIPPET_CHARS or 600
+        # Cohere typically needs slightly longer snippets
+        snippet_cohere = min(_RERANK_INPUT_SNIPPET_CHARS + 100, 700) if _RERANK_INPUT_SNIPPET_CHARS else 700
+        cohere_model = _COHERE_RERANK_MODEL or COHERE_MODEL
+        cohere_top_n = _COHERE_RERANK_TOP_N or 50
         cohere_key_present = bool(os.getenv('COHERE_API_KEY'))
 
     if not enabled:

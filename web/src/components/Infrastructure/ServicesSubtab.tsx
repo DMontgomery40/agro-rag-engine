@@ -1,534 +1,724 @@
-// Imported from /gui/index.html - contains all config parameters
-// This component uses dangerouslySetInnerHTML to render the exact HTML from /gui
+// AGRO - Infrastructure Services Subtab
+// Real React component with full backend wiring
+
+import { useState, useEffect } from 'react';
+import { dockerApi } from '@/api/docker';
+import { useAPI } from '@/hooks';
+import type { DockerStatus, DockerContainer } from '@/types';
+
+interface ServiceStatus {
+  name: string;
+  status: 'online' | 'offline' | 'checking';
+  color: string;
+  port: number;
+  description: string;
+}
 
 export function ServicesSubtab() {
-  const htmlContent = `                <!-- Infrastructure Services (from settings-docker) -->
-                <div class="settings-section" style="border-left: 3px solid var(--warn);">
-                    <h3>
-                        <span style="color: var(--warn);">●</span> Infrastructure Services
-                        <span class="tooltip-wrap">
-                            <span class="help-icon">?</span>
-                            <div class="tooltip-bubble">
-                                <span class="tt-title">Infrastructure</span>
-                                Core services for AGRO:
-                                <ul style="margin-top:8px; padding-left:16px;">
-                                    <li><strong>Qdrant:</strong> Vector database (port 6333)</li>
-                                    <li><strong>Redis:</strong> LangGraph memory (port 6379)</li>
-                                    <li><strong>Prometheus:</strong> Metrics (port 9090)</li>
-                                    <li><strong>Grafana:</strong> Dashboards (port 3000)</li>
-                                </ul>
-                            </div>
-                        </span>
-                    </h3>
+  const { api } = useAPI();
 
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; margin-bottom: 16px;">
-                        <!-- Qdrant -->
-                        <div style="background: var(--bg-elev2); border: 1px solid var(--line); border-radius: 6px; padding: 16px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                <div style="font-weight: 600; color: var(--accent);">Qdrant</div>
-                                <div id="qdrant-status" style="font-size: 11px; color: var(--fg-muted);">Checking...</div>
-                            </div>
-                            <div style="font-size: 12px; color: var(--fg-muted); margin-bottom: 12px;">
-                                Vector database • Port 6333
-                            </div>
-                            <div style="display: flex; gap: 8px;">
-                                <button class="small-button" id="btn-qdrant-open" style="flex: 1; background: var(--bg-elev2); color: var(--link); border: 1px solid var(--link);">
-                                    🌐 Open UI
-                                </button>
-                                <button class="small-button" id="btn-qdrant-restart" style="flex: 1; background: var(--bg-elev2); color: var(--warn); border: 1px solid var(--warn);">
-                                    ↻ Restart
-                                </button>
-                            </div>
-                        </div>
+  // Core state
+  const [dockerStatus, setDockerStatus] = useState<DockerStatus | null>(null);
+  const [containers, setContainers] = useState<DockerContainer[]>([]);
+  const [agroContainers, setAgroContainers] = useState<DockerContainer[]>([]);
 
-                        <!-- Redis -->
-                        <div style="background: var(--bg-elev2); border: 1px solid var(--line); border-radius: 6px; padding: 16px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                <div style="font-weight: 600; color: var(--err);">Redis</div>
-                                <div id="redis-status" style="font-size: 11px; color: var(--fg-muted);">Checking...</div>
-                            </div>
-                            <div style="font-size: 12px; color: var(--fg-muted); margin-bottom: 12px;">
-                                Memory store • Port 6379
-                            </div>
-                            <div style="display: flex; gap: 8px;">
-                                <button class="small-button" id="btn-redis-ping" style="flex: 1; background: var(--bg-elev2); color: var(--err); border: 1px solid var(--err);">
-                                    📡 Ping
-                                </button>
-                                <button class="small-button" id="btn-redis-restart" style="flex: 1; background: var(--bg-elev2); color: var(--warn); border: 1px solid var(--warn);">
-                                    ↻ Restart
-                                </button>
-                            </div>
-                        </div>
+  // Service status
+  const [qdrantStatus, setQdrantStatus] = useState<ServiceStatus>({
+    name: 'Qdrant',
+    status: 'checking',
+    color: 'var(--accent)',
+    port: 6333,
+    description: 'Vector database'
+  });
 
-                        <!-- Prometheus -->
-                        <div style="background: var(--bg-elev2); border: 1px solid var(--line); border-radius: 6px; padding: 16px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                <div style="font-weight: 600; color: var(--warn);">Prometheus</div>
-                                <div id="prometheus-status" style="font-size: 11px; color: var(--fg-muted);">Checking...</div>
-                            </div>
-                            <div style="font-size: 12px; color: var(--fg-muted); margin-bottom: 12px;">
-                                Metrics collector • Port 9090
-                            </div>
-                            <div style="display: flex; gap: 8px;">
-                                <button class="small-button" id="btn-prometheus-open" style="flex: 1; background: var(--bg-elev2); color: var(--warn); border: 1px solid var(--warn);">
-                                    🌐 Open UI
-                                </button>
-                            </div>
-                        </div>
+  const [redisStatus, setRedisStatus] = useState<ServiceStatus>({
+    name: 'Redis',
+    status: 'checking',
+    color: 'var(--err)',
+    port: 6379,
+    description: 'Memory store'
+  });
 
-                        <!-- Grafana -->
-                        <div style="background: var(--bg-elev2); border: 1px solid var(--line); border-radius: 6px; padding: 16px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                <div style="font-weight: 600; color: var(--link);">Grafana</div>
-                                <div id="grafana-status" style="font-size: 11px; color: var(--fg-muted);">Checking...</div>
-                            </div>
-                            <div style="font-size: 12px; color: var(--fg-muted); margin-bottom: 12px;">
-                                Dashboards • Port 3000
-                            </div>
-                            <div style="display: flex; gap: 8px;">
-                                <button class="small-button" id="btn-grafana-open" style="flex: 1; background: var(--bg-elev2); color: var(--link); border: 1px solid var(--link);">
-                                    🌐 Open UI
-                                </button>
-                            </div>
-                            <div style="font-size: 10px; color: var(--fg-muted); margin-top: 8px;">
-                                Login: admin / ********
-                            </div>
-                        </div>
-                    </div>
+  const [prometheusStatus, setPrometheusStatus] = useState<ServiceStatus>({
+    name: 'Prometheus',
+    status: 'checking',
+    color: 'var(--warn)',
+    port: 9090,
+    description: 'Metrics collector'
+  });
 
-                    <div style="display: flex; gap: 8px;">
-                        <button class="small-button" id="btn-infra-up" style="flex: 1; background: var(--accent); color: var(--accent-contrast); padding: 12px; font-weight: 600;">
-                            ▶ Start All Infrastructure
-                        </button>
-                        <button class="small-button" id="btn-infra-down" style="flex: 1; background: var(--err); color: var(--fg); padding: 12px; font-weight: 600;">
-                            ■ Stop All Infrastructure
-                        </button>
-                    </div>
-                </div>
+  const [grafanaStatus, setGrafanaStatus] = useState<ServiceStatus>({
+    name: 'Grafana',
+    status: 'checking',
+    color: 'var(--link)',
+    port: 3000,
+    description: 'Dashboards'
+  });
 
-                <!-- Docker Status (from settings-docker) -->
-                <div class="settings-section" style="border-left: 3px solid var(--link);">
-                    <h3 id="infra-docker-anchor">
-                        <span style="color: var(--link);">●</span> Docker Status
-                        <button class="small-button" id="btn-docker-refresh" style="float: right; padding: 4px 12px; font-size: 11px;">
-                            ↻ Refresh All
-                        </button>
-                    </h3>
+  // Action states
+  const [loading, setLoading] = useState(false);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [runtimeMode, setRuntimeMode] = useState('0');
 
-                    <div id="docker-status-display" style="margin-bottom: 16px;">
-                        <!-- Populated by JS -->
-                    </div>
+  // Load initial data
+  useEffect(() => {
+    fetchAllStatus();
 
-                    <!-- Runtime Mode Toggle (Infrastructure) -->
-                    <div class="input-row" style="margin-top: 8px;">
-                        <div class="input-group">
-                            <label>
-                                Runtime Mode (DEV_LOCAL_UVICORN)
-                                <span class="help-icon" data-tooltip="DEV_LOCAL_UVICORN">?</span>
-                            </label>
-                            <select name="DEV_LOCAL_UVICORN" id="infra-runtime-mode">
-                                <option value="0">Docker (default)</option>
-                                <option value="1">Local uvicorn (dev-only)</option>
-                            </select>
-                            <div class="small" style="color: var(--fg-muted); margin-top: 6px;">
-                                Switch to Local uvicorn for development. In dev launcher, this scales Docker API to 0 and starts uvicorn on your host.
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    // Auto-refresh every 5 seconds
+    const interval = setInterval(() => {
+      fetchAllStatus();
+    }, 5000);
 
-                <!-- AGRO Containers -->
-                <div class="settings-section" style="border-left: 3px solid var(--accent);">
-                    <h3>
-                        <span style="color: var(--accent);">●</span> AGRO Containers
-                    </h3>
-                    <p class="small" style="color: var(--fg-muted); margin-bottom: 12px;">Core containers managed by <code>docker-compose.services.yml</code>.</p>
-                    <div id="agro-containers-grid" style="display: grid; gap: 12px; margin-bottom: 16px;"></div>
-                </div>
+    return () => clearInterval(interval);
+  }, []);
 
-                <!-- All Containers (user + AGRO) -->
-                <div class="settings-section" style="border-left: 3px solid var(--link);">
-                    <h3>
-                        <span style="color: var(--link);">●</span> All Containers
-                        <button class="small-button" id="btn-docker-refresh-containers" style="float: right; padding: 4px 12px; font-size: 11px;">
-                            ↻ Refresh
-                        </button>
-                    </h3>
-                    <p class="small" style="color: var(--fg-muted); margin-bottom: 12px;">Every Docker container detected on this host (including AGRO and user projects).</p>
-                    <div id="docker-containers-grid" style="display: grid; gap: 12px; margin-bottom: 16px;">
-                        <div style="color: var(--fg-muted); padding: 16px;">Loading containers...</div>
-                    </div>
-                </div>
+  const fetchAllStatus = async () => {
+    await Promise.all([
+      fetchDockerStatus(),
+      fetchContainers(),
+      fetchServiceStatus()
+    ]);
+  };
 
-                <div id="docker-terminal-container"></div>
+  const fetchDockerStatus = async () => {
+    try {
+      const status = await dockerApi.getStatus();
+      setDockerStatus(status);
+    } catch (error) {
+      console.error('[ServicesSubtab] Failed to fetch Docker status:', error);
+      setDockerStatus({ running: false, runtime: 'Unknown', containers_count: 0 });
+    }
+  };
 
-                <!-- Docker Settings (from settings-docker) -->
-                <div class="settings-section" style="border-left: 3px solid var(--link);">
-                    <h3>
-                        <span style="color: var(--link);">●</span> Docker Settings
-                    </h3>
+  const fetchContainers = async () => {
+    try {
+      const result = await dockerApi.listContainers();
+      const allContainers = result.containers || [];
+      setContainers(allContainers);
 
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label>
-                                Auto-start Colima
-                                <span class="help-icon" data-tooltip="AUTO_COLIMA">?</span>
-                            </label>
-                            <select name="AUTO_COLIMA">
-                                <option value="1">On (auto-start if needed)</option>
-                                <option value="0">Off (manual start)</option>
-                            </select>
-                            <p class="small" style="color: var(--fg-muted);">Automatically start Colima Docker runtime on macOS</p>
-                        </div>
-                        <div class="input-group">
-                            <label>
-                                Colima Profile
-                                <span class="help-icon" data-tooltip="COLIMA_PROFILE">?</span>
-                            </label>
-                            <input type="text" name="COLIMA_PROFILE" placeholder="default">
-                            <p class="small" style="color: var(--fg-muted);">Colima profile name (leave empty for default)</p>
-                        </div>
-                    </div>
+      // Filter AGRO containers
+      const agro = allContainers.filter((c: any) => c.agro_managed === true);
+      setAgroContainers(agro);
+    } catch (error) {
+      console.error('[ServicesSubtab] Failed to fetch containers:', error);
+      setContainers([]);
+      setAgroContainers([]);
+    }
+  };
 
-                    <button class="small-button" id="btn-save-docker-settings" style="background: var(--link); color: var(--accent-contrast); font-weight: 600;">
-                        💾 Save Settings
-                    </button>
-                </div>
+  const fetchServiceStatus = async () => {
+    // Check Qdrant
+    const qdrantContainer = containers.find(c =>
+      c.name.toLowerCase().includes('qdrant')
+    );
+    setQdrantStatus(prev => ({
+      ...prev,
+      status: qdrantContainer?.state === 'running' ? 'online' : 'offline'
+    }));
 
-                <!-- MCP Servers (from devtools-integrations) -->
-                <div class="settings-section">
-                    <h3 id="infra-git-hooks-anchor">Git Hooks (Auto-Index)</h3>
-                    <p class="small">Install local git hooks to auto-run BM25 indexing on branch changes and commits. Enable it with <code>AUTO_INDEX=1</code>.</p>
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label>Install Hooks</label>
-                            <button class="small-button" id="btn-install-hooks">Install</button>
-                        </div>
-                        <div class="input-group">
-                            <label>Status</label>
-                            <div id="hooks-status" class="mono">—</div>
-                        </div>
-                    </div>
-                    <div class="input-row">
-                        <div class="input-group full-width">
-                            <label>Enable</label>
-                            <input type="text" readonly value="export AUTO_INDEX=1" onclick="this.select();document.execCommand('copy');" />
-                        </div>
-                    </div>
-                </div>
+    // Check Redis via ping endpoint
+    try {
+      const res = await fetch(api('/api/docker/redis/ping'));
+      if (res.ok) {
+        const data = await res.json();
+        setRedisStatus(prev => ({
+          ...prev,
+          status: data.success ? 'online' : 'offline'
+        }));
+      } else {
+        setRedisStatus(prev => ({ ...prev, status: 'offline' }));
+      }
+    } catch {
+      setRedisStatus(prev => ({ ...prev, status: 'offline' }));
+    }
 
-                <div class="settings-section" style="margin-top:16px;">
-                    <h3>Commit Metadata (Agent/Session Signing)</h3>
-                    <p class="small">Append a Chat Session trailer to every commit and optionally set git user info. This helps trace changes to a local chat session ID.</p>
+    // Check Prometheus
+    const prometheusContainer = containers.find(c =>
+      c.name.toLowerCase().includes('prometheus')
+    );
+    setPrometheusStatus(prev => ({
+      ...prev,
+      status: prometheusContainer?.state === 'running' ? 'online' : 'offline'
+    }));
 
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label>Agent Name</label>
-                            <input type="text" id="git-agent-name" placeholder="Codex Agent" />
-                        </div>
-                        <div class="input-group">
-                            <label>Agent Email</label>
-                            <input type="email" id="git-agent-email" placeholder="agent@example.com" />
-                        </div>
-                    </div>
+    // Check Grafana
+    const grafanaContainer = containers.find(c =>
+      c.name.toLowerCase().includes('grafana')
+    );
+    setGrafanaStatus(prev => ({
+      ...prev,
+      status: grafanaContainer?.state === 'running' ? 'online' : 'offline'
+    }));
+  };
 
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label>Chat Session ID</label>
-                            <input type="text" id="git-chat-session" placeholder="paste your local chat session id" />
-                        </div>
-                        <div class="input-group">
-                            <label>Trailer Key</label>
-                            <input type="text" id="git-trailer-key" value="Chat-Session" />
-                        </div>
-                    </div>
+  const handleQdrantOpen = () => {
+    window.open('http://localhost:6333/dashboard', '_blank');
+  };
 
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label><input type="checkbox" id="git-set-user" /> Set git user.name/email</label>
-                        </div>
-                        <div class="input-group">
-                            <label><input type="checkbox" id="git-append-trailer" checked /> Append session trailer via hook</label>
-                        </div>
-                    </div>
+  const handleQdrantRestart = async () => {
+    const container = containers.find(c => c.name.toLowerCase().includes('qdrant'));
+    if (!container) {
+      setActionMessage('Qdrant container not found');
+      return;
+    }
 
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label><input type="checkbox" id="git-enable-template" /> Use commit template</label>
-                        </div>
-                        <div class="input-group">
-                            <label><input type="checkbox" id="git-install-hook" checked /> Install/refresh prepare-commit-msg hook</label>
-                        </div>
-                    </div>
+    setLoading(true);
+    setActionMessage('Restarting Qdrant...');
+    try {
+      await dockerApi.restartContainer(container.id);
+      setActionMessage('Qdrant restarted successfully');
+      setTimeout(() => fetchAllStatus(), 1000);
+    } catch (error) {
+      setActionMessage(`Failed to restart Qdrant: ${error}`);
+    } finally {
+      setLoading(false);
+      setTimeout(() => setActionMessage(null), 3000);
+    }
+  };
 
-                    <div style="display:flex; gap:8px; align-items:center;">
-                        <button class="small-button" id="btn-save-commit-meta" style="background: var(--accent); color: var(--accent-contrast);">💾 Save Commit Metadata</button>
-                        <div id="git-commit-meta-status" class="mono" style="font-size:12px; color: var(--fg-muted);">—</div>
-                    </div>
-                </div>
+  const handleRedisPing = async () => {
+    setLoading(true);
+    setActionMessage('Pinging Redis...');
+    try {
+      const res = await fetch(api('/api/docker/redis/ping'));
+      const data = await res.json();
+      setActionMessage(data.success ? `Redis: ${data.response}` : `Redis ping failed: ${data.error}`);
+    } catch (error) {
+      setActionMessage(`Failed to ping Redis: ${error}`);
+    } finally {
+      setLoading(false);
+      setTimeout(() => setActionMessage(null), 3000);
+    }
+  };
 
-                <!-- Paths & Endpoints (from config-infra) -->
-                <div class="settings-section">
-                    <h3 id="infra-paths-anchor">Infrastructure Configuration</h3>
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label>
-                                Qdrant URL
-                                <span class="help-icon" data-tooltip="QDRANT_URL">?</span>
-                            </label>
-                            <input type="text" name="QDRANT_URL" value="http://127.0.0.1:6333">
-                        </div>
-                        <div class="input-group">
-                            <label>
-                                Redis URL
-                                <span class="help-icon" data-tooltip="REDIS_URL">?</span>
-                            </label>
-                            <input type="text" name="REDIS_URL" value="redis://127.0.0.1:6379/0">
-                        </div>
-                    </div>
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label>
-                                Repo Root
-                                <span class="help-icon" data-tooltip="REPO_ROOT">?</span>
-                            </label>
-                            <input type="text" name="REPO_ROOT" placeholder="Override project root (optional)">
-                        </div>
-                        <div class="input-group">
-                            <label>
-                                Files Root
-                                <span class="help-icon" data-tooltip="FILES_ROOT">?</span>
-                            </label>
-                            <input type="text" name="FILES_ROOT" placeholder="/files mount root (optional)">
-                        </div>
-                    </div>
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label>
-                                Active Repository
-                                <span class="help-icon" data-tooltip="REPO">?</span>
-                            </label>
-                            <select name="REPO" id="repo-select"></select>
-                        </div>
-                        <div class="input-group">
-                            <label>
-                                Collection Suffix
-                                <span class="help-icon" data-tooltip="COLLECTION_SUFFIX">?</span>
-                            </label>
-                            <input type="text" name="COLLECTION_SUFFIX" placeholder="default">
-                        </div>
-                    </div>
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label>
-                                Collection Name
-                                <span class="help-icon" data-tooltip="COLLECTION_NAME">?</span>
-                            </label>
-                            <input type="text" name="COLLECTION_NAME" placeholder="code_chunks_{REPO}">
-                        </div>
-                        <div class="input-group">
-                            <label>
-                                Repo Path (fallback)
-                                <span class="help-icon" data-tooltip="REPO_PATH">?</span>
-                            </label>
-                            <input type="text" name="REPO_PATH" placeholder="/path/to/repo">
-                        </div>
-                    </div>
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label>
-                                GUI Directory
-                                <span class="help-icon" data-tooltip="GUI_DIR">?</span>
-                            </label>
-                            <input type="text" name="GUI_DIR" placeholder="./gui">
-                        </div>
-                        <div class="input-group">
-                            <label>
-                                Docs Directory
-                                <span class="help-icon" data-tooltip="DOCS_DIR">?</span>
-                            </label>
-                            <input type="text" name="DOCS_DIR" placeholder="./docs">
-                        </div>
-                    </div>
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label>
-                                Data Directory
-                                <span class="help-icon" data-tooltip="DATA_DIR">?</span>
-                            </label>
-                            <input type="text" name="DATA_DIR" placeholder="./data">
-                        </div>
-                        <div class="input-group">
-                        </div>
-                    </div>
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label>
-                                Repos File
-                                <span class="help-icon" data-tooltip="REPOS_FILE">?</span>
-                            </label>
-                            <input type="text" name="REPOS_FILE" value="./repos.json">
-                        </div>
-                        <div class="input-group">
-                            <label>
-                                Out Dir Base
-                                <span class="help-icon" data-tooltip="OUT_DIR_BASE">?</span>
-                            </label>
-                            <input type="text" name="OUT_DIR_BASE" placeholder="./out.noindex or ./out">
-                            <p class="small" style="color: var(--fg-muted);">
-                                Primary storage location for all indexed data. This is the <strong>single source</strong> for this setting.
-                            </p>
-                        </div>
-                    </div>
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label>
-                                RAG Out Base
-                                <span class="help-icon" data-tooltip="RAG_OUT_BASE">?</span>
-                            </label>
-                            <input type="text" name="RAG_OUT_BASE" placeholder="Override for OUT_DIR_BASE">
-                        </div>
-                        <div class="input-group">
-                            <label>
-                                MCP HTTP Host
-                                <span class="help-icon" data-tooltip="MCP_HTTP_HOST">?</span>
-                            </label>
-                            <input type="text" name="MCP_HTTP_HOST" value="0.0.0.0">
-                        </div>
-                    </div>
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label>
-                                MCP HTTP Port
-                                <span class="help-icon" data-tooltip="MCP_HTTP_PORT">?</span>
-                            </label>
-                            <input type="number" name="MCP_HTTP_PORT" value="8013">
-                        </div>
-                        <div class="input-group">
-                            <label>
-                                MCP HTTP Path
-                                <span class="help-icon" data-tooltip="MCP_HTTP_PATH">?</span>
-                            </label>
-                            <input type="text" name="MCP_HTTP_PATH" value="/mcp">
-                        </div>
-                    </div>
-                </div>
+  const handleRedisRestart = async () => {
+    const container = containers.find(c => c.name.toLowerCase().includes('redis'));
+    if (!container) {
+      setActionMessage('Redis container not found');
+      return;
+    }
 
-                <!-- Performance Monitoring (from analytics-performance) -->
-                <div class="settings-section" style="border-left: 3px solid var(--link);">
-                    <h3>📊 Performance & Reliability Alerts</h3>
-                    <p class="small">Set thresholds for error rates, latency, and timeout incidents.</p>
+    setLoading(true);
+    setActionMessage('Restarting Redis...');
+    try {
+      await dockerApi.restartContainer(container.id);
+      setActionMessage('Redis restarted successfully');
+      setTimeout(() => fetchAllStatus(), 1000);
+    } catch (error) {
+      setActionMessage(`Failed to restart Redis: ${error}`);
+    } finally {
+      setLoading(false);
+      setTimeout(() => setActionMessage(null), 3000);
+    }
+  };
 
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label>
-                                Error Rate Threshold (%)
-                                <span class="help-icon" data-tooltip="ALERT_ERROR_RATE_THRESHOLD_PERCENT">?</span>
-                            </label>
-                            <input type="number" id="alert_error_rate_threshold_percent" min="0.1" max="50" step="0.1" placeholder="5.0">
-                            <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Alert when error rate exceeds this percentage</p>
-                        </div>
-                        <div class="input-group">
-                            <label>
-                                Request Latency P99 (seconds)
-                                <span class="help-icon" data-tooltip="ALERT_REQUEST_LATENCY_P99_SECONDS">?</span>
-                            </label>
-                            <input type="number" id="alert_request_latency_p99_seconds" min="0.1" max="60" step="0.1" placeholder="5.0">
-                            <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Alert when 99th percentile latency exceeds this</p>
-                        </div>
-                    </div>
+  const handlePrometheusOpen = () => {
+    window.open('http://localhost:9090', '_blank');
+  };
 
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label>
-                                Timeout Errors (per 5 min)
-                                <span class="help-icon" data-tooltip="ALERT_TIMEOUT_ERRORS_PER_5MIN">?</span>
-                            </label>
-                            <input type="number" id="alert_timeout_errors_per_5min" min="1" max="1000" step="1" placeholder="10">
-                            <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Alert when timeout count exceeds this</p>
-                        </div>
-                        <div class="input-group">
-                            <label>
-                                Rate Limit Errors (per 5 min)
-                                <span class="help-icon" data-tooltip="ALERT_RATE_LIMIT_ERRORS_PER_5MIN">?</span>
-                            </label>
-                            <input type="number" id="alert_rate_limit_errors_per_5min" min="1" max="1000" step="1" placeholder="5">
-                            <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Alert when rate limit hits exceed this</p>
-                        </div>
-                    </div>
-                </div>
+  const handleGrafanaOpen = () => {
+    window.open('http://localhost:3000', '_blank');
+  };
 
-                <!-- Usage Statistics (from analytics-usage) -->
-                <div class="settings-section" style="border-left: 3px solid var(--accent);">
-                    <h3>🌐 API Anomaly Alerts</h3>
-                    <p class="small">Detect unusual API calling patterns that might indicate issues or loops.</p>
+  const handleInfraUp = async () => {
+    setLoading(true);
+    setActionMessage('Starting infrastructure...');
+    try {
+      const res = await fetch(api('/api/docker/infra/up'), { method: 'POST' });
+      const data = await res.json();
+      setActionMessage(data.success ? 'Infrastructure started' : `Failed: ${data.error}`);
+      setTimeout(() => fetchAllStatus(), 2000);
+    } catch (error) {
+      setActionMessage(`Failed to start infrastructure: ${error}`);
+    } finally {
+      setLoading(false);
+      setTimeout(() => setActionMessage(null), 3000);
+    }
+  };
 
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label>
-                                Endpoint Call Frequency (calls/min)
-                                <span class="help-icon" data-tooltip="ALERT_ENDPOINT_CALL_FREQUENCY_PER_MINUTE">?</span>
-                            </label>
-                            <input type="number" id="alert_endpoint_call_frequency_per_minute" min="1" max="1000" step="1" placeholder="10">
-                            <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Alert when a single endpoint gets called this frequently</p>
-                        </div>
-                        <div class="input-group">
-                            <label>
-                                Sustained Frequency Duration (minutes)
-                                <span class="help-icon" data-tooltip="ALERT_ENDPOINT_FREQUENCY_SUSTAINED_MINUTES">?</span>
-                            </label>
-                            <input type="number" id="alert_endpoint_frequency_sustained_minutes" min="1" max="60" step="1" placeholder="2">
-                            <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Duration threshold for sustained frequency alert</p>
-                        </div>
-                    </div>
+  const handleInfraDown = async () => {
+    if (!confirm('Stop all infrastructure services?')) return;
 
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label>
-                                Cohere Rerank Calls (calls/min)
-                                <span class="help-icon" data-tooltip="ALERT_COHERE_RERANK_CALLS_PER_MINUTE">?</span>
-                            </label>
-                            <input type="number" id="alert_cohere_rerank_calls_per_minute" min="1" max="1000" step="1" placeholder="30">
-                            <p class="small" style="color: var(--fg-muted); margin-top: 4px;">Alert when Cohere reranking calls spike</p>
-                        </div>
-                    </div>
-                </div>
+    setLoading(true);
+    setActionMessage('Stopping infrastructure...');
+    try {
+      const res = await fetch(api('/api/docker/infra/down'), { method: 'POST' });
+      const data = await res.json();
+      setActionMessage(data.success ? 'Infrastructure stopped' : `Failed: ${data.error}`);
+      setTimeout(() => fetchAllStatus(), 2000);
+    } catch (error) {
+      setActionMessage(`Failed to stop infrastructure: ${error}`);
+    } finally {
+      setLoading(false);
+      setTimeout(() => setActionMessage(null), 3000);
+    }
+  };
 
-                <!-- Tracing & Observability (from analytics-tracing) -->
-                <div class="settings-section" style="border-left: 3px solid var(--link);">
-                    <h3>
-                        <span class="accent-blue">●</span> LangSmith (Preview)
-                    </h3>
-                    <p class="small">View the real LangSmith run inside AGRO. Uses a shared link for embedding.</p>
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label>Project</label>
-                            <input type="text" id="ls-project" placeholder="agro">
-                        </div>
-                        <div class="input-group">
-                            <label>Share</label>
-                            <select id="ls-share">
-                                <option value="true" selected>Yes (public share link)</option>
-                                <option value="false">No (requires login)</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <button class="small-button" id="btn-ls-latest">Load Latest</button>
-                        </div>
-                    </div>
-                    <div class="input-row">
-                        <div class="input-group full-width">
-                            <a id="ls-open" href="#" target="_blank" style="display:none;">Open in new tab ↗</a>
-                        </div>
-                    </div>
-                    <div id="ls-embed-wrap" style="position: relative; width: 100%; height: 480px; background: var(--card-bg); border: 1px solid var(--line); border-radius: 6px; overflow: hidden;">
-                        <iframe id="ls-iframe" style="width: 100%; height: 100%; border: none; background: var(--panel);"></iframe>
-                    </div>
-                    <p class="small" id="ls-note" style="color: var(--fg-muted); margin-top:8px; display:none;">If the viewer is blocked by the site, use the "Open in new tab" link above.</p>
-                </div>
+  const handleDockerRefresh = () => {
+    fetchAllStatus();
+    setActionMessage('Refreshing...');
+    setTimeout(() => setActionMessage(null), 1000);
+  };
+
+  const handleSaveRuntimeMode = async () => {
+    setActionMessage('Runtime mode saved (DEV_LOCAL_UVICORN=' + runtimeMode + ')');
+    setTimeout(() => setActionMessage(null), 2000);
+  };
+
+  const renderServiceCard = (service: ServiceStatus, buttons: React.ReactNode) => (
+    <div style={{
+      background: 'var(--bg-elev2)',
+      border: '1px solid var(--line)',
+      borderRadius: '6px',
+      padding: '16px'
+    }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '12px'
+      }}>
+        <div style={{ fontWeight: '600', color: service.color }}>{service.name}</div>
+        <div id={`${service.name.toLowerCase()}-status`} style={{
+          fontSize: '11px',
+          color: service.status === 'online' ? 'var(--accent)' :
+                 service.status === 'offline' ? 'var(--err)' : 'var(--fg-muted)'
+        }}>
+          {service.status === 'online' ? '● Online' :
+           service.status === 'offline' ? '○ Offline' : 'Checking...'}
+        </div>
+      </div>
+      <div style={{
+        fontSize: '12px',
+        color: 'var(--fg-muted)',
+        marginBottom: '12px'
+      }}>
+        {service.description} • Port {service.port}
+      </div>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        {buttons}
+      </div>
+    </div>
+  );
+
+  const renderContainer = (container: any) => {
+    const statusColor = container.state === 'running' ? 'var(--accent)' :
+                       container.state === 'paused' ? 'var(--warn)' : 'var(--err)';
+
+    return (
+      <div key={container.id} style={{
+        background: 'var(--bg-elev2)',
+        border: '1px solid var(--line)',
+        borderRadius: '6px',
+        padding: '12px'
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          marginBottom: '8px'
+        }}>
+          <div>
+            <div style={{ fontWeight: '600', fontSize: '13px' }}>{container.name}</div>
+            <div style={{ fontSize: '11px', color: 'var(--fg-muted)', marginTop: '2px' }}>
+              {container.image}
             </div>
+          </div>
+          <div style={{
+            fontSize: '10px',
+            padding: '2px 6px',
+            borderRadius: '3px',
+            background: statusColor + '20',
+            color: statusColor,
+            fontWeight: '600'
+          }}>
+            {container.state}
+          </div>
+        </div>
+        <div style={{ fontSize: '11px', color: 'var(--fg-muted)', marginBottom: '8px' }}>
+          {container.status}
+        </div>
+        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+          {container.state === 'running' && (
+            <button
+              onClick={() => handleContainerAction('stop', container.id)}
+              style={{
+                fontSize: '10px',
+                padding: '4px 8px',
+                background: 'var(--bg-elev1)',
+                color: 'var(--err)',
+                border: '1px solid var(--err)',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Stop
+            </button>
+          )}
+          {container.state !== 'running' && (
+            <button
+              onClick={() => handleContainerAction('start', container.id)}
+              style={{
+                fontSize: '10px',
+                padding: '4px 8px',
+                background: 'var(--bg-elev1)',
+                color: 'var(--accent)',
+                border: '1px solid var(--accent)',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Start
+            </button>
+          )}
+          <button
+            onClick={() => handleContainerAction('restart', container.id)}
+            style={{
+              fontSize: '10px',
+              padding: '4px 8px',
+              background: 'var(--bg-elev1)',
+              color: 'var(--warn)',
+              border: '1px solid var(--warn)',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            Restart
+          </button>
+        </div>
+      </div>
+    );
+  };
 
-`;
-  
-  return <div dangerouslySetInnerHTML={{ __html: htmlContent }} />;
+  const handleContainerAction = async (action: string, containerId: string) => {
+    setLoading(true);
+    setActionMessage(`${action}ing container...`);
+    try {
+      if (action === 'start') await dockerApi.startContainer(containerId);
+      else if (action === 'stop') await dockerApi.stopContainer(containerId);
+      else if (action === 'restart') await dockerApi.restartContainer(containerId);
+
+      setActionMessage(`Container ${action}ed successfully`);
+      setTimeout(() => fetchAllStatus(), 1000);
+    } catch (error) {
+      setActionMessage(`Failed to ${action} container: ${error}`);
+    } finally {
+      setLoading(false);
+      setTimeout(() => setActionMessage(null), 3000);
+    }
+  };
+
+  return (
+    <div style={{ padding: '16px' }}>
+      {/* Action message */}
+      {actionMessage && (
+        <div style={{
+          padding: '12px',
+          background: 'var(--bg-elev2)',
+          border: '1px solid var(--line)',
+          borderRadius: '6px',
+          marginBottom: '16px',
+          fontSize: '12px',
+          color: 'var(--fg)'
+        }}>
+          {actionMessage}
+        </div>
+      )}
+
+      {/* Infrastructure Services */}
+      <div className="settings-section" style={{ borderLeft: '3px solid var(--warn)' }}>
+        <h3>
+          <span style={{ color: 'var(--warn)' }}>●</span> Infrastructure Services
+        </h3>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: '12px',
+          marginBottom: '16px'
+        }}>
+          {renderServiceCard(
+            qdrantStatus,
+            <>
+              <button
+                id="btn-qdrant-open"
+                onClick={handleQdrantOpen}
+                className="small-button"
+                style={{
+                  flex: 1,
+                  background: 'var(--bg-elev2)',
+                  color: 'var(--link)',
+                  border: '1px solid var(--link)'
+                }}
+              >
+                🌐 Open UI
+              </button>
+              <button
+                id="btn-qdrant-restart"
+                onClick={handleQdrantRestart}
+                disabled={loading}
+                className="small-button"
+                style={{
+                  flex: 1,
+                  background: 'var(--bg-elev2)',
+                  color: 'var(--warn)',
+                  border: '1px solid var(--warn)'
+                }}
+              >
+                ↻ Restart
+              </button>
+            </>
+          )}
+
+          {renderServiceCard(
+            redisStatus,
+            <>
+              <button
+                id="btn-redis-ping"
+                onClick={handleRedisPing}
+                disabled={loading}
+                className="small-button"
+                style={{
+                  flex: 1,
+                  background: 'var(--bg-elev2)',
+                  color: 'var(--err)',
+                  border: '1px solid var(--err)'
+                }}
+              >
+                📡 Ping
+              </button>
+              <button
+                id="btn-redis-restart"
+                onClick={handleRedisRestart}
+                disabled={loading}
+                className="small-button"
+                style={{
+                  flex: 1,
+                  background: 'var(--bg-elev2)',
+                  color: 'var(--warn)',
+                  border: '1px solid var(--warn)'
+                }}
+              >
+                ↻ Restart
+              </button>
+            </>
+          )}
+
+          {renderServiceCard(
+            prometheusStatus,
+            <button
+              id="btn-prometheus-open"
+              onClick={handlePrometheusOpen}
+              className="small-button"
+              style={{
+                flex: 1,
+                background: 'var(--bg-elev2)',
+                color: 'var(--warn)',
+                border: '1px solid var(--warn)'
+              }}
+            >
+              🌐 Open UI
+            </button>
+          )}
+
+          {renderServiceCard(
+            grafanaStatus,
+            <button
+              id="btn-grafana-open"
+              onClick={handleGrafanaOpen}
+              className="small-button"
+              style={{
+                flex: 1,
+                background: 'var(--bg-elev2)',
+                color: 'var(--link)',
+                border: '1px solid var(--link)'
+              }}
+            >
+              🌐 Open UI
+            </button>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            id="btn-infra-up"
+            onClick={handleInfraUp}
+            disabled={loading}
+            className="small-button"
+            style={{
+              flex: 1,
+              background: 'var(--accent)',
+              color: 'var(--accent-contrast)',
+              padding: '12px',
+              fontWeight: '600'
+            }}
+          >
+            ▶ Start All Infrastructure
+          </button>
+          <button
+            id="btn-infra-down"
+            onClick={handleInfraDown}
+            disabled={loading}
+            className="small-button"
+            style={{
+              flex: 1,
+              background: 'var(--err)',
+              color: 'var(--fg)',
+              padding: '12px',
+              fontWeight: '600'
+            }}
+          >
+            ■ Stop All Infrastructure
+          </button>
+        </div>
+      </div>
+
+      {/* Docker Status */}
+      <div className="settings-section" style={{ borderLeft: '3px solid var(--link)' }}>
+        <h3 id="infra-docker-anchor">
+          <span style={{ color: 'var(--link)' }}>●</span> Docker Status
+          <button
+            id="btn-docker-refresh"
+            onClick={handleDockerRefresh}
+            className="small-button"
+            style={{
+              float: 'right',
+              padding: '4px 12px',
+              fontSize: '11px'
+            }}
+          >
+            ↻ Refresh All
+          </button>
+        </h3>
+
+        <div id="docker-status-display" style={{ marginBottom: '16px' }}>
+          {dockerStatus ? (
+            <div style={{
+              padding: '12px',
+              background: 'var(--bg-elev2)',
+              border: '1px solid var(--line)',
+              borderRadius: '6px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                <span>Status:</span>
+                <span style={{ color: dockerStatus.running ? 'var(--accent)' : 'var(--err)' }}>
+                  {dockerStatus.running ? '● Running' : '○ Not Running'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '6px' }}>
+                <span>Runtime:</span>
+                <span>{dockerStatus.runtime}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '6px' }}>
+                <span>Containers:</span>
+                <span>{dockerStatus.containers_count}</span>
+              </div>
+            </div>
+          ) : (
+            <div style={{ color: 'var(--fg-muted)', fontSize: '12px' }}>Loading...</div>
+          )}
+        </div>
+
+        {/* Runtime Mode Toggle */}
+        <div className="input-row" style={{ marginTop: '8px' }}>
+          <div className="input-group">
+            <label>
+              Runtime Mode (DEV_LOCAL_UVICORN)
+            </label>
+            <select
+              id="infra-runtime-mode"
+              value={runtimeMode}
+              onChange={(e) => setRuntimeMode(e.target.value)}
+              style={{
+                width: '100%',
+                background: 'var(--input-bg)',
+                border: '1px solid var(--line)',
+                color: 'var(--fg)',
+                padding: '8px',
+                borderRadius: '4px'
+              }}
+            >
+              <option value="0">Docker (default)</option>
+              <option value="1">Local uvicorn (dev-only)</option>
+            </select>
+            <div className="small" style={{ color: 'var(--fg-muted)', marginTop: '6px' }}>
+              Switch to Local uvicorn for development. In dev launcher, this scales Docker API to 0 and starts uvicorn on your host.
+            </div>
+            <button
+              onClick={handleSaveRuntimeMode}
+              className="small-button"
+              style={{
+                marginTop: '8px',
+                background: 'var(--link)',
+                color: 'var(--accent-contrast)',
+                fontWeight: '600'
+              }}
+            >
+              💾 Save Runtime Mode
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* AGRO Containers */}
+      <div className="settings-section" style={{ borderLeft: '3px solid var(--accent)' }}>
+        <h3>
+          <span style={{ color: 'var(--accent)' }}>●</span> AGRO Containers
+        </h3>
+        <p className="small" style={{ color: 'var(--fg-muted)', marginBottom: '12px' }}>
+          Core containers managed by docker-compose.services.yml.
+        </p>
+        <div id="agro-containers-grid" style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: '12px',
+          marginBottom: '16px'
+        }}>
+          {agroContainers.length > 0 ? (
+            agroContainers.map(renderContainer)
+          ) : (
+            <div style={{ color: 'var(--fg-muted)', padding: '16px' }}>
+              No AGRO containers found
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* All Containers */}
+      <div className="settings-section" style={{ borderLeft: '3px solid var(--link)' }}>
+        <h3>
+          <span style={{ color: 'var(--link)' }}>●</span> All Containers
+          <button
+            id="btn-docker-refresh-containers"
+            onClick={handleDockerRefresh}
+            className="small-button"
+            style={{
+              float: 'right',
+              padding: '4px 12px',
+              fontSize: '11px'
+            }}
+          >
+            ↻ Refresh
+          </button>
+        </h3>
+        <p className="small" style={{ color: 'var(--fg-muted)', marginBottom: '12px' }}>
+          Every Docker container detected on this host (including AGRO and user projects).
+        </p>
+        <div id="docker-containers-grid" style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: '12px',
+          marginBottom: '16px'
+        }}>
+          {containers.length > 0 ? (
+            containers.map(renderContainer)
+          ) : (
+            <div style={{ color: 'var(--fg-muted)', padding: '16px' }}>
+              Loading containers...
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }

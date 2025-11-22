@@ -11,6 +11,7 @@ from common.config_loader import load_repos
 from server.api_interceptor import setup_interceptor
 from server.frequency_limiter import FrequencyAnomalyMiddleware
 from server.metrics import init_metrics_fastapi
+from server.services.config_registry import get_config_registry
 import logging
 import uuid
 from server.feedback import router as feedback_router
@@ -37,6 +38,10 @@ from server.routers.hardware import router as hardware_router
 from server.routers.observability import router as observability_router
 from server.routers.reranker_ops import router as reranker_ops_router
 from server.routers.mcp_ops import router as mcp_ops_router
+from server.routers.chat import router as chat_router
+
+# Module-level config registry cache
+_config_registry = get_config_registry()
 
 
 def create_app() -> FastAPI:
@@ -177,6 +182,7 @@ def create_app() -> FastAPI:
     app.include_router(observability_router)
     app.include_router(reranker_ops_router)
     app.include_router(mcp_ops_router)
+    app.include_router(chat_router)
 
     # Include existing routers
     app.include_router(feedback_router)
@@ -200,10 +206,6 @@ def create_app() -> FastAPI:
         import socket
         import requests
 
-        def _bool_env(name: str, default: str = "0") -> bool:
-            v = (os.getenv(name, default) or default).strip().lower()
-            return v in {"1", "true", "yes", "on"}
-
         repo_cfg = load_repos()
         repo_name = os.getenv("REPO") or repo_cfg.get("default_repo") or "local"
         repo_mode = "repo" if repo_name and repo_name != "local" else "local"
@@ -216,36 +218,34 @@ def create_app() -> FastAPI:
             except Exception:
                 branch = None
 
-        if (os.getenv("SKIP_DENSE", "0") or "0").strip() == "1":
-            retrieval_mode = "bm25"
-        else:
-            retrieval_mode = "hybrid"
-        # Be resilient to invalid or missing env overrides
-        try:
-            top_k = int((os.getenv("FINAL_K") or os.getenv("LANGGRAPH_FINAL_K") or "10").strip())
-        except Exception:
-            top_k = 10
+        skip_dense = _config_registry.get_bool("SKIP_DENSE", False)
+        retrieval_mode = "bm25" if skip_dense else "hybrid"
 
-        rr_enabled = _bool_env("AGRO_RERANKER_ENABLED", "0")
-        rr_backend = (os.getenv("RERANK_BACKEND", "").strip().lower() or None)
+        # Get top_k with fallback chain
+        top_k = _config_registry.get_int("FINAL_K", 10)
+        if top_k == 10:  # Check if we got the default
+            top_k = _config_registry.get_int("LANGGRAPH_FINAL_K", 10)
+
+        rr_enabled = _config_registry.get_bool("AGRO_RERANKER_ENABLED", False)
+        rr_backend = _config_registry.get_str("RERANKER_BACKEND", "").strip().lower() or None
         rr_provider = None
         rr_model = None
         if rr_backend:
             if rr_backend in {"cohere", "voyage"}:
                 rr_provider = rr_backend
-                rr_model = os.getenv("COHERE_RERANK_MODEL") if rr_backend == "cohere" else os.getenv("VOYAGE_RERANK_MODEL")
+                rr_model = _config_registry.get_str("COHERE_RERANK_MODEL", "") if rr_backend == "cohere" else _config_registry.get_str("VOYAGE_RERANK_MODEL", "")
             elif rr_backend in {"hf", "local"}:
                 rr_provider = rr_backend
-                rr_model = os.getenv("RERANK_MODEL") or os.getenv("BAAI_RERANK_MODEL")
+                rr_model = _config_registry.get_str("RERANKER_MODEL", "")
             elif rr_backend == "learning":
                 rr_provider = "learning"
                 rr_model = os.getenv("AGRO_LEARNING_RERANKER_MODEL", "cross-encoder-agro")
 
-        enrich_enabled = _bool_env("ENRICH_CODE_CHUNKS", "0")
-        enrich_backend = (os.getenv("ENRICH_BACKEND", "").strip().lower() or None)
-        enrich_model = os.getenv("ENRICH_MODEL") or os.getenv("ENRICH_MODEL_OLLAMA")
+        enrich_enabled = _config_registry.get_bool("ENRICH_CODE_CHUNKS", False)
+        enrich_backend = _config_registry.get_str("ENRICH_BACKEND", "").strip().lower() or None
+        enrich_model = _config_registry.get_str("ENRICH_MODEL", "")
 
-        gen_model = os.getenv("GEN_MODEL") or os.getenv("ENRICH_MODEL") or None
+        gen_model = _config_registry.get_str("GEN_MODEL", "") or _config_registry.get_str("ENRICH_MODEL", "") or None
         gen_provider = None
         if gen_model:
             ml = gen_model.lower()
@@ -257,7 +257,7 @@ def create_app() -> FastAPI:
                 gen_provider = "mlx"
 
         def _qdrant_health() -> str:
-            base = (os.getenv("QDRANT_URL") or "").rstrip("/") or "http://127.0.0.1:6333"
+            base = _config_registry.get_str("QDRANT_URL", "http://127.0.0.1:6333").rstrip("/")
             url = f"{base}/collections"
             try:
                 r = requests.get(url, timeout=1.5)

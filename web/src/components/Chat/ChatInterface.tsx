@@ -31,6 +31,7 @@ export function ChatInterface() {
   const [showTrace, setShowTrace] = useState(false);
   const [currentTrace, setCurrentTrace] = useState<TraceStep[]>([]);
   const [showSettings, setShowSettings] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -39,25 +40,41 @@ export function ChatInterface() {
   const [temperature, setTemperature] = useState(0);
   const [maxTokens, setMaxTokens] = useState(1000);
   const [topP, setTopP] = useState(1);
+  const [topK, setTopK] = useState(10);
+  const [modelOptions, setModelOptions] = useState<string[]>([]);
+  const [fastMode, setFastMode] = useState<boolean>(() => {
+    const params = new URLSearchParams(window.location.search || '');
+    return params.get('fast') === '1' || params.get('smoke') === '1';
+  });
 
-  // Load configuration for default model
+  // Load chat config + model options
   useEffect(() => {
-    const loadConfig = async () => {
+    (async () => {
       try {
-        const res = await fetch(api('/config'));
+        const res = await fetch(api('chat/config'));
         if (res.ok) {
           const data = await res.json();
-          // Support both structure formats (direct env or nested env)
-          const env = data.env || data;
-          if (env.GEN_MODEL) {
-            setModel(env.GEN_MODEL);
-          }
+          if (data.model) setModel(String(data.model));
+          if (typeof data.temperature === 'number') setTemperature(data.temperature);
+          if (typeof data.maxTokens === 'number') setMaxTokens(data.maxTokens);
+          if (typeof data.topP === 'number') setTopP(data.topP);
+          if (typeof data.topK === 'number') setTopK(data.topK);
         }
       } catch (e) {
-        console.error('[ChatInterface] Failed to load config:', e);
+        console.error('[ChatInterface] Failed to load chat config:', e);
       }
-    };
-    loadConfig();
+      try {
+        const p = await fetch(api('prices'));
+        if (p.ok) {
+          const d = await p.json();
+          const list = (d.models || [])
+            .filter((m: any) => (m && (String(m.unit || '').toLowerCase() === '1k_tokens')))
+            .map((m: any) => String(m.model || '').trim())
+            .filter(Boolean);
+          setModelOptions(Array.from(new Set(list)));
+        }
+      } catch {}
+    })();
   }, []);
 
   // Load repositories
@@ -74,7 +91,7 @@ export function ChatInterface() {
 
   const loadRepositories = async () => {
     try {
-      const response = await fetch(api('/repos/list'));
+      const response = await fetch(api('repos/list'));
       if (response.ok) {
         const data = await response.json();
         setRepositories(data.repos || ['agro']);
@@ -123,14 +140,11 @@ export function ChatInterface() {
     setCurrentTrace([]);
 
     try {
-      // Check if streaming is enabled
-      const streamingEnabled = localStorage.getItem('chat-streaming') !== 'false';
-
+      // For now, use regular non-streaming path (SSE optional)
+      const streamingEnabled = false;
       if (streamingEnabled) {
-        // Use Server-Sent Events for streaming
         await handleStreamingResponse(userMessage);
       } else {
-        // Regular fetch request
         await handleRegularResponse(userMessage);
       }
     } catch (error) {
@@ -236,17 +250,21 @@ export function ChatInterface() {
   };
 
   const handleRegularResponse = async (userMessage: Message) => {
-    const response = await fetch(api('/chat/answer'), {
+    const params = new URLSearchParams(window.location.search || '');
+    const fast = fastMode || params.get('fast') === '1' || params.get('smoke') === '1';
+    const response = await fetch(api('chat'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        message: userMessage.content,
-        repo: selectedRepo || undefined,
+        question: userMessage.content,
+        repo: selectedRepo || null,
         model,
         temperature,
         max_tokens: maxTokens,
-        top_p: topP,
-        history: messages.map(m => ({ role: m.role, content: m.content }))
+        multi_query: 1,
+        final_k: topK,
+        system_prompt: '',
+        fast_mode: fast
       })
     });
 
@@ -259,19 +277,32 @@ export function ChatInterface() {
     const assistantMessage: Message = {
       id: `assistant-${Date.now()}`,
       role: 'assistant',
-      content: data.answer || data.content || '',
-      timestamp: Date.now(),
-      citations: data.citations || [],
-      traceData: data.trace
+      content: data.answer || '',
+      timestamp: Date.now()
     };
-
-    if (data.trace) {
-      setCurrentTrace(data.trace.steps || []);
-    }
 
     const updatedMessages = [...messages, userMessage, assistantMessage];
     setMessages(updatedMessages);
     saveChatHistory(updatedMessages);
+
+    // Attach feedback controls and local trace when available
+    try {
+      const evtId = data.event_id;
+      if (evtId && typeof (window as any).addFeedbackButtons === 'function') {
+        requestAnimationFrame(() => {
+          const container = document.getElementById('chat-messages');
+          if (container) {
+            const nodes = container.querySelectorAll('[data-role="assistant"]');
+            const last = nodes[nodes.length - 1] as HTMLElement | undefined;
+            if (last) (window as any).addFeedbackButtons(last, evtId);
+          }
+        });
+      }
+      if (data.trace && Array.isArray(data.trace.steps)) {
+        setCurrentTrace(data.trace.steps);
+        setShowTrace(true);
+      }
+    } catch {}
   };
 
   const handleClear = () => {
@@ -346,7 +377,11 @@ export function ChatInterface() {
         </div>
 
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <select
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--fg-muted)' }}>
+            <input id="chat-fast-mode" type="checkbox" checked={fastMode} onChange={(e) => setFastMode(e.target.checked)} style={{ width: '14px', height: '14px', cursor: 'pointer' }} />
+            Fast
+          </label>
+          <select id="chat-repo-select"
             value={selectedRepo}
             onChange={(e) => setSelectedRepo(e.target.value)}
             style={{
@@ -390,6 +425,22 @@ export function ChatInterface() {
           </button>
 
           <button
+            onClick={() => setShowHistory(!showHistory)}
+            style={{
+              background: 'var(--bg-elev2)',
+              color: 'var(--fg)',
+              border: '1px solid var(--line)',
+              padding: '6px 12px',
+              borderRadius: '4px',
+              fontSize: '12px',
+              cursor: 'pointer'
+            }}
+            aria-label="Toggle history"
+          >
+            🕘
+          </button>
+
+          <button
             onClick={handleClear}
             style={{
               background: 'var(--bg-elev2)',
@@ -423,12 +474,31 @@ export function ChatInterface() {
         </div>
       </div>
 
-      {/* Main content area with messages and optional settings sidebar */}
+      {/* Main content area with messages and optional sidebars */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        {showHistory && (
+          <div style={{ width: '260px', borderRight: '1px solid var(--line)', background: 'var(--bg-elev1)', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '12px', borderBottom: '1px solid var(--line)', fontSize: '12px', fontWeight: 600, color: 'var(--fg)' }}>History</div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
+              {messages.filter(m => m.role === 'user').slice(-20).reverse().map((m, i) => (
+                <div key={`${m.id}-${i}`} style={{ padding: '8px', border: '1px solid var(--line)', borderRadius: '6px', marginBottom: '8px', background: 'var(--card-bg)' }}>
+                  <div style={{ fontSize: '11px', opacity: 0.7 }}>{new Date(m.timestamp).toLocaleString()}</div>
+                  <div style={{ fontSize: '12px', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.content}</div>
+                </div>
+              ))}
+              {messages.length === 0 && (
+                <div style={{ fontSize: '12px', color: 'var(--fg-muted)', padding: '12px' }}>No messages yet</div>
+              )}
+            </div>
+            <div style={{ padding: '8px', borderTop: '1px solid var(--line)' }}>
+              <button onClick={handleClear} style={{ width: '100%', background: 'var(--bg-elev2)', color: 'var(--err)', border: '1px solid var(--err)', padding: '8px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>New Chat</button>
+            </div>
+          </div>
+        )}
         {/* Messages area */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {/* Messages */}
-          <div style={{
+          <div id="chat-messages" style={{
             flex: 1,
             overflowY: 'auto',
             padding: '16px'
@@ -452,6 +522,7 @@ export function ChatInterface() {
               messages.map(message => (
                 <div
                   key={message.id}
+                  data-role={message.role}
                   style={{
                     marginBottom: '16px',
                     display: 'flex',
@@ -459,13 +530,15 @@ export function ChatInterface() {
                   }}
                 >
                   <div style={{
-                    maxWidth: '80%',
-                    background: message.role === 'user' ? 'var(--accent)' : 'var(--bg-elev1)',
+                    maxWidth: '78%',
+                    background: message.role === 'user' ? 'linear-gradient(90deg, var(--accent) 0%, var(--link) 100%)' : 'var(--bg-elev1)',
                     color: message.role === 'user' ? 'var(--accent-contrast)' : 'var(--fg)',
                     padding: '12px 16px',
-                    borderRadius: '8px',
-                    position: 'relative'
+                    borderRadius: '12px',
+                    position: 'relative',
+                    boxShadow: message.role === 'user' ? '0 1px 6px rgba(0,0,0,0.15)' : 'none'
                   }}>
+                    <div style={{ fontSize: '11px', opacity: 0.7, marginBottom: '6px' }}>{message.role === 'user' ? 'You' : 'Assistant'} · {new Date(message.timestamp).toLocaleTimeString()}</div>
                     <div style={{
                       fontSize: '13px',
                       lineHeight: '1.6',
@@ -551,6 +624,7 @@ export function ChatInterface() {
           }}>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
               <textarea
+                id="chat-input"
                 ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -574,6 +648,7 @@ export function ChatInterface() {
                 aria-label="Chat input"
               />
               <button
+                id="chat-send"
                 onClick={handleSend}
                 disabled={!input.trim() || sending}
                 style={{
@@ -674,20 +749,38 @@ export function ChatInterface() {
               }}>
                 Model
               </label>
-              <input
-                type="text"
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                style={{
-                  width: '100%',
-                  background: 'var(--input-bg)',
-                  border: '1px solid var(--line)',
-                  color: 'var(--fg)',
-                  padding: '6px 8px',
-                  borderRadius: '4px',
-                  fontSize: '12px'
-                }}
-              />
+              {modelOptions.length > 0 ? (
+                <select
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  style={{
+                    width: '100%',
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--line)',
+                    color: 'var(--fg)',
+                    padding: '6px 8px',
+                    borderRadius: '4px',
+                    fontSize: '12px'
+                  }}
+                >
+                  {modelOptions.map(m => (<option key={m} value={m}>{m}</option>))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  style={{
+                    width: '100%',
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--line)',
+                    color: 'var(--fg)',
+                    padding: '6px 8px',
+                    borderRadius: '4px',
+                    fontSize: '12px'
+                  }}
+                />
+              )}
             </div>
 
             <div style={{ marginBottom: '16px' }}>
@@ -757,6 +850,34 @@ export function ChatInterface() {
                 value={topP}
                 onChange={(e) => setTopP(parseFloat(e.target.value))}
                 style={{ width: '100%' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '11px',
+                fontWeight: '600',
+                color: 'var(--fg-muted)',
+                marginBottom: '4px'
+              }}>
+                Top-K (results)
+              </label>
+              <input
+                type="number"
+                value={topK}
+                onChange={(e) => setTopK(Math.max(1, parseInt(e.target.value) || 10))}
+                min="1"
+                max="100"
+                style={{
+                  width: '100%',
+                  background: 'var(--input-bg)',
+                  border: '1px solid var(--line)',
+                  color: 'var(--fg)',
+                  padding: '6px 8px',
+                  borderRadius: '4px',
+                  fontSize: '12px'
+                }}
               />
             </div>
           </div>

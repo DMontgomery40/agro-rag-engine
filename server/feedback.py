@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 from .telemetry import log_feedback_event
@@ -11,8 +11,20 @@ class FeedbackBody(BaseModel):
     doc_id: Optional[str] = None
     note: Optional[str] = None
 
+def _is_test_request(request: Request) -> bool:
+    try:
+        ua = (request.headers.get('user-agent') or '').lower()
+        if 'playwright' in ua:
+            return True
+        if (request.headers.get('x-agro-test') or '').strip() in {'1','true','yes','on'}:
+            return True
+    except Exception:
+        pass
+    return False
+
+
 @router.post("/api/feedback")
-def post_feedback(body: FeedbackBody) -> Dict[str, Any]:
+def post_feedback(body: FeedbackBody, request: Request) -> Dict[str, Any]:
     """Record user feedback for a query event.
     
     The signal can be:
@@ -33,6 +45,7 @@ def post_feedback(body: FeedbackBody) -> Dict[str, Any]:
         feedback["doc_id"] = body.doc_id
     if body.note:
         feedback["note"] = body.note
-    log_feedback_event(body.event_id, feedback)
+    # Skip writing feedback from automated tests to protect training data
+    if not _is_test_request(request):
+        log_feedback_event(body.event_id, feedback)
     return {"ok": True}
-

@@ -14,14 +14,20 @@ _config_registry = get_config_registry()
 _TRACING_ENABLED = _config_registry.get_int('TRACING_ENABLED', 1)
 _TRACE_SAMPLING_RATE = _config_registry.get_float('TRACE_SAMPLING_RATE', 1.0)
 _LOG_LEVEL = _config_registry.get_str('LOG_LEVEL', 'INFO')
+_REPO = _config_registry.get_str('REPO', 'agro')
+_TRACING_MODE = _config_registry.get_str('TRACING_MODE', '')
+_TRACE_RETENTION = _config_registry.get_int('TRACE_RETENTION', 50)
 
 
 def reload_config():
     """Reload cached config values from registry."""
-    global _TRACING_ENABLED, _TRACE_SAMPLING_RATE, _LOG_LEVEL
+    global _TRACING_ENABLED, _TRACE_SAMPLING_RATE, _LOG_LEVEL, _REPO, _TRACING_MODE, _TRACE_RETENTION
     _TRACING_ENABLED = _config_registry.get_int('TRACING_ENABLED', 1)
     _TRACE_SAMPLING_RATE = _config_registry.get_float('TRACE_SAMPLING_RATE', 1.0)
     _LOG_LEVEL = _config_registry.get_str('LOG_LEVEL', 'INFO')
+    _REPO = _config_registry.get_str('REPO', 'agro')
+    _TRACING_MODE = _config_registry.get_str('TRACING_MODE', '')
+    _TRACE_RETENTION = _config_registry.get_int('TRACE_RETENTION', 50)
 
 
 _TRACE_VAR: ContextVar[Optional["Trace"]] = ContextVar("agro_trace", default=None)
@@ -40,13 +46,13 @@ class Trace:
     """
 
     def __init__(self, repo: str, question: str):
-        self.repo = (repo or os.getenv("REPO", "agro")).strip()
+        self.repo = (repo or _REPO).strip()
         self.question = question
         self.id = uuid.uuid4().hex[:8]
         self.started_at = _now_iso()
         self.events: List[Dict[str, Any]] = []
         self.path: Optional[str] = None
-        self.mode = (os.getenv('TRACING_MODE', '').lower() or (
+        self.mode = (_TRACING_MODE.lower() or (
             'langsmith' if ((os.getenv('LANGCHAIN_TRACING_V2','0') or '0').strip().lower() in {'1','true','on'}) else 'local'))
         # Optional LangSmith client (best effort)
         self._ls_client = None
@@ -72,7 +78,7 @@ class Trace:
     # ---- control ----
     @staticmethod
     def enabled() -> bool:
-        mode = (os.getenv('TRACING_MODE','').lower() or (
+        mode = (_TRACING_MODE.lower() or (
             'langsmith' if (os.getenv('LANGCHAIN_TRACING_V2','0').lower() in {'1','true','on'}) else 'local'))
         if mode == 'off' or not mode:
             return False
@@ -133,7 +139,7 @@ class Trace:
             self.path = str(out_path)
             # Simple retention purge
             try:
-                keep = int(os.getenv('TRACE_RETENTION','50') or '50')
+                keep = _TRACE_RETENTION
             except Exception:
                 keep = 50
             try:

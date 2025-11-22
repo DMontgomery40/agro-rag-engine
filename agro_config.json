@@ -60,7 +60,7 @@
   },
   "indexing": {
     "qdrant_url": "http://127.0.0.1:6333",
-    "collection_name": "code_chunks_{repo}",
+    "collection_name": "",
     "vector_backend": "qdrant",
     "indexing_batch_size": 100,
     "indexing_workers": 4,
@@ -133,7 +133,7 @@
   "training": {
     "reranker_train_epochs": 2,
     "reranker_train_batch": 16,
-    "reranker_train_lr": 2e-05,
+    "reranker_train_lr": 0.00002,
     "reranker_warmup_ratio": 0.1,
     "triplets_min_count": 100,
     "triplets_mine_mode": "replace",

@@ -5,13 +5,23 @@ import uuid
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-def _resolve_log_path() -> Path:
-    """Resolve the telemetry log path from env each time.
+# Module-level cached configuration
+try:
+    from server.services.config_registry import get_config_registry
+    _config_registry = get_config_registry()
+except ImportError:
+    _config_registry = None
 
-    This allows tests to monkeypatch AGRO_LOG_PATH and have it take effect
-    without relying on module reload order.
+def _resolve_log_path() -> Path:
+    """Resolve the telemetry log path from config registry.
+
+    Falls back to env var for backward compatibility during testing.
     """
-    _log_path_str = os.getenv("AGRO_LOG_PATH", "data/logs/queries.jsonl")
+    if _config_registry is not None:
+        _log_path_str = _config_registry.get_str("AGRO_LOG_PATH", "data/logs/queries.jsonl")
+    else:
+        _log_path_str = os.getenv("AGRO_LOG_PATH", "data/logs/queries.jsonl")
+
     if Path(_log_path_str).is_absolute():
         path = Path(_log_path_str)
     else:

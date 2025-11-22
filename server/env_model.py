@@ -172,7 +172,7 @@ def generate_text(
                         "model": mdl,
                         "prompt": prompt,
                         "stream": True,
-                        "options": {"temperature": temp, "num_ctx": 8192},
+                        "options": {"temperature": temp, "num_ctx": _OLLAMA_NUM_CTX},
                     }, timeout=chunk_timeout, stream=True) as r:
                         r.raise_for_status()
                         buf = []
@@ -203,7 +203,7 @@ def generate_text(
                         "model": mdl,
                         "prompt": prompt,
                         "stream": False,
-                        "options": {"temperature": temp, "num_ctx": 8192},
+                        "options": {"temperature": temp, "num_ctx": _OLLAMA_NUM_CTX},
                     }, timeout=total_timeout)
                     resp.raise_for_status()
                     data = resp.json()

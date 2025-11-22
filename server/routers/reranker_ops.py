@@ -8,12 +8,14 @@ from fastapi.responses import FileResponse
 from common.paths import repo_root
 from server.utils import atomic_write_json, read_json
 from server.routers.reranker_learning import _STATUS as _RERANKER_STATUS
+from server.services.config_registry import get_config_registry
 
 router = APIRouter()
+_config = get_config_registry()
 
 @router.get("/api/reranker/logs/count")
 def reranker_logs_count() -> Dict[str, Any]:
-    log_path = Path(os.getenv("AGRO_LOG_PATH", "data/logs/queries.jsonl"))
+    log_path = Path(_config.get_str("AGRO_LOG_PATH", "data/logs/queries.jsonl"))
     count = 0
     if log_path.exists():
         with log_path.open("r", encoding="utf-8") as f:
@@ -35,7 +37,7 @@ def reranker_triplets_count() -> Dict[str, Any]:
 
 @router.get("/api/reranker/logs")
 def reranker_logs() -> Dict[str, Any]:
-    log_path = Path(os.getenv("AGRO_LOG_PATH", "data/logs/queries.jsonl"))
+    log_path = Path(_config.get_str("AGRO_LOG_PATH", "data/logs/queries.jsonl"))
     logs = []
     if log_path.exists():
         with log_path.open("r", encoding="utf-8") as f:
@@ -48,14 +50,14 @@ def reranker_logs() -> Dict[str, Any]:
 
 @router.get("/api/reranker/logs/download")
 def reranker_logs_download():
-    log_path = Path(os.getenv("AGRO_LOG_PATH", "data/logs/queries.jsonl"))
+    log_path = Path(_config.get_str("AGRO_LOG_PATH", "data/logs/queries.jsonl"))
     if not log_path.exists():
         raise HTTPException(status_code=404, detail="Log file not found")
     return FileResponse(str(log_path), filename="queries.jsonl")
 
 @router.post("/api/reranker/logs/clear")
 def reranker_logs_clear() -> Dict[str, Any]:
-    log_path = Path(os.getenv("AGRO_LOG_PATH", "data/logs/queries.jsonl"))
+    log_path = Path(_config.get_str("AGRO_LOG_PATH", "data/logs/queries.jsonl"))
     try:
         if log_path.exists():
             log_path.unlink()
@@ -110,7 +112,7 @@ def reranker_baseline_save() -> Dict[str, Any]:
     
     # Also backup current model
     import shutil
-    model_path = Path(os.getenv("AGRO_RERANKER_MODEL_PATH", "models/cross-encoder-agro"))
+    model_path = Path(_config.get_str("AGRO_RERANKER_MODEL_PATH", "models/cross-encoder-agro"))
     if model_path.exists():
         backup_path = model_path.parent / (model_path.name + ".baseline")
         if backup_path.exists():
@@ -161,7 +163,7 @@ def reranker_baseline_compare() -> Dict[str, Any]:
 @router.post("/api/reranker/rollback")
 def reranker_rollback() -> Dict[str, Any]:
     import shutil
-    model_path = Path(os.getenv("AGRO_RERANKER_MODEL_PATH", "models/cross-encoder-agro"))
+    model_path = Path(_config.get_str("AGRO_RERANKER_MODEL_PATH", "models/cross-encoder-agro"))
     backup_path = model_path.parent / (model_path.name + ".backup")
     
     if not backup_path.exists():
@@ -191,7 +193,7 @@ def reranker_smoketest(payload: Dict[str, Any], request: Request) -> Dict[str, A
     start = time.time()
     try:
         docs = list(search_routed_multi(query, m=2, final_k=5))
-        reranked = os.getenv("AGRO_RERANKER_ENABLED", "0") == "1"
+        reranked = _config.get_bool("AGRO_RERANKER_ENABLED", False)
         
         retrieved_for_log = []
         for d in docs:
@@ -226,7 +228,7 @@ def reranker_smoketest(payload: Dict[str, Any], request: Request) -> Dict[str, A
 @router.get("/api/reranker/costs")
 def reranker_costs() -> Dict[str, Any]:
     import datetime
-    log_path = Path(os.getenv("AGRO_LOG_PATH", "data/logs/queries.jsonl"))
+    log_path = Path(_config.get_str("AGRO_LOG_PATH", "data/logs/queries.jsonl"))
     
     if not log_path.exists():
         return {"total_24h": 0.0, "avg_per_query": 0.0, "queries_24h": 0}
@@ -254,7 +256,7 @@ def reranker_costs() -> Dict[str, Any]:
 
 @router.get("/api/reranker/nohits")
 def reranker_nohits() -> Dict[str, Any]:
-    log_path = Path(os.getenv("AGRO_LOG_PATH", "data/logs/queries.jsonl"))
+    log_path = Path(_config.get_str("AGRO_LOG_PATH", "data/logs/queries.jsonl"))
     if not log_path.exists():
         return {"queries": [], "count": 0}
     

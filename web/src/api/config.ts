@@ -52,4 +52,33 @@ export const configApi = {
   async deleteKeyword(keyword: string): Promise<void> {
     await apiClient.post(api('/api/keywords/delete'), { keyword });
   },
+
+  /**
+   * Upload secrets from .env file
+   */
+  async uploadSecrets(file: File): Promise<{ ok: boolean; applied: string[]; persisted: boolean; count?: number; error?: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const { data } = await apiClient.post<{ ok: boolean; applied: string[]; persisted: boolean; count?: number; error?: string }>(
+      api('/api/secrets/ingest'),
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return data;
+  },
+
+  /**
+   * Save integration settings
+   */
+  async saveIntegrations(integrations: Record<string, any>): Promise<{ status: string; error?: string }> {
+    const { data } = await apiClient.post<{ status: string; error?: string }>(
+      api('/api/integrations/save'),
+      { env: integrations }
+    );
+    return data;
+  },
 };

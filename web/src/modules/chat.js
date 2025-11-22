@@ -60,6 +60,18 @@ function saveChatSettings() {
         localStorage.setItem('agro_chat_settings', JSON.stringify(settings));
         chatSettings = settings;
 
+        // Persist to backend as the source of truth (non-blocking)
+        try {
+            const apiBase = (window.CoreUtils && typeof window.CoreUtils.api === 'function')
+                ? window.CoreUtils.api('/chat/config')
+                : '/api/chat/config';
+            fetch(apiBase, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(settings)
+            }).catch(() => { /* ignore network errors in UI toast */ });
+        } catch {}
+
         updateStorageDisplay();
         showToast('Chat settings saved', 'success');
     } catch (e) {
@@ -175,6 +187,8 @@ async function sendMessage() {
         // Use /api/chat endpoint with full settings support
         const url = new URL('/api/chat', window.location.origin);
 
+        const urlParams = new URLSearchParams(window.location.search || '');
+        const fastMode = urlParams.get('fast') === '1' || urlParams.get('smoke') === '1';
         const payload = {
             question: question,
             repo: repo || null,
@@ -184,7 +198,8 @@ async function sendMessage() {
             multi_query: chatSettings.multiQuery,
             final_k: chatSettings.finalK,
             confidence: chatSettings.confidence,
-            system_prompt: chatSettings.systemPrompt || null
+            system_prompt: chatSettings.systemPrompt || null,
+            fast_mode: fastMode
         };
 
         const response = await fetch(url, {
@@ -218,14 +233,25 @@ async function sendMessage() {
             window.lastChatEventId = data.event_id;
         }
         
-        // Add feedback buttons if event_id is present and addFeedbackButtons is available
-        if (data.event_id && typeof addFeedbackButtons === 'function') {
-            const msgEl = document.getElementById(msgId);
-            if (msgEl) {
+        // Add feedback controls; if the helper isn't loaded yet, retry briefly
+        if (data.event_id) {
+            const attach = () => {
+                if (typeof addFeedbackButtons !== 'function') return false;
+                const msgEl = document.getElementById(msgId);
+                if (!msgEl) return false;
                 const contentDiv = msgEl.querySelector('[style*="line-height"]');
-                if (contentDiv) {
-                    addFeedbackButtons(contentDiv.parentElement, data.event_id);
-                }
+                if (!contentDiv) return false;
+                try { addFeedbackButtons(contentDiv.parentElement, data.event_id); } catch {}
+                return true;
+            };
+            if (!attach()) {
+                let attempts = 0;
+                const t = setInterval(() => {
+                    attempts += 1;
+                    if (attach() || attempts > 600) { // up to ~60s
+                        clearInterval(t);
+                    }
+                }, 100);
             }
         }
 
