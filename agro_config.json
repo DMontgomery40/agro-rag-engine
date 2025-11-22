@@ -106,7 +106,7 @@
   "enrichment": {
     "cards_enrich_default": 1,
     "cards_max": 20,
-    "enrich_code_chunks": 0,
+    "enrich_code_chunks": 1,
     "enrich_min_chars": 50,
     "enrich_max_chars": 1000,
     "enrich_timeout": 30

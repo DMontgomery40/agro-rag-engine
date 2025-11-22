@@ -426,13 +426,7 @@ export function DataQualitySubtab() {
       <div className="settings-section">
         <h3>
           <span className="accent-green">●</span> Code Cards Builder & Viewer
-          <span className="tooltip-wrap">
-            <span className="help-icon">?</span>
-            <div className="tooltip-bubble">
-              <span className="tt-title">Code Cards</span>
-              High-level semantic summaries of code chunks for faster retrieval with AI-powered enrichment and filtering.
-            </div>
-          </span>
+          <span className="help-icon" data-tooltip="CODE_CARDS">?</span>
         </h3>
 
         {/* Repository Selection */}

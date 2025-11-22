@@ -29,6 +29,7 @@ export function useVSCodeEmbed() {
   const [copyButtonText, setCopyButtonText] = useState('📋 Copy URL');
   const [isRestarting, setIsRestarting] = useState(false);
   const [directUrl, setDirectUrl] = useState<string>('');
+  const [probeUrl, setProbeUrl] = useState<string>('');
 
   const buildProxyUrl = useCallback((s: EditorSettings) => {
     if (s.url && s.url.startsWith('/')) return s.url;
@@ -76,11 +77,13 @@ export function useVSCodeEmbed() {
       const ok = Boolean(data.ok) && enabled;
       const proxy = data.proxy_url || data.url || buildProxyUrl(s);
       const direct = data.direct_url || directUrl || `http://${s.host || '127.0.0.1'}:${s.port || 4440}/`;
+      const best = proxy.startsWith('/editor') ? proxy : direct;
 
       setIsEnabled(enabled && s.embed_enabled !== false);
       setIsHealthy(ok && s.embed_enabled !== false);
-      setIframeUrl(proxy);
+      setIframeUrl(best);
       setDirectUrl(direct);
+      setProbeUrl(proxy);
       setStatusMessage(ok ? 'Editor ready' : 'Editor starting');
       setStatusColor(ok ? 'var(--success)' : 'var(--warn)');
     } catch (e) {
@@ -105,7 +108,7 @@ export function useVSCodeEmbed() {
   const copyUrl = useCallback(async () => {
     try {
       if (iframeUrl) {
-        await navigator.clipboard.writeText(directUrl || iframeUrl);
+        await navigator.clipboard.writeText(directUrl || iframeUrl || probeUrl);
         setCopyButtonText('✓ Copied');
         setTimeout(() => setCopyButtonText('📋 Copy URL'), 1200);
       }

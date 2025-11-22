@@ -256,13 +256,7 @@ export function RetrievalSubtab() {
     <div className="input-group">
       <label>
         Default Temperature (GEN_TEMPERATURE)
-        <span className="tooltip-wrap">
-          <span className="help-icon">?</span>
-          <div className="tooltip-bubble">
-            <span className="tt-title">Default Response Creativity</span>
-            Sets a global default temperature for generation. 0.0 = deterministic; try 0.2 sometimes, or 0.04 for light variation in docs.
-          </div>
-        </span>
+        <span className="help-icon" data-tooltip="GEN_TEMPERATURE">?</span>
       </label>
       <input
         type="number"
@@ -585,31 +579,7 @@ export function RetrievalSubtab() {
     <div className="input-group">
       <label>
         Multi-Query Rewrites
-        <span className="tooltip-wrap">
-          <span className="help-icon">?</span>
-          <div className="tooltip-bubble">
-            <span className="tt-title">Query Expansion via LLM Rewriting - Improved Recall</span>
-            Number of query variations to automatically generate using the LLM. Each variation searches independently via hybrid search, results are merged and reranked together. Higher = better chance of finding relevant code but increases latency and API costs.
-            <br /><br />
-            <strong>Example:</strong> Query "how do we handle payments?" might expand to:
-            <br />- "payment processing implementation"
-            <br />- "stripe integration"
-            <br />- "checkout flow"
-            <br /><br />
-            <strong>Tuning:</strong> 1-2 for speed, 3-4 for balanced, 5-6 for thorough but expensive searches.
-            <br />Default: 2. Range: 1-6.
-            <div className="tt-links">
-              <a href="https://arxiv.org/abs/2305.14283" target="_blank" rel="noopener">Multi-Query RAG Paper</a>
-              <a href="https://python.langchain.com/docs/how_to/MultiQueryRetriever/" target="_blank" rel="noopener">LangChain Implementation</a>
-              <a href="/docs/RETRIEVAL.md#multi-query" target="_blank" rel="noopener">Multi-Query Tuning Guide</a>
-            </div>
-            <div className="tt-badges">
-              <span className="tt-badge info">Better Recall</span>
-              <span className="tt-badge warn">Higher Cost</span>
-              <span className="tt-badge warn">Higher Latency</span>
-            </div>
-          </div>
-        </span>
+        <span className="help-icon" data-tooltip="MAX_QUERY_REWRITES">?</span>
       </label>
       <input
         type="number"
@@ -624,16 +594,7 @@ export function RetrievalSubtab() {
     <div className="input-group">
       <label>
         Final K
-        <span className="tooltip-wrap">
-          <span className="help-icon">?</span>
-          <div className="tooltip-bubble">
-            <span className="tt-title">Final Results Count</span>
-            Number of top results to return after fusion and reranking. This is what you get back from search. Higher = more context but more noise. Default: 10. Range: 5-30.
-            <div className="tt-badges">
-              <span className="tt-badge info">Core Setting</span>
-            </div>
-          </div>
-        </span>
+        <span className="help-icon" data-tooltip="FINAL_K">?</span>
       </label>
       <input
         type="number"
@@ -648,27 +609,7 @@ export function RetrievalSubtab() {
     <div className="input-group">
       <label>
         Use Semantic Synonyms
-        <span className="tooltip-wrap">
-          <span className="help-icon">?</span>
-          <div className="tooltip-bubble">
-            <span className="tt-title">Query Expansion via Synonym Replacement - Domain Terminology</span>
-            Expands user queries with hand-curated semantic synonyms to handle domain-specific terminology and abbreviations. Example: "auth" expands to "auth authentication oauth jwt bearer token login".
-            <br /><br />
-            <strong>Purpose:</strong> Handles acronyms and domain synonyms that LLM rewriting might miss. E.g., "JWT" might not rewrite to "json web token".
-            <br /><strong>Configuration:</strong> Edit data/semantic_synonyms.json to add domain-specific synonym mappings for your codebase.
-            <br /><strong>Note:</strong> Different from Multi-Query Rewrites - this uses pre-defined synonyms, not LLM-generated variations.
-            <br />Default: ON (enabled).
-            <div className="tt-links">
-              <a href="/files/data/semantic_synonyms.json" target="_blank" rel="noopener">Synonym Config File</a>
-              <a href="/docs/RETRIEVAL.md#synonyms" target="_blank" rel="noopener">Synonym Setup Guide</a>
-              <a href="/docs/DOMAIN_CUSTOMIZATION.md" target="_blank" rel="noopener">Domain Terminology</a>
-            </div>
-            <div className="tt-badges">
-              <span className="tt-badge info">Better Recall</span>
-              <span className="tt-badge">No Re-index</span>
-            </div>
-          </div>
-        </span>
+        <span className="help-icon" data-tooltip="USE_SEMANTIC_SYNONYMS">?</span>
       </label>
       <select
         name="USE_SEMANTIC_SYNONYMS"
@@ -688,16 +629,7 @@ export function RetrievalSubtab() {
     <div className="input-group">
       <label>
         Top-K Dense (Qdrant)
-        <span className="tooltip-wrap">
-          <span className="help-icon">?</span>
-          <div className="tooltip-bubble">
-            <span className="tt-title">Dense Vector Candidates</span>
-            Number of candidates to retrieve from Qdrant vector search before fusion. Higher = better recall for semantic matches but slower. Should be &gt;= Final K. Default: 75. Range: 20-200.
-            <div className="tt-badges">
-              <span className="tt-badge info">Semantic Search</span>
-            </div>
-          </div>
-        </span>
+        <span className="help-icon" data-tooltip="TOPK_DENSE">?</span>
       </label>
       <input
         type="number"
@@ -730,16 +662,7 @@ export function RetrievalSubtab() {
     <div className="input-group">
       <label>
         Top-K Sparse (BM25)
-        <span className="tooltip-wrap">
-          <span className="help-icon">?</span>
-          <div className="tooltip-bubble">
-            <span className="tt-title">Sparse BM25 Candidates</span>
-            Number of candidates to retrieve from BM25 keyword search before fusion. Higher = better recall for exact matches but slower. Should be &gt;= Final K. Default: 75. Range: 20-200.
-            <div className="tt-badges">
-              <span className="tt-badge info">Keyword Search</span>
-            </div>
-          </div>
-        </span>
+        <span className="help-icon" data-tooltip="TOPK_SPARSE">?</span>
       </label>
       <input
         type="number"
@@ -756,16 +679,7 @@ export function RetrievalSubtab() {
     <div className="input-group">
       <label>
         Hydration Mode
-        <span className="tooltip-wrap">
-          <span className="help-icon">?</span>
-          <div className="tooltip-bubble">
-            <span className="tt-title">Code Loading Strategy</span>
-            Controls when full code is loaded. "Lazy" loads code from chunks.jsonl after retrieval. "None" only returns metadata (file path, line numbers). Lazy is recommended. None is faster but returns no code.
-            <div className="tt-badges">
-              <span className="tt-badge">Lazy Recommended</span>
-            </div>
-          </div>
-        </span>
+        <span className="help-icon" data-tooltip="HYDRATION_MODE">?</span>
       </label>
       <select
         name="HYDRATION_MODE"
@@ -783,16 +697,7 @@ export function RetrievalSubtab() {
     <div className="input-group">
       <label>
         Hydration Max Chars
-        <span className="tooltip-wrap">
-          <span className="help-icon">?</span>
-          <div className="tooltip-bubble">
-            <span className="tt-title">Code Truncation Limit</span>
-            Maximum characters to load per chunk when hydrating. Prevents huge chunks from bloating responses. 0 = no limit. Default: 2000. Range: 500-5000.
-            <div className="tt-badges">
-              <span className="tt-badge">Performance</span>
-            </div>
-          </div>
-        </span>
+        <span className="help-icon" data-tooltip="HYDRATION_MAX_CHARS">?</span>
       </label>
       <input
         type="number"
@@ -808,16 +713,7 @@ export function RetrievalSubtab() {
     <div className="input-group">
       <label>
         Vendor Mode
-        <span className="tooltip-wrap">
-          <span className="help-icon">?</span>
-          <div className="tooltip-bubble">
-            <span className="tt-title">First-Party vs Vendor Code</span>
-            Controls scoring bonus for first-party vs vendor code. "Prefer First Party" boosts your code (+0.06) and penalizes vendor libs (-0.08). "Prefer Vendor" boosts vendor code. Most use cases prefer first party.
-            <div className="tt-badges">
-              <span className="tt-badge info">Code Priority</span>
-            </div>
-          </div>
-        </span>
+        <span className="help-icon" data-tooltip="VENDOR_MODE">?</span>
       </label>
       <select
         name="VENDOR_MODE"
@@ -954,17 +850,7 @@ export function RetrievalSubtab() {
       <div className="settings-section" style={{ borderLeft: '3px solid var(--warn)', marginTop: '24px' }}>
         <h3>
           <span className="accent-orange">●</span> Advanced RAG Tuning
-          <span className="tooltip-wrap">
-            <span className="help-icon">?</span>
-            <div className="tooltip-bubble">
-              <span className="tt-title">Advanced Parameters</span>
-              Fine-tune scoring, fusion, and iteration behavior. These parameters significantly affect retrieval quality and performance. Only modify if you understand the implications.
-              <div className="tt-badges">
-                <span className="tt-badge warn">Expert Only</span>
-                <span className="tt-badge">No Re-index</span>
-              </div>
-            </div>
-          </span>
+          <span className="help-icon" data-tooltip="ADVANCED_RAG_TUNING">?</span>
         </h3>
         <p className="small">Expert-level controls for fusion weighting, score bonuses, and LangGraph iteration behavior. Changes take effect immediately without re-indexing.</p>
 
@@ -972,26 +858,7 @@ export function RetrievalSubtab() {
           <div className="input-group">
             <label>
               RRF K Divisor
-              <span className="tooltip-wrap">
-                <span className="help-icon">?</span>
-                <div className="tooltip-bubble">
-                  <span className="tt-title">Reciprocal Rank Fusion (RRF) - Hybrid Search Weighting</span>
-                  Controls how hybrid search combines BM25 (keyword) and vector (semantic) results using the RRF algorithm. Formula: score += 1/(K + rank). Lower K = BM25 and vector have more equal weight. Higher K = only top results matter equally.
-                  <br /><br />
-                  <strong>Examples:</strong> K=30 (favor top results, aggressive fusion), K=60 (balanced, recommended), K=100 (flatten ranking, lenient fusion)
-                  <br /><strong>Tuning:</strong> Lower if keywords and semantics compete; higher if you want diversity.
-                  <br />Default: 60. Range: 10-100.
-                  <div className="tt-links">
-                    <a href="https://en.wikipedia.org/wiki/Reciprocal_rank_fusion" target="_blank" rel="noopener">RRF Algorithm</a>
-                    <a href="https://www.pinecone.io/learn/hybrid-search-intro/" target="_blank" rel="noopener">Hybrid Search Explained</a>
-                    <a href="/docs/RETRIEVAL.md#rrf-fusion" target="_blank" rel="noopener">RRF Tuning Guide</a>
-                  </div>
-                  <div className="tt-badges">
-                    <span className="tt-badge info">Affects Fusion</span>
-                    <span className="tt-badge">No Re-index</span>
-                  </div>
-                </div>
-              </span>
+              <span className="help-icon" data-tooltip="RRF_K_DIV">?</span>
             </label>
             <input
               type="number"
@@ -1007,27 +874,7 @@ export function RetrievalSubtab() {
           <div className="input-group">
             <label>
               Card Bonus
-              <span className="tooltip-wrap">
-                <span className="help-icon">?</span>
-                <div className="tooltip-bubble">
-                  <span className="tt-title">Card Semantic Summary Bonus - Intent-Based Retrieval</span>
-                  Score boost applied to chunks when matching against AI-generated code card summaries (not raw code). Cards are semantic summaries of code modules/features created by ENRICH_CODE_CHUNKS. Enables "where is auth handled?" to find auth modules even if code contains different keywords.
-                  <br /><br />
-                  <strong>Use Case:</strong> Improving conceptual queries by matching against high-level summaries. Raises the score when a card matches, prioritizing that chunk.
-                  <br /><strong>Tuning:</strong> Increase (0.12-0.15) if cards are finding relevant code; decrease (0.04-0.06) if cards cause noise.
-                  <br />Default: 0.08. Range: 0.0-0.2.
-                  <div className="tt-links">
-                    <a href="/docs/CARDS.md" target="_blank" rel="noopener">Cards Feature</a>
-                    <a href="/files/indexer/build_cards.py" target="_blank" rel="noopener">Cards Builder Source</a>
-                    <a href="/docs/RETRIEVAL.md#card-scoring" target="_blank" rel="noopener">Card Scoring Logic</a>
-                  </div>
-                  <div className="tt-badges">
-                    <span className="tt-badge info">Improves Intent</span>
-                    <span className="tt-badge">Requires ENRICH_CODE_CHUNKS</span>
-                    <span className="tt-badge">No Re-index</span>
-                  </div>
-                </div>
-              </span>
+              <span className="help-icon" data-tooltip="CARD_BONUS">?</span>
             </label>
             <input
               type="number"
@@ -1046,25 +893,7 @@ export function RetrievalSubtab() {
           <div className="input-group">
             <label>
               Filename Boost (Exact Match)
-              <span className="tooltip-wrap">
-                <span className="help-icon">?</span>
-                <div className="tooltip-bubble">
-                  <span className="tt-title">Filename Exact Match Score Multiplier - File-Specific Queries</span>
-                  Score multiplier (not additive) applied when query terms match the filename EXACTLY. Example: query "auth.py" matching file "auth.py" gets multiplied by 1.5x.
-                  <br /><br />
-                  <strong>Purpose:</strong> Users often ask "find file X.py" - this boost rewards exact filename matches, improving precision for file-specific questions.
-                  <br /><strong>Tuning:</strong> Increase (2.0+) to strongly prefer exact filename matches; decrease (1.2) if boost causes over-matching.
-                  <br />Default: 1.5. Range: 1.0-3.0.
-                  <div className="tt-links">
-                    <a href="/docs/RETRIEVAL.md#path-scoring" target="_blank" rel="noopener">Path Scoring Rules</a>
-                    <a href="/docs/RETRIEVAL.md#tuning-multipliers" target="_blank" rel="noopener">Tuning Score Multipliers</a>
-                  </div>
-                  <div className="tt-badges">
-                    <span className="tt-badge info">Precision Boost</span>
-                    <span className="tt-badge">No Re-index</span>
-                  </div>
-                </div>
-              </span>
+              <span className="help-icon" data-tooltip="FILENAME_BOOST_EXACT">?</span>
             </label>
             <input
               type="number"
@@ -1080,26 +909,7 @@ export function RetrievalSubtab() {
           <div className="input-group">
             <label>
               Filename Boost (Partial Match)
-              <span className="tooltip-wrap">
-                <span className="help-icon">?</span>
-                <div className="tooltip-bubble">
-                  <span className="tt-title">Path Component Partial Match Score Multiplier - Directory Path Bonus</span>
-                  Score multiplier applied when query terms match ANY component of the file path (directories or partial filename). Example: query "auth" matching "src/auth/oauth.py" or "routes/authentication.ts" gets multiplied by 1.2x.
-                  <br /><br />
-                  <strong>Purpose:</strong> Improves recall by rewarding hits in relevant directories. Users ask "where is auth handled?" and this finds files in "auth/" or "authentication/" dirs.
-                  <br /><strong>Tuning:</strong> Increase (1.5+) for stronger directory matching; decrease (1.05) if path matches create noise.
-                  <br /><strong>Difference from Exact:</strong> Partial matches ANY path component (dir name, filename prefix); Exact requires full filename match.
-                  <br />Default: 1.2. Range: 1.0-2.0.
-                  <div className="tt-links">
-                    <a href="/docs/RETRIEVAL.md#path-scoring" target="_blank" rel="noopener">Path Scoring Rules</a>
-                    <a href="/docs/RETRIEVAL.md#precision-vs-recall" target="_blank" rel="noopener">Precision vs Recall Tuning</a>
-                  </div>
-                  <div className="tt-badges">
-                    <span className="tt-badge info">Recall Boost</span>
-                    <span className="tt-badge">No Re-index</span>
-                  </div>
-                </div>
-              </span>
+              <span className="help-icon" data-tooltip="FILENAME_BOOST_PARTIAL">?</span>
             </label>
             <input
               type="number"
@@ -1118,17 +928,7 @@ export function RetrievalSubtab() {
           <div className="input-group">
             <label>
               LangGraph Final K
-              <span className="tooltip-wrap">
-                <span className="help-icon">?</span>
-                <div className="tooltip-bubble">
-                  <span className="tt-title">LangGraph Document Count</span>
-                  Number of documents retrieved for LangGraph RAG pipeline (used by /answer endpoint). Higher = more context but slower + costlier. Separate from retrieval Final K. Default: 20. Range: 5-50.
-                  <div className="tt-badges">
-                    <span className="tt-badge info">Context Window</span>
-                    <span className="tt-badge warn">Higher Cost</span>
-                  </div>
-                </div>
-              </span>
+              <span className="help-icon" data-tooltip="LANGGRAPH_FINAL_K">?</span>
             </label>
             <input
               type="number"
@@ -1144,17 +944,7 @@ export function RetrievalSubtab() {
           <div className="input-group">
             <label>
               Max Query Rewrites
-              <span className="tooltip-wrap">
-                <span className="help-icon">?</span>
-                <div className="tooltip-bubble">
-                  <span className="tt-title">Iteration Limit</span>
-                  Maximum number of query rewrite iterations in LangGraph when confidence is low. Each iteration generates a new query variant and retrieves again. Default: 3. Range: 1-5.
-                  <div className="tt-badges">
-                    <span className="tt-badge info">Adaptive Search</span>
-                    <span className="tt-badge warn">Higher Latency</span>
-                  </div>
-                </div>
-              </span>
+              <span className="help-icon" data-tooltip="MAX_QUERY_REWRITES">?</span>
             </label>
             <input
               type="number"
@@ -1173,17 +963,7 @@ export function RetrievalSubtab() {
           <div className="input-group">
             <label>
               Fallback Confidence Threshold
-              <span className="tooltip-wrap">
-                <span className="help-icon">?</span>
-                <div className="tooltip-bubble">
-                  <span className="tt-title">Low-Confidence Fallback</span>
-                  When initial retrieval confidence is below this threshold, triggers a fallback multi-query search with expanded parameters. Lower = more aggressive fallback. Default: 0.55. Range: 0.3-0.8.
-                  <div className="tt-badges">
-                    <span className="tt-badge info">Recall Safety Net</span>
-                    <span className="tt-badge warn">Extra API Calls</span>
-                  </div>
-                </div>
-              </span>
+              <span className="help-icon" data-tooltip="CONF_FALLBACK">?</span>
             </label>
             <input
               type="number"

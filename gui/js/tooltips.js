@@ -40,6 +40,159 @@
         ],
         [['Experimental', 'warn']]
       ),
+      GEN_TEMPERATURE: L(
+        'Default Response Creativity',
+        'Global default temperature for generation. 0.0 = deterministic; small values (0.04–0.2) add slight variation in prose. Use per‑model tuning for creative tasks vs. code answers.',
+        [
+          ['Sampling Controls', 'https://platform.openai.com/docs/guides/text-generation'],
+          ['Nucleus/Top‑p', 'https://en.wikipedia.org/wiki/Nucleus_sampling']
+        ]
+      ),
+      MAX_QUERY_REWRITES: L(
+        'Multi‑Query Rewrites',
+        'Number of LLM‑generated query variations. Each variation runs hybrid retrieval; results are merged and reranked. Higher improves recall but increases latency and API cost. Typical: 2–4.',
+        [
+          ['Multi‑Query Retriever', 'https://python.langchain.com/docs/how_to/MultiQueryRetriever/'],
+          ['Multi‑Query RAG (paper)', 'https://arxiv.org/abs/2305.14283']
+        ],
+        [['Better recall','info'], ['Higher cost','warn']]
+      ),
+      USE_SEMANTIC_SYNONYMS: L(
+        'Semantic Synonyms Expansion',
+        'Expands queries with curated domain synonyms and abbreviations (e.g., auth → authentication, oauth, jwt). Complements LLM rewrites. Configure in data/semantic_synonyms.json.',
+        [
+          ['Synonym Config', '/files/data/semantic_synonyms.json'],
+          ['Synonym Guide', '/docs/RETRIEVAL.md#synonyms']
+        ]
+      ),
+      TOPK_DENSE: L(
+        'Top‑K Dense Candidates',
+        'Vector candidates pulled from Qdrant before fusion. Should be ≥ FINAL_K. Higher improves semantic recall but slows search. Typical: 50–200.',
+        [
+          ['Qdrant Search', 'https://qdrant.tech/documentation/concepts/search/']
+        ]
+      ),
+      TOPK_SPARSE: L(
+        'Top‑K Sparse Candidates',
+        'BM25 candidates pulled before fusion. Should be ≥ FINAL_K. Higher improves keyword recall but slows search. Typical: 50–200.',
+        [
+          ['Okapi BM25', 'https://en.wikipedia.org/wiki/Okapi_BM25']
+        ]
+      ),
+      RRF_K_DIV: L(
+        'Reciprocal Rank Fusion (K)',
+        'Fusion parameter for combining BM25 + vector rankings: score += 1/(K+rank). Lower K increases influence of lower ranks; higher K flattens. Typical: 30–100 (60 recommended).',
+        [
+          ['RRF Algorithm', 'https://en.wikipedia.org/wiki/Reciprocal_rank_fusion'],
+          ['Hybrid Search', 'https://www.pinecone.io/learn/hybrid-search-intro/']
+        ]
+      ),
+      CARD_BONUS: L(
+        'Card Semantic Bonus',
+        'Score bonus when a result matches code “Cards” (semantic summaries from enrichment). Improves intent‑based retrieval (e.g., “where is auth handled?”). Requires ENRICH_CODE_CHUNKS.',
+        [
+          ['Cards Feature', '/docs/CARDS.md'],
+          ['Cards Builder', '/files/indexer/build_cards.py']
+        ],
+        [['Improves intent','info']]
+      ),
+      FILENAME_BOOST_EXACT: L(
+        'Filename Exact Match Multiplier',
+        'Score multiplier applied when the filename matches the query exactly (e.g., auth.py). Increase to prioritize file‑specific queries.',
+        [
+          ['Path Scoring', '/docs/RETRIEVAL.md#path-scoring']
+        ]
+      ),
+      FILENAME_BOOST_PARTIAL: L(
+        'Path Component Partial Match Multiplier',
+        'Score multiplier for matches in any path component (dir name or filename prefix). Useful for queries like “auth” that should find src/auth/... files.',
+        [
+          ['Path Scoring', '/docs/RETRIEVAL.md#path-scoring']
+        ]
+      ),
+      LANGGRAPH_FINAL_K: L(
+        'LangGraph Final K',
+        'Documents retrieved for LangGraph pipeline in /answer. Separate from retrieval FINAL_K. Higher = more context, higher cost. Typical: 10–30.',
+        [
+          ['LangGraph', 'https://langchain-ai.github.io/langgraph/']
+        ]
+      ),
+      EXCLUDE_PATHS: L(
+        'Exclude Directories',
+        'Comma‑separated directories to exclude when building semantic Code Cards or indexing. Examples: node_modules, vendor, dist.',
+        [
+          ['Indexing Guide', '/docs/INDEXING.md']
+        ]
+      ),
+      CODE_CARDS: L(
+        'Code Cards',
+        'High‑level semantic summaries of code chunks, built during enrichment. Cards enable intent‑based retrieval and better filtering for conceptual queries.',
+        [
+          ['Cards Feature', '/docs/CARDS.md'],
+          ['Cards Builder', '/files/indexer/build_cards.py']
+        ],
+        [['Improves intent','info']]
+      ),
+      // Chat UI (React-only helpers)
+      CHAT_SETTINGS: L(
+        'Chat Configuration',
+        'Settings that control model, answer length, rewrite strategy, and retrieval size for the chat interface. These affect latency, cost, and answer quality.',
+        [
+          ['RAG Retrieval', '/docs/RETRIEVAL.md']
+        ],
+        [['Affects quality','info'], ['Affects latency','info']]
+      ),
+      GEN_MODEL_CHAT: L(
+        'Chat-Specific Model',
+        'Overrides the default generation model for the chat view only. Falls back to GEN_MODEL when empty.',
+        [
+          ['OpenAI Models', 'https://platform.openai.com/docs/models']
+        ]
+      ),
+      CHAT_TEMPERATURE: L(
+        'Response Creativity (Chat)',
+        'Controls randomness for chat answers. For code Q&A, prefer 0.0–0.3; for ideation, increase to 0.5–0.9.',
+        [
+          ['Sampling Controls', 'https://platform.openai.com/docs/guides/text-generation']
+        ]
+      ),
+      CHAT_MAX_TOKENS: L(
+        'Max Response Tokens (Chat)',
+        'Upper bound on generated tokens for chat answers. ~4 chars ≈ 1 token. Higher values cost more and may slow responses.',
+        [
+          ['Tokenization Basics', 'https://huggingface.co/docs/transformers/main_classes/tokenizer']
+        ]
+      ),
+      CHAT_CONFIDENCE_THRESHOLD: L(
+        'Answer Confidence Threshold',
+        'Minimum retrieval confidence to return an answer without fallback. Lower values return more answers (risking guesses); higher values are conservative.',
+        [
+          ['Precision vs Recall', 'https://en.wikipedia.org/wiki/Precision_and_recall']
+        ]
+      ),
+      CONF_FALLBACK: L(
+        'Fallback Confidence Threshold',
+        'When initial retrieval confidence falls below this threshold, triggers a fallback with expanded query rewrites. Lower = more aggressive fallback. Typical: 0.5–0.7.',
+        [
+          ['RAG Retrieval', '/docs/RETRIEVAL.md']
+        ]
+      ),
+      CHAT_SHOW_CITATIONS: L(
+        'Inline File References',
+        'Display source file paths and line numbers inline with the answer. Citations become clickable links to code locations.',
+        [
+          ['Retrieval Traceability', '/docs/RETRIEVAL.md#traceability']
+        ]
+      ),
+      ADVANCED_RAG_TUNING: L(
+        'Advanced Parameters',
+        'Expert controls for fusion weighting, score bonuses, and iteration behavior. These significantly affect retrieval quality and performance. Change only if you understand trade-offs.',
+        [
+          ['RRF Fusion', 'https://en.wikipedia.org/wiki/Reciprocal_rank_fusion'],
+          ['Retrieval Tuning', '/docs/RETRIEVAL.md']
+        ],
+        [['Expert Only','warn']]
+      ),
       REPOS_FILE: L('Repos File', 'Path to repos.json that defines repo names, paths, keywords, path boosts, and layer bonuses used for multi-repo routing. Each repo entry includes name, path, optional keywords for boosting, path_boosts for directory-specific relevance, and layer_bonuses for hierarchical retrieval.', [
         ['JSON Format Reference', 'https://www.json.org/json-en.html'],
         ['Configuration Management', 'https://github.com/topics/configuration-management'],

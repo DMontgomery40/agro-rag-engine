@@ -65,13 +65,7 @@
     <div className="input-group">
       <label>
         Default Temperature (GEN_TEMPERATURE)
-        <span className="tooltip-wrap">
-          <span className="help-icon">?</span>
-          <div className="tooltip-bubble">
-            <span className="tt-title">Default Response Creativity</span>
-            Sets a global default temperature for generation. 0.0 = deterministic; try 0.2 sometimes, or 0.04 for light variation in docs.
-          </div>
-        </span>
+        <span className="help-icon" data-tooltip="GEN_TEMPERATURE">?</span>
       </label>
       <input
         type="number"
@@ -398,31 +392,7 @@
     <div className="input-group">
       <label>
         Multi-Query Rewrites
-        <span className="tooltip-wrap">
-          <span className="help-icon">?</span>
-          <div className="tooltip-bubble">
-            <span className="tt-title">Query Expansion via LLM Rewriting - Improved Recall</span>
-            Number of query variations to automatically generate using the LLM. Each variation searches independently via hybrid search, results are merged and reranked together. Higher = better chance of finding relevant code but increases latency and API costs.
-            <br /><br />
-            <strong>Example:</strong> Query "how do we handle payments?" might expand to:
-            <br />- "payment processing implementation"
-            <br />- "stripe integration"
-            <br />- "checkout flow"
-            <br /><br />
-            <strong>Tuning:</strong> 1-2 for speed, 3-4 for balanced, 5-6 for thorough but expensive searches.
-            <br />Default: 2. Range: 1-6.
-            <div className="tt-links">
-              <a href="https://arxiv.org/abs/2305.14283" target="_blank" rel="noopener">Multi-Query RAG Paper</a>
-              <a href="https://python.langchain.com/docs/how_to/MultiQueryRetriever/" target="_blank" rel="noopener">LangChain Implementation</a>
-              <a href="/docs/RETRIEVAL.md#multi-query" target="_blank" rel="noopener">Multi-Query Tuning Guide</a>
-            </div>
-            <div className="tt-badges">
-              <span className="tt-badge info">Better Recall</span>
-              <span className="tt-badge warn">Higher Cost</span>
-              <span className="tt-badge warn">Higher Latency</span>
-            </div>
-          </div>
-        </span>
+        <span className="help-icon" data-tooltip="MAX_QUERY_REWRITES">?</span>
       </label>
       <input
         type="number"
@@ -437,16 +407,7 @@
     <div className="input-group">
       <label>
         Final K
-        <span className="tooltip-wrap">
-          <span className="help-icon">?</span>
-          <div className="tooltip-bubble">
-            <span className="tt-title">Final Results Count</span>
-            Number of top results to return after fusion and reranking. This is what you get back from search. Higher = more context but more noise. Default: 10. Range: 5-30.
-            <div className="tt-badges">
-              <span className="tt-badge info">Core Setting</span>
-            </div>
-          </div>
-        </span>
+        <span className="help-icon" data-tooltip="FINAL_K">?</span>
       </label>
       <input
         type="number"
@@ -461,27 +422,7 @@
     <div className="input-group">
       <label>
         Use Semantic Synonyms
-        <span className="tooltip-wrap">
-          <span className="help-icon">?</span>
-          <div className="tooltip-bubble">
-            <span className="tt-title">Query Expansion via Synonym Replacement - Domain Terminology</span>
-            Expands user queries with hand-curated semantic synonyms to handle domain-specific terminology and abbreviations. Example: "auth" expands to "auth authentication oauth jwt bearer token login".
-            <br /><br />
-            <strong>Purpose:</strong> Handles acronyms and domain synonyms that LLM rewriting might miss. E.g., "JWT" might not rewrite to "json web token".
-            <br /><strong>Configuration:</strong> Edit data/semantic_synonyms.json to add domain-specific synonym mappings for your codebase.
-            <br /><strong>Note:</strong> Different from Multi-Query Rewrites - this uses pre-defined synonyms, not LLM-generated variations.
-            <br />Default: ON (enabled).
-            <div className="tt-links">
-              <a href="/files/data/semantic_synonyms.json" target="_blank" rel="noopener">Synonym Config File</a>
-              <a href="/docs/RETRIEVAL.md#synonyms" target="_blank" rel="noopener">Synonym Setup Guide</a>
-              <a href="/docs/DOMAIN_CUSTOMIZATION.md" target="_blank" rel="noopener">Domain Terminology</a>
-            </div>
-            <div className="tt-badges">
-              <span className="tt-badge info">Better Recall</span>
-              <span className="tt-badge">No Re-index</span>
-            </div>
-          </div>
-        </span>
+        <span className="help-icon" data-tooltip="USE_SEMANTIC_SYNONYMS">?</span>
       </label>
       <select
         name="USE_SEMANTIC_SYNONYMS"
@@ -501,16 +442,7 @@
     <div className="input-group">
       <label>
         Top-K Dense (Qdrant)
-        <span className="tooltip-wrap">
-          <span className="help-icon">?</span>
-          <div className="tooltip-bubble">
-            <span className="tt-title">Dense Vector Candidates</span>
-            Number of candidates to retrieve from Qdrant vector search before fusion. Higher = better recall for semantic matches but slower. Should be &gt;= Final K. Default: 75. Range: 20-200.
-            <div className="tt-badges">
-              <span className="tt-badge info">Semantic Search</span>
-            </div>
-          </div>
-        </span>
+        <span className="help-icon" data-tooltip="TOPK_DENSE">?</span>
       </label>
       <input
         type="number"
@@ -543,16 +475,7 @@
     <div className="input-group">
       <label>
         Top-K Sparse (BM25)
-        <span className="tooltip-wrap">
-          <span className="help-icon">?</span>
-          <div className="tooltip-bubble">
-            <span className="tt-title">Sparse BM25 Candidates</span>
-            Number of candidates to retrieve from BM25 keyword search before fusion. Higher = better recall for exact matches but slower. Should be &gt;= Final K. Default: 75. Range: 20-200.
-            <div className="tt-badges">
-              <span className="tt-badge info">Keyword Search</span>
-            </div>
-          </div>
-        </span>
+        <span className="help-icon" data-tooltip="TOPK_SPARSE">?</span>
       </label>
       <input
         type="number"
@@ -569,16 +492,7 @@
     <div className="input-group">
       <label>
         Hydration Mode
-        <span className="tooltip-wrap">
-          <span className="help-icon">?</span>
-          <div className="tooltip-bubble">
-            <span className="tt-title">Code Loading Strategy</span>
-            Controls when full code is loaded. "Lazy" loads code from chunks.jsonl after retrieval. "None" only returns metadata (file path, line numbers). Lazy is recommended. None is faster but returns no code.
-            <div className="tt-badges">
-              <span className="tt-badge">Lazy Recommended</span>
-            </div>
-          </div>
-        </span>
+        <span className="help-icon" data-tooltip="HYDRATION_MODE">?</span>
       </label>
       <select
         name="HYDRATION_MODE"
@@ -596,16 +510,7 @@
     <div className="input-group">
       <label>
         Hydration Max Chars
-        <span className="tooltip-wrap">
-          <span className="help-icon">?</span>
-          <div className="tooltip-bubble">
-            <span className="tt-title">Code Truncation Limit</span>
-            Maximum characters to load per chunk when hydrating. Prevents huge chunks from bloating responses. 0 = no limit. Default: 2000. Range: 500-5000.
-            <div className="tt-badges">
-              <span className="tt-badge">Performance</span>
-            </div>
-          </div>
-        </span>
+        <span className="help-icon" data-tooltip="HYDRATION_MAX_CHARS">?</span>
       </label>
       <input
         type="number"
@@ -621,16 +526,7 @@
     <div className="input-group">
       <label>
         Vendor Mode
-        <span className="tooltip-wrap">
-          <span className="help-icon">?</span>
-          <div className="tooltip-bubble">
-            <span className="tt-title">First-Party vs Vendor Code</span>
-            Controls scoring bonus for first-party vs vendor code. "Prefer First Party" boosts your code (+0.06) and penalizes vendor libs (-0.08). "Prefer Vendor" boosts vendor code. Most use cases prefer first party.
-            <div className="tt-badges">
-              <span className="tt-badge info">Code Priority</span>
-            </div>
-          </div>
-        </span>
+        <span className="help-icon" data-tooltip="VENDOR_MODE">?</span>
       </label>
       <select
         name="VENDOR_MODE"

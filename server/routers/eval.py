@@ -87,8 +87,9 @@ def eval_run_instrumented(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
             # Generate run ID
             run_id = datetime.now().strftime('%Y%m%d_%H%M%S')
 
-            # Extract config snapshot
+            # Extract config snapshot - COMPREHENSIVE capture of all RAG params
             config_snapshot = {
+                # Core retrieval
                 'rrf_k_div': _config.get_int('RRF_K_DIV', 60),
                 'bm25_weight': _config.get_float('BM25_WEIGHT', 0.3),
                 'vector_weight': _config.get_float('VECTOR_WEIGHT', 0.7),
@@ -96,6 +97,31 @@ def eval_run_instrumented(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
                 'topk_sparse': _config.get_int('TOPK_SPARSE', 75),
                 'disable_rerank': _config.get_int('DISABLE_RERANK', 0),
                 'eval_final_k': _config.get_int('EVAL_FINAL_K', 5),
+
+                # Layer bonuses
+                'layer_bonus_keyword': _config.get_float('LAYER_BONUS_KEYWORD', 0.0),
+                'layer_bonus_summary': _config.get_float('LAYER_BONUS_SUMMARY', 0.0),
+                'layer_bonus_tree': _config.get_float('LAYER_BONUS_TREE', 0.0),
+                'layer_bonus_card': _config.get_float('LAYER_BONUS_CARD', 0.0),
+                'layer_bonus_code': _config.get_float('LAYER_BONUS_CODE', 0.0),
+
+                # Embedding & chunking
+                'embed_model': _config.get_str('EMBED_MODEL', ''),
+                'chunk_size': _config.get_int('CHUNK_SIZE', 0),
+                'chunk_overlap': _config.get_int('CHUNK_OVERLAP', 0),
+
+                # Reranking
+                'rerank_provider': _config.get_str('RERANK_PROVIDER', ''),
+                'rerank_model': _config.get_str('RERANK_MODEL', ''),
+                'rerank_topk': _config.get_int('RERANK_TOPK', 0),
+
+                # Scoring & weighting
+                'keyword_boost': _config.get_float('KEYWORD_BOOST', 0.0),
+                'recency_weight': _config.get_float('RECENCY_WEIGHT', 0.0),
+
+                # Exclusions (convert to string for JSON serialization)
+                'exclude_globs': _config.get_str('EXCLUDE_GLOBS', ''),
+                'exclude_dirs': _config.get_str('EXCLUDE_DIRS', ''),
             }
 
             # Run eval
@@ -246,6 +272,30 @@ def eval_question_detail(run_id: str, question_idx: int) -> Dict[str, Any]:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error reading question: {str(e)}")
+
+@router.get("/api/eval/runs")
+def eval_list_runs() -> Dict[str, Any]:
+    """List all available eval runs with summary info."""
+    eval_dir = Path('data/evals')
+    if not eval_dir.exists():
+        return {"ok": True, "runs": []}
+
+    runs = []
+    for eval_file in sorted(eval_dir.glob('eval_*.json'), reverse=True):
+        try:
+            data = read_json(eval_file, {})
+            run_id = data.get('run_id', eval_file.stem.replace('eval_', ''))
+            runs.append({
+                'run_id': run_id,
+                'top1_accuracy': data.get('top1_accuracy', 0),
+                'topk_accuracy': data.get('topk_accuracy', 0),
+                'total': data.get('total', 0),
+                'duration_secs': data.get('duration_secs', 0)
+            })
+        except Exception:
+            continue
+
+    return {"ok": True, "runs": runs}
 
 @router.post("/api/eval/baseline/save")
 def eval_baseline_save() -> Dict[str, Any]:

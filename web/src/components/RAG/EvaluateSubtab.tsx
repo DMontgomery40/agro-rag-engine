@@ -1,6 +1,7 @@
 // React implementation of EvaluateSubtab - NO legacy JS modules
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAPI } from '@/hooks';
+import { EvalDrillDown } from '@/components/Evaluation/EvalDrillDown';
 // Recommended golden questions for AGRO codebase
 const RECOMMENDED_GOLDEN = [
   { q: 'Where is hybrid retrieval implemented?', repo: 'agro', expect_paths: ['retrieval/hybrid_search.py'] },
@@ -64,6 +65,9 @@ export function EvaluateSubtab() {
     goldenPath: 'data/golden.json',
     baselinePath: 'data/evals/eval_baseline.json'
   });
+  const [availableRuns, setAvailableRuns] = useState<Array<{run_id: string, top1_accuracy: number, topk_accuracy: number}>>([]);
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+  const [compareRunId, setCompareRunId] = useState<string | null>(null);
 
   const fetchJson = useCallback(async (path: string, options: RequestInit = {}) => {
     const res = await fetch(api(path), {
@@ -81,6 +85,25 @@ export function EvaluateSubtab() {
   useEffect(() => {
     loadGoldenQuestions();
   }, []);
+
+  // Load available eval runs on mount
+  useEffect(() => {
+    const loadRuns = async () => {
+      try {
+        const data = await fetchJson('eval/runs');
+        if (data.ok && data.runs) {
+          setAvailableRuns(data.runs);
+          // Auto-select most recent run if available
+          if (data.runs.length > 0 && !selectedRunId) {
+            setSelectedRunId(data.runs[0].run_id);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load eval runs:', err);
+      }
+    };
+    loadRuns();
+  }, [fetchJson, selectedRunId]);
 
   const loadGoldenQuestions = async () => {
     try {
@@ -249,6 +272,9 @@ export function EvaluateSubtab() {
             // Load results
             const results = await fetchJson('eval/results');
             setEvalResults(results);
+            if (results.run_id) {
+              setLatestRunId(results.run_id);
+            }
             setEvalRunning(false);
           }
         } catch (err) {
@@ -510,7 +536,158 @@ export function EvaluateSubtab() {
                 </div>
               </div>
             </div>
+
+            {/* Drill-Down Button */}
+            {latestRunId && (
+              <button
+                onClick={() => setShowDrillDown(!showDrillDown)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  background: 'var(--bg-elev2)',
+                  color: 'var(--link)',
+                  border: '1px solid var(--link)',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  marginTop: '12px'
+                }}
+              >
+                {showDrillDown ? '▼ Hide Detailed Results' : '▶ Show Detailed Results (Question-by-Question)'}
+              </button>
+            )}
+
+            {/* Detailed Drill-Down */}
+            {showDrillDown && latestRunId && (
+              <div style={{ marginTop: '16px' }}>
+                <EvalDrillDown runId={latestRunId} />
+              </div>
+            )}
           </div>
+        )}
+      </div>
+
+      {/* ALWAYS VISIBLE: Eval Run Drill-Down Analysis */}
+      <div style={{
+        background: 'var(--card-bg)',
+        border: '1px solid var(--line)',
+        borderRadius: '8px',
+        padding: '20px',
+        marginTop: '24px'
+      }}>
+        <h3 style={{
+          margin: '0 0 16px 0',
+          fontSize: '16px',
+          fontWeight: 600,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <span style={{ color: 'var(--accent)' }}>●</span>
+          Eval Run Drill-Down Analysis
+        </h3>
+        <p style={{ fontSize: '13px', color: 'var(--fg-muted)', marginBottom: '16px' }}>
+          Deep-dive into any eval run to analyze question-by-question performance, compare expected vs actual results, and identify regressions.
+        </p>
+
+        {availableRuns.length === 0 ? (
+          <div style={{
+            padding: '32px',
+            textAlign: 'center',
+            color: 'var(--fg-muted)',
+            fontSize: '13px'
+          }}>
+            No eval runs found. Run an evaluation to generate data for analysis.
+          </div>
+        ) : (
+          <>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '20px',
+              marginBottom: '20px'
+            }}>
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  marginBottom: '8px',
+                  color: 'var(--fg)'
+                }}>
+                  📊 PRIMARY RUN (AFTER)
+                </label>
+                <select
+                  value={selectedRunId || ''}
+                  onChange={(e) => setSelectedRunId(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    background: 'var(--bg-elev2)',
+                    color: 'var(--fg)',
+                    border: '2px solid var(--accent-green)',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    fontFamily: 'inherit',
+                    fontWeight: 600
+                  }}
+                >
+                  <option value="">-- Select a run --</option>
+                  {availableRuns.map(run => (
+                    <option key={run.run_id} value={run.run_id}>
+                      {run.run_id} — Top-1: {(run.top1_accuracy * 100).toFixed(1)}% | Top-K: {(run.topk_accuracy * 100).toFixed(1)}%
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  marginBottom: '8px',
+                  color: 'var(--fg)'
+                }}>
+                  🔍 COMPARE WITH (BEFORE) — Optional
+                </label>
+                <select
+                  value={compareRunId || ''}
+                  onChange={(e) => setCompareRunId(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    background: 'var(--bg-elev2)',
+                    color: 'var(--fg)',
+                    border: '2px solid var(--err)',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    fontFamily: 'inherit',
+                    fontWeight: 600
+                  }}
+                >
+                  <option value="">-- No comparison --</option>
+                  {availableRuns.filter(r => r.run_id !== selectedRunId).map(run => (
+                    <option key={run.run_id} value={run.run_id}>
+                      {run.run_id} — Top-1: {(run.top1_accuracy * 100).toFixed(1)}% | Top-K: {(run.topk_accuracy * 100).toFixed(1)}%
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {selectedRunId && (
+              <div style={{
+                border: '1px solid var(--link)',
+                borderRadius: '6px',
+                padding: '16px',
+                background: 'var(--bg-elev1)'
+              }}>
+                <EvalDrillDown runId={selectedRunId} compareWithRunId={compareRunId || undefined} />
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

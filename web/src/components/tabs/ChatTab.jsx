@@ -83,17 +83,7 @@ export default function ChatTab() {
                 <div className="settings-section" style={{borderLeft: '3px solid var(--warn)', marginTop: '16px'}}>
                     <h3>
                         <span className="accent-orange">●</span> Chat Settings
-                        <span className="tooltip-wrap">
-                            <span className="help-icon">?</span>
-                            <div className="tooltip-bubble">
-                                <span className="tt-title">Chat Configuration</span>
-                                These settings control how the RAG chat behaves. Chat is the main interface for querying your codebase, so tune these carefully for your use case.
-                                <div className="tt-badges">
-                                    <span className="tt-badge info">Affects quality</span>
-                                    <span className="tt-badge info">Affects latency</span>
-                                </div>
-                            </div>
-                        </span>
+                        <span className="help-icon" data-tooltip="CHAT_SETTINGS">?</span>
                     </h3>
                     <div id="chat-settings-content">
                     <p className="small">Configure model, retrieval, and display options for chat. Settings persist in browser localStorage.</p>
@@ -103,30 +93,14 @@ export default function ChatTab() {
                         <div className="input-group">
                             <label>
                                 Chat Model (GEN_MODEL_CHAT)
-                                <span className="tooltip-wrap">
-                                    <span className="help-icon">?</span>
-                                    <div className="tooltip-bubble">
-                                        <span className="tt-title">Chat-Specific Model</span>
-                                        Override generation model for chat interface. Falls back to GEN_MODEL if not set. Examples: gpt-4o-mini, gpt-4o, qwen3-coder:14b (local). Larger models = better quality + higher cost/latency.
-                                        <div className="tt-badges">
-                                            <span className="tt-badge info">Affects cost</span>
-                                            <span className="tt-badge info">Affects latency</span>
-                                        </div>
-                                    </div>
-                                </span>
+                                <span className="help-icon" data-tooltip="GEN_MODEL_CHAT">?</span>
                             </label>
                             <input type="text" id="chat-model" placeholder="e.g., gpt-4o-mini (leave empty for default)" />
                         </div>
                         <div className="input-group">
                             <label>
                                 Temperature
-                                <span className="tooltip-wrap">
-                                    <span className="help-icon">?</span>
-                                    <div className="tooltip-bubble">
-                                        <span className="tt-title">Response Creativity</span>
-                                        Controls randomness. 0.0 = deterministic/factual, 1.0 = creative/varied. For code Q&A, stay low (0.1-0.3). Higher temps good for brainstorming/docs.
-                                    </div>
-                                </span>
+                                <span className="help-icon" data-tooltip="CHAT_TEMPERATURE">?</span>
                             </label>
                             <input type="number" id="chat-temperature" value="0.0" min="0" max="2" step="0.01" />
                         </div>
@@ -136,32 +110,14 @@ export default function ChatTab() {
                         <div className="input-group">
                             <label>
                                 Max Response Tokens
-                                <span className="tooltip-wrap">
-                                    <span className="help-icon">?</span>
-                                    <div className="tooltip-bubble">
-                                        <span className="tt-title">Response Length Limit</span>
-                                        Maximum tokens in generated response. ~4 chars = 1 token. 500 tokens ≈ short answer, 2000 ≈ detailed explanation. Higher = more cost.
-                                        <div className="tt-badges">
-                                            <span className="tt-badge info">Affects cost</span>
-                                        </div>
-                                    </div>
-                                </span>
+                                <span className="help-icon" data-tooltip="CHAT_MAX_TOKENS">?</span>
                             </label>
                             <input type="number" id="chat-max-tokens" value="1000" min="100" max="4000" step="100" />
                         </div>
                         <div className="input-group">
                             <label>
                                 Multi-Query Rewrites
-                                <span className="tooltip-wrap">
-                                    <span className="help-icon">?</span>
-                                    <div className="tooltip-bubble">
-                                        <span className="tt-title">Query Expansion</span>
-                                        Rewrite query N times for better recall. 1 = no expansion (fastest), 3-4 = good balance, 6+ = thorough but slower. Use higher for "Where is X?" questions.
-                                        <div className="tt-badges">
-                                            <span className="tt-badge info">Affects latency</span>
-                                        </div>
-                                    </div>
-                                </span>
+                                <span className="help-icon" data-tooltip="MAX_QUERY_REWRITES">?</span>
                             </label>
                             <input type="number" id="chat-multi-query" value="3" min="1" max="6" />
                         </div>
@@ -171,30 +127,14 @@ export default function ChatTab() {
                         <div className="input-group">
                             <label>
                                 Retrieval Top-K
-                                <span className="tooltip-wrap">
-                                    <span className="help-icon">?</span>
-                                    <div className="tooltip-bubble">
-                                        <span className="tt-title">Results to Retrieve</span>
-                                        How many code chunks to retrieve and pass to the model. Top 5 chunks typically used for generation. Higher = more context but slower/costlier.
-                                        <div className="tt-badges">
-                                            <span className="tt-badge info">Affects latency</span>
-                                            <span className="tt-badge info">Affects cost</span>
-                                        </div>
-                                    </div>
-                                </span>
+                                <span className="help-icon" data-tooltip="FINAL_K">?</span>
                             </label>
                             <input type="number" id="chat-final-k" value="20" min="5" max="50" step="5" />
                         </div>
                         <div className="input-group">
                             <label>
                                 Confidence Threshold
-                                <span className="tooltip-wrap">
-                                    <span className="help-icon">?</span>
-                                    <div className="tooltip-bubble">
-                                        <span className="tt-title">Answer Gate</span>
-                                        Minimum confidence to return answer without fallback. 0.55-0.65 typical. Lower = more answers (might guess), higher = fewer answers (more "I don't know").
-                                    </div>
-                                </span>
+                                <span className="help-icon" data-tooltip="CHAT_CONFIDENCE_THRESHOLD">?</span>
                             </label>
                             <input type="number" id="chat-confidence" value="0.55" min="0.3" max="0.9" step="0.05" />
                         </div>
@@ -206,13 +146,7 @@ export default function ChatTab() {
                         <div className="input-group">
                             <label>
                                 Show Citations Inline
-                                <span className="tooltip-wrap">
-                                    <span className="help-icon">?</span>
-                                    <div className="tooltip-bubble">
-                                        <span className="tt-title">Inline File References</span>
-                                        Display file paths and line numbers inline with the answer. Citations become clickable links.
-                                    </div>
-                                </span>
+                                <span className="help-icon" data-tooltip="CHAT_SHOW_CITATIONS">?</span>
                             </label>
                             <select id="chat-show-citations">
                                 <option value="1">Yes</option>

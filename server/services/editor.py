@@ -30,7 +30,7 @@ def read_settings() -> Dict[str, Any]:
         "port": registry.get_int("EDITOR_PORT", 4440),
         "enabled": registry.get_bool("EDITOR_ENABLED", True),
         "embed_enabled": registry.get_bool("EDITOR_EMBED_ENABLED", True),
-        "bind": registry.get_str("EDITOR_BIND", "local"),
+        "bind": registry.get_str("EDITOR_BIND", "local"),  # 'local' or 'public'
         "image": registry.get_str("EDITOR_IMAGE", "agro-vscode:latest"),
         "host": "127.0.0.1",
     }
@@ -44,6 +44,10 @@ def read_settings() -> Dict[str, Any]:
                 settings.update({k: v for k, v in file_settings.items() if v is not None})
     except Exception as e:
         logger.warning("read_settings failed: %s", e)
+
+    # If bind is public, reflect that for direct_url construction
+    if settings.get("bind") == "public":
+        settings["host"] = "0.0.0.0"
 
     return settings
 
