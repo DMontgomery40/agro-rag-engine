@@ -6,7 +6,7 @@ import { Dashboard } from '../pages/Dashboard';
 import Docker from '../pages/Docker';
 // Prefer legacy JSX tabs to preserve exact GUI IDs/styles
 import ChatTab from '../components/tabs/ChatTab.tsx';
-import VSCodeTab from '../components/tabs/VSCodeTab.jsx';
+import VSCodeTab from '../components/tabs/VSCodeTab.tsx';
 import GrafanaTab from '../components/tabs/GrafanaTab.jsx';
 import RAGTab from '../components/tabs/RAGTab.tsx';
 import ProfilesTab from '../components/tabs/ProfilesTab';

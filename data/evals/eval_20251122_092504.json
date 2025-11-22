@@ -1,0 +1,632 @@
+{
+  "run_id": "20251122_092504",
+  "total": 102,
+  "top1_hits": 13,
+  "topk_hits": 18,
+  "top1_accuracy": 0.12745098039215685,
+  "topk_accuracy": 0.17647058823529413,
+  "duration_secs": 34.91207194328308,
+  "config": {
+    "rrf_k_div": 60,
+    "bm25_weight": 0.3,
+    "vector_weight": 0.7,
+    "topk_dense": 75,
+    "topk_sparse": 75,
+    "disable_rerank": 0,
+    "eval_final_k": 5
+  },
+  "results": [
+    {
+      "question": "Where is the hybrid search implementation that combines BM25 and vector search?",
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 0.36202383041381836
+    },
+    {
+      "question": "How does the indexing pipeline work? Where is the main indexer?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.5842189788818359
+    },
+    {
+      "question": "Where is the FastAPI server and main API routes defined?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2697610855102539
+    },
+    {
+      "question": "Where is the LangGraph conversational RAG pipeline implemented?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.33046913146972656
+    },
+    {
+      "question": "How does the cross-encoder reranker work?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.30567383766174316
+    },
+    {
+      "question": "Where is the MCP (Model Context Protocol) server for stdio transport?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2961452007293701
+    },
+    {
+      "question": "Where is the GUI main HTML and JavaScript?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.34638404846191406
+    },
+    {
+      "question": "How does the navigation system work in the GUI?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.3014400005340576
+    },
+    {
+      "question": "Where is the chat interface implementation?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.3009767532348633
+    },
+    {
+      "question": "Where is the AST-aware code chunking implemented?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.29764771461486816
+    },
+    {
+      "question": "How does the embedding cache work to avoid recomputation?",
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 0.3410930633544922
+    },
+    {
+      "question": "Where is the semantic card building logic?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.29009318351745605
+    },
+    {
+      "question": "Where is the repository configuration loaded from repos.json?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.558906078338623
+    },
+    {
+      "question": "How are file filtering and exclusion rules defined?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.28026771545410156
+    },
+    {
+      "question": "Where is the metadata enrichment for code chunks?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.28012585639953613
+    },
+    {
+      "question": "Where is the Qdrant vector database integration?",
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 0.25708699226379395
+    },
+    {
+      "question": "How does multi-query expansion work?",
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 0.30223727226257324
+    },
+    {
+      "question": "Where is the tracing system for debugging RAG pipelines?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2891960144042969
+    },
+    {
+      "question": "Where are the keyword generation scripts?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.27239513397216797
+    },
+    {
+      "question": "How does the reranker training with triplets work?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.26893115043640137
+    },
+    {
+      "question": "Where is the Docker Compose and infrastructure setup?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.3339109420776367
+    },
+    {
+      "question": "Where is the Grafana dashboard configuration?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.27516603469848633
+    },
+    {
+      "question": "Where is the Prometheus metrics configuration?",
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 0.26048994064331055
+    },
+    {
+      "question": "How does the CLI chat tool work?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.29107189178466797
+    },
+    {
+      "question": "Where are the Playwright end-to-end tests?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.3757603168487549
+    },
+    {
+      "question": "Where is the evaluation harness for testing RAG quality?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.253798246383667
+    },
+    {
+      "question": "How does the theme system work in the GUI?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.28000712394714355
+    },
+    {
+      "question": "Where is the configuration management in the GUI?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2624931335449219
+    },
+    {
+      "question": "Where is the index statistics computation?",
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 0.3025991916656494
+    },
+    {
+      "question": "How does the confidence gating work in LangGraph?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.4385499954223633
+    },
+    {
+      "question": "Where are the API endpoint handlers for RAG queries?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.3246951103210449
+    },
+    {
+      "question": "How does the query rewriting work when confidence is low?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2500770092010498
+    },
+    {
+      "question": "Where is the synonym expansion for semantic search?",
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 0.2879319190979004
+    },
+    {
+      "question": "Where are the cost calculation utilities for token usage?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.29928112030029297
+    },
+    {
+      "question": "How does the dashboard tab render system status?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.33376407623291016
+    },
+    {
+      "question": "Where is the telemetry logging for queries and feedback?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2944068908691406
+    },
+    {
+      "question": "How does the MCP HTTP server work?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2777838706970215
+    },
+    {
+      "question": "Where is the Node.js MCP server implementation?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.32877588272094727
+    },
+    {
+      "question": "Where are the common path utilities?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.5235209465026855
+    },
+    {
+      "question": "How does the file selection and upload work in the GUI?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.3007841110229492
+    },
+    {
+      "question": "Where is the golden questions test runner?",
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 0.306840181350708
+    },
+    {
+      "question": "How does the auto-profile wizard work?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2576100826263428
+    },
+    {
+      "question": "Where is the infrastructure management in the GUI?",
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 0.3002481460571289
+    },
+    {
+      "question": "How does the reranker UI component work?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.32842397689819336
+    },
+    {
+      "question": "Where are the alert configuration and management?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.5111658573150635
+    },
+    {
+      "question": "How does the profiles system work for saving configurations?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2552950382232666
+    },
+    {
+      "question": "Where is the VS Code integration for embedded editor?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.24293303489685059
+    },
+    {
+      "question": "How does the Makefile orchestrate development tasks?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.5032970905303955
+    },
+    {
+      "question": "Where are the Python requirements defined?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2756469249725342
+    },
+    {
+      "question": "How does the feedback collection system work?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.3670010566711426
+    },
+    {
+      "question": "Where are helpful error message utilities defined?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.301832914352417
+    },
+    {
+      "question": "Where are GUI tooltips implemented?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.27915525436401367
+    },
+    {
+      "question": "How do I configure the Qdrant URL for vector search?",
+      "top1_hit": false,
+      "topk_hit": true,
+      "duration_secs": 0.3150360584259033
+    },
+    {
+      "question": "What is EMBEDDING_TYPE and how does it affect retrieval?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2442162036895752
+    },
+    {
+      "question": "How do I configure multi-query expansion with MQ_REWRITES?",
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 0.26326608657836914
+    },
+    {
+      "question": "What are the confidence thresholds CONF_TOP1, CONF_AVG5, and CONF_ANY?",
+      "top1_hit": false,
+      "topk_hit": true,
+      "duration_secs": 0.3182210922241211
+    },
+    {
+      "question": "How do I configure reranking with RERANK_BACKEND and Cohere?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.3020339012145996
+    },
+    {
+      "question": "What is TOPK_DENSE and TOPK_SPARSE for hybrid search tuning?",
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 0.29398012161254883
+    },
+    {
+      "question": "How do I set up local reranking with RERANKER_MODEL?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.26211094856262207
+    },
+    {
+      "question": "What is HYDRATION_MODE and how does it affect memory usage?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.29001593589782715
+    },
+    {
+      "question": "How do I configure code enrichment with ENRICH_BACKEND?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2417600154876709
+    },
+    {
+      "question": "What is VENDOR_MODE and how does it prioritize first-party code?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2518789768218994
+    },
+    {
+      "question": "How do I configure the MCP HTTP server with MCP_HTTP_HOST and MCP_HTTP_PORT?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.27089881896972656
+    },
+    {
+      "question": "What is OUT_DIR_BASE and why does it matter for MCP sync?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.390200138092041
+    },
+    {
+      "question": "How do I configure different models per channel with GEN_MODEL_HTTP and GEN_MODEL_MCP?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.25327491760253906
+    },
+    {
+      "question": "What is COLLECTION_SUFFIX for A/B testing indexes?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2934551239013672
+    },
+    {
+      "question": "How do I create helpful error messages with causes and fixes?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.33635687828063965
+    },
+    {
+      "question": "What is the createHelpfulError function and its parameters?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.29971790313720703
+    },
+    {
+      "question": "How do I configure Voyage AI embeddings with VOYAGE_API_KEY?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 2.531816005706787
+    },
+    {
+      "question": "What is CARDS_MAX and how does it affect score boosting?",
+      "top1_hit": false,
+      "topk_hit": true,
+      "duration_secs": 0.26102495193481445
+    },
+    {
+      "question": "How do I configure evaluation with GOLDEN_PATH and EVAL_FINAL_K?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.3067147731781006
+    },
+    {
+      "question": "What is SKIP_DENSE for BM25-only indexing?",
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 0.2794499397277832
+    },
+    {
+      "question": "How do I configure LangChain tracing with LANGCHAIN_TRACING_V2?",
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 1.2414278984069824
+    },
+    {
+      "question": "What is ENRICH_CODE_CHUNKS and how does it improve retrieval quality?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.27455711364746094
+    },
+    {
+      "question": "How do I configure the HTTP server port with PORT setting?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.3074181079864502
+    },
+    {
+      "question": "What is THREAD_ID for conversation state in LangGraph?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2558760643005371
+    },
+    {
+      "question": "How do I configure Anthropic Claude models with ANTHROPIC_API_KEY?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.24357199668884277
+    },
+    {
+      "question": "What is OPENAI_BASE_URL for OpenAI-compatible endpoints?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.31630587577819824
+    },
+    {
+      "question": "How do I configure Google Gemini models with GOOGLE_API_KEY?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2640528678894043
+    },
+    {
+      "question": "What is EMBEDDING_DIM and how does it affect Qdrant storage?",
+      "top1_hit": false,
+      "topk_hit": true,
+      "duration_secs": 0.37735605239868164
+    },
+    {
+      "question": "How do I configure Redis for LangGraph checkpoints with REDIS_URL?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.3807809352874756
+    },
+    {
+      "question": "What is TRANSFORMERS_TRUST_REMOTE_CODE security warning about?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.7073478698730469
+    },
+    {
+      "question": "How do I configure Netlify deployment with NETLIFY_API_KEY and NETLIFY_DOMAINS?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.3056461811065674
+    },
+    {
+      "question": "What is FINAL_K and how does it balance precision vs recall?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.26723313331604004
+    },
+    {
+      "question": "How do I configure Ollama local models with OLLAMA_URL?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2948789596557617
+    },
+    {
+      "question": "What is HYDRATION_MAX_CHARS for preventing huge chunk bloat?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.26639389991760254
+    },
+    {
+      "question": "How do I configure repos.json with REPOS_FILE setting?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2906060218811035
+    },
+    {
+      "question": "What is REPO_PATH fallback when repos.json is not configured?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2649509906768799
+    },
+    {
+      "question": "How do I configure path boosts for repository routing?",
+      "top1_hit": false,
+      "topk_hit": true,
+      "duration_secs": 0.2959740161895752
+    },
+    {
+      "question": "What is EVAL_MULTI for testing multi-query during evaluation?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2829151153564453
+    },
+    {
+      "question": "How do I configure BASELINE_PATH for regression testing?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2955451011657715
+    },
+    {
+      "question": "What is COHERE_RERANK_MODEL for specifying rerank model version?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.29810595512390137
+    },
+    {
+      "question": "How do I configure enrichment model with ENRICH_MODEL_OLLAMA?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2779581546783447
+    },
+    {
+      "question": "What is AGRO_EDITION for feature gating in deployments?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.3143942356109619
+    },
+    {
+      "question": "How do I create inline error messages with createInlineError?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.29544496536254883
+    },
+    {
+      "question": "What is createAlertError for alert-style error messages?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.27319812774658203
+    },
+    {
+      "question": "How does the tooltip system attach help icons to form fields?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.300137996673584
+    },
+    {
+      "question": "What is the buildTooltipMap function for configuration help?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.28333616256713867
+    },
+    {
+      "question": "How do I troubleshoot Qdrant connection failures?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2775838375091553
+    },
+    {
+      "question": "How do I fix retrieval returning no results?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.26659703254699707
+    },
+    {
+      "question": "What causes reranking model load failures?",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.3297441005706787
+    },
+    {
+      "question": "smoke test question",
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.29413580894470215
+    }
+  ]
+}

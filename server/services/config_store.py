@@ -440,13 +440,25 @@ def config_schema() -> Dict[str, Any]:
     from pathlib import Path
 
     def _read_editor_settings() -> Dict[str, Any]:
+        """Prefer registry-backed editor settings, with legacy file fallback for host."""
+        reg = get_config_registry()
+        data = {
+            "port": reg.get_int("EDITOR_PORT", 4440),
+            "enabled": reg.get_bool("EDITOR_ENABLED", True),
+            "embed_enabled": reg.get_bool("EDITOR_EMBED_ENABLED", True),
+            "bind": reg.get_str("EDITOR_BIND", "local"),
+            "image": reg.get_str("EDITOR_IMAGE", "agro-vscode:latest"),
+            "host": "127.0.0.1",
+        }
         try:
             p = Path(__file__).parent.parent / "out" / "editor" / "settings.json"
             if p.exists():
-                return json.loads(p.read_text())
+                file_data = json.loads(p.read_text())
+                if isinstance(file_data, dict):
+                    data.update({k: v for k, v in file_data.items() if v is not None})
         except Exception:
             pass
-        return {"port": 4440, "enabled": True, "host": "127.0.0.1"}
+        return data
 
     repos_cfg = load_repos()
     default_repo = repos_cfg.get("default_repo")
@@ -501,6 +513,7 @@ def config_schema() -> Dict[str, Any]:
                 "type": "object",
                 "properties": {
                     "ENABLED": {"type": "boolean", "title": "Enable Inline VSCode"},
+                    "EDITOR_EMBED_ENABLED": {"type": "boolean", "title": "Show VSCode iframe"},
                     "HOST": {"type": "string", "title": "Host"},
                     "PORT": {"type": "integer", "title": "Port", "minimum": 1},
                 },
@@ -583,6 +596,7 @@ def config_schema() -> Dict[str, Any]:
         },
         "vscode": {
             "ENABLED": bool(ed.get("enabled", True)),
+            "EDITOR_EMBED_ENABLED": bool(ed.get("embed_enabled", True)),
             "HOST": ed.get("host", "127.0.0.1"),
             "PORT": int(ed.get("port", 4440)),
         },

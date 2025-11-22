@@ -3,8 +3,15 @@ from __future__ import annotations
 # Expose filtering helpers used by indexer
 
 PRUNE_DIRS = {
-    ".git", ".github", ".gitlab", ".venv", "node_modules", "dist", "build", "target", "__pycache__",
-    "coverage", ".tox", ".mypy_cache", ".pytest_cache", ".idea", ".vscode"
+    # Version control and IDE
+    ".git", ".github", ".gitlab", ".idea", ".vscode",
+    # Build artifacts and caches
+    ".venv", "node_modules", "dist", "build", "target", "__pycache__",
+    "coverage", ".tox", ".mypy_cache", ".pytest_cache",
+    # AGRO internal directories (docs, data, outputs, etc.)
+    "docs", "agent_docs", "website", "tests", "out", "checkpoints", "models",
+    "data", "telemetry", "node_mcp", "public", "examples", "bin", "reports",
+    "screenshots", "assets", "internal_docs.md", ".worktrees"
 }
 
 

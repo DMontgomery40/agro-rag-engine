@@ -1,0 +1,3981 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "enable": true,
+        "hide": false,
+        "iconColor": "rgba(255, 96, 96, 1)",
+        "name": "Re-index Events",
+        "type": "tags"
+      }
+    ]
+  },
+  "description": "AGRO RAG evaluation complete analysis dashboard with full filtering, comparison, heatmaps, drilldown, and diff capabilities.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "iteration": 1,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "All eval runs merged from accuracy, total questions, and duration. Click Run ID to filter dashboard.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true,
+            "inspect": false,
+            "minWidth": 80
+          },
+          "decimals": 3,
+          "displayName": "",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Top-1 Acc"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#8B0000",
+                      "value": 0
+                    },
+                    {
+                      "color": "#CC5500",
+                      "value": 0.3
+                    },
+                    {
+                      "color": "#CCCC00",
+                      "value": 0.5
+                    },
+                    {
+                      "color": "#66BB6A",
+                      "value": 0.7
+                    },
+                    {
+                      "color": "#2E7D32",
+                      "value": 0.9
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Top-K Acc"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#8B0000",
+                      "value": 0
+                    },
+                    {
+                      "color": "#CC5500",
+                      "value": 0.4
+                    },
+                    {
+                      "color": "#CCCC00",
+                      "value": 0.6
+                    },
+                    {
+                      "color": "#66BB6A",
+                      "value": 0.8
+                    },
+                    {
+                      "color": "#2E7D32",
+                      "value": 0.95
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Run ID"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 180
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Filter dashboard",
+                    "url": "/d/agro_rag_eval_complete?var-run_id=${__data.fields[\"Run ID\"]}"
+                  }
+                ]
+              },
+              {
+                "id": "custom.align",
+                "value": "left"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Duration (s)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "enablePagination": true,
+          "fields": "",
+          "reducer": [
+            "last"
+          ]
+        },
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Time"
+          }
+        ],
+        "frameIndex": 0
+      },
+      "pluginVersion": "10.4.0",
+      "targets": [
+        {
+          "exemplar": false,
+          "expr": "agro_eval_run_accuracy{run_id=~\"$run_id\", topk=\"1\"}",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "Top-1",
+          "refId": "A"
+        },
+        {
+          "exemplar": false,
+          "expr": "agro_eval_run_accuracy{run_id=~\"$run_id\", topk=\"k\"}",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "Top-K",
+          "refId": "B"
+        },
+        {
+          "exemplar": false,
+          "expr": "agro_eval_run_total_questions{run_id=~\"$run_id\"}",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "Total Questions",
+          "refId": "C"
+        },
+        {
+          "exemplar": false,
+          "expr": "agro_eval_run_duration_seconds{run_id=~\"$run_id\"}",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "Duration",
+          "refId": "D"
+        }
+      ],
+      "title": "All Eval Runs - Click Run ID to filter | Sort any column",
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "by": [
+              "run_id"
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time (A)": true,
+              "Time (B)": true,
+              "Time (C)": true,
+              "Time (D)": true,
+              "instance": true,
+              "job": true,
+              "topk (A)": true,
+              "topk (B)": true
+            },
+            "indexByName": {
+              "run_id": 0,
+              "Value (A)": 1,
+              "Value (B)": 2,
+              "Value (C)": 3,
+              "Value (D)": 4
+            },
+            "renameByName": {
+              "run_id": "Run ID",
+              "Value (A)": "Top-1 Acc",
+              "Value (B)": "Top-K Acc",
+              "Value (C)": "Total Qs",
+              "Value (D)": "Duration (s)"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "Run A configuration parameters displayed side by side with Run B for quick comparison.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true,
+            "inspect": false,
+            "minWidth": 80
+          },
+          "decimals": 3,
+          "displayName": "",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Parameter"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 250
+              },
+              {
+                "id": "custom.align",
+                "value": "left"
+              },
+              {
+                "id": "links",
+                "value": []
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Run A Value"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.align",
+                "value": "right"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Run B Value"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.align",
+                "value": "right"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Delta"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#C62828",
+                      "value": -999999
+                    },
+                    {
+                      "color": "#757575",
+                      "value": 0
+                    },
+                    {
+                      "color": "#2E7D32",
+                      "value": 0.000001
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "id": 2,
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "enablePagination": false,
+          "fields": "",
+          "reducer": [
+            "last"
+          ]
+        },
+        "sortBy": [],
+        "frameIndex": 0
+      },
+      "pluginVersion": "10.4.0",
+      "targets": [
+        {
+          "exemplar": false,
+          "expr": "agro_eval_run_config{run_id=\"$comparison_run_a\"}",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "Run A",
+          "refId": "A"
+        },
+        {
+          "exemplar": false,
+          "expr": "agro_eval_run_config{run_id=\"$comparison_run_b\"}",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "Run B",
+          "refId": "B"
+        }
+      ],
+      "title": "Side-by-Side Config Comparison",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": false,
+              "instance": true,
+              "job": true
+            },
+            "renameByName": {
+              "param_name": "Parameter",
+              "Value": "Value",
+              "run_id": "Run"
+            }
+          }
+        },
+        {
+          "id": "joinByField",
+          "options": {
+            "by": [
+              "Parameter"
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time (A)": true,
+              "Time (B)": true,
+              "Run (A)": true,
+              "Run (B)": true,
+              "instance": true,
+              "job": true
+            },
+            "indexByName": {
+              "Parameter": 0,
+              "Value (A)": 1,
+              "Value (B)": 2
+            },
+            "renameByName": {
+              "Value (A)": "Run A Value",
+              "Value (B)": "Run B Value"
+            }
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "alias": "Delta",
+            "binary": {
+              "left": "Run B Value",
+              "operator": "-",
+              "reducer": "last",
+              "right": "Run A Value"
+            },
+            "mode": "binary"
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "Configuration differences only where values differ between comparison runs.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true,
+            "inspect": false,
+            "minWidth": 80
+          },
+          "decimals": 3,
+          "displayName": "",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Delta"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#C62828",
+                      "value": -999999
+                    },
+                    {
+                      "color": "#757575",
+                      "value": 0
+                    },
+                    {
+                      "color": "#2E7D32",
+                      "value": 0.000001
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Percent Change"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#C62828",
+                      "value": -999999
+                    },
+                    {
+                      "color": "#757575",
+                      "value": 0
+                    },
+                    {
+                      "color": "#2E7D32",
+                      "value": 0.000001
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "id": 3,
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "enablePagination": false,
+          "fields": "",
+          "reducer": [
+            "last"
+          ]
+        },
+        "sortBy": [],
+        "frameIndex": 0
+      },
+      "pluginVersion": "10.4.0",
+      "targets": [
+        {
+          "exemplar": false,
+          "expr": "agro_eval_run_config{run_id=\"$comparison_run_a\"}",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "Run A",
+          "refId": "A"
+        },
+        {
+          "exemplar": false,
+          "expr": "agro_eval_run_config{run_id=\"$comparison_run_b\"}",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "Run B",
+          "refId": "B"
+        }
+      ],
+      "title": "Configuration Differences Between Run A & Run B (Only Changed Params)",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": false,
+              "instance": true,
+              "job": true
+            },
+            "renameByName": {
+              "param_name": "Parameter",
+              "Value": "Value",
+              "run_id": "Run"
+            }
+          }
+        },
+        {
+          "id": "joinByField",
+          "options": {
+            "by": [
+              "Parameter"
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time (A)": true,
+              "Time (B)": true,
+              "Run (A)": true,
+              "Run (B)": true,
+              "instance": true,
+              "job": true
+            },
+            "indexByName": {
+              "Parameter": 0,
+              "Value (A)": 1,
+              "Value (B)": 2
+            },
+            "renameByName": {
+              "Value (A)": "Run A Value",
+              "Value (B)": "Run B Value"
+            }
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "alias": "Delta",
+            "binary": {
+              "left": "Run B Value",
+              "operator": "-",
+              "reducer": "last",
+              "right": "Run A Value"
+            },
+            "mode": "binary"
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "alias": "Percent Change",
+            "mode": "binary",
+            "binary": {
+              "left": "Delta",
+              "operator": "/",
+              "reducer": "last",
+              "right": "Run A Value"
+            }
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "alias": "Percent Change",
+            "mode": "replaceAll",
+            "reduce": {
+              "reducers": [
+                "last"
+              ]
+            },
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "filters": [
+              {
+                "fieldName": "Delta",
+                "match": "!=" ,
+                "value": 0
+              }
+            ]
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "Per-question results heatmap for Top-1 hits across runs.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#8B0000",
+                "value": 0
+              },
+              {
+                "color": "#CCCC00",
+                "value": 0.5
+              },
+              {
+                "color": "#2E7D32",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 20,
+        "w": 24,
+        "x": 0,
+        "y": 36
+      },
+      "heatmap": {},
+      "id": 4,
+      "options": {
+        "calculate": true,
+        "color": {
+          "cardColor": "#b4ff00",
+          "colorScheme": "RdYlGn",
+          "exponent": 0.5,
+          "mode": "scheme",
+          "steps": 8
+        },
+        "data": {
+          "exponent": 0.5
+        },
+        "legend": {
+          "show": true
+        },
+        "reverseYBuckets": false,
+        "showValue": "auto",
+        "tooltip": {
+          "show": true,
+          "mode": "details"
+        },
+        "yAxis": {
+          "reverse": false
+        },
+        "xAxis": {
+          "axisPlacement": "auto"
+        },
+        "cellGap": 2,
+        "cellRadius": 0
+      },
+      "pluginVersion": "10.4.0",
+      "targets": [
+        {
+          "exemplar": false,
+          "expr": "agro_eval_question_result{run_id=~\"$run_id\", topk=\"1\"}",
+          "format": "heatmap",
+          "instant": true,
+          "legendFormat": "{{run_id}} / {{question_idx}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Per-Question Results Heatmap - Green=Hit, Red=Miss (Click cell for details)",
+      "type": "heatmap"
+    },
+    {
+      "datasource": {
+        "type": "infinity",
+        "uid": "infinity"
+      },
+      "description": "Question-level detail from eval JSON files filtered by selected questions.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true,
+            "inspect": false,
+            "minWidth": 80
+          },
+          "decimals": 2,
+          "displayName": "",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Question #"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              },
+              {
+                "id": "custom.align",
+                "value": "right"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Question"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 400
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Expected Paths"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 260
+              },
+              {
+                "id": "custom.align",
+                "value": "left"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "json-view"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Top-1 Path"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 220
+              },
+              {
+                "id": "custom.align",
+                "value": "left"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "json-view"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Top Paths"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 500
+              },
+              {
+                "id": "custom.align",
+                "value": "left"
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "json-view"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Top-1 Hit"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "true": {
+                        "color": "#2E7D32",
+                        "index": 0,
+                        "text": "✓ HIT"
+                      },
+                      "false": {
+                        "color": "#C62828",
+                        "index": 1,
+                        "text": "✗ MISS"
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Top-K Hit"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "true": {
+                        "color": "#2E7D32",
+                        "index": 0,
+                        "text": "✓ HIT"
+                      },
+                      "false": {
+                        "color": "#C62828",
+                        "index": 1,
+                        "text": "✗ MISS"
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Duration (secs)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 56
+      },
+      "id": 5,
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "enablePagination": true,
+          "fields": "",
+          "reducer": [
+            "last"
+          ]
+        },
+        "sortBy": [
+          {
+            "desc": false,
+            "displayName": "Question #"
+          }
+        ],
+        "frameIndex": 0
+      },
+      "pluginVersion": "10.4.0",
+      "targets": [
+        {
+          "columns": [
+            {
+              "selector": "question_idx",
+              "text": "Question #",
+              "type": "number"
+            },
+            {
+              "selector": "question",
+              "text": "Question",
+              "type": "string"
+            },
+            {
+              "selector": "expect_paths",
+              "text": "Expected Paths",
+              "type": "string"
+            },
+            {
+              "selector": "top1_path",
+              "text": "Top-1 Path",
+              "type": "string"
+            },
+            {
+              "selector": "top1_hit",
+              "text": "Top-1 Hit",
+              "type": "boolean"
+            },
+            {
+              "selector": "topk_hit",
+              "text": "Top-K Hit",
+              "type": "boolean"
+            },
+            {
+              "selector": "duration_secs",
+              "text": "Duration (secs)",
+              "type": "number"
+            },
+            {
+              "selector": "top_paths",
+              "text": "Top Paths",
+              "type": "string"
+            }
+          ],
+          "format": "table",
+          "refId": "A",
+          "root_selector": "results",
+          "type": "json",
+          "url": "${REPO_ROOT:-/app}/data/evals/eval_${run_id_detail}.json",
+          "method": "GET"
+        }
+      ],
+      "title": "Question-Level Detail (Filtered by selected questions)",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "Question #": 0,
+              "Question": 1,
+              "Expected Paths": 2,
+              "Top-1 Path": 3,
+              "Top-1 Hit": 4,
+              "Top-K Hit": 5,
+              "Duration (secs)": 6,
+              "Top Paths": 7
+            },
+            "renameByName": {},
+            "excludeByName": {
+              "": false
+            }
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "filters": [
+              {
+                "config": {
+                  "id": "stringFilter",
+                  "options": {
+                    "value": "${question_idx:regex}"
+                  }
+                },
+                "fieldName": "Question #",
+                "match": "regex"
+              }
+            ]
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "Top-1 and Top-K accuracy trends across filtered runs.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 30,
+            "showPoints": "always",
+            "pointSize": 7,
+            "gradientMode": "opacity"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#8B0000",
+                "value": 0
+              },
+              {
+                "color": "#2E7D32",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "percentunit",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 68
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "lastNotNull",
+            "max",
+            "min"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "yAxis": {
+          "label": "Accuracy",
+          "min": 0,
+          "max": 1
+        }
+      },
+      "pluginVersion": "10.4.0",
+      "targets": [
+        {
+          "exemplar": false,
+          "expr": "agro_eval_run_accuracy{run_id=~\"$run_id\", topk=\"1\"}",
+          "legendFormat": "{{run_id}} Top-1",
+          "refId": "A"
+        },
+        {
+          "exemplar": false,
+          "expr": "agro_eval_run_accuracy{run_id=~\"$run_id\", topk=\"k\"}",
+          "legendFormat": "{{run_id}} Top-K",
+          "refId": "B"
+        }
+      ],
+      "title": "Accuracy Trends Across Filtered Runs",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "All configuration parameters pivoted by run for filtered run set.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "left",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true,
+            "inspect": false,
+            "minWidth": 80
+          },
+          "decimals": 3,
+          "displayName": "",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 12,
+        "x": 0,
+        "y": 78
+      },
+      "id": 7,
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "enablePagination": false,
+          "fields": "",
+          "reducer": [
+            "last"
+          ]
+        },
+        "sortBy": [],
+        "frameIndex": 0
+      },
+      "pluginVersion": "10.4.0",
+      "targets": [
+        {
+          "exemplar": false,
+          "expr": "agro_eval_run_config{run_id=~\"$run_id\"}",
+          "instant": true,
+          "legendFormat": "{{param_name}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Configuration Parameters (All Selected Runs)",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "instance": true,
+              "job": true
+            },
+            "renameByName": {
+              "param_name": "Parameter",
+              "run_id": "Run ID",
+              "Value": "Value"
+            }
+          }
+        },
+        {
+          "id": "pivot",
+          "options": {
+            "columns": [
+              "Parameter"
+            ],
+            "rows": [
+              "Run ID"
+            ],
+            "values": [
+              {
+                "field": "Value",
+                "operation": "last"
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "indexByName": {},
+            "renameByName": {}
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "Modalities contributing to top rank across filtered runs.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#2196F3",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "bm25"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2196F3"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "vector"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#4CAF50"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "reranker"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FF9800"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 12,
+        "x": 12,
+        "y": 78
+      },
+      "id": 8,
+      "options": {
+        "displayLabels": [
+          "name",
+          "percent"
+        ],
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": [
+            "value",
+            "percent"
+          ]
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "pluginVersion": "10.4.0",
+      "targets": [
+        {
+          "exemplar": false,
+          "expr": "sum by (modality) (agro_eval_modality_top_rank_total{run_id=~\"$run_id\"})",
+          "instant": true,
+          "legendFormat": "{{modality}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Which Modality Ranks #1 Most Often? (Filtered Runs)",
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "Score distribution percentiles by modality.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 80,
+            "gradientMode": "hue"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#2196F3",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 92
+      },
+      "id": 9,
+      "options": {
+        "barRadius": 0,
+        "barWidthFactor": 0.6,
+        "groupWidth": 0.7,
+        "orientation": "auto",
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "values": [
+            "mean",
+            "max",
+            "min"
+          ]
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "pluginVersion": "10.4.0",
+      "targets": [
+        {
+          "exemplar": false,
+          "expr": "histogram_quantile(0.50, sum by (le, modality) (agro_eval_score_distribution_bucket{run_id=~\"$run_id\"}))",
+          "instant": true,
+          "legendFormat": "p50 {{modality}}",
+          "refId": "A"
+        },
+        {
+          "exemplar": false,
+          "expr": "histogram_quantile(0.75, sum by (le, modality) (agro_eval_score_distribution_bucket{run_id=~\"$run_id\"}))",
+          "instant": true,
+          "legendFormat": "p75 {{modality}}",
+          "refId": "B"
+        },
+        {
+          "exemplar": false,
+          "expr": "histogram_quantile(0.90, sum by (le, modality) (agro_eval_score_distribution_bucket{run_id=~\"$run_id\"}))",
+          "instant": true,
+          "legendFormat": "p90 {{modality}}",
+          "refId": "C"
+        },
+        {
+          "exemplar": false,
+          "expr": "histogram_quantile(0.95, sum by (le, modality) (agro_eval_score_distribution_bucket{run_id=~\"$run_id\"}))",
+          "instant": true,
+          "legendFormat": "p95 {{modality}}",
+          "refId": "D"
+        }
+      ],
+      "title": "Score Distribution by Modality (Percentiles: p50, p75, p90, p95)",
+      "type": "barchart"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "agro",
+    "evaluation",
+    "rag",
+    "production"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "run_id",
+        "label": "Run ID",
+        "hide": 0,
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(agro_eval_run_accuracy, run_id)",
+        "query": "label_values(agro_eval_run_accuracy, run_id)",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "sort": 2,
+        "refresh": 2,
+        "regex": "",
+        "options": [],
+        "current": {
+          "selected": true,
+          "text": [
+            "20251122_092312",
+            "20251122_092234",
+            "20251122_092156",
+            "20251122_092118",
+            "20251122_092032",
+            "20251122_083226"
+          ],
+          "value": [
+            "20251122_092312",
+            "20251122_092234",
+            "20251122_092156",
+            "20251122_092118",
+            "20251122_092032",
+            "20251122_083226"
+          ]
+        }
+      },
+      {
+        "name": "run_id_detail",
+        "label": "Detail Run",
+        "hide": 0,
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(agro_eval_run_accuracy{run_id=~\"$run_id\"}, run_id)",
+        "query": "label_values(agro_eval_run_accuracy{run_id=~\"$run_id\"}, run_id)",
+        "multi": false,
+        "includeAll": false,
+        "refresh": 2,
+        "regex": "",
+        "sort": 2,
+        "options": [],
+        "current": {
+          "selected": true,
+          "text": "20251122_092312",
+          "value": "20251122_092312"
+        }
+      },
+      {
+        "name": "rrf_k_div",
+        "label": "RRF K",
+        "hide": 0,
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(agro_eval_run_config{param_name=\"rrf_k_div\"}, Value)",
+        "query": "label_values(agro_eval_run_config{param_name=\"rrf_k_div\"}, Value)",
+        "multi": true,
+        "includeAll": true,
+        "refresh": 2,
+        "regex": "",
+        "options": [],
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": ""
+        }
+      },
+      {
+        "name": "bm25_weight",
+        "label": "bm25_weight",
+        "hide": 0,
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(agro_eval_run_config{param_name=\"bm25_weight\"}, Value)",
+        "query": "label_values(agro_eval_run_config{param_name=\"bm25_weight\"}, Value)",
+        "multi": true,
+        "includeAll": true,
+        "refresh": 2,
+        "regex": "",
+        "options": [],
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": ""
+        }
+      },
+      {
+        "name": "vector_weight",
+        "label": "vector_weight",
+        "hide": 0,
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(agro_eval_run_config{param_name=\"vector_weight\"}, Value)",
+        "query": "label_values(agro_eval_run_config{param_name=\"vector_weight\"}, Value)",
+        "multi": true,
+        "includeAll": true,
+        "refresh": 2,
+        "regex": "",
+        "options": [],
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": ""
+        }
+      },
+      {
+        "name": "topk_dense",
+        "label": "topk_dense",
+        "hide": 0,
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(agro_eval_run_config{param_name=\"topk_dense\"}, Value)",
+        "query": "label_values(agro_eval_run_config{param_name=\"topk_dense\"}, Value)",
+        "multi": true,
+        "includeAll": true,
+        "refresh": 2,
+        "regex": "",
+        "options": [],
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": ""
+        }
+      },
+      {
+        "name": "topk_sparse",
+        "label": "topk_sparse",
+        "hide": 0,
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(agro_eval_run_config{param_name=\"topk_sparse\"}, Value)",
+        "query": "label_values(agro_eval_run_config{param_name=\"topk_sparse\"}, Value)",
+        "multi": true,
+        "includeAll": true,
+        "refresh": 2,
+        "regex": "",
+        "options": [],
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": ""
+        }
+      },
+      {
+        "name": "disable_rerank",
+        "label": "disable_rerank",
+        "hide": 0,
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(agro_eval_run_config{param_name=\"disable_rerank\"}, Value)",
+        "query": "label_values(agro_eval_run_config{param_name=\"disable_rerank\"}, Value)",
+        "multi": true,
+        "includeAll": true,
+        "refresh": 2,
+        "regex": "",
+        "options": [],
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": ""
+        }
+      },
+      {
+        "name": "agro_reranker_enabled",
+        "label": "agro_reranker_enabled",
+        "hide": 0,
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(agro_eval_run_config{param_name=\"agro_reranker_enabled\"}, Value)",
+        "query": "label_values(agro_eval_run_config{param_name=\"agro_reranker_enabled\"}, Value)",
+        "multi": true,
+        "includeAll": true,
+        "refresh": 2,
+        "regex": "",
+        "options": [],
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": ""
+        }
+      },
+      {
+        "name": "cohere_reranker_enabled",
+        "label": "cohere_reranker_enabled",
+        "hide": 0,
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(agro_eval_run_config{param_name=\"cohere_reranker_enabled\"}, Value)",
+        "query": "label_values(agro_eval_run_config{param_name=\"cohere_reranker_enabled\"}, Value)",
+        "multi": true,
+        "includeAll": true,
+        "refresh": 2,
+        "regex": "",
+        "options": [],
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": ""
+        }
+      },
+      {
+        "name": "skip_dense",
+        "label": "skip_dense",
+        "hide": 0,
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(agro_eval_run_config{param_name=\"skip_dense\"}, Value)",
+        "query": "label_values(agro_eval_run_config{param_name=\"skip_dense\"}, Value)",
+        "multi": true,
+        "includeAll": true,
+        "refresh": 2,
+        "regex": "",
+        "options": [],
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": ""
+        }
+      },
+      {
+        "name": "eval_final_k",
+        "label": "eval_final_k",
+        "hide": 0,
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(agro_eval_run_config{param_name=\"eval_final_k\"}, Value)",
+        "query": "label_values(agro_eval_run_config{param_name=\"eval_final_k\"}, Value)",
+        "multi": true,
+        "includeAll": true,
+        "refresh": 2,
+        "regex": "",
+        "options": [],
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": ""
+        }
+      },
+      {
+        "name": "question_idx",
+        "label": "Question #",
+        "hide": 0,
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(agro_eval_question_result, question_idx)",
+        "query": "label_values(agro_eval_question_result, question_idx)",
+        "multi": true,
+        "includeAll": true,
+        "refresh": 2,
+        "regex": "",
+        "sort": 3,
+        "options": [],
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": ""
+        }
+      },
+      {
+        "name": "comparison_run_a",
+        "label": "Compare Run A",
+        "hide": 0,
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(agro_eval_run_accuracy, run_id)",
+        "query": "label_values(agro_eval_run_accuracy, run_id)",
+        "multi": false,
+        "includeAll": false,
+        "refresh": 2,
+        "regex": "",
+        "sort": 2,
+        "options": [],
+        "current": {
+          "selected": true,
+          "text": "20251122_092312",
+          "value": "20251122_092312"
+        }
+      },
+      {
+        "name": "comparison_run_b",
+        "label": "Compare Run B",
+        "hide": 0,
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "PBFA97CFB590B2093"
+        },
+        "definition": "label_values(agro_eval_run_accuracy, run_id)",
+        "query": "label_values(agro_eval_run_accuracy, run_id)",
+        "multi": false,
+        "includeAll": false,
+        "refresh": 2,
+        "regex": "",
+        "sort": 2,
+        "options": [],
+        "current": {
+          "selected": true,
+          "text": "20251122_092234",
+          "value": "20251122_092234"
+        }
+      }
+    ]
+  },
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "AGRO RAG Evaluation - Complete Analysis",
+  "uid": "agro_rag_eval_complete",
+  "version": 1,
+  "weekStart": ""
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

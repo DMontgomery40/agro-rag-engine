@@ -20,3 +20,4 @@ export { useUIHelpers } from './useUIHelpers';
 // Navigation hooks (React Router integration)
 export { useNavigation } from './useNavigation';
 export { useTabs } from './useTabs';
+export { useVSCodeEmbed } from './useVSCodeEmbed';

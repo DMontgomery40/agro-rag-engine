@@ -222,13 +222,7 @@ export default function ChatTab() {
                         <div className="input-group">
                             <label>
                                 Show Confidence Score
-                                <span className="tooltip-wrap">
-                                    <span className="help-icon">?</span>
-                                    <div className="tooltip-bubble">
-                                        <span className="tt-title">Retrieval Confidence</span>
-                                        Display the retrieval confidence score (0-1) with each answer. Helps judge answer quality.
-                                    </div>
-                                </span>
+                                <span className="help-icon" data-tooltip="CHAT_CONFIDENCE">?</span>
                             </label>
                             <select id="chat-show-confidence">
                                 <option value="0">No</option>
@@ -241,13 +235,7 @@ export default function ChatTab() {
                         <div className="input-group">
                             <label>
                                 Auto-scroll to New Messages
-                                <span className="tooltip-wrap">
-                                    <span className="help-icon">?</span>
-                                    <div className="tooltip-bubble">
-                                        <span className="tt-title">Scroll Behavior</span>
-                                        Automatically scroll to bottom when new messages arrive.
-                                    </div>
-                                </span>
+                                <span className="help-icon" data-tooltip="CHAT_AUTO_SCROLL">?</span>
                             </label>
                             <select id="chat-auto-scroll">
                                 <option value="1">Yes</option>
@@ -257,13 +245,7 @@ export default function ChatTab() {
                         <div className="input-group">
                             <label>
                                 Syntax Highlighting
-                                <span className="tooltip-wrap">
-                                    <span className="help-icon">?</span>
-                                    <div className="tooltip-bubble">
-                                        <span className="tt-title">Code Block Highlighting</span>
-                                        Apply syntax highlighting to code blocks in responses (future feature).
-                                    </div>
-                                </span>
+                                <span className="help-icon" data-tooltip="CHAT_SYNTAX_HIGHLIGHT">?</span>
                             </label>
                             <select id="chat-syntax-highlight">
                                 <option value="0">Basic</option>
@@ -276,13 +258,7 @@ export default function ChatTab() {
                     <div className="input-group" style={{marginTop: '16px'}}>
                         <label>
                             Custom System Prompt
-                            <span className="tooltip-wrap">
-                                <span className="help-icon">?</span>
-                                <div className="tooltip-bubble">
-                                    <span className="tt-title">System Instructions</span>
-                                    Override default system prompt. Leave empty to use expert prompt ( plugin development + AGRO RAG specialist). Use to change tone, add rules, etc.
-                                </div>
-                            </span>
+                            <span className="help-icon" data-tooltip="CHAT_SYSTEM_PROMPT">?</span>
                         </label>
                         <textarea id="chat-system-prompt" placeholder="Leave empty for expert system prompt ( plugin dev + AGRO RAG expert)" style={{minHeight: '80px'}}></textarea>
                     </div>
@@ -291,30 +267,14 @@ export default function ChatTab() {
                     <div className="settings-subsection" style={{marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--line)'}}>
                         <h4 style={{color: 'var(--accent)', fontSize: '13px', marginBottom: '12px'}}>
                             💾 History Settings
-                            <span className="tooltip-wrap">
-                                <span className="help-icon">?</span>
-                                <div className="tooltip-bubble">
-                                    <span className="tt-title">Chat History Storage</span>
-                                    Control how chat history is stored and loaded. History is saved in browser localStorage for persistence across sessions.
-                                    <div className="tt-badges">
-                                        <span className="tt-badge info">Browser storage</span>
-                                        <span className="tt-badge info">Privacy: stays local</span>
-                                    </div>
-                                </div>
-                            </span>
+                            <span className="help-icon" data-tooltip="CHAT_HISTORY">?</span>
                         </h4>
 
                         <div className="input-row">
                             <div className="input-group">
                                 <label>
                                     Enable History
-                                    <span className="tooltip-wrap">
-                                        <span className="help-icon">?</span>
-                                        <div className="tooltip-bubble">
-                                            <span className="tt-title">Save Chat Messages</span>
-                                            When enabled, all chat messages are saved to browser localStorage for later retrieval.
-                                        </div>
-                                    </span>
+                                    <span className="help-icon" data-tooltip="CHAT_HISTORY_ENABLED">?</span>
                                 </label>
                                 <select id="chat-history-enabled">
                                     <option value="1">Enabled</option>
@@ -324,13 +284,7 @@ export default function ChatTab() {
                             <div className="input-group">
                                 <label>
                                     History Limit
-                                    <span className="tooltip-wrap">
-                                        <span className="help-icon">?</span>
-                                        <div className="tooltip-bubble">
-                                            <span className="tt-title">Maximum Messages</span>
-                                            Maximum number of messages to keep in history. Older messages are automatically removed when limit is reached. Range: 1-1000 messages.
-                                        </div>
-                                    </span>
+                                    <span className="help-icon" data-tooltip="CHAT_HISTORY_LIMIT">?</span>
                                 </label>
                                 <input type="number" id="chat-history-limit" value="100" min="1" max="1000" step="10" />
                             </div>
@@ -340,13 +294,7 @@ export default function ChatTab() {
                             <div className="input-group">
                                 <label>
                                     Load on Startup
-                                    <span className="tooltip-wrap">
-                                        <span className="help-icon">?</span>
-                                        <div className="tooltip-bubble">
-                                            <span className="tt-title">Auto-Load History</span>
-                                            Automatically display previous conversation history when opening the chat tab.
-                                        </div>
-                                    </span>
+                                    <span className="help-icon" data-tooltip="CHAT_HISTORY_LOAD_ON_START">?</span>
                                 </label>
                                 <select id="chat-show-history-on-load">
                                     <option value="1">Yes</option>

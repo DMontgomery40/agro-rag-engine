@@ -62,7 +62,7 @@
         "golden questions",
         "editor"
       ],
-      "path_boosts": [ 
+      "path_boosts": [
         "server",
         "indexer",
         "retrieval",

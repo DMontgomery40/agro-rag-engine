@@ -1,11 +1,2334 @@
 {
-  "timestamp": "Nov 19, 2025 07:16 PM",
-  "model_path": "models/cross-encoder-agro",
-  "metrics": {
-    "hit_at_1": 0.6667,
-    "hit_at_3": 0.7778,
-    "hit_at_5": 1.0,
-    "hit_at_10": 1.0
+  "run_id": "20251122_083226",
+  "timestamp": "2025-11-22T08:33:03.126841",
+  "total": 102,
+  "top1_hits": 13,
+  "topk_hits": 18,
+  "top1_accuracy": 0.1275,
+  "topk_accuracy": 0.1765,
+  "final_k": 5,
+  "use_multi": true,
+  "duration_secs": 36.61,
+  "config": {
+    "rrf_k_div": 60,
+    "bm25_weight": 0.3,
+    "vector_weight": 0.7,
+    "topk_dense": 75,
+    "topk_sparse": 75,
+    "final_k": 10,
+    "multi_query_m": 4,
+    "query_expansion_enabled": 1,
+    "use_semantic_synonyms": 1,
+    "disable_rerank": 0,
+    "agro_reranker_enabled": 1,
+    "agro_reranker_alpha": 0.7,
+    "cohere_reranker_enabled": 1,
+    "card_bonus": 0.08,
+    "filename_boost_exact": 1.5,
+    "filename_boost_partial": 1.2,
+    "layer_bonus_gui": 0.15,
+    "layer_bonus_retrieval": 0.15,
+    "layer_bonus_indexer": 0.15,
+    "vendor_penalty": -0.1,
+    "freshness_bonus": 0.05,
+    "chunk_size": 1000,
+    "chunk_overlap": 200,
+    "chunking_strategy": "ast",
+    "skip_dense": 0,
+    "bm25_tokenizer": "stemmer",
+    "eval_multi": 1,
+    "eval_final_k": 5
   },
-  "raw_output": "Loading model from models/cross-encoder-agro...\nEvaluating on 9 triplets...\n\nEvaluated on 9 items\nMRR@all: 0.7778\nHit@1: 0.6667\nHit@3: 0.7778\nHit@5: 1.0000\nHit@10: 1.0000"
+  "results": [
+    {
+      "question": "Where is the hybrid search implementation that combines BM25 and vector search?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py",
+        "server/langgraph_app.py",
+        "server/app.py",
+        "eval/eval_rag.py"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/ux-feedback.js",
+        "web/src/components/DevTools/index.ts",
+        "cli/agro.py"
+      ],
+      "duration_secs": 2.646
+    },
+    {
+      "question": "How does the indexing pipeline work? Where is the main indexer?",
+      "repo": "agro",
+      "expect_paths": [
+        "indexer/index_repo.py",
+        "retrieval/ast_chunker.py",
+        "common/filtering.py",
+        "common/config_loader.py",
+        "retrieval/embed_cache.py",
+        "common/qdrant_utils.py"
+      ],
+      "top1_path": [
+        "cli/agro.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "cli/agro.py",
+        "gui/js/dashboard-metrics.js",
+        "server/services/config_store.py",
+        "web/src/modules/ux-feedback.js",
+        "cli/commands/eval.py"
+      ],
+      "duration_secs": 0.331
+    },
+    {
+      "question": "Where is the FastAPI server and main API routes defined?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/app.py",
+        "server/langgraph_app.py",
+        "server/feedback.py",
+        "server/telemetry.py",
+        "server/metrics.py"
+      ],
+      "top1_path": [
+        "server/routers/data_quality.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "server/routers/data_quality.py",
+        "web/src/modules/mcp_server.js",
+        "web/src/components/Onboarding/TuneStep.tsx",
+        "web/src/modules/tooltips.js",
+        "web/src/components/Grafana/GrafanaDashboard.tsx"
+      ],
+      "duration_secs": 0.388
+    },
+    {
+      "question": "Where is the LangGraph conversational RAG pipeline implemented?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/langgraph_app.py",
+        "retrieval/hybrid_search.py",
+        "server/tracing.py",
+        "server/app.py"
+      ],
+      "top1_path": [
+        "web/src/components/RAG/RetrievalSubtab.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/RAG/RetrievalSubtab.tsx",
+        "cli/agro.py",
+        "cli/commands/eval.py",
+        "web/src/components/DevTools/index.ts",
+        "web/src/components/Dashboard/QuickActions.tsx"
+      ],
+      "duration_secs": 0.392
+    },
+    {
+      "question": "How does the cross-encoder reranker work?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/rerank.py",
+        "retrieval/hybrid_search.py",
+        "scripts/train_reranker.py",
+        "scripts/mine_triplets.py",
+        "gui/js/reranker.js"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/modules/profile_renderer.js",
+        "cli/agro.py",
+        "web/src/components/Dashboard/QuickActions.tsx"
+      ],
+      "duration_secs": 0.354
+    },
+    {
+      "question": "Where is the MCP (Model Context Protocol) server for stdio transport?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/mcp/server.py",
+        "server/mcp/http.py",
+        "node_mcp/server.js",
+        "server/langgraph_app.py"
+      ],
+      "top1_path": [
+        "web/src/components/Infrastructure/MCPSubtab.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/Infrastructure/MCPSubtab.tsx",
+        "server/routers/mcp_ops.py",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js"
+      ],
+      "duration_secs": 0.361
+    },
+    {
+      "question": "Where is the GUI main HTML and JavaScript?",
+      "repo": "agro",
+      "expect_paths": [
+        "gui/index.html",
+        "gui/app.js",
+        "gui/js/navigation.js",
+        "gui/js/chat.js",
+        "gui/css/tokens.css",
+        "gui/css/micro-interactions.css"
+      ],
+      "top1_path": [
+        "web/src/modules/ux-feedback.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/ux-feedback.js",
+        "web/src/components/VSCode/VSCodeSettingsPanel.tsx",
+        "web/src/components/RAG/LearningRankerSubtab.tsx",
+        "web/src/components/Dashboard/QuickActions.tsx",
+        "web/src/hooks/index.ts"
+      ],
+      "duration_secs": 0.741
+    },
+    {
+      "question": "How does the navigation system work in the GUI?",
+      "repo": "agro",
+      "expect_paths": [
+        "gui/js/navigation.js",
+        "gui/index.html",
+        "gui/app.js"
+      ],
+      "top1_path": [
+        "web/src/hooks/useNavigation.ts"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/hooks/useNavigation.ts",
+        "web/src/hooks/index.ts",
+        "web/src/components/Dashboard/QuickActions.tsx",
+        "cli/agro.py",
+        "cli/commands/eval.py"
+      ],
+      "duration_secs": 0.311
+    },
+    {
+      "question": "Where is the chat interface implementation?",
+      "repo": "agro",
+      "expect_paths": [
+        "gui/js/chat.js",
+        "gui/index.html",
+        "server/app.py",
+        "server/langgraph_app.py",
+        "cli/chat_cli.py"
+      ],
+      "top1_path": [
+        "web/src/components/Chat/ChatInterface.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/Chat/ChatInterface.tsx",
+        "web/src/components/Chat/ChatInterface.tsx",
+        "web/src/modules/tooltips.js",
+        "web/src/components/Infrastructure/MCPSubtab.tsx",
+        "web/src/modules/ux-feedback.js"
+      ],
+      "duration_secs": 0.33
+    },
+    {
+      "question": "Where is the AST-aware code chunking implemented?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/ast_chunker.py",
+        "indexer/index_repo.py",
+        "common/filtering.py"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "web/src/components/Dashboard/QuickActions.tsx",
+        "cli/agro.py",
+        "cli/commands/eval.py"
+      ],
+      "duration_secs": 0.364
+    },
+    {
+      "question": "How does the embedding cache work to avoid recomputation?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/embed_cache.py",
+        "indexer/index_repo.py",
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "web/src/components/RAG/IndexingSubtab.tsx",
+        "retrieval/hybrid_search.py",
+        "web/src/modules/tooltips.js",
+        "cli/agro.py"
+      ],
+      "duration_secs": 0.354
+    },
+    {
+      "question": "Where is the semantic card building logic?",
+      "repo": "agro",
+      "expect_paths": [
+        "indexer/build_cards.py",
+        "common/metadata.py",
+        "server/cards_builder.py",
+        "gui/js/cards.js"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "web/src/components/Dashboard/QuickActions.tsx",
+        "cli/commands/eval.py",
+        "cli/agro.py"
+      ],
+      "duration_secs": 0.326
+    },
+    {
+      "question": "Where is the repository configuration loaded from repos.json?",
+      "repo": "agro",
+      "expect_paths": [
+        "common/config_loader.py",
+        "repos.json",
+        "server/app.py",
+        "gui/js/config.js",
+        "indexer/index_repo.py"
+      ],
+      "top1_path": [
+        "web/src/modules/git-hooks.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/git-hooks.js",
+        "web/src/modules/git-commit-meta.js",
+        "web/src/modules/tooltips.js",
+        "cli/commands/eval.py",
+        "web/src/components/Infrastructure/MCPSubtab.tsx"
+      ],
+      "duration_secs": 0.341
+    },
+    {
+      "question": "How are file filtering and exclusion rules defined?",
+      "repo": "agro",
+      "expect_paths": [
+        "common/filtering.py",
+        "data/exclude_globs.txt",
+        "retrieval/ast_chunker.py",
+        "indexer/index_repo.py"
+      ],
+      "top1_path": [
+        "web/src/components/RAG/LearningRankerSubtab.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/RAG/LearningRankerSubtab.tsx",
+        "web/src/components/RAG/IndexingSubtab.tsx",
+        "requirements.txt",
+        "retrieval/hybrid_search.py",
+        "web/src/modules/tooltips.js"
+      ],
+      "duration_secs": 0.379
+    },
+    {
+      "question": "Where is the metadata enrichment for code chunks?",
+      "repo": "agro",
+      "expect_paths": [
+        "common/metadata.py",
+        "indexer/build_cards.py",
+        "server/cards_builder.py"
+      ],
+      "top1_path": [
+        "web/src/components/Admin/GitIntegrationSubtab.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/Admin/GitIntegrationSubtab.tsx",
+        "cli/commands/eval.py",
+        "cli/agro.py",
+        "web/src/components/DevTools/index.ts",
+        "web/src/components/Dashboard/QuickActions.tsx"
+      ],
+      "duration_secs": 0.251
+    },
+    {
+      "question": "Where is the Qdrant vector database integration?",
+      "repo": "agro",
+      "expect_paths": [
+        "common/qdrant_utils.py",
+        "retrieval/hybrid_search.py",
+        "indexer/index_repo.py",
+        "docker-compose.yml"
+      ],
+      "top1_path": [
+        "indexer/index_repo.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "top_paths": [
+        "indexer/index_repo.py",
+        "reranker/config.py",
+        "web/src/components/Profiles/ProfileEditor.tsx",
+        "web/src/components/Dashboard/QuickActions.tsx",
+        "cli/agro.py"
+      ],
+      "duration_secs": 0.308
+    },
+    {
+      "question": "How does multi-query expansion work?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py",
+        "server/langgraph_app.py",
+        "retrieval/synonym_expander.py"
+      ],
+      "top1_path": [
+        "retrieval/synonym_expander.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "top_paths": [
+        "retrieval/synonym_expander.py",
+        "retrieval/hybrid_search.py",
+        "retrieval/synonym_expander.py",
+        "retrieval/synonym_expander.py",
+        "web/src/components/Dashboard/QuickActions.tsx"
+      ],
+      "duration_secs": 0.44
+    },
+    {
+      "question": "Where is the tracing system for debugging RAG pipelines?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/tracing.py",
+        "server/app.py",
+        "server/langgraph_app.py",
+        "gui/js/trace.js"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/components/DevTools/Debug.tsx",
+        "server/routers/pipeline.py",
+        "cli/agro.py",
+        "web/src/components/Dashboard/QuickActions.tsx"
+      ],
+      "duration_secs": 0.302
+    },
+    {
+      "question": "Where are the keyword generation scripts?",
+      "repo": "agro",
+      "expect_paths": [
+        "scripts/generate_smart_keywords.py",
+        "discriminative_keywords.json",
+        "semantic_keywords.json",
+        "llm_keywords.json",
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_path": [
+        "web/src/modules/keywords.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/keywords.js",
+        "web/src/components/RAG/DataQualitySubtab.tsx",
+        "web/src/modules/tooltips.js",
+        "requirements.txt",
+        "web/src/modules/ux-feedback.js"
+      ],
+      "duration_secs": 0.308
+    },
+    {
+      "question": "How does the reranker training with triplets work?",
+      "repo": "agro",
+      "expect_paths": [
+        "scripts/mine_triplets.py",
+        "scripts/train_reranker.py",
+        "data/training/triplets.jsonl",
+        "retrieval/rerank.py",
+        "data/logs/queries.jsonl"
+      ],
+      "top1_path": [
+        "cli/commands/reranker.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "cli/commands/reranker.py",
+        "server/routers/reranker_ops.py",
+        "web/src/modules/tooltips.js",
+        "cli/agro.py"
+      ],
+      "duration_secs": 0.28
+    },
+    {
+      "question": "Where is the Docker Compose and infrastructure setup?",
+      "repo": "agro",
+      "expect_paths": [
+        "docker-compose.yml",
+        "docker-compose.services.yml",
+        "Dockerfile",
+        "Dockerfile.node",
+        "scripts/up.sh",
+        "scripts/down.sh"
+      ],
+      "top1_path": [
+        "web/src/api/index.ts"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/api/index.ts",
+        "cli/agro.py",
+        "web/src/components/Dashboard/QuickActions.tsx",
+        "cli/commands/eval.py",
+        "server/__init__.py"
+      ],
+      "duration_secs": 0.537
+    },
+    {
+      "question": "Where is the Grafana dashboard configuration?",
+      "repo": "agro",
+      "expect_paths": [
+        "infra/grafana/provisioning/dashboards/agro_overview.json",
+        "infra/grafana/provisioning/dashboards/dashboards.yml",
+        "infra/grafana/provisioning/datasources/prometheus.yml",
+        "infra/grafana/provisioning/datasources/loki.yml",
+        "docker-compose.yml",
+        "gui/js/grafana.js"
+      ],
+      "top1_path": [
+        "server/routers/grafana.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "server/routers/grafana.py",
+        "web/src/components/Grafana/GrafanaConfig.tsx",
+        "web/src/components/Grafana/GrafanaConfig.tsx",
+        "cli/agro.py",
+        "web/src/modules/ux-feedback.js"
+      ],
+      "duration_secs": 0.415
+    },
+    {
+      "question": "Where is the Prometheus metrics configuration?",
+      "repo": "agro",
+      "expect_paths": [
+        "infra/prometheus.yml",
+        "infra/prometheus-alert-rules.yml",
+        "server/metrics.py",
+        "telemetry/prometheus.yml",
+        "docker-compose.yml"
+      ],
+      "top1_path": [
+        "server/metrics.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "top_paths": [
+        "server/metrics.py",
+        "server/metrics.py",
+        "cli/agro.py",
+        "server/routers/git_ops.py",
+        "web/src/modules/ux-feedback.js"
+      ],
+      "duration_secs": 0.307
+    },
+    {
+      "question": "How does the CLI chat tool work?",
+      "repo": "agro",
+      "expect_paths": [
+        "cli/chat_cli.py",
+        "server/app.py",
+        "server/langgraph_app.py",
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_path": [
+        "cli/agro.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "cli/agro.py",
+        "cli/commands/eval.py",
+        "web/src/modules/tooltips.js",
+        "web/src/components/Chat/ChatInterface.tsx",
+        "web/src/components/Dashboard/QuickActions.tsx"
+      ],
+      "duration_secs": 0.318
+    },
+    {
+      "question": "Where are the Playwright end-to-end tests?",
+      "repo": "agro",
+      "expect_paths": [
+        "tests/gui.spec.ts",
+        "tests/api.spec.ts",
+        "tests/test_dashboard.py",
+        "tests/test_metrics_tab.py",
+        "tools/playwright.config.ts"
+      ],
+      "top1_path": [
+        "web/src/components/Evaluation/QuestionManager.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/Evaluation/QuestionManager.tsx",
+        "requirements-rag.txt",
+        "requirements.txt",
+        "web/src/modules/ux-feedback.js",
+        "cli/agro.py"
+      ],
+      "duration_secs": 0.354
+    },
+    {
+      "question": "Where is the evaluation harness for testing RAG quality?",
+      "repo": "agro",
+      "expect_paths": [
+        "eval/eval_rag.py",
+        "eval/eval_loop.py",
+        "data/golden.json",
+        "data/evals/eval_baseline.json",
+        "gui/js/golden_questions.js"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/components/RAG/EvaluateSubtab.tsx",
+        "web/src/components/tabs/EvaluationTab.tsx",
+        "cli/agro.py",
+        "web/src/components/Dashboard/QuickActions.tsx"
+      ],
+      "duration_secs": 0.39
+    },
+    {
+      "question": "How does the theme system work in the GUI?",
+      "repo": "agro",
+      "expect_paths": [
+        "gui/js/theme.js",
+        "gui/css/tokens.css",
+        "gui/css/micro-interactions.css",
+        "gui/index.html",
+        "gui/app.js"
+      ],
+      "top1_path": [
+        "web/src/modules/app.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/app.js",
+        "web/src/contexts/CoreContext.tsx",
+        "web/src/modules/config.js",
+        "web/src/components/Dashboard/QuickActions.tsx",
+        "cli/commands/eval.py"
+      ],
+      "duration_secs": 0.327
+    },
+    {
+      "question": "Where is the configuration management in the GUI?",
+      "repo": "agro",
+      "expect_paths": [
+        "gui/js/config.js",
+        "server/app.py",
+        "common/config_loader.py",
+        "repos.json"
+      ],
+      "top1_path": [
+        "server/webhook_config.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "server/webhook_config.py",
+        "server/services/config_registry.py",
+        "server/langgraph_app.py",
+        "web/src/modules/ux-feedback.js",
+        "server/services/config_store.py"
+      ],
+      "duration_secs": 0.304
+    },
+    {
+      "question": "Where is the index statistics computation?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/index_stats.py",
+        "indexer/index_stats.py",
+        "server/app.py",
+        "gui/js/index-display.js"
+      ],
+      "top1_path": [
+        "server/index_stats.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "top_paths": [
+        "server/index_stats.py",
+        "web/src/modules/index-display.js",
+        "cli/agro.py",
+        "web/src/hooks/useIndexing.ts",
+        "web/src/modules/ux-feedback.js"
+      ],
+      "duration_secs": 0.286
+    },
+    {
+      "question": "How does the confidence gating work in LangGraph?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/langgraph_app.py",
+        "retrieval/hybrid_search.py",
+        "retrieval/rerank.py"
+      ],
+      "top1_path": [
+        "web/src/components/RAG/RetrievalSubtab.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/RAG/RetrievalSubtab.tsx",
+        "web/src/hooks/useTooltips.ts",
+        "web/src/components/Dashboard/QuickActions.tsx",
+        "web/src/modules/app.js",
+        "cli/agro.py"
+      ],
+      "duration_secs": 0.353
+    },
+    {
+      "question": "Where are the API endpoint handlers for RAG queries?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/app.py",
+        "server/langgraph_app.py",
+        "server/mcp/server.py",
+        "server/mcp/http.py"
+      ],
+      "top1_path": [
+        "web/src/components/RAG/RetrievalSubtab.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/RAG/RetrievalSubtab.tsx",
+        "server/api_interceptor.py",
+        "web/src/components/Editor/EditorSettings.tsx",
+        "web/src/components/Dashboard/QuickActions.tsx",
+        "web/src/components/ui/Button.tsx"
+      ],
+      "duration_secs": 0.284
+    },
+    {
+      "question": "How does the query rewriting work when confidence is low?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/langgraph_app.py",
+        "retrieval/hybrid_search.py",
+        "server/env_model.py"
+      ],
+      "top1_path": [
+        "retrieval/synonym_expander.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "retrieval/synonym_expander.py",
+        "web/src/hooks/useTooltips.ts",
+        "web/src/components/Profiles/ProfileEditor.tsx",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js"
+      ],
+      "duration_secs": 0.339
+    },
+    {
+      "question": "Where is the synonym expansion for semantic search?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/synonym_expander.py",
+        "data/semantic_synonyms.json",
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_path": [
+        "retrieval/synonym_expander.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "top_paths": [
+        "retrieval/synonym_expander.py",
+        "web/src/modules/tooltips.js",
+        "web/src/components/RAG/_RetrievalSubtab_First50_TSX.tsx",
+        "web/src/components/RAG/IndexingSubtab.tsx",
+        "web/src/modules/tooltips.js"
+      ],
+      "duration_secs": 0.253
+    },
+    {
+      "question": "Where are the cost calculation utilities for token usage?",
+      "repo": "agro",
+      "expect_paths": [
+        "gui/js/cost_logic.js",
+        "gui/js/storage-calculator.js",
+        "gui/prices.json",
+        "server/metrics.py",
+        "gui/index.html"
+      ],
+      "top1_path": [
+        "server/routers/cost.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "server/routers/cost.py",
+        "scripts/test_backend.py",
+        "web/src/components/Sidepanel.tsx",
+        "cli/commands/eval.py",
+        "web/src/components/Dashboard/QuickActions.tsx"
+      ],
+      "duration_secs": 0.297
+    },
+    {
+      "question": "How does the dashboard tab render system status?",
+      "repo": "agro",
+      "expect_paths": [
+        "gui/js/dashboard.js",
+        "server/app.py",
+        "server/index_stats.py",
+        "gui/index.html"
+      ],
+      "top1_path": [
+        "web/src/components/Dashboard/DashboardSubtabs.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/Dashboard/DashboardSubtabs.tsx",
+        "web/src/components/Dashboard/MonitoringLogsPanel.tsx",
+        "web/src/components/Docker/ContainerCard.tsx",
+        "cli/commands/eval.py",
+        "web/src/modules/tooltips.js"
+      ],
+      "duration_secs": 0.324
+    },
+    {
+      "question": "Where is the telemetry logging for queries and feedback?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/telemetry.py",
+        "data/logs/queries.jsonl",
+        "server/app.py",
+        "server/feedback.py"
+      ],
+      "top1_path": [
+        "web/src/api/dashboard.ts"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/api/dashboard.ts",
+        "server/api_tracker.py",
+        "server/api_tracker.py",
+        "server/routers/pipeline.py",
+        "cli/agro.py"
+      ],
+      "duration_secs": 0.311
+    },
+    {
+      "question": "How does the MCP HTTP server work?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/mcp/http.py",
+        "server/mcp/server.py",
+        "server/langgraph_app.py"
+      ],
+      "top1_path": [
+        "server/routers/mcp_ops.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "server/routers/mcp_ops.py",
+        "cli/commands/mcp.py",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js"
+      ],
+      "duration_secs": 0.323
+    },
+    {
+      "question": "Where is the Node.js MCP server implementation?",
+      "repo": "agro",
+      "expect_paths": [
+        "node_mcp/server.js",
+        "node_mcp/package.json",
+        "server/langgraph_app.py"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "cli/agro.py",
+        "web/src/components/Dashboard/QuickActions.tsx",
+        "cli/commands/eval.py"
+      ],
+      "duration_secs": 0.315
+    },
+    {
+      "question": "Where are the common path utilities?",
+      "repo": "agro",
+      "expect_paths": [
+        "common/paths.py",
+        "common/config_loader.py",
+        "indexer/index_repo.py"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "server/routers/pipeline.py",
+        "scripts/cleanup_repo.sh",
+        "requirements.txt",
+        "web/src/modules/ux-feedback.js"
+      ],
+      "duration_secs": 0.377
+    },
+    {
+      "question": "How does the file selection and upload work in the GUI?",
+      "repo": "agro",
+      "expect_paths": [
+        "gui/js/secrets.js",
+        "gui/index.html",
+        "server/app.py"
+      ],
+      "top1_path": [
+        "web/src/components/Admin/SecretsSubtab.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/Admin/SecretsSubtab.tsx",
+        "server/routers/config.py",
+        "web/src/components/DevTools/Editor.tsx",
+        "web/src/modules/tooltips.js",
+        "cli/commands/eval.py"
+      ],
+      "duration_secs": 0.3
+    },
+    {
+      "question": "Where is the golden questions test runner?",
+      "repo": "agro",
+      "expect_paths": [
+        "gui/js/golden_questions.js",
+        "data/golden.json",
+        "eval/eval_rag.py",
+        "server/app.py"
+      ],
+      "top1_path": [
+        "eval/eval_rag.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "top_paths": [
+        "eval/eval_rag.py",
+        "web/src/components/RAG/EvaluateSubtab.tsx",
+        "web/src/components/Evaluation/QuestionManager.tsx",
+        "cli/agro.py",
+        "web/src/components/Dashboard/QuickActions.tsx"
+      ],
+      "duration_secs": 0.343
+    },
+    {
+      "question": "How does the auto-profile wizard work?",
+      "repo": "agro",
+      "expect_paths": [
+        "gui/js/autotune.js",
+        "gui/autotune_policy.json",
+        "gui/index.html",
+        "server/app.py"
+      ],
+      "top1_path": [
+        "web/src/modules/index_profiles.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/index_profiles.js",
+        "cli/commands/config.py",
+        "web/src/components/Dashboard/QuickActions.tsx",
+        "cli/agro.py",
+        "cli/commands/eval.py"
+      ],
+      "duration_secs": 0.342
+    },
+    {
+      "question": "Where is the infrastructure management in the GUI?",
+      "repo": "agro",
+      "expect_paths": [
+        "gui/js/docker.js",
+        "docker-compose.yml",
+        "scripts/up.sh",
+        "scripts/status.sh"
+      ],
+      "top1_path": [
+        "gui/js/docker.js"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "top_paths": [
+        "gui/js/docker.js",
+        "web/src/components/Infrastructure/ServicesSubtab.tsx",
+        "web/src/modules/ux-feedback.js",
+        "cli/agro.py",
+        "server/routers/pipeline.py"
+      ],
+      "duration_secs": 0.278
+    },
+    {
+      "question": "How does the reranker UI component work?",
+      "repo": "agro",
+      "expect_paths": [
+        "gui/js/reranker.js",
+        "retrieval/rerank.py",
+        "server/app.py",
+        "gui/index.html"
+      ],
+      "top1_path": [
+        "web/src/modules/reranker.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/reranker.js",
+        "web/src/modules/reranker.js",
+        "web/src/components/RAG/LearningRankerSubtab.tsx",
+        "web/src/modules/tooltips.js",
+        "cli/agro.py"
+      ],
+      "duration_secs": 0.305
+    },
+    {
+      "question": "Where are the alert configuration and management?",
+      "repo": "agro",
+      "expect_paths": [
+        "gui/js/alerts.js",
+        "infra/alertmanager.yml",
+        "infra/prometheus-alert-rules.yml",
+        "server/metrics.py"
+      ],
+      "top1_path": [
+        "server/alert_config.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "server/alert_config.py",
+        "server/alerts.py",
+        "server/frequency_limiter.py",
+        "server/frequency_limiter.py",
+        "web/src/modules/ux-feedback.js"
+      ],
+      "duration_secs": 0.249
+    },
+    {
+      "question": "How does the profiles system work for saving configurations?",
+      "repo": "agro",
+      "expect_paths": [
+        "gui/js/profile_logic.js",
+        "gui/js/index_profiles.js",
+        "gui/profiles/",
+        "server/app.py",
+        "gui/index.html"
+      ],
+      "top1_path": [
+        "server/langgraph_app.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "server/langgraph_app.py",
+        "server/webhook_config.py",
+        "web/src/modules/tooltips.js",
+        "cli/commands/eval.py",
+        "server/routers/git_ops.py"
+      ],
+      "duration_secs": 0.31
+    },
+    {
+      "question": "Where is the VS Code integration for embedded editor?",
+      "repo": "agro",
+      "expect_paths": [
+        "gui/js/vscode.js",
+        "gui/index.html",
+        "scripts/editor_up.sh",
+        "scripts/editor_down.sh"
+      ],
+      "top1_path": [
+        "web/src/components/Editor/EditorPanel.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/Editor/EditorPanel.tsx",
+        "web/src/components/Settings/General.tsx",
+        "server/routers/editor.py",
+        "web/src/components/Editor/EditorSettings.tsx",
+        "web/src/components/Dashboard/QuickActions.tsx"
+      ],
+      "duration_secs": 0.663
+    },
+    {
+      "question": "How does the Makefile orchestrate development tasks?",
+      "repo": "agro",
+      "expect_paths": [
+        "Makefile",
+        "scripts/up.sh",
+        "scripts/down.sh",
+        "docker-compose.yml"
+      ],
+      "top1_path": [
+        "web/src/components/Dashboard/QuickActions.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/Dashboard/QuickActions.tsx",
+        "web/src/modules/git-commit-meta.js",
+        "server/routers/stream_logs.py",
+        "server/routers/stream_logs.py",
+        "cli/commands/eval.py"
+      ],
+      "duration_secs": 0.303
+    },
+    {
+      "question": "Where are the Python requirements defined?",
+      "repo": "agro",
+      "expect_paths": [
+        "requirements.txt",
+        "requirements-rag.txt",
+        "requirements.lock"
+      ],
+      "top1_path": [
+        "web/src/components/Evaluation/QuestionManager.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/Evaluation/QuestionManager.tsx",
+        "server/mcp/http.py",
+        "server/services/keywords.py",
+        "web/src/modules/ux-feedback.js",
+        "retrieval/hybrid_search.py"
+      ],
+      "duration_secs": 0.318
+    },
+    {
+      "question": "How does the feedback collection system work?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/feedback.py",
+        "server/telemetry.py",
+        "data/logs/queries.jsonl",
+        "server/app.py"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/components/Dashboard/QuickActions.tsx",
+        "web/src/components/Dashboard/QuickActions.tsx",
+        "cli/commands/eval.py",
+        "cli/agro.py"
+      ],
+      "duration_secs": 0.308
+    },
+    {
+      "question": "Where are helpful error message utilities defined?",
+      "repo": "agro",
+      "expect_paths": [
+        "gui/js/error-helpers.js",
+        "gui/index.html"
+      ],
+      "top1_path": [
+        "web/src/components/Chat/ChatInterface.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/Chat/ChatInterface.tsx",
+        "web/src/components/Chat/ChatInterface.tsx",
+        "requirements.txt",
+        "cli/commands/eval.py",
+        "web/src/components/Dashboard/QuickActions.tsx"
+      ],
+      "duration_secs": 0.401
+    },
+    {
+      "question": "Where are GUI tooltips implemented?",
+      "repo": "agro",
+      "expect_paths": [
+        "gui/js/tooltips.js",
+        "gui/index.html"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "requirements-rag.txt",
+        "web/src/modules/ux-feedback.js",
+        "requirements.txt",
+        "cli/agro.py"
+      ],
+      "duration_secs": 0.291
+    },
+    {
+      "question": "How do I configure the Qdrant URL for vector search?",
+      "repo": "agro",
+      "expect_paths": [
+        "common/qdrant_utils.py",
+        "retrieval/hybrid_search.py",
+        "docker-compose.yml",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "web/src/modules/grafana.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": true,
+      "top_paths": [
+        "web/src/modules/grafana.js",
+        "retrieval/hybrid_search.py",
+        "web/src/modules/model_flows.js",
+        "retrieval/hybrid_search.py",
+        "web/src/modules/tooltips.js"
+      ],
+      "duration_secs": 0.317
+    },
+    {
+      "question": "What is EMBEDDING_TYPE and how does it affect retrieval?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/embed_cache.py",
+        "indexer/index_repo.py",
+        "gui/js/tooltips.js",
+        "common/config_loader.py"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "eval_embeddings.py",
+        "retrieval/hybrid_search.py",
+        "web/src/components/RAG/IndexingSubtab.tsx",
+        "cli/agro.py"
+      ],
+      "duration_secs": 0.262
+    },
+    {
+      "question": "How do I configure multi-query expansion with MQ_REWRITES?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py",
+        "server/langgraph_app.py",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "retrieval/hybrid_search.py",
+        "retrieval/synonym_expander.py",
+        "retrieval/synonym_expander.py",
+        "web/src/modules/tooltips.js"
+      ],
+      "duration_secs": 0.343
+    },
+    {
+      "question": "What are the confidence thresholds CONF_TOP1, CONF_AVG5, and CONF_ANY?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/langgraph_app.py",
+        "retrieval/hybrid_search.py",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "web/src/components/RAG/_RetrievalSubtab_First50_TSX.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": true,
+      "top_paths": [
+        "web/src/components/RAG/_RetrievalSubtab_First50_TSX.tsx",
+        "retrieval/hybrid_search.py",
+        "infra/loki-config.yml",
+        "infra/prometheus-alert-rules.yml",
+        "web/src/components/Dashboard/QuickActions.tsx"
+      ],
+      "duration_secs": 0.345
+    },
+    {
+      "question": "How do I configure reranking with RERANK_BACKEND and Cohere?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/rerank.py",
+        "retrieval/hybrid_search.py",
+        "gui/js/tooltips.js",
+        "server/langgraph_app.py"
+      ],
+      "top1_path": [
+        "web/src/hooks/useTooltips.ts"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/hooks/useTooltips.ts",
+        "web/src/components/RAG/LearningRankerSubtab.tsx",
+        "web/src/modules/tooltips.js",
+        "requirements.txt",
+        "requirements-rag.txt"
+      ],
+      "duration_secs": 0.374
+    },
+    {
+      "question": "What is TOPK_DENSE and TOPK_SPARSE for hybrid search tuning?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py",
+        "gui/js/tooltips.js",
+        "server/langgraph_app.py"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "requirements.txt",
+        "requirements-rag.txt",
+        "web/src/components/Dashboard/QuickActions.tsx",
+        "cli/agro.py"
+      ],
+      "duration_secs": 0.335
+    },
+    {
+      "question": "How do I set up local reranking with RERANKER_MODEL?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/rerank.py",
+        "models/cross-encoder-agro.baseline/README.md",
+        "gui/js/tooltips.js",
+        "scripts/train_reranker.py"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/components/RAG/LearningRankerSubtab.tsx",
+        "requirements.txt",
+        "requirements-rag.txt"
+      ],
+      "duration_secs": 0.809
+    },
+    {
+      "question": "What is HYDRATION_MODE and how does it affect memory usage?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py",
+        "indexer/index_repo.py",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "web/src/components/Dashboard/StorageSubtab.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/Dashboard/StorageSubtab.tsx",
+        "server/routers/pipeline.py",
+        "cli/commands/eval.py",
+        "web/src/modules/tooltips.js",
+        "cli/agro.py"
+      ],
+      "duration_secs": 0.294
+    },
+    {
+      "question": "How do I configure code enrichment with ENRICH_BACKEND?",
+      "repo": "agro",
+      "expect_paths": [
+        "indexer/build_cards.py",
+        "common/metadata.py",
+        "gui/js/tooltips.js",
+        "indexer/index_repo.py"
+      ],
+      "top1_path": [
+        "web/src/components/RAG/RetrievalSubtab.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/RAG/RetrievalSubtab.tsx",
+        "web/src/modules/editor-settings.js",
+        "cli/agro.py",
+        "cli/commands/eval.py",
+        "web/src/components/Dashboard/QuickActions.tsx"
+      ],
+      "duration_secs": 0.306
+    },
+    {
+      "question": "What is VENDOR_MODE and how does it prioritize first-party code?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py",
+        "retrieval/rerank.py",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/components/RAG/RetrievalSubtab.tsx",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js"
+      ],
+      "duration_secs": 0.27
+    },
+    {
+      "question": "How do I configure the MCP HTTP server with MCP_HTTP_HOST and MCP_HTTP_PORT?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/mcp/http.py",
+        "server/mcp/server.py",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "server/routers/editor.py",
+        "server/routers/reranker_ops.py",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js"
+      ],
+      "duration_secs": 0.31
+    },
+    {
+      "question": "What is OUT_DIR_BASE and why does it matter for MCP sync?",
+      "repo": "agro",
+      "expect_paths": [
+        "common/config_loader.py",
+        "common/paths.py",
+        "indexer/index_repo.py",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "cli/agro.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "cli/agro.py",
+        "server/routers/docker.py",
+        "requirements-rag.txt",
+        "requirements.txt",
+        "web/src/modules/tooltips.js"
+      ],
+      "duration_secs": 0.461
+    },
+    {
+      "question": "How do I configure different models per channel with GEN_MODEL_HTTP and GEN_MODEL_MCP?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/langgraph_app.py",
+        "server/env_model.py",
+        "gui/js/tooltips.js",
+        "server/app.py"
+      ],
+      "top1_path": [
+        "web/src/components/Admin/IntegrationsSubtab.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/Admin/IntegrationsSubtab.tsx",
+        "web/src/components/Admin/GeneralSubtab.tsx",
+        "web/src/components/Infrastructure/MCPSubtab.tsx",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js"
+      ],
+      "duration_secs": 0.269
+    },
+    {
+      "question": "What is COLLECTION_SUFFIX for A/B testing indexes?",
+      "repo": "agro",
+      "expect_paths": [
+        "common/qdrant_utils.py",
+        "indexer/index_repo.py",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "web/src/components/DevTools/index.ts"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/DevTools/index.ts",
+        "retrieval/hybrid_search.py",
+        "web/src/components/RAG/EvaluateSubtab.tsx",
+        "web/src/modules/ux-feedback.js",
+        "retrieval/hybrid_search.py"
+      ],
+      "duration_secs": 0.288
+    },
+    {
+      "question": "How do I create helpful error messages with causes and fixes?",
+      "repo": "agro",
+      "expect_paths": [
+        "gui/js/error-helpers.js",
+        "gui/index.html"
+      ],
+      "top1_path": [
+        "web/src/modules/error-helpers.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/error-helpers.js",
+        "web/src/modules/tooltips.js",
+        "server/env_model.py",
+        "requirements.txt",
+        "web/src/modules/tooltips.js"
+      ],
+      "duration_secs": 0.286
+    },
+    {
+      "question": "What is the createHelpfulError function and its parameters?",
+      "repo": "agro",
+      "expect_paths": [
+        "gui/js/error-helpers.js"
+      ],
+      "top1_path": [
+        "web/src/components/DevTools/Testing.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/DevTools/Testing.tsx",
+        "web/src/api/dashboard.ts",
+        "web/src/components/Dashboard/QuickActions.tsx",
+        "web/src/components/Chat/ChatInterface.tsx",
+        "cli/commands/eval.py"
+      ],
+      "duration_secs": 0.276
+    },
+    {
+      "question": "How do I configure Voyage AI embeddings with VOYAGE_API_KEY?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/embed_cache.py",
+        "indexer/index_repo.py",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "cli/agro.py",
+        "cli/commands/eval.py"
+      ],
+      "duration_secs": 0.311
+    },
+    {
+      "question": "What is CARDS_MAX and how does it affect score boosting?",
+      "repo": "agro",
+      "expect_paths": [
+        "indexer/build_cards.py",
+        "retrieval/hybrid_search.py",
+        "gui/js/tooltips.js",
+        "server/cards_builder.py"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": true,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/components/RAG/RetrievalSubtab.tsx",
+        "retrieval/hybrid_search.py",
+        "cli/commands/eval.py",
+        "web/src/modules/tooltips.js"
+      ],
+      "duration_secs": 0.322
+    },
+    {
+      "question": "How do I configure evaluation with GOLDEN_PATH and EVAL_FINAL_K?",
+      "repo": "agro",
+      "expect_paths": [
+        "eval/eval_rag.py",
+        "eval/eval_loop.py",
+        "data/golden.json",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "server/routers/reranker_ops.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "server/routers/reranker_ops.py",
+        "cli/agro.py",
+        "requirements.txt",
+        "requirements-rag.txt",
+        "web/src/components/Dashboard/QuickActions.tsx"
+      ],
+      "duration_secs": 0.297
+    },
+    {
+      "question": "What is SKIP_DENSE for BM25-only indexing?",
+      "repo": "agro",
+      "expect_paths": [
+        "indexer/index_repo.py",
+        "retrieval/hybrid_search.py",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "requirements-rag.txt",
+        "requirements.txt",
+        "cli/agro.py",
+        "scripts/test_token_comparison.py"
+      ],
+      "duration_secs": 0.361
+    },
+    {
+      "question": "How do I configure LangChain tracing with LANGCHAIN_TRACING_V2?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/tracing.py",
+        "server/langgraph_app.py",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "server/tracing.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "top_paths": [
+        "server/tracing.py",
+        "web/src/components/RAG/RetrievalSubtab.tsx",
+        "requirements.txt",
+        "requirements-rag.txt",
+        "server/cards_builder.py"
+      ],
+      "duration_secs": 0.266
+    },
+    {
+      "question": "What is ENRICH_CODE_CHUNKS and how does it improve retrieval quality?",
+      "repo": "agro",
+      "expect_paths": [
+        "indexer/build_cards.py",
+        "common/metadata.py",
+        "indexer/index_repo.py",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "cli/commands/eval.py",
+        "server/env_model.py",
+        "web/src/modules/tooltips.js",
+        "cli/agro.py"
+      ],
+      "duration_secs": 0.28
+    },
+    {
+      "question": "How do I configure the HTTP server port with PORT setting?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/app.py",
+        "docker-compose.yml",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "server/routers/editor.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "server/routers/editor.py",
+        "server/routers/editor.py",
+        "server/routers/reranker_ops.py",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js"
+      ],
+      "duration_secs": 0.249
+    },
+    {
+      "question": "What is THREAD_ID for conversation state in LangGraph?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/langgraph_app.py",
+        "cli/chat_cli.py",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "requirements-rag.txt",
+        "requirements.txt",
+        "web/src/components/RAG/RetrievalSubtab.tsx",
+        "web/src/components/Infrastructure/ServicesSubtab.tsx"
+      ],
+      "duration_secs": 0.416
+    },
+    {
+      "question": "How do I configure Anthropic Claude models with ANTHROPIC_API_KEY?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/langgraph_app.py",
+        "server/env_model.py",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/components/RAG/RetrievalSubtab.tsx",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "cli/commands/eval.py"
+      ],
+      "duration_secs": 0.341
+    },
+    {
+      "question": "What is OPENAI_BASE_URL for OpenAI-compatible endpoints?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/langgraph_app.py",
+        "retrieval/embed_cache.py",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "server/mcp/http.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "server/mcp/http.py",
+        "requirements.txt",
+        "web/src/components/Dashboard/QuickActions.tsx",
+        "web/src/config/routes.ts",
+        "cli/commands/eval.py"
+      ],
+      "duration_secs": 0.313
+    },
+    {
+      "question": "How do I configure Google Gemini models with GOOGLE_API_KEY?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/langgraph_app.py",
+        "retrieval/embed_cache.py",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "server/routers/config.py",
+        "server/routers/cost.py",
+        "web/src/components/Onboarding/SourceStep.tsx",
+        "web/src/modules/tooltips.js"
+      ],
+      "duration_secs": 0.393
+    },
+    {
+      "question": "What is EMBEDDING_DIM and how does it affect Qdrant storage?",
+      "repo": "agro",
+      "expect_paths": [
+        "common/qdrant_utils.py",
+        "indexer/index_repo.py",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "eval_embeddings.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": true,
+      "top_paths": [
+        "eval_embeddings.py",
+        "retrieval/hybrid_search.py",
+        "web/src/modules/tooltips.js",
+        "indexer/index_repo.py",
+        "web/src/modules/tooltips.js"
+      ],
+      "duration_secs": 0.301
+    },
+    {
+      "question": "How do I configure Redis for LangGraph checkpoints with REDIS_URL?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/langgraph_app.py",
+        "docker-compose.yml",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "requirements-rag.txt",
+        "requirements.txt",
+        "cli/agro.py",
+        "cli/commands/eval.py"
+      ],
+      "duration_secs": 0.332
+    },
+    {
+      "question": "What is TRANSFORMERS_TRUST_REMOTE_CODE security warning about?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/rerank.py",
+        "gui/js/tooltips.js",
+        "retrieval/embed_cache.py"
+      ],
+      "top1_path": [
+        "web/src/components/Admin/SecretsSubtab.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/Admin/SecretsSubtab.tsx",
+        "server/routers/chat.py",
+        "server/routers/chat.py",
+        "web/src/components/Dashboard/QuickActions.tsx",
+        "cli/commands/eval.py"
+      ],
+      "duration_secs": 0.297
+    },
+    {
+      "question": "How do I configure Netlify deployment with NETLIFY_API_KEY and NETLIFY_DOMAINS?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/mcp/server.py",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "web/src/components/Settings/Secrets.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/Settings/Secrets.tsx",
+        "web/src/api/config.ts",
+        "web/src/modules/tooltips.js",
+        "cli/commands/eval.py"
+      ],
+      "duration_secs": 0.345
+    },
+    {
+      "question": "What is FINAL_K and how does it balance precision vs recall?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py",
+        "server/langgraph_app.py",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "web/src/components/Analytics/Cost.tsx"
+      ],
+      "duration_secs": 0.321
+    },
+    {
+      "question": "How do I configure Ollama local models with OLLAMA_URL?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/langgraph_app.py",
+        "indexer/build_cards.py",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "web/src/components/RAG/RetrievalSubtab.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/RAG/RetrievalSubtab.tsx",
+        "web/src/hooks/useTooltips.ts",
+        "scripts/benchmark_improvements.py",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js"
+      ],
+      "duration_secs": 0.308
+    },
+    {
+      "question": "What is HYDRATION_MAX_CHARS for preventing huge chunk bloat?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py",
+        "indexer/index_repo.py",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "infra/loki-config.yml"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "infra/loki-config.yml",
+        "web/src/components/Dashboard/StorageSubtab.tsx",
+        "web/src/components/Dashboard/QuickActions.tsx",
+        "cli/commands/eval.py",
+        "web/src/components/Analytics/Usage.tsx"
+      ],
+      "duration_secs": 0.278
+    },
+    {
+      "question": "How do I configure repos.json with REPOS_FILE setting?",
+      "repo": "agro",
+      "expect_paths": [
+        "common/config_loader.py",
+        "repos.json",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "web/src/components/RAG/RepositoryConfig.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/RAG/RepositoryConfig.tsx",
+        "web/src/components/Infrastructure/MCPSubtab.tsx",
+        "web/src/components/Admin/GeneralSubtab.tsx",
+        "web/src/modules/tooltips.js",
+        "cli/commands/eval.py"
+      ],
+      "duration_secs": 0.325
+    },
+    {
+      "question": "What is REPO_PATH fallback when repos.json is not configured?",
+      "repo": "agro",
+      "expect_paths": [
+        "common/config_loader.py",
+        "indexer/index_repo.py",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "scripts/cleanup_repo.sh"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "scripts/cleanup_repo.sh",
+        "web/src/modules/tooltips.js",
+        "requirements.txt",
+        "scripts/editor_install_extensions.sh",
+        "cli/commands/eval.py"
+      ],
+      "duration_secs": 0.368
+    },
+    {
+      "question": "How do I configure path boosts for repository routing?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py",
+        "repos.json",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "web/src/components/RAG/RepositoryConfig.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": true,
+      "top_paths": [
+        "web/src/components/RAG/RepositoryConfig.tsx",
+        "web/src/modules/tooltips.js",
+        "retrieval/hybrid_search.py",
+        "retrieval/hybrid_search.py",
+        "web/src/modules/tooltips.js"
+      ],
+      "duration_secs": 0.29
+    },
+    {
+      "question": "What is EVAL_MULTI for testing multi-query during evaluation?",
+      "repo": "agro",
+      "expect_paths": [
+        "eval/eval_loop.py",
+        "eval/eval_rag.py",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "requirements.txt",
+        "web/src/modules/tooltips.js",
+        "retrieval/hybrid_search.py",
+        "scripts/train_reranker.py"
+      ],
+      "duration_secs": 0.361
+    },
+    {
+      "question": "How do I configure BASELINE_PATH for regression testing?",
+      "repo": "agro",
+      "expect_paths": [
+        "eval/eval_loop.py",
+        "data/evals/eval_baseline.json",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "web/src/components/RAG/RepositoryConfig.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/RAG/RepositoryConfig.tsx",
+        "cli/commands/eval.py",
+        "server/tracing.py",
+        "retrieval/hybrid_search.py",
+        "web/src/components/Dashboard/QuickActions.tsx"
+      ],
+      "duration_secs": 0.258
+    },
+    {
+      "question": "What is COHERE_RERANK_MODEL for specifying rerank model version?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/rerank.py",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "web/src/components/Profiles/ProfileEditor.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/Profiles/ProfileEditor.tsx",
+        "web/src/hooks/useTooltips.ts",
+        "web/src/components/RAG/ExternalRerankersSubtab.tsx",
+        "web/src/modules/reranker.js",
+        "requirements.txt"
+      ],
+      "duration_secs": 0.25
+    },
+    {
+      "question": "How do I configure enrichment model with ENRICH_MODEL_OLLAMA?",
+      "repo": "agro",
+      "expect_paths": [
+        "indexer/build_cards.py",
+        "common/metadata.py",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "web/src/modules/app.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/app.js",
+        "server/autoprofile.py",
+        "server/services/config_store.py",
+        "web/src/components/Dashboard/QuickActions.tsx",
+        "server/alerts.py"
+      ],
+      "duration_secs": 0.352
+    },
+    {
+      "question": "What is AGRO_EDITION for feature gating in deployments?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/app.py",
+        "gui/index.html",
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/components/DevTools/index.ts",
+        "cli/commands/eval.py",
+        "web/src/components/Grafana/index.ts",
+        "web/src/components/Dashboard/QuickActions.tsx"
+      ],
+      "duration_secs": 0.347
+    },
+    {
+      "question": "How do I create inline error messages with createInlineError?",
+      "repo": "agro",
+      "expect_paths": [
+        "gui/js/error-helpers.js"
+      ],
+      "top1_path": [
+        "web/src/modules/golden_questions.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/golden_questions.js",
+        "web/src/modules/ux-feedback.js",
+        "web/src/modules/tooltips.js",
+        "web/src/components/tabs/ChatTab.jsx",
+        "cli/commands/eval.py"
+      ],
+      "duration_secs": 0.297
+    },
+    {
+      "question": "What is createAlertError for alert-style error messages?",
+      "repo": "agro",
+      "expect_paths": [
+        "gui/js/error-helpers.js"
+      ],
+      "top1_path": [
+        "web/src/components/Admin/IntegrationsSubtab.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/Admin/IntegrationsSubtab.tsx",
+        "server/alerts.py",
+        "server/alerts.py",
+        "web/src/components/Dashboard/QuickActions.tsx",
+        "cli/commands/eval.py"
+      ],
+      "duration_secs": 0.245
+    },
+    {
+      "question": "How does the tooltip system attach help icons to form fields?",
+      "repo": "agro",
+      "expect_paths": [
+        "gui/js/tooltips.js",
+        "gui/index.html"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "cli/agro.py"
+      ],
+      "duration_secs": 0.275
+    },
+    {
+      "question": "What is the buildTooltipMap function for configuration help?",
+      "repo": "agro",
+      "expect_paths": [
+        "gui/js/tooltips.js"
+      ],
+      "top1_path": [
+        "cli/agro.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "cli/agro.py",
+        "cli/commands/eval.py",
+        "web/src/services/RAGService.ts",
+        "web/src/components/VSCode/VSCodeSettingsPanel.tsx",
+        "web/src/components/Dashboard/QuickActions.tsx"
+      ],
+      "duration_secs": 0.297
+    },
+    {
+      "question": "How do I troubleshoot Qdrant connection failures?",
+      "repo": "agro",
+      "expect_paths": [
+        "common/qdrant_utils.py",
+        "docker-compose.yml",
+        "gui/js/tooltips.js",
+        "gui/js/error-helpers.js"
+      ],
+      "top1_path": [
+        "gui/js/mcp_rag.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "gui/js/mcp_rag.js",
+        "requirements-rag.txt",
+        "requirements.txt",
+        "web/src/components/Dashboard/QuickActions.tsx",
+        "cli/agro.py"
+      ],
+      "duration_secs": 0.274
+    },
+    {
+      "question": "How do I fix retrieval returning no results?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py",
+        "common/config_loader.py",
+        "gui/js/tooltips.js",
+        "gui/js/error-helpers.js"
+      ],
+      "top1_path": [
+        "gui/js/mcp_rag.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "gui/js/mcp_rag.js",
+        "web/src/components/Dashboard/QuickActions.tsx",
+        "requirements-rag.txt",
+        "requirements.txt",
+        "cli/agro.py"
+      ],
+      "duration_secs": 0.343
+    },
+    {
+      "question": "What causes reranking model load failures?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/rerank.py",
+        "gui/js/tooltips.js",
+        "gui/js/error-helpers.js"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "cli/agro.py",
+        "requirements.txt",
+        "requirements-rag.txt",
+        "web/src/components/Dashboard/QuickActions.tsx"
+      ],
+      "duration_secs": 0.34
+    },
+    {
+      "question": "smoke test question",
+      "repo": "agro",
+      "expect_paths": [
+        "README.md"
+      ],
+      "top1_path": [
+        "web/src/components/RAG/LearningRankerSubtab.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/RAG/LearningRankerSubtab.tsx",
+        "web/src/components/RAG/LearningRankerSubtab.tsx",
+        "server/routers/reranker_ops.py",
+        "cli/commands/golden.py",
+        "requirements.txt"
+      ],
+      "duration_secs": 0.374
+    }
+  ]
 }

@@ -13,7 +13,7 @@ services:
       - QDRANT__STORAGE__USE_MMAP=false
       - QDRANT__STORAGE__ON_DISK_PERSISTENCE=true
     volumes:
-      - ./data/qdrant:/qdrant/storage
+      - qdrant_storage:/qdrant/storage
 
   redis:
     image: redis/redis-stack:7.2.0-v10
@@ -176,3 +176,4 @@ volumes:
   alertmanager_data:
   grafana_data:
   loki_data:
+  qdrant_storage:

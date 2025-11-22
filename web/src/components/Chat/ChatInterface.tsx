@@ -329,13 +329,14 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
       saveChatHistory(prev);
       return prev;
     });
-    if (tracePreference) {
-      requestAnimationFrame(() => {
-        try {
-          (window as any).Trace?.loadLatestTrace?.('chat-trace-output');
-        } catch {}
-      });
-    }
+    // DISABLED: Legacy trace loader causes DOM conflicts
+    // if (tracePreference) {
+    //   requestAnimationFrame(() => {
+    //     try {
+    //       (window as any).Trace?.loadLatestTrace?.('chat-trace-output');
+    //     } catch {}
+    //   });
+    // }
   };
 
   const handleRegularResponse = async (userMessage: Message) => {
@@ -410,16 +411,16 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
 
     // Attach feedback controls and local trace when available
     try {
-      const evtId = data.event_id;
-      if (evtId && typeof (window as any).addFeedbackButtons === 'function') {
-        requestAnimationFrame(() => {
-          const target = document.getElementById(`feedback-${assistantMessage.id}`) || document.getElementById('chat-messages');
-          if (target) {
-            try { (target as HTMLElement).innerHTML = ''; } catch {}
-            (window as any).addFeedbackButtons(target, evtId);
-          }
-        });
-      }
+      // DISABLED: Legacy feedback buttons cause DOM conflicts with React
+      // const evtId = data.event_id;
+      // if (evtId && typeof (window as any).addFeedbackButtons === 'function') {
+      //   requestAnimationFrame(() => {
+      //     const target = document.getElementById(`feedback-${assistantMessage.id}`) || document.getElementById('chat-messages');
+      //     if (target) {
+      //       (window as any).addFeedbackButtons(target, evtId);
+      //     }
+      //   });
+      // }
       if (data.trace && Array.isArray(data.trace.steps)) {
         const steps = data.trace.steps;
         notifyTrace(steps, true, 'response');
@@ -438,13 +439,14 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
           }
         } catch {}
       }
-      if (tracePreference) {
-        requestAnimationFrame(() => {
-          try {
-            (window as any).Trace?.loadLatestTrace?.('chat-trace-output');
-          } catch {}
-        });
-      }
+      // DISABLED: Legacy trace loader causes DOM conflicts
+      // if (tracePreference) {
+      //   requestAnimationFrame(() => {
+      //     try {
+      //       (window as any).Trace?.loadLatestTrace?.('chat-trace-output');
+      //     } catch {}
+      //   });
+      // }
     } catch {}
   };
 
@@ -734,7 +736,8 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
                       </button>
                     </div>
                   </div>
-                  {message.role === 'assistant' && (
+                  {/* DISABLED: Legacy feedback slot causes DOM conflicts with React */}
+                  {/* {message.role === 'assistant' && (
                     <div
                       id={`feedback-${message.id}`}
                       className="chat-feedback-slot"
@@ -744,7 +747,7 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
                         maxWidth: '78%'
                       }}
                     />
-                  )}
+                  )} */}
                 </div>
               ))
             )}

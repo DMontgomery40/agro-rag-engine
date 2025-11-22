@@ -21,7 +21,15 @@ def editor_health() -> Dict[str, Any]:
 @router.get("/api/editor/settings")
 def get_editor_settings() -> Dict[str, Any]:
     s = editor_svc.read_settings()
-    return {"ok": True, "port": s.get("port", 4440), "enabled": s.get("enabled", True), "host": s.get("host", "127.0.0.1")}
+    return {
+        "ok": True,
+        "port": s.get("port", 4440),
+        "enabled": s.get("enabled", True),
+        "embed_enabled": s.get("embed_enabled", True),
+        "bind": s.get("bind", "local"),
+        "host": s.get("host", "127.0.0.1"),
+        "image": s.get("image", "agro-vscode:latest"),
+    }
 
 @router.post("/api/editor/settings")
 def set_editor_settings(payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -30,8 +38,14 @@ def set_editor_settings(payload: Dict[str, Any]) -> Dict[str, Any]:
         s["port"] = int(payload["port"])
     if "enabled" in payload:
         s["enabled"] = bool(payload["enabled"])
+    if "embed_enabled" in payload:
+        s["embed_enabled"] = bool(payload["embed_enabled"])
+    if "bind" in payload:
+        s["bind"] = str(payload["bind"])
     if "host" in payload:
         s["host"] = str(payload["host"])
+    if "image" in payload:
+        s["image"] = str(payload["image"])
     ok = editor_svc.write_settings(s)
     return {"ok": ok, "message": "Settings saved" if ok else "Failed to persist settings"}
 
@@ -87,7 +101,7 @@ async def editor_proxy(path: str, request: Request):
         import httpx_ws
 
         status = await _editor_status_async()
-        base = str(status.get("url") or "").rstrip("/")
+        base = str(status.get("direct_url") or status.get("url") or "").rstrip("/")
         if not base:
             return JSONResponse({"ok": False, "error": "No editor URL"}, status_code=503)
 
@@ -139,8 +153,12 @@ async def editor_proxy(path: str, request: Request):
     status = await _editor_status_async()
     if not status.get("enabled"):
         return JSONResponse({"ok": False, "error": "Editor disabled"}, status_code=503)
-    
-    base = str(status.get("url") or "").rstrip("/")
+
+    # Always proxy to the direct URL (container) to avoid recursive /editor calls
+    base = str(status.get("direct_url") or status.get("url") or "").rstrip("/")
+    if base.startswith("/editor"):
+        # Fallback: if we somehow got the proxy URL, strip and use configured port instead
+        base = str(status.get("url") or "").rstrip("/")
     if not base:
         return JSONResponse({"ok": False, "error": "No editor URL"}, status_code=503)
 

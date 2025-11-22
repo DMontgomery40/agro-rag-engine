@@ -165,6 +165,191 @@
         ]
       ),
 
+      // ---------------- Missing/added keys (wired from React components) ----------------
+      VECTOR_BACKEND: L(
+        'Vector Backend',
+        'Selects the vector search backend used for dense retrieval. Qdrant is the default/primary backend in AGRO and stores your embedding vectors for fast similarity search. Use this to switch between implementations when benchmarking or troubleshooting.',
+        [
+          ['Qdrant Docs', 'https://qdrant.tech/documentation/'],
+          ['LangChain Vector Stores', 'https://python.langchain.com/docs/integrations/vectorstores/']
+        ],
+        [['Core Setting','info']]
+      ),
+      RERANKER_BACKEND: L(
+        'Reranker Backend',
+        'Choose the reranking provider to reorder retrieved results by semantic relevance (cross-encoder). Options typically include Cohere Rerank, the built‑in AGRO Learning Reranker, or none. Reranking improves answer quality but adds latency.',
+        [
+          ['Cohere Rerank', 'https://docs.cohere.com/docs/rerank'],
+          ['Sentence‑Transformers (Cross‑Encoders)', 'https://www.sbert.net/examples/training/cross-encoder/README.html']
+        ],
+        [['Improves quality','info']]
+      ),
+      RERANK_INPUT_SNIPPET_CHARS: L(
+        'Rerank Snippet Length (chars)',
+        'Maximum number of characters from each retrieved chunk to send into the reranker. Larger values can improve fidelity but increase latency and cost; smaller values are faster but risk losing important context. Typical range: 512–2000.',
+        [
+          ['Tokenization Basics', 'https://huggingface.co/docs/transformers/main_classes/tokenizer'],
+          ['Cohere Rerank', 'https://docs.cohere.com/docs/rerank']
+        ]
+      ),
+      CHUNK_SIZE: L(
+        'Chunk Size',
+        'Target size (in characters) for each indexed chunk. For AST chunking this acts as a guardrail when nodes are large. Larger chunks preserve more context but reduce recall; smaller chunks improve recall but may fragment semantics.',
+        [
+          ['LangChain: Text Splitters', 'https://python.langchain.com/docs/modules/data_connection/document_transformers/text_splitters/'],
+          ['Okapi BM25 (context windows)', 'https://en.wikipedia.org/wiki/Okapi_BM25']
+        ],
+        [['Affects recall/precision','info']]
+      ),
+      CHUNK_OVERLAP: L(
+        'Chunk Overlap',
+        'Number of characters overlapped between adjacent chunks. Overlap reduces boundary effects and improves recall at the cost of a larger index and slower indexing.',
+        [
+          ['LangChain: Text Splitters', 'https://python.langchain.com/docs/modules/data_connection/document_transformers/text_splitters/']
+        ]
+      ),
+      INDEX_MAX_WORKERS: L(
+        'Index Max Workers',
+        'Maximum number of parallel workers used during indexing. Increase to speed up indexing on multi‑core machines; decrease if you observe system contention. A good starting point is CPU cores − 1.',
+        [
+          ['concurrent.futures', 'https://docs.python.org/3/library/concurrent.futures.html'],
+          ['multiprocessing', 'https://docs.python.org/3/library/multiprocessing.html']
+        ],
+        [['Performance','info']]
+      ),
+      AGRO_RERANKER_ENABLED: L(
+        'Learning Reranker Enabled',
+        'Enable AGRO’s built‑in Learning Reranker (cross‑encoder) for improved ordering of retrieved chunks. Requires a trained model checkpoint and triplets data for training/mining.',
+        [
+          ['AGRO: Learning Reranker', '/docs/LEARNING_RERANKER.md'],
+          ['Sentence‑Transformers', 'https://www.sbert.net/']
+        ],
+        [['Improves quality','info']]
+      ),
+      AGRO_RERANKER_MODEL_PATH: L(
+        'Reranker Model Path',
+        'Filesystem path to the trained reranker model checkpoint directory (relative paths recommended). The service loads weights from this path on startup or when reloaded.',
+        [
+          ['Python pathlib', 'https://docs.python.org/3/library/pathlib.html'],
+          ['AGRO: Learning Reranker', '/docs/LEARNING_RERANKER.md']
+        ]
+      ),
+      AGRO_LOG_PATH: L(
+        'Reranker Log Path',
+        'Directory where the reranker writes logs and training progress. Useful for monitoring and resuming experiments. Ensure the path is writable by the server process.',
+        [
+          ['Python logging', 'https://docs.python.org/3/library/logging.html']
+        ]
+      ),
+      AGRO_TRIPLETS_PATH: L(
+        'Triplets Dataset Path',
+        'Path to mined triplets used for training the Learning Reranker. Triplets contain (query, positive, negative) examples. Keep under version control or in a reproducible data store.',
+        [
+          ['Triplet Loss', 'https://en.wikipedia.org/wiki/Triplet_loss'],
+          ['SBERT Training Data', 'https://www.sbert.net/examples/training/cross-encoder/README.html']
+        ]
+      ),
+      AGRO_RERANKER_MINE_MODE: L(
+        'Triplet Mining Mode',
+        'Strategy for mining training triplets: random, semi‑hard, or hard negatives. Harder negatives improve discriminative power but may be noisier and slower to mine.',
+        [
+          ['Hard Negative Mining', 'https://sbert.net/examples/training/quora_duplicate_questions/README.html']
+        ],
+        [['Advanced','info']]
+      ),
+      AGRO_RERANKER_MINE_RESET: L(
+        'Reset Triplets Before Mining',
+        'If enabled, deletes existing mined triplets before starting a new mining run. Use with caution to avoid losing curated datasets.',
+        [
+          ['Data Management Basics', 'https://en.wikipedia.org/wiki/Data_management']
+        ],
+        [['Destructive','warn']]
+      ),
+      RERANKER_TRAIN_MAX_LENGTH: L(
+        'Reranker Train Max Length',
+        'Maximum token length for reranker training examples. Longer sequences may improve context but require more memory and training time. Typical range: 256–1024.',
+        [
+          ['Transformers: Tokenization', 'https://huggingface.co/docs/transformers/main_classes/tokenizer']
+        ]
+      ),
+
+      // React Chat settings (migrated from inline bubbles)
+      INDEXING_PROCESS: L(
+        'Indexing Process',
+        'Indexing prepares your code for retrieval: it chunks files, builds a BM25 sparse index, optionally generates dense embeddings, and writes vectors to Qdrant. Re‑run after significant code changes to keep answers fresh.',
+        [
+          ['Okapi BM25', 'https://en.wikipedia.org/wiki/Okapi_BM25'],
+          ['Qdrant Docs', 'https://qdrant.tech/documentation/']
+        ],
+        [['Re‑run after changes','reindex']]
+      ),
+      INDEX_PROFILES: L(
+        'Index Profiles',
+        'Preset configurations for common workflows: shared (BM25‑only, fast), full (BM25 + embeddings, best quality), dev (small subset). Profiles change multiple parameters at once to match your goal.',
+        [
+          ['Indexing Guide', '/docs/INDEXING.md']
+        ],
+        [['Convenience','info']]
+      ),
+      CHAT_CONFIDENCE: L(
+        'Retrieval Confidence',
+        'Show a normalized confidence score (0–1) alongside answers to help judge reliability. Scores reflect retrieval confidence, not model certainty.',
+        [
+          ['Precision vs Recall', 'https://en.wikipedia.org/wiki/Precision_and_recall']
+        ]
+      ),
+      CHAT_AUTO_SCROLL: L(
+        'Auto‑Scroll to New Messages',
+        'Automatically scrolls the conversation to the newest message. Disable when reviewing earlier context while messages stream.',
+        [
+          ['ARIA Live Regions (UX)', 'https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/ARIA_Live_Regions']
+        ]
+      ),
+      CHAT_SYNTAX_HIGHLIGHT: L(
+        'Code Block Highlighting',
+        'Apply syntax highlighting to code blocks in responses. Improves readability in multi‑language projects. May increase render time on very long messages.',
+        [
+          ['Prism.js', 'https://prismjs.com/']
+        ],
+        [['Experimental','warn']]
+      ),
+      CHAT_SYSTEM_PROMPT: L(
+        'Custom System Prompt',
+        'Override the default expert system prompt for Chat. Use to adjust tone, safety constraints, or provide domain instructions. Leave empty to use the built‑in AGRO RAG expert prompt.',
+        [
+          ['Prompt Engineering (Guide)', 'https://platform.openai.com/docs/guides/prompt-engineering']
+        ]
+      ),
+      CHAT_HISTORY: L(
+        'Chat History Storage',
+        'Controls how chat history is saved and loaded. History persists in browser localStorage only — no server storage for privacy.',
+        [
+          ['localStorage', 'https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage']
+        ],
+        [['Browser storage','info']]
+      ),
+      CHAT_HISTORY_ENABLED: L(
+        'Save Chat Messages',
+        'When enabled, messages are persisted to browser localStorage and restored on reload. Disable for ephemeral sessions or shared devices.',
+        [
+          ['localStorage', 'https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage']
+        ]
+      ),
+      CHAT_HISTORY_LIMIT: L(
+        'History Limit',
+        'Maximum number of messages to retain in local history. Older messages are pruned when the limit is reached. Typical range: 50–1000.',
+        [
+          ['Usability: History & Recall', 'https://www.nngroup.com/articles/search-logs/']
+        ]
+      ),
+      CHAT_HISTORY_LOAD_ON_START: L(
+        'Load History on Startup',
+        'Automatically loads and displays previous conversations when opening the Chat tab. Disable to start with a clean slate every session.',
+        [
+          ['localStorage', 'https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage']
+        ]
+      ),
+
       // Models / Providers
       GEN_MODEL: L('Generation Model', 'Answer model. Local: qwen3-coder:14b via Ollama. Cloud: gpt-4o-mini, etc. Larger models cost more and can be slower; smaller ones are faster/cheaper.', [
         ['OpenAI Models', 'https://platform.openai.com/docs/models'],

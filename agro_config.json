@@ -60,7 +60,7 @@
   },
   "indexing": {
     "qdrant_url": "http://127.0.0.1:6333",
-    "collection_name": "code_chunks_agro_shared",
+    "collection_name": "code_chunks_agro",
     "vector_backend": "qdrant",
     "indexing_batch_size": 100,
     "indexing_workers": 4,
@@ -68,7 +68,7 @@
     "bm25_stemmer_lang": "english",
     "index_excluded_exts": ".png,.jpg,.gif,.ico,.svg,.woff,.ttf",
     "index_max_file_size_mb": 10,
-    "skip_dense": 1,
+    "skip_dense": 0,
     "out_dir_base": "./out",
     "repos_file": "./repos.json"
   },
