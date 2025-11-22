@@ -23,8 +23,14 @@ services:
     volumes:
       - ./.env:/app/.env
       - ./repos.json:/app/repos.json
+      - ./agro_config.json:/app/agro_config.json
       - ./out:/app/out
+      - ./out.noindex-shared:/app/out.noindex-shared
+      - ./out.noindex-gui:/app/out.noindex-gui
+      - ./out.noindex-devclean:/app/out.noindex-devclean
       - ./data:/app/data
+      - ./models:/app/models
+      - ./checkpoints:/app/checkpoints
       - ./gui:/app/gui
       - ./web:/app/web
       - ./server:/app/server

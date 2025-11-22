@@ -10,6 +10,7 @@ Using Pydantic provides:
 """
 
 from pydantic import BaseModel, Field, field_validator, model_validator
+from typing import Literal
 
 
 class RetrievalConfig(BaseModel):
@@ -395,6 +396,14 @@ class IndexingConfig(BaseModel):
         default="code_chunks_{repo}",
         description="Qdrant collection name template"
     )
+    collection_suffix: str = Field(
+        default="default",
+        description="Collection suffix for multi-index scenarios"
+    )
+    repo_path: str = Field(
+        default="",
+        description="Fallback repository path if not found in repos.json"
+    )
     vector_backend: str = Field(
         default="qdrant",
         pattern="^(qdrant|chroma|weaviate)$",
@@ -440,6 +449,10 @@ class IndexingConfig(BaseModel):
     out_dir_base: str = Field(
         default="./out",
         description="Base output directory"
+    )
+    rag_out_base: str = Field(
+        default="",
+        description="Override for OUT_DIR_BASE if specified"
     )
     repos_file: str = Field(
         default="./repos.json",
@@ -966,6 +979,11 @@ class UIConfig(BaseModel):
         description="Auto-open browser on start"
     )
 
+    runtime_mode: Literal["development", "production"] = Field(
+        default="development",
+        description="Runtime environment mode (development uses localhost, production uses deployed URLs)"
+    )
+
 
 class HydrationConfig(BaseModel):
     """Context hydration configuration."""
@@ -1108,6 +1126,8 @@ class AgroConfigRoot(BaseModel):
             # Indexing params (9 new)
             'QDRANT_URL': self.indexing.qdrant_url,
             'COLLECTION_NAME': self.indexing.collection_name,
+            'COLLECTION_SUFFIX': self.indexing.collection_suffix,
+            'REPO_PATH': self.indexing.repo_path,
             'VECTOR_BACKEND': self.indexing.vector_backend,
             'INDEXING_BATCH_SIZE': self.indexing.indexing_batch_size,
             'INDEXING_WORKERS': self.indexing.indexing_workers,
@@ -1117,6 +1137,7 @@ class AgroConfigRoot(BaseModel):
             'INDEX_MAX_FILE_SIZE_MB': self.indexing.index_max_file_size_mb,
             'SKIP_DENSE': self.indexing.skip_dense,
             'OUT_DIR_BASE': self.indexing.out_dir_base,
+            'RAG_OUT_BASE': self.indexing.rag_out_base,
             'REPOS_FILE': self.indexing.repos_file,
     # Reranking params (13)
             'RERANKER_MODEL': self.reranking.reranker_model,
@@ -1202,6 +1223,7 @@ class AgroConfigRoot(BaseModel):
             'EDITOR_IMAGE': self.ui.editor_image,
             'THEME_MODE': self.ui.theme_mode,
             'OPEN_BROWSER': self.ui.open_browser,
+            'RUNTIME_MODE': self.ui.runtime_mode,
             # Hydration params (2)
             'HYDRATION_MODE': self.hydration.hydration_mode,
             'HYDRATION_MAX_CHARS': self.hydration.hydration_max_chars,
@@ -1287,6 +1309,8 @@ class AgroConfigRoot(BaseModel):
             indexing=IndexingConfig(
                 qdrant_url=data.get('QDRANT_URL', 'http://127.0.0.1:6333'),
                 collection_name=data.get('COLLECTION_NAME', 'code_chunks_{repo}'),
+                collection_suffix=data.get('COLLECTION_SUFFIX', 'default'),
+                repo_path=data.get('REPO_PATH', ''),
                 vector_backend=data.get('VECTOR_BACKEND', 'qdrant'),
                 indexing_batch_size=data.get('INDEXING_BATCH_SIZE', 100),
                 indexing_workers=data.get('INDEXING_WORKERS', 4),
@@ -1296,6 +1320,7 @@ class AgroConfigRoot(BaseModel):
                 index_max_file_size_mb=data.get('INDEX_MAX_FILE_SIZE_MB', 10),
                 skip_dense=data.get('SKIP_DENSE', 0),
                 out_dir_base=data.get('OUT_DIR_BASE', './out'),
+                rag_out_base=data.get('RAG_OUT_BASE', ''),
                 repos_file=data.get('REPOS_FILE', './repos.json'),
             ),
             reranking=RerankingConfig(
@@ -1388,6 +1413,7 @@ class AgroConfigRoot(BaseModel):
                 editor_image=data.get('EDITOR_IMAGE', 'agro-vscode:latest'),
                 theme_mode=data.get('THEME_MODE', 'dark'),
                 open_browser=data.get('OPEN_BROWSER', 1),
+                runtime_mode=data.get('RUNTIME_MODE', 'development'),
             )
         )
 
@@ -1451,9 +1477,11 @@ AGRO_CONFIG_KEYS = {
     'GREEDY_FALLBACK_TARGET',
     'CHUNKING_STRATEGY',
     'PRESERVE_IMPORTS',
-    # Indexing params (12)
+    # Indexing params (15)
     'QDRANT_URL',
     'COLLECTION_NAME',
+    'COLLECTION_SUFFIX',
+    'REPO_PATH',
     'VECTOR_BACKEND',
     'INDEXING_BATCH_SIZE',
     'INDEXING_WORKERS',
@@ -1463,6 +1491,7 @@ AGRO_CONFIG_KEYS = {
     'INDEX_MAX_FILE_SIZE_MB',
     'SKIP_DENSE',
     'OUT_DIR_BASE',
+    'RAG_OUT_BASE',
     'REPOS_FILE',
     # Reranking params (13)
     'RERANKER_MODEL',
@@ -1540,7 +1569,7 @@ AGRO_CONFIG_KEYS = {
     'AGRO_RERANKER_MINE_MODE',
     'AGRO_RERANKER_MINE_RESET',
     'AGRO_TRIPLETS_PATH',
-    # UI params (17)
+    # UI params (18)
     'CHAT_STREAMING_ENABLED',
     'CHAT_HISTORY_MAX',
     'EDITOR_PORT',
@@ -1558,6 +1587,7 @@ AGRO_CONFIG_KEYS = {
     'EDITOR_IMAGE',
     'THEME_MODE',
     'OPEN_BROWSER',
+    'RUNTIME_MODE',
     # Hydration params (2)
     'HYDRATION_MODE',
     'HYDRATION_MAX_CHARS',

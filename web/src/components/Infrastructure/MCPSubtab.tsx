@@ -136,7 +136,7 @@ export function MCPSubtab() {
       const port = url.port || '8013';
       const path = url.pathname;
 
-      // Save to config
+      // Save URL settings to config
       await configApi.saveConfig({
         env: {
           MCP_HTTP_HOST: host,
@@ -145,7 +145,18 @@ export function MCPSubtab() {
         }
       });
 
-      alert('MCP settings saved successfully! Restart the MCP server for changes to take effect.');
+      // Save API key if provided
+      if (apiKey.trim()) {
+        const result = await configApi.saveMCPKey(apiKey);
+        if (result.status === 'success') {
+          alert('MCP settings and API key saved successfully! Restart the MCP server for changes to take effect.');
+          setApiKey(''); // Clear for security
+        } else {
+          alert(`Settings saved but API key failed: ${result.message || 'Unknown error'}`);
+        }
+      } else {
+        alert('MCP settings saved successfully! Restart the MCP server for changes to take effect.');
+      }
     } catch (error: any) {
       alert(`Error saving MCP settings: ${error.message}`);
     } finally {

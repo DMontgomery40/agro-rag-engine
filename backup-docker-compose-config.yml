@@ -1,0 +1,382 @@
+name: agro
+services:
+  alertmanager:
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    container_name: agro-alertmanager
+    extra_hosts:
+      - host.docker.internal=host-gateway
+    image: prom/alertmanager:latest
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 9093
+        published: "9093"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /Users/davidmontgomery/agro-rag-engine/infra/alertmanager.yml
+        target: /etc/alertmanager/alertmanager.yml
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: volume
+        source: alertmanager_data
+        target: /alertmanager
+        volume: {}
+  api:
+    build:
+      context: /Users/davidmontgomery/agro-rag-engine
+      dockerfile: Dockerfile
+    container_name: rag-service-api
+    depends_on:
+      qdrant:
+        condition: service_started
+        required: true
+      redis:
+        condition: service_started
+        required: true
+    environment:
+      GEN_MODEL: qwen3-coder:30b
+      OAUTH_ENABLED: "false"
+      OAUTH_TOKEN: ""
+      OLLAMA_URL: http://127.0.0.1:11434/api
+      OPENAI_API_KEY: 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
+      QDRANT_URL: http://127.0.0.1:6333
+      REDIS_URL: redis://127.0.0.1:6379/0
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 8012
+        published: "8012"
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: /Users/davidmontgomery/agro-rag-engine/data
+        target: /app/data
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /Users/davidmontgomery/agro-rag-engine/out
+        target: /app/out
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /Users/davidmontgomery/agro-rag-engine/out.noindex-shared
+        target: /app/out.noindex-shared
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /Users/davidmontgomery/agro-rag-engine/out.noindex-gui
+        target: /app/out.noindex-gui
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /Users/davidmontgomery/agro-rag-engine/out.noindex-devclean
+        target: /app/out.noindex-devclean
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /Users/davidmontgomery/agro-rag-engine/models
+        target: /app/models
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /Users/davidmontgomery/agro-rag-engine/checkpoints
+        target: /app/checkpoints
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /Users/davidmontgomery/agro-rag-engine/agro_config.json
+        target: /app/agro_config.json
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /Users/davidmontgomery/agro-rag-engine/repos.json
+        target: /app/repos.json
+        bind:
+          create_host_path: true
+  editor:
+    command:
+      - --auth
+      - none
+      - --bind-addr
+      - 0.0.0.0:8080
+      - /home/workspace
+    container_name: agro-openvscode
+    environment:
+      PASSWORD: ""
+    image: codercom/code-server:latest
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 8080
+        published: "4440"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /Users/davidmontgomery/agro-rag-engine
+        target: /home/workspace
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /Users/davidmontgomery/agro-rag-engine/.editor_data/code-server-config
+        target: /home/coder/.config/code-server
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /Users/davidmontgomery/agro-rag-engine/.editor_data/Code
+        target: /home/coder/.config/Code
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /Users/davidmontgomery/agro-rag-engine/.editor_data/code-server-data
+        target: /home/coder/.local/share/code-server
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /Users/davidmontgomery/agro-rag-engine/.editor_data/openvscode
+        target: /home/.openvscode-server
+        bind:
+          create_host_path: true
+  grafana:
+    container_name: agro-grafana
+    depends_on:
+      loki:
+        condition: service_started
+        required: true
+      prometheus:
+        condition: service_started
+        required: true
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Editor
+      GF_INSTALL_PLUGINS: yesoreyeram-infinity-datasource
+      GF_SECURITY_ADMIN_PASSWORD: Trenton2023
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ALLOW_EMBEDDING: "true"
+      GF_SECURITY_COOKIE_SAMESITE: disabled
+      GF_USERS_DEFAULT_THEME: dark
+    extra_hosts:
+      - host.docker.internal=host-gateway
+    image: grafana/grafana:latest
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 3000
+        published: "3000"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: grafana_data
+        target: /var/lib/grafana
+        volume: {}
+      - type: bind
+        source: /Users/davidmontgomery/agro-rag-engine/infra/grafana/provisioning
+        target: /etc/grafana/provisioning
+        read_only: true
+        bind:
+          create_host_path: true
+  loki:
+    command:
+      - -config.file=/etc/loki/local-config.yaml
+    container_name: agro-loki
+    image: grafana/loki:latest
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 3100
+        published: "3100"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /Users/davidmontgomery/agro-rag-engine/infra/loki-config.yml
+        target: /etc/loki/local-config.yaml
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: volume
+        source: loki_data
+        target: /loki
+        volume: {}
+  mcp-http:
+    build:
+      context: /Users/davidmontgomery/agro-rag-engine
+      dockerfile: Dockerfile
+    command:
+      - python
+      - -m
+      - server.mcp.http
+    container_name: rag-service-mcp-http
+    depends_on:
+      api:
+        condition: service_started
+        required: true
+    environment:
+      QDRANT_URL: http://127.0.0.1:6333
+      REDIS_URL: redis://127.0.0.1:6379/0
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 8013
+        published: "8013"
+        protocol: tcp
+  mcp-node:
+    build:
+      context: /Users/davidmontgomery/agro-rag-engine
+      dockerfile: Dockerfile.node
+    container_name: rag-service-node
+    depends_on:
+      api:
+        condition: service_started
+        required: true
+    environment:
+      PORT: "8014"
+      RAG_API_URL: http://api:8012
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 8014
+        published: "8014"
+        protocol: tcp
+  prometheus:
+    container_name: agro-prometheus
+    depends_on:
+      alertmanager:
+        condition: service_started
+        required: true
+    extra_hosts:
+      - host.docker.internal=host-gateway
+    image: prom/prometheus:latest
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 9090
+        published: "9090"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /Users/davidmontgomery/agro-rag-engine/infra/prometheus.yml
+        target: /etc/prometheus/prometheus.yml
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /Users/davidmontgomery/agro-rag-engine/infra/prometheus-alert-rules.yml
+        target: /etc/prometheus/prometheus-alert-rules.yml
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: volume
+        source: prom_data
+        target: /prometheus
+        volume: {}
+  promtail:
+    command:
+      - -config.file=/etc/promtail/config.yml
+    container_name: agro-promtail
+    depends_on:
+      loki:
+        condition: service_started
+        required: true
+    extra_hosts:
+      - host.docker.internal=host-gateway
+    image: grafana/promtail:latest
+    networks:
+      default: null
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /Users/davidmontgomery/agro-rag-engine/infra/promtail-config.yml
+        target: /etc/promtail/config.yml
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /var/log
+        target: /var/log
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /Users/davidmontgomery/agro-rag-engine/data
+        target: /app/data
+        read_only: true
+        bind:
+          create_host_path: true
+  qdrant:
+    container_name: qdrant
+    environment:
+      QDRANT__STORAGE__ON_DISK_PERSISTENCE: "true"
+      QDRANT__STORAGE__USE_MMAP: "false"
+    image: qdrant/qdrant:v1.15.5
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 6333
+        published: "6333"
+        protocol: tcp
+      - mode: ingress
+        target: 6334
+        published: "6334"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /Users/davidmontgomery/agro-rag-engine/data/qdrant
+        target: /qdrant/storage
+        bind:
+          create_host_path: true
+  redis:
+    container_name: rag-redis
+    environment:
+      REDIS_ARGS: --save 60 1000
+    image: redis/redis-stack:7.2.0-v10
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 6379
+        published: "6379"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: redis_data
+        target: /data
+        volume: {}
+networks:
+  default:
+    name: agro_default
+volumes:
+  alertmanager_data:
+    name: agro_alertmanager_data
+  grafana_data:
+    name: agro_grafana_data
+  loki_data:
+    name: agro_loki_data
+  prom_data:
+    name: agro_prom_data
+  redis_data:
+    name: agro_redis_data

@@ -228,6 +228,55 @@ export function useTooltips() {
         ],
         [['Multi-repo only', 'info']]
       ),
+
+      // Infrastructure tooltips
+      'infra-view-logs': L(
+        'View Container Logs',
+        'View real-time logs from this container. Displays the last 500 lines of combined stdout and stderr output with timestamps. Logs can be refreshed manually to see the latest output. Use this for debugging container issues, monitoring application behavior, and investigating errors. The logs viewer shows raw Docker logs exactly as they appear in the container.',
+        [
+          ['Docker Logs', 'https://docs.docker.com/engine/reference/commandline/logs/'],
+          ['Container Debugging', 'https://docs.docker.com/config/containers/logging/']
+        ],
+        [['Read-only', 'info']]
+      ),
+      'infra-pause-container': L(
+        'Pause Container',
+        'Temporarily pause this container, freezing all processes without stopping the container. This suspends all running processes using the cgroups freezer, preserving memory state and network connections. Paused containers consume minimal CPU but maintain their memory allocation. Use this to temporarily free CPU resources while keeping the container ready for quick resumption. Pausing is faster than stopping and starting, as it doesn\'t require full shutdown and initialization.',
+        [
+          ['Docker Pause', 'https://docs.docker.com/engine/reference/commandline/pause/'],
+          ['Cgroups Freezer', 'https://www.kernel.org/doc/Documentation/cgroup-v1/freezer-subsystem.txt']
+        ],
+        [['Reversible', 'info'], ['Preserves state', 'info']]
+      ),
+      'infra-unpause-container': L(
+        'Unpause Container',
+        'Resume a paused container, restoring all processes to their previous state. This thaws the cgroups freezer and allows processes to continue execution exactly where they left off. Memory state, network connections, and file handles are preserved. Use this after pausing to restore full container functionality. Unpausing is near-instantaneous as the container never fully stopped.',
+        [
+          ['Docker Unpause', 'https://docs.docker.com/engine/reference/commandline/unpause/'],
+          ['Container Lifecycle', 'https://docs.docker.com/engine/reference/run/#container-lifecycle']
+        ],
+        [['Instant resume', 'info']]
+      ),
+      'infra-remove-container': L(
+        'Remove Container',
+        'Permanently remove this container from Docker. This deletes the container instance, freeing disk space used by its filesystem layers. Warning: This action cannot be undone. The container will be force-removed even if running. Named volumes are preserved by default, but anonymous volumes and container-specific data may be lost. You can recreate the container from its image, but any runtime state, logs, and uncommitted changes will be gone. Use this to clean up stopped containers or remove problematic instances.',
+        [
+          ['Docker Remove', 'https://docs.docker.com/engine/reference/commandline/rm/'],
+          ['Container Cleanup', 'https://docs.docker.com/config/pruning/'],
+          ['Volume Persistence', 'https://docs.docker.com/storage/volumes/']
+        ],
+        [['Destructive', 'warn'], ['Cannot undo', 'warn']]
+      ),
+      'infra-loki-status': L(
+        'Loki Log Aggregation',
+        'Loki is a horizontally-scalable, highly-available log aggregation system inspired by Prometheus. It collects, indexes, and stores logs from all AGRO services and infrastructure components, enabling centralized querying and analysis. Unlike traditional log aggregators, Loki only indexes metadata (labels) rather than full-text, making it cost-effective for large-scale deployments. Logs are queryable via LogQL (Loki Query Language) in Grafana. When online, all container logs are automatically collected by Promtail and sent to Loki for long-term storage and analysis.',
+        [
+          ['Loki Documentation', 'https://grafana.com/docs/loki/latest/'],
+          ['LogQL Query Language', 'https://grafana.com/docs/loki/latest/logql/'],
+          ['Grafana Loki (GitHub)', 'https://github.com/grafana/loki']
+        ],
+        [['Infrastructure', 'info'], ['Log storage', 'info']]
+      ),
     };
   }, [buildTooltipHTML]);
 

@@ -81,19 +81,8 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
   }
 
   const getConfigDiff = () => {
-    if (!compareRun) {
-      console.log('[EvalDrillDown] No compareRun selected');
-      return null;
-    }
-    if (!evalRun.config || !compareRun.config) {
-      console.log('[EvalDrillDown] Missing config data:', { evalConfig: evalRun.config, compareConfig: compareRun.config });
-      return null;
-    }
-
-    console.log('[EvalDrillDown] Comparing configs:', {
-      evalKeys: Object.keys(evalRun.config),
-      compareKeys: Object.keys(compareRun.config)
-    });
+    if (!compareRun) return null;
+    if (!evalRun.config || !compareRun.config) return null;
 
     const allKeys = new Set([...Object.keys(evalRun.config), ...Object.keys(compareRun.config)]);
     const diffs: Array<{ key: string; current: any; previous: any; changed: boolean }> = [];
@@ -107,7 +96,6 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
       }
     });
 
-    console.log('[EvalDrillDown] Config diffs found:', diffs.length, diffs);
     return diffs;
   };
 
@@ -398,6 +386,71 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
               const perfImproved = evalRun.topk_accuracy > (compareRun?.topk_accuracy ?? 0);
               const direction = JSON.stringify(current) > JSON.stringify(previous) ? 'increased' : 'decreased';
 
+              // Check if both values are arrays
+              const isArray = Array.isArray(current) && Array.isArray(previous);
+
+              if (isArray) {
+                // Array diff logic
+                const currentSet = new Set(current);
+                const previousSet = new Set(previous);
+                const onlyInCurrent = current.filter((item: any) => !previousSet.has(item));
+                const onlyInPrevious = previous.filter((item: any) => !currentSet.has(item));
+                const hasDiffs = onlyInCurrent.length > 0 || onlyInPrevious.length > 0;
+
+                if (!hasDiffs) return null; // Skip if no actual changes
+
+                return (
+                  <details key={key} style={{
+                    padding: '12px 16px',
+                    background: 'var(--card-bg)',
+                    border: '2px solid var(--line)',
+                    borderRadius: '8px',
+                  }}>
+                    <summary style={{
+                      fontWeight: 700,
+                      color: 'var(--accent)',
+                      fontFamily: 'monospace',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px'
+                    }}>
+                      {key}
+                      <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--fg-muted)' }}>
+                        ({onlyInCurrent.length} different in AFTER, {onlyInPrevious.length} different in BEFORE)
+                      </span>
+                    </summary>
+                    <div style={{ marginTop: '12px', display: 'grid', gap: '8px', fontSize: '12px' }}>
+                      {onlyInCurrent.length > 0 && (
+                        <div>
+                          <div style={{ fontWeight: 600, color: 'var(--accent-green)', marginBottom: '4px' }}>
+                            ✓ In AFTER only:
+                          </div>
+                          <div style={{ paddingLeft: '16px', fontFamily: 'monospace', color: 'var(--fg-muted)' }}>
+                            {onlyInCurrent.map((item: any, idx: number) => (
+                              <div key={idx}>{JSON.stringify(item)}</div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {onlyInPrevious.length > 0 && (
+                        <div>
+                          <div style={{ fontWeight: 600, color: 'var(--err)', marginBottom: '4px' }}>
+                            ✗ In BEFORE only:
+                          </div>
+                          <div style={{ paddingLeft: '16px', fontFamily: 'monospace', color: 'var(--fg-muted)' }}>
+                            {onlyInPrevious.map((item: any, idx: number) => (
+                              <div key={idx}>{JSON.stringify(item)}</div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </details>
+                );
+              }
+
+              // Non-array params (existing rendering)
               return (
                 <div key={key} style={{
                   display: 'grid',

@@ -156,12 +156,13 @@
     "grafana_kiosk": "tv",
     "grafana_org_id": 1,
     "grafana_refresh": "10s",
-    "editor_bind": "local",
+    "editor_bind": "0.0.0.0",
     "editor_embed_enabled": 1,
     "editor_enabled": 1,
-    "editor_image": "agro-vscode:latest",
+    "editor_image": "agro-openvscode",
     "theme_mode": "dark",
-    "open_browser": 1
+    "open_browser": 1,
+    "runtime_mode": "development"
   },
   "hydration": {
     "hydration_mode": "lazy",

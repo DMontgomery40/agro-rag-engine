@@ -345,7 +345,71 @@ class MetricsMiddleware(BaseHTTPMiddleware):
             REQUEST_DURATION.labels(stage="request").observe(time.perf_counter() - start)
             REQUESTS_TOTAL.labels(route=route_path, provider=provider, model=model, success=success).inc()
 
+def load_historical_eval_metrics(max_runs: int = 50):
+    """Load historical eval results from disk and re-export their metrics to Prometheus.
+
+    This ensures that Prometheus has metrics for all recent eval runs, even after
+    API server restarts. Without this, only the most recently completed eval would
+    have metrics exposed.
+
+    Args:
+        max_runs: Maximum number of recent eval runs to load (default 50)
+    """
+    import json
+    from pathlib import Path
+
+    eval_dir = Path('data/evals')
+    if not eval_dir.exists():
+        return
+
+    # Get all eval JSON files, sorted by modification time (newest first)
+    eval_files = sorted(eval_dir.glob('eval_*.json'), key=lambda p: p.stat().st_mtime, reverse=True)
+
+    loaded = 0
+    run_ids_loaded = []
+    for eval_file in eval_files[:max_runs]:
+        try:
+            with open(eval_file) as f:
+                data = json.load(f)
+
+            # Re-export the aggregate metrics for this run
+            run_id = data['run_id']
+            record_eval_run(
+                run_id=run_id,
+                total=data['total'],
+                top1_hits=data['top1_hits'],
+                topk_hits=data['topk_hits'],
+                duration_secs=data['duration_secs'],
+                config_params=data.get('config', {})
+            )
+            run_ids_loaded.append(run_id)
+
+            # Optionally re-export per-question metrics (disabled by default for performance)
+            # for result in data.get('results', []):
+            #     record_eval_question(
+            #         run_id=data['run_id'],
+            #         question_idx=result['question_idx'],
+            #         top1_hit=result['top1_hit'],
+            #         topk_hit=result['topk_hit'],
+            #         duration_secs=result.get('duration_secs', 0.0)
+            #     )
+
+            loaded += 1
+        except Exception as e:
+            # Log but don't fail startup on bad eval files
+            print(f"Warning: Could not load eval metrics from {eval_file}: {e}")
+            continue
+
+    print(f"Loaded metrics for {loaded} historical eval runs: {', '.join(run_ids_loaded[:5])}..." if len(run_ids_loaded) > 5 else f"Loaded metrics for {loaded} historical eval runs: {', '.join(run_ids_loaded)}")
+
 def init_metrics_fastapi(app):
+    # Load historical eval metrics before mounting /metrics endpoint
+    try:
+        load_historical_eval_metrics()
+        print("Historical eval metrics loaded during init_metrics_fastapi")
+    except Exception as e:
+        print(f"Failed to load historical eval metrics: {e}")
+
     # add middleware and mount /metrics
     app.add_middleware(MetricsMiddleware)
     app.mount("/metrics", make_asgi_app())

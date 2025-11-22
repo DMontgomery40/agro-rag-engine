@@ -1,0 +1,12 @@
+rag-service-api	Exited (137) 19 minutes ago	agro-api
+rag-service-node	Up About an hour	agro-mcp-node
+rag-service-mcp-http	Up About an hour	agro-mcp-http
+agro-grafana	Up About an hour	grafana/grafana:latest
+agro-promtail	Up About an hour	grafana/promtail:latest
+agro-prometheus	Up About an hour	prom/prometheus:latest
+qdrant	Up About an hour	qdrant/qdrant:v1.15.5
+rag-redis	Up About an hour	redis/redis-stack:7.2.0-v10
+agro-loki	Up About an hour	grafana/loki:latest
+agro-alertmanager	Up About an hour	prom/alertmanager:latest
+agro-openvscode	Up About an hour	codercom/code-server:latest
+agro-api	Created	agro-rag-engine-api

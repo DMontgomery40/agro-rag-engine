@@ -6,7 +6,7 @@ export const healthApi = {
    * Check system health status
    */
   async check(): Promise<HealthStatus> {
-    const { data } = await apiClient.get<HealthStatus>(api('/api/health'));
+    const { data } = await apiClient.get<HealthStatus>(api('/health'));
     return data;
   },
 };

@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { dockerApi } from '@/api/docker';
+import { configApi } from '@/api/config';
 import { useAPI } from '@/hooks';
 import type { DockerStatus, DockerContainer } from '@/types';
 
@@ -55,14 +56,30 @@ export function ServicesSubtab() {
     description: 'Dashboards'
   });
 
+  const [lokiStatus, setLokiStatus] = useState<ServiceStatus>({
+    name: 'Loki',
+    status: 'checking',
+    color: 'var(--accent)',
+    port: 3100,
+    description: 'Log aggregation'
+  });
+
   // Action states
   const [loading, setLoading] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [runtimeMode, setRuntimeMode] = useState('0');
 
+  // Logs modal state
+  const [logsModalOpen, setLogsModalOpen] = useState(false);
+  const [logsContent, setLogsContent] = useState('');
+  const [logsContainerName, setLogsContainerName] = useState('');
+  const [logsContainerId, setLogsContainerId] = useState('');
+  const [logsLoading, setLogsLoading] = useState(false);
+
   // Load initial data
   useEffect(() => {
     fetchAllStatus();
+    loadRuntimeMode();
 
     // Auto-refresh every 5 seconds
     const interval = setInterval(() => {
@@ -71,6 +88,19 @@ export function ServicesSubtab() {
 
     return () => clearInterval(interval);
   }, []);
+
+  // Load runtime mode from backend
+  const loadRuntimeMode = async () => {
+    try {
+      const { runtime_mode } = await configApi.getRuntimeMode();
+      // Map backend values to UI values: 'development' -> '1', 'production' -> '0'
+      setRuntimeMode(runtime_mode === 'development' ? '1' : '0');
+    } catch (error) {
+      console.error('[ServicesSubtab] Failed to load runtime mode:', error);
+      // Default to production (Docker) mode on error
+      setRuntimeMode('0');
+    }
+  };
 
   const fetchAllStatus = async () => {
     await Promise.all([
@@ -149,6 +179,17 @@ export function ServicesSubtab() {
       ...prev,
       status: grafanaContainer?.state === 'running' ? 'online' : 'offline'
     }));
+
+    // Check Loki
+    try {
+      const lokiData = await dockerApi.getLokiStatus();
+      setLokiStatus(prev => ({
+        ...prev,
+        status: lokiData.reachable ? 'online' : 'offline'
+      }));
+    } catch {
+      setLokiStatus(prev => ({ ...prev, status: 'offline' }));
+    }
   };
 
   const handleQdrantOpen = () => {
@@ -261,8 +302,23 @@ export function ServicesSubtab() {
   };
 
   const handleSaveRuntimeMode = async () => {
-    setActionMessage('Runtime mode saved (DEV_LOCAL_UVICORN=' + runtimeMode + ')');
-    setTimeout(() => setActionMessage(null), 2000);
+    setLoading(true);
+    setActionMessage('Saving runtime mode...');
+
+    try {
+      // Map UI values to backend values: '1' -> 'development', '0' -> 'production'
+      const mode = runtimeMode === '1' ? 'development' : 'production';
+      const result = await configApi.updateRuntimeMode(mode);
+
+      setActionMessage(`Runtime mode saved: ${mode} (DEV_LOCAL_UVICORN=${runtimeMode})`);
+      console.log('[ServicesSubtab] Runtime mode updated:', result);
+    } catch (error) {
+      console.error('[ServicesSubtab] Failed to save runtime mode:', error);
+      setActionMessage(`Failed to save runtime mode: ${error}`);
+    } finally {
+      setLoading(false);
+      setTimeout(() => setActionMessage(null), 3000);
+    }
   };
 
   const renderServiceCard = (service: ServiceStatus, buttons: React.ReactNode) => (
@@ -302,8 +358,9 @@ export function ServicesSubtab() {
   );
 
   const renderContainer = (container: any) => {
+    const isPaused = container.state === 'paused' || container.status?.toLowerCase().includes('paused');
     const statusColor = container.state === 'running' ? 'var(--accent)' :
-                       container.state === 'paused' ? 'var(--warn)' : 'var(--err)';
+                       isPaused ? 'var(--warn)' : 'var(--err)';
 
     return (
       <div key={container.id} style={{
@@ -332,30 +389,82 @@ export function ServicesSubtab() {
             color: statusColor,
             fontWeight: '600'
           }}>
-            {container.state}
+            {isPaused ? 'paused' : container.state}
           </div>
         </div>
         <div style={{ fontSize: '11px', color: 'var(--fg-muted)', marginBottom: '8px' }}>
           {container.status}
         </div>
         <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-          {container.state === 'running' && (
+          <button
+            onClick={() => handleViewLogs(container.id, container.name)}
+            data-testid="view-logs-btn"
+            data-tooltip="infra-view-logs"
+            style={{
+              fontSize: '10px',
+              padding: '4px 8px',
+              background: 'var(--bg-elev1)',
+              color: 'var(--link)',
+              border: '1px solid var(--link)',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            View Logs
+          </button>
+          {container.state === 'running' && !isPaused && (
+            <>
+              <button
+                onClick={() => handlePauseContainer(container.id, container.name)}
+                data-testid="pause-container-btn"
+                data-tooltip="infra-pause-container"
+                style={{
+                  fontSize: '10px',
+                  padding: '4px 8px',
+                  background: 'var(--bg-elev1)',
+                  color: 'var(--warn)',
+                  border: '1px solid var(--warn)',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                ⏸ Pause
+              </button>
+              <button
+                onClick={() => handleContainerAction('stop', container.id)}
+                style={{
+                  fontSize: '10px',
+                  padding: '4px 8px',
+                  background: 'var(--bg-elev1)',
+                  color: 'var(--err)',
+                  border: '1px solid var(--err)',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                Stop
+              </button>
+            </>
+          )}
+          {isPaused && (
             <button
-              onClick={() => handleContainerAction('stop', container.id)}
+              onClick={() => handleUnpauseContainer(container.id, container.name)}
+              data-testid="unpause-container-btn"
+              data-tooltip="infra-unpause-container"
               style={{
                 fontSize: '10px',
                 padding: '4px 8px',
                 background: 'var(--bg-elev1)',
-                color: 'var(--err)',
-                border: '1px solid var(--err)',
+                color: 'var(--accent)',
+                border: '1px solid var(--accent)',
                 borderRadius: '4px',
                 cursor: 'pointer'
               }}
             >
-              Stop
+              ▶ Unpause
             </button>
           )}
-          {container.state !== 'running' && (
+          {container.state !== 'running' && !isPaused && (
             <button
               onClick={() => handleContainerAction('start', container.id)}
               style={{
@@ -385,6 +494,22 @@ export function ServicesSubtab() {
           >
             Restart
           </button>
+          <button
+            onClick={() => handleRemoveContainer(container.id, container.name)}
+            data-testid="remove-container-btn"
+            data-tooltip="infra-remove-container"
+            style={{
+              fontSize: '10px',
+              padding: '4px 8px',
+              background: 'var(--bg-elev1)',
+              color: 'var(--err)',
+              border: '1px solid var(--err)',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            🗑 Remove
+          </button>
         </div>
       </div>
     );
@@ -402,6 +527,93 @@ export function ServicesSubtab() {
       setTimeout(() => fetchAllStatus(), 1000);
     } catch (error) {
       setActionMessage(`Failed to ${action} container: ${error}`);
+    } finally {
+      setLoading(false);
+      setTimeout(() => setActionMessage(null), 3000);
+    }
+  };
+
+  const handleViewLogs = async (containerId: string, containerName: string) => {
+    setLogsContainerName(containerName);
+    setLogsContainerId(containerId);
+    setLogsModalOpen(true);
+    setLogsLoading(true);
+    setLogsContent('');
+
+    try {
+      const response = await dockerApi.getContainerLogs(containerId, 500);
+      setLogsContent(response.logs || 'No logs available');
+    } catch (error) {
+      console.error('Failed to fetch logs:', error);
+      setLogsContent('Error loading logs: ' + error);
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+
+  const handleRefreshLogs = async () => {
+    if (!logsContainerId) return;
+    setLogsLoading(true);
+    try {
+      const response = await dockerApi.getContainerLogs(logsContainerId, 500);
+      setLogsContent(response.logs || 'No logs available');
+    } catch (error) {
+      console.error('Failed to refresh logs:', error);
+      setLogsContent('Error loading logs: ' + error);
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+
+  const handlePauseContainer = async (containerId: string, containerName: string) => {
+    setLoading(true);
+    setActionMessage(`Pausing ${containerName}...`);
+    try {
+      await dockerApi.pauseContainer(containerId);
+      setActionMessage(`Container ${containerName} paused`);
+      setTimeout(() => fetchAllStatus(), 1000);
+    } catch (error) {
+      console.error('Failed to pause:', error);
+      setActionMessage(`Failed to pause container: ${error}`);
+    } finally {
+      setLoading(false);
+      setTimeout(() => setActionMessage(null), 3000);
+    }
+  };
+
+  const handleUnpauseContainer = async (containerId: string, containerName: string) => {
+    setLoading(true);
+    setActionMessage(`Resuming ${containerName}...`);
+    try {
+      await dockerApi.unpauseContainer(containerId);
+      setActionMessage(`Container ${containerName} resumed`);
+      setTimeout(() => fetchAllStatus(), 1000);
+    } catch (error) {
+      console.error('Failed to unpause:', error);
+      setActionMessage(`Failed to unpause container: ${error}`);
+    } finally {
+      setLoading(false);
+      setTimeout(() => setActionMessage(null), 3000);
+    }
+  };
+
+  const handleRemoveContainer = async (containerId: string, containerName: string) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to remove container "${containerName}"?\n\n` +
+      `This action cannot be undone. Data volumes may be preserved depending on configuration.`
+    );
+
+    if (!confirmed) return;
+
+    setLoading(true);
+    setActionMessage(`Removing ${containerName}...`);
+    try {
+      await dockerApi.removeContainer(containerId);
+      setActionMessage(`Container "${containerName}" removed`);
+      setTimeout(() => fetchAllStatus(), 1000);
+    } catch (error) {
+      console.error('Failed to remove:', error);
+      setActionMessage(`Failed to remove container: ${error}`);
     } finally {
       setLoading(false);
       setTimeout(() => setActionMessage(null), 3000);
@@ -537,6 +749,19 @@ export function ServicesSubtab() {
               🌐 Open UI
             </button>
           )}
+
+          {renderServiceCard(
+            lokiStatus,
+            <div data-tooltip="infra-loki-status" style={{
+              fontSize: '11px',
+              color: 'var(--fg-muted)',
+              padding: '4px'
+            }}>
+              {lokiStatus.status === 'online'
+                ? 'Collecting and indexing logs from all services'
+                : 'Not reachable - log aggregation unavailable'}
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'flex', gap: '8px' }}>
@@ -646,15 +871,18 @@ export function ServicesSubtab() {
             </div>
             <button
               onClick={handleSaveRuntimeMode}
+              disabled={loading}
               className="small-button"
               style={{
                 marginTop: '8px',
                 background: 'var(--link)',
                 color: 'var(--accent-contrast)',
-                fontWeight: '600'
+                fontWeight: '600',
+                opacity: loading ? 0.5 : 1,
+                cursor: loading ? 'not-allowed' : 'pointer'
               }}
             >
-              💾 Save Runtime Mode
+              💾 {loading ? 'Saving...' : 'Save Runtime Mode'}
             </button>
           </div>
         </div>
@@ -719,6 +947,132 @@ export function ServicesSubtab() {
           )}
         </div>
       </div>
+
+      {/* Logs Modal */}
+      {logsModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999
+          }}
+          onClick={() => setLogsModalOpen(false)}
+        >
+          <div
+            style={{
+              background: 'var(--bg)',
+              border: '1px solid var(--line)',
+              borderRadius: '8px',
+              width: '90%',
+              maxWidth: '1000px',
+              maxHeight: '80vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '16px',
+              borderBottom: '1px solid var(--line)'
+            }}>
+              <h3 style={{ margin: 0, fontSize: '16px' }}>
+                Container Logs: {logsContainerName}
+              </h3>
+              <button
+                onClick={() => setLogsModalOpen(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--fg)',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  padding: '0 8px'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{
+              flex: 1,
+              overflow: 'auto',
+              padding: '16px',
+              background: 'var(--bg-elev1)'
+            }}>
+              {logsLoading ? (
+                <div style={{ color: 'var(--fg-muted)' }}>Loading logs...</div>
+              ) : (
+                <pre
+                  data-testid="logs-content"
+                  style={{
+                    margin: 0,
+                    fontSize: '11px',
+                    fontFamily: 'monospace',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    color: 'var(--fg)',
+                    lineHeight: '1.4'
+                  }}
+                >
+                  {logsContent}
+                </pre>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              display: 'flex',
+              gap: '8px',
+              padding: '16px',
+              borderTop: '1px solid var(--line)'
+            }}>
+              <button
+                onClick={handleRefreshLogs}
+                disabled={logsLoading}
+                style={{
+                  flex: 1,
+                  padding: '8px 16px',
+                  background: 'var(--link)',
+                  color: 'var(--fg)',
+                  border: '1px solid var(--link)',
+                  borderRadius: '4px',
+                  cursor: logsLoading ? 'not-allowed' : 'pointer',
+                  opacity: logsLoading ? 0.5 : 1
+                }}
+              >
+                ↻ Refresh
+              </button>
+              <button
+                onClick={() => setLogsModalOpen(false)}
+                style={{
+                  flex: 1,
+                  padding: '8px 16px',
+                  background: 'var(--bg-elev2)',
+                  color: 'var(--fg)',
+                  border: '1px solid var(--line)',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -21,5 +21,5 @@ COPY . .
 EXPOSE 8012
 
 # Simplified: single worker, no gunicorn complexity, direct uvicorn
-# Enable reload for development (with volume mounts)
-CMD ["uvicorn", "server.asgi:create_app", "--factory", "--host", "0.0.0.0", "--port", "8012", "--timeout-keep-alive", "120", "--log-level", "debug", "--reload"]
+# Reload disabled for production to ensure metrics persistence
+CMD ["uvicorn", "server.asgi:create_app", "--factory", "--host", "0.0.0.0", "--port", "8012", "--timeout-keep-alive", "120", "--log-level", "info"]

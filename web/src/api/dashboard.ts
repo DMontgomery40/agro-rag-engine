@@ -1,7 +1,7 @@
 // AGRO - Dashboard API Client
 // Centralized API calls for all Dashboard operations
 
-import { api } from './client';
+import { apiUrl } from './client';
 
 // ============================================================================
 // System Status APIs
@@ -54,31 +54,31 @@ export interface AutotuneStatus {
 }
 
 export async function getHealth(): Promise<HealthStatus> {
-  const response = await fetch(api('/health'));
+  const response = await fetch(apiUrl('/health'));
   if (!response.ok) throw new Error('Failed to fetch health');
   return response.json();
 }
 
 export async function getConfig(): Promise<ConfigData> {
-  const response = await fetch(api('/api/config'));
+  const response = await fetch(apiUrl('/config'));
   if (!response.ok) throw new Error('Failed to fetch config');
   return response.json();
 }
 
 export async function getCards(): Promise<CardsData> {
-  const response = await fetch(api('/api/cards'));
+  const response = await fetch(apiUrl('/cards'));
   if (!response.ok) throw new Error('Failed to fetch cards');
   return response.json();
 }
 
 export async function getMCPStatus(): Promise<MCPStatus> {
-  const response = await fetch(api('/api/mcp/status'));
+  const response = await fetch(apiUrl('/mcp/status'));
   if (!response.ok) throw new Error('Failed to fetch MCP status');
   return response.json();
 }
 
 export async function getAutotuneStatus(): Promise<AutotuneStatus> {
-  const response = await fetch(api('/api/autotune/status'));
+  const response = await fetch(apiUrl('/autotune/status'));
   if (!response.ok) throw new Error('Failed to fetch autotune status');
   return response.json();
 }
@@ -103,7 +103,7 @@ export interface AlertStatus {
 }
 
 export async function getAlertStatus(): Promise<AlertStatus> {
-  const response = await fetch(api('/webhooks/alertmanager/status'));
+  const response = await fetch(apiUrl('/webhooks/alertmanager/status'));
   if (!response.ok) throw new Error('Failed to fetch alert status');
   return response.json();
 }
@@ -117,13 +117,13 @@ export interface Trace {
 }
 
 export async function getTraces(limit: number = 50): Promise<Trace[]> {
-  const response = await fetch(api(`/api/traces?limit=${limit}`));
+  const response = await fetch(apiUrl(`/traces?limit=${limit}`));
   if (!response.ok) throw new Error('Failed to fetch traces');
   return response.json();
 }
 
 export async function getLatestTrace(): Promise<Trace | null> {
-  const response = await fetch(api('/api/traces/latest'));
+  const response = await fetch(apiUrl('/traces/latest'));
   if (!response.ok) return null;
   return response.json();
 }
@@ -135,7 +135,7 @@ export interface LokiStatus {
 }
 
 export async function getLokiStatus(): Promise<LokiStatus> {
-  const response = await fetch(api('/api/loki/status'));
+  const response = await fetch(apiUrl('/loki/status'));
   if (!response.ok) return { available: false, error: 'Failed to connect' };
   return response.json();
 }
@@ -158,7 +158,7 @@ export interface IndexStats {
 }
 
 export async function getIndexStats(): Promise<IndexStats> {
-  const response = await fetch(api('/api/index/stats'));
+  const response = await fetch(apiUrl('/index/stats'));
   if (!response.ok) throw new Error('Failed to fetch index stats');
   return response.json();
 }
@@ -193,7 +193,7 @@ export interface IndexStatus {
 }
 
 export async function getIndexStatus(): Promise<IndexStatus> {
-  const response = await fetch(api('/api/index/status'));
+  const response = await fetch(apiUrl('/index/status'));
   if (!response.ok) throw new Error('Failed to fetch index status');
   return response.json();
 }
@@ -203,7 +203,7 @@ export async function getIndexStatus(): Promise<IndexStatus> {
 // ============================================================================
 
 export async function startIndexer(repo?: string): Promise<Response> {
-  return fetch(api('/api/index/start'), {
+  return fetch(apiUrl('/index/start'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: repo ? JSON.stringify({ repo }) : undefined
@@ -211,7 +211,7 @@ export async function startIndexer(repo?: string): Promise<Response> {
 }
 
 export async function generateKeywords(repo?: string): Promise<Response> {
-  return fetch(api('/api/keywords/generate'), {
+  return fetch(apiUrl('/keywords/generate'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: repo ? JSON.stringify({ repo }) : undefined
@@ -219,7 +219,7 @@ export async function generateKeywords(repo?: string): Promise<Response> {
 }
 
 export async function reloadConfig(): Promise<{ status: string }> {
-  const response = await fetch(api('/api/config/reload'), {
+  const response = await fetch(apiUrl('/config/reload'), {
     method: 'POST'
   });
   if (!response.ok) throw new Error('Failed to reload config');
@@ -227,7 +227,7 @@ export async function reloadConfig(): Promise<{ status: string }> {
 }
 
 export async function reloadEnv(): Promise<{ status: string }> {
-  const response = await fetch(api('/api/env/reload'), {
+  const response = await fetch(apiUrl('/env/reload'), {
     method: 'POST'
   });
   if (!response.ok) throw new Error('Failed to reload env');
@@ -242,14 +242,14 @@ export interface RerankerOption {
 }
 
 export async function getRerankerOptions(): Promise<RerankerOption[]> {
-  const response = await fetch(api('/api/reranker/available'));
+  const response = await fetch(apiUrl('/reranker/available'));
   if (!response.ok) return [];
   const data = await response.json();
   return data.options || [];
 }
 
 export async function runEval(backend: string, repo?: string): Promise<Response> {
-  return fetch(api('/api/eval/run'), {
+  return fetch(apiUrl('/eval/run'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ backend, repo })
@@ -263,7 +263,7 @@ export interface EvalStatus {
 }
 
 export async function getEvalStatus(): Promise<EvalStatus> {
-  const response = await fetch(api('/api/eval/status'));
+  const response = await fetch(apiUrl('/eval/status'));
   if (!response.ok) return { running: false };
   return response.json();
 }
@@ -283,13 +283,13 @@ export interface DockerStatus {
 }
 
 export async function getDockerStatus(): Promise<DockerStatus> {
-  const response = await fetch(api('/api/docker/status'));
+  const response = await fetch(apiUrl('/docker/status'));
   if (!response.ok) return { available: false };
   return response.json();
 }
 
 export async function getDockerContainers(): Promise<any[]> {
-  const response = await fetch(api('/api/docker/containers'));
+  const response = await fetch(apiUrl('/docker/containers'));
   if (!response.ok) return [];
   return response.json();
 }
@@ -304,7 +304,7 @@ export interface GitHookStatus {
 }
 
 export async function getGitHookStatus(): Promise<GitHookStatus> {
-  const response = await fetch(api('/api/git/hooks/status'));
+  const response = await fetch(apiUrl('/git/hooks/status'));
   if (!response.ok) return { installed: false };
   return response.json();
 }
@@ -318,7 +318,7 @@ export interface RepoInfo {
 }
 
 export async function getRepos(): Promise<RepoInfo[]> {
-  const response = await fetch(api('/api/repos'));
+  const response = await fetch(apiUrl('/repos'));
   if (!response.ok) return [];
   return response.json();
 }

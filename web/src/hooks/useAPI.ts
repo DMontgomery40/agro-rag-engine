@@ -12,11 +12,22 @@ export function useAPI() {
       const q = new URLSearchParams(u.search);
       const override = q.get('api');
       if (override) return override.replace(/\/$/, '');
-      // If on Vite dev server (typical 5173-5179), use relative URLs to go through Vite proxy
-      if (/^517[0-9]$/.test(u.port || '')) return '';
-      if (u.protocol.startsWith('http')) return (u.origin.replace(/\/$/, '')) + '/api';
+      
+      // If on Vite dev server (ports 5170-5179), talk directly to backend on 8012
+      const port = u.port || '';
+      if (port && /^517[0-9]$/.test(port)) {
+        return 'http://127.0.0.1:8012/api';
+      }
+      
+      // If protocol is http/https but not Vite dev port, use same origin
+      if (u.protocol.startsWith('http')) {
+        return (u.origin.replace(/\/$/, '')) + '/api';
+      }
+      
+      // Default fallback to local backend
       return 'http://127.0.0.1:8012/api';
     } catch {
+      // Always return a valid base URL, never empty
       return 'http://127.0.0.1:8012/api';
     }
   };
@@ -35,7 +46,8 @@ export function useAPI() {
 
   // Helper to build full API URLs
   const api = useCallback((path: string = ''): string => {
-    let base = String(apiBase || '').replace(/\/$/, '');
+    // Ensure base is never empty - fallback to localhost:8012 if undefined/empty
+    let base = String(apiBase || 'http://127.0.0.1:8012/api').replace(/\/$/, '');
     let p = String(path || '');
     // Normalize to /api/... path regardless of caller format
     if (!p.startsWith('/')) p = '/' + p;

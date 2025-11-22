@@ -77,7 +77,7 @@ def create_app() -> FastAPI:
         origin_regex = r"^https?://(localhost|127\\.0\\.0\\.1)(:\\d{1,5})?$"
 
     cors_kwargs = dict(
-        allow_credentials=False,
+        allow_credentials=True,  # Enable credentials for same-origin requests
         allow_methods=["*"],
         allow_headers=["*"]
     )
@@ -431,10 +431,10 @@ def create_app() -> FastAPI:
                 "health": {"qdrant": "unknown", "redis": "unknown", "llm": "unknown"},
             }
 
-    # Startup event: Load config registry
+    # Startup event: Load config registry and historical eval metrics
     @app.on_event("startup")
     async def startup_event():
-        """Load configuration registry at application startup."""
+        """Load configuration registry and historical eval metrics at application startup."""
         try:
             from server.services.config_registry import get_config_registry
             registry = get_config_registry()
@@ -443,5 +443,14 @@ def create_app() -> FastAPI:
         except Exception as e:
             # Log error but don't fail startup - config registry should be resilient
             logging.getLogger("agro.api").error(f"Failed to load config registry: {e}")
+
+        # Load historical eval metrics for Prometheus
+        try:
+            from server.metrics import load_historical_eval_metrics
+            load_historical_eval_metrics()
+            logging.getLogger("agro.api").info("Historical eval metrics loaded successfully")
+        except Exception as e:
+            # Log error but don't fail startup
+            logging.getLogger("agro.api").error(f"Failed to load historical eval metrics: {e}")
 
     return app

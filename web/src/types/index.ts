@@ -21,16 +21,24 @@ export interface DockerStatus {
 
 export interface DockerContainer {
   id: string;
+  short_id?: string;
   name: string;
   image: string;
-  state: 'running' | 'paused' | 'exited' | 'created';
+  state: 'running' | 'paused' | 'exited' | 'created' | 'restarting' | 'removing' | 'dead';
+  raw_state?: string;
   status: string;
-  ports: Array<{
+  ports?: string | Array<{
     PrivatePort: number;
     PublicPort?: number;
     Type: string;
   }>;
-  created: string;
+  created?: string;
+  created_at?: string;
+  running_for?: string;
+  compose_project?: string | null;
+  compose_service?: string | null;
+  agro_managed?: boolean;
+  paused?: boolean;
 }
 
 // Config Types

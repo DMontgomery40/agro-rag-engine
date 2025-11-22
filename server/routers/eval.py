@@ -88,6 +88,19 @@ def eval_run_instrumented(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
             run_id = datetime.now().strftime('%Y%m%d_%H%M%S')
 
             # Extract config snapshot - COMPREHENSIVE capture of all RAG params
+            # Parse string configs into arrays for proper diffing
+            path_boosts_str = _config.get_str('PATH_BOOSTS', '/gui,/server,/indexer,/retrieval')
+            path_boosts = [x.strip() for x in path_boosts_str.split(',') if x.strip()] if path_boosts_str else []
+
+            exclude_globs_str = _config.get_str('EXCLUDE_GLOBS', '')
+            exclude_globs = [x.strip() for x in exclude_globs_str.split(',') if x.strip()] if exclude_globs_str else []
+
+            cards_exclude_dirs = _config.get_str('CARDS_EXCLUDE_DIRS', '')
+            exclude_dirs = [x.strip() for x in cards_exclude_dirs.split(',') if x.strip()] if cards_exclude_dirs else []
+
+            index_excluded_exts_str = _config.get_str('INDEX_EXCLUDED_EXTS', '.png,.jpg,.gif,.ico,.svg,.woff,.ttf')
+            index_excluded_exts = [x.strip() for x in index_excluded_exts_str.split(',') if x.strip()] if index_excluded_exts_str else []
+
             config_snapshot = {
                 # Core retrieval
                 'rrf_k_div': _config.get_int('RRF_K_DIV', 60),
@@ -119,9 +132,11 @@ def eval_run_instrumented(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
                 'keyword_boost': _config.get_float('KEYWORD_BOOST', 0.0),
                 'recency_weight': _config.get_float('RECENCY_WEIGHT', 0.0),
 
-                # Exclusions (convert to string for JSON serialization)
-                'exclude_globs': _config.get_str('EXCLUDE_GLOBS', ''),
-                'exclude_dirs': _config.get_str('EXCLUDE_DIRS', ''),
+                # Path boosts & exclusions (as arrays for proper diffing)
+                'path_boosts': path_boosts,
+                'exclude_globs': exclude_globs,
+                'exclude_dirs': exclude_dirs,
+                'index_excluded_exts': index_excluded_exts,
             }
 
             # Run eval
@@ -366,3 +381,17 @@ def eval_baseline_compare() -> Dict[str, Any]:
         "regressions_list": regressions,
         "improvements_list": improvements
     }
+
+@router.post("/api/eval/load_historical_metrics")
+def load_historical_metrics_endpoint() -> Dict[str, Any]:
+    """Load historical eval metrics from disk and re-export them to Prometheus.
+
+    This is needed to restore metrics after API server restarts, so Grafana
+    dashboards can compare multiple eval runs.
+    """
+    try:
+        from server.metrics import load_historical_eval_metrics
+        load_historical_eval_metrics()
+        return {"ok": True, "message": "Historical eval metrics loaded successfully"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}

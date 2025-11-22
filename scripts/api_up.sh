@@ -6,8 +6,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # Export current git branch for container
 export GIT_BRANCH=$(cd "$ROOT_DIR" && git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
 
-echo "[api_up] Starting API container via docker-compose.services.yml ..."
-docker compose -f "$ROOT_DIR/docker-compose.services.yml" up -d api
+echo "[api_up] Starting API container via root docker-compose.yml ..."
+docker compose up -d api
 
 echo "[api_up] Waiting for health ..."
 for i in $(seq 1 60); do

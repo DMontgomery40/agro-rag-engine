@@ -1,3 +1,8 @@
+# ⚠️ DEPRECATED - DO NOT USE ⚠️
+# This file is not used. All services are managed by root docker-compose.yml.
+# This file is kept for reference only.
+# See infra/README.md for details.
+
 services:
   qdrant:
     image: qdrant/qdrant:v1.15.5

@@ -202,7 +202,7 @@ def docker_infra_down() -> Dict[str, Any]:
             capture_output=True,
             text=True,
             timeout=30,
-            cwd=str(root / "infra"),
+            cwd=str(root),  # Fixed: Use root compose file (same as up.sh), not infra/
         )
         return {
             "success": result.returncode == 0,

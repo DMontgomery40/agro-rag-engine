@@ -17,7 +17,8 @@ SECRET_FIELDS = {
     'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GOOGLE_API_KEY',
     'COHERE_API_KEY', 'VOYAGE_API_KEY', 'LANGSMITH_API_KEY',
     'LANGCHAIN_API_KEY', 'LANGTRACE_API_KEY', 'NETLIFY_API_KEY',
-    'OAUTH_TOKEN', 'GRAFANA_API_KEY', 'GRAFANA_AUTH_TOKEN'
+    'OAUTH_TOKEN', 'GRAFANA_API_KEY', 'GRAFANA_AUTH_TOKEN',
+    'MCP_API_KEY'
 }
 
 
@@ -88,6 +89,49 @@ def secrets_ingest(text: str, persist: bool) -> Dict[str, Any]:
     return {"ok": True, "applied": sorted(applied.keys()), "persisted": saved}
 
 
+def save_mcp_key(key: str) -> Dict[str, Any]:
+    """Save MCP API key to .env file.
+
+    Args:
+        key: MCP API key value
+
+    Returns:
+        Success status
+
+    Security:
+        - Key is written to .env (not logged)
+        - Updates both file and os.environ for immediate effect
+    """
+    try:
+        env_path = repo_root() / ".env"
+
+        # Read existing .env
+        existing: Dict[str, str] = {}
+        if env_path.exists():
+            for line in env_path.read_text().splitlines():
+                if not line.strip() or line.strip().startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                existing[k.strip()] = v.strip()
+
+        # Update or append MCP_API_KEY
+        key_name = "MCP_API_KEY"
+        existing[key_name] = key
+
+        # Write back atomically
+        _atomic_write_text(env_path, "\n".join(f"{k}={existing[k]}" for k in sorted(existing.keys())) + "\n")
+
+        # Update os.environ for immediate effect
+        os.environ[key_name] = key
+
+        logger.info("MCP API key saved successfully")  # Don't log the actual key!
+        return {"status": "success", "message": "MCP API key saved"}
+
+    except Exception as e:
+        logger.error(f"Failed to save MCP key: {e}")  # Don't log the actual key!
+        return {"status": "error", "message": "Failed to save API key"}
+
+
 def _effective_rerank_backend() -> Dict[str, Any]:
     try:
         from server.learning_reranker import get_reranker_info
@@ -146,6 +190,22 @@ def get_config(unmask: bool = False) -> Dict[str, Any]:
     except Exception:
         # Fallback if os.environ iteration fails (should not happen)
         env = {}
+
+    # Add infrastructure path defaults from common/paths.py if not in env
+    try:
+        from common.paths import files_root, docs_dir, data_dir
+        if 'REPO_ROOT' not in env:
+            env['REPO_ROOT'] = str(repo_root())
+        if 'FILES_ROOT' not in env:
+            env['FILES_ROOT'] = str(files_root())
+        if 'GUI_DIR' not in env:
+            env['GUI_DIR'] = str(gui_dir())
+        if 'DOCS_DIR' not in env:
+            env['DOCS_DIR'] = str(docs_dir())
+        if 'DATA_DIR' not in env:
+            env['DATA_DIR'] = str(data_dir())
+    except Exception as e:
+        logger.warning(f"Failed to add infrastructure path defaults: {e}")
 
     # Merge in agro_config.json values from registry
     # Only if not already in env (env takes precedence)
@@ -559,7 +619,8 @@ def config_schema() -> Dict[str, Any]:
         'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GOOGLE_API_KEY',
         'COHERE_API_KEY', 'VOYAGE_API_KEY', 'LANGSMITH_API_KEY',
         'LANGCHAIN_API_KEY', 'LANGTRACE_API_KEY', 'NETLIFY_API_KEY',
-        'OAUTH_TOKEN', 'GRAFANA_API_KEY'
+        'OAUTH_TOKEN', 'GRAFANA_API_KEY', 'GRAFANA_AUTH_TOKEN',
+        'MCP_API_KEY'
     }
 
     ed = _read_editor_settings()

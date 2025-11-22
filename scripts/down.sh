@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 echo "[down] Stopping and removing Docker stack (agro project) ..."
-docker compose down -v || true
+docker compose down || true  # SAFETY: Removed -v flag to preserve volumes (Redis, Prometheus, Grafana, Loki)
 
 echo "[down] Pruning dangling worktrees (no delete of external dirs) ..."
 git worktree prune || true
