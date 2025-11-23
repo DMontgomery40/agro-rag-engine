@@ -1,10 +1,10 @@
 {
   "retrieval": {
-    "rrf_k_div": 60,
-    "langgraph_final_k": 20,
-    "max_query_rewrites": 2,
-    "fallback_confidence": 0.55,
-    "final_k": 10,
+    "rrf_k_div": 30,
+    "langgraph_final_k": 30,
+    "max_query_rewrites": 5,
+    "fallback_confidence": 0.35,
+    "final_k": 15,
     "eval_final_k": 5,
     "conf_top1": 0.62,
     "conf_avg5": 0.55,
@@ -13,27 +13,27 @@
     "query_expansion_enabled": 1,
     "bm25_weight": 0.3,
     "vector_weight": 0.7,
-    "card_search_enabled": 1,
+    "card_search_enabled": 0,
     "multi_query_m": 4,
     "use_semantic_synonyms": 1,
-    "topk_dense": 75,
-    "topk_sparse": 75,
+    "topk_dense": 150,
+    "topk_sparse": 150,
     "hydration_mode": "lazy",
     "hydration_max_chars": 2000,
     "disable_rerank": 0
   },
   "scoring": {
-    "card_bonus": 0.08,
+    "card_bonus": 0.4,
     "filename_boost_exact": 1.5,
     "filename_boost_partial": 1.2,
     "vendor_mode": "prefer_first_party",
     "path_boosts": "/gui,/server,/indexer,/retrieval"
   },
   "layer_bonus": {
-    "gui": 0.15,
-    "retrieval": 0.15,
+    "gui": 0.35,
+    "retrieval": 0.45,
     "indexer": 0.15,
-    "vendor_penalty": -0.1,
+    "vendor_penalty": -0.5,
     "freshness_bonus": 0.05
   },
   "embedding": {
@@ -61,6 +61,8 @@
   "indexing": {
     "qdrant_url": "http://127.0.0.1:6333",
     "collection_name": "code_chunks_agro",
+    "collection_suffix": "test",
+    "repo_path": "",
     "vector_backend": "qdrant",
     "indexing_batch_size": 100,
     "indexing_workers": 4,
@@ -70,6 +72,7 @@
     "index_max_file_size_mb": 10,
     "skip_dense": 0,
     "out_dir_base": "./out",
+    "rag_out_base": "",
     "repos_file": "./repos.json"
   },
   "reranking": {
@@ -98,7 +101,7 @@
     "enrich_backend": "openai",
     "enrich_disabled": 0,
     "ollama_num_ctx": 8192,
-    "gen_model_cli": "gpt-4o-mini",
+    "gen_model_cli": "gpt-5",
     "gen_model_ollama": "gpt-4o-mini",
     "ollama_request_timeout": 300,
     "ollama_stream_idle_timeout": 60
@@ -156,7 +159,7 @@
     "grafana_kiosk": "tv",
     "grafana_org_id": 1,
     "grafana_refresh": "10s",
-    "editor_bind": "0.0.0.0",
+    "editor_bind": "local",
     "editor_embed_enabled": 1,
     "editor_enabled": 1,
     "editor_image": "agro-openvscode",

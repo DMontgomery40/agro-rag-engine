@@ -1,8 +1,9 @@
 import os
 from typing import Dict, Any, Optional
 from pathlib import Path
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Body
 from server.tracing import latest_trace_path
+from server.webhook_config import get_webhooks, update_webhooks
 import json
 
 router = APIRouter()
@@ -122,3 +123,28 @@ def api_langsmith_runs(
         return {"ok": True, "runs": out, "project": proj}
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+
+@router.get("/webhooks/config")
+def get_webhook_config() -> Dict[str, Any]:
+    """Get current webhook configuration for Slack/Discord notifications."""
+    try:
+        config = get_webhooks()
+        return {"status": "ok", "data": config}
+    except Exception as e:
+        return {"status": "error", "error": str(e), "data": {}}
+
+
+@router.post("/webhooks/config")
+def post_webhook_config(payload: Dict[str, Any] = Body(...)) -> Dict[str, Any]:
+    """Update webhook configuration for Slack/Discord notifications."""
+    try:
+        results = update_webhooks(payload)
+        success_count = sum(1 for v in results.values() if v)
+        return {
+            "status": "ok",
+            "updated": success_count,
+            "results": results
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}

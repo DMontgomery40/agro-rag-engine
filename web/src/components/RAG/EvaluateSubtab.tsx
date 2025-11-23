@@ -1,7 +1,9 @@
 // React implementation of EvaluateSubtab - NO legacy JS modules
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAPI } from '@/hooks';
 import { EvalDrillDown } from '@/components/Evaluation/EvalDrillDown';
+import { LiveTerminal, LiveTerminalHandle } from '@/components/LiveTerminal/LiveTerminal';
+import { TerminalService } from '@/services/TerminalService';
 // Recommended golden questions for AGRO codebase
 const RECOMMENDED_GOLDEN = [
   { q: 'Where is hybrid retrieval implemented?', repo: 'agro', expect_paths: ['retrieval/hybrid_search.py'] },
@@ -68,6 +70,33 @@ export function EvaluateSubtab() {
   const [availableRuns, setAvailableRuns] = useState<Array<{run_id: string, top1_accuracy: number, topk_accuracy: number}>>([]);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [compareRunId, setCompareRunId] = useState<string | null>(null);
+  const [latestRunId, setLatestRunId] = useState<string | null>(null);
+  const [showDrillDown, setShowDrillDown] = useState(false);
+  const [terminalVisible, setTerminalVisible] = useState(false);
+  const terminalRef = useRef<LiveTerminalHandle>(null);
+
+  const getTerminal = useCallback(() => {
+    return terminalRef.current || (window as any).terminal_eval_terminal;
+  }, []);
+
+  const resetTerminal = useCallback((title = 'RAG Evaluation Logs') => {
+    const terminal = getTerminal();
+    if (terminal) {
+      terminal.show?.();
+      terminal.clear?.();
+      terminal.setTitle?.(title);
+    }
+  }, [getTerminal]);
+
+  const appendTerminalLine = useCallback((line: string) => {
+    const terminal = getTerminal();
+    terminal?.appendLine?.(line);
+  }, [getTerminal]);
+
+  const updateTerminalProgress = useCallback((percent: number, message?: string) => {
+    const terminal = getTerminal();
+    terminal?.updateProgress?.(percent, message);
+  }, [getTerminal]);
 
   const fetchJson = useCallback(async (path: string, options: RequestInit = {}) => {
     const res = await fetch(api(path), {
@@ -81,10 +110,32 @@ export function EvaluateSubtab() {
     return res.json();
   }, [api]);
 
-  // Load golden questions on mount
+  // Load config and golden questions on mount
   useEffect(() => {
+    loadConfig();
     loadGoldenQuestions();
   }, []);
+
+  // Load eval settings from backend config
+  const loadConfig = async () => {
+    try {
+      const response = await fetch('/api/config');
+      const data = await response.json();
+      const env = data.env || {};
+
+      setEvalSettings(prev => ({
+        ...prev,
+        goldenPath: env.GOLDEN_PATH || 'data/golden.json',
+        baselinePath: env.BASELINE_PATH || 'data/evals/eval_baseline.json',
+        // Load user preferences from localStorage
+        useMulti: localStorage.getItem('eval_useMulti') === 'false' ? false : true,
+        finalK: parseInt(localStorage.getItem('eval_finalK') || '5', 10),
+        sampleSize: localStorage.getItem('eval_sampleSize') || ''
+      }));
+    } catch (error) {
+      console.error('Failed to load eval config:', error);
+    }
+  };
 
   // Load available eval runs on mount
   useEffect(() => {
@@ -100,6 +151,10 @@ export function EvaluateSubtab() {
         }
       } catch (err) {
         console.error('Failed to load eval runs:', err);
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        setError(`Failed to load eval runs: ${errorMsg}`);
+        // Also log the full error details for debugging
+        console.error('Full error details:', err);
       }
     };
     loadRuns();
@@ -239,53 +294,58 @@ export function EvaluateSubtab() {
   };
 
   const runFullEvaluation = async () => {
+    if (evalRunning) return;
+
     setEvalRunning(true);
-    setEvalProgress({ current: 0, total: 0, status: 'Starting evaluation...' });
+    setEvalProgress({ current: 0, total: 100, status: 'Starting evaluation...' });
+    setTerminalVisible(true);
+    resetTerminal('RAG Evaluation Logs');
+
+    const sampleLimit = evalSettings.sampleSize ? parseInt(evalSettings.sampleSize, 10) : undefined;
+    appendTerminalLine('🧪 Starting full RAG evaluation...');
+    appendTerminalLine(`Settings: use_multi=${evalSettings.useMulti ? 'true' : 'false'}, final_k=${evalSettings.finalK}, sample_limit=${sampleLimit || 'all'}`);
 
     try {
-      const payload: any = {
+      TerminalService.streamEvalRun('eval_terminal', {
         use_multi: evalSettings.useMulti,
-        final_k: evalSettings.finalK
-      };
-
-      if (evalSettings.sampleSize) {
-        payload.sample_limit = parseInt(evalSettings.sampleSize);
-      }
-
-      const response = await fetchJson('eval/run', {
-        method: 'POST',
-        body: JSON.stringify(payload)
-      });
-
-      // Start polling for status
-      const pollInterval = setInterval(async () => {
-        try {
-          const status = await fetchJson('eval/status');
-          if (status.running) {
-            setEvalProgress({
-              current: status.progress || 0,
-              total: status.total || 0,
-              status: `Running... ${status.progress}/${status.total} questions`
-            });
-          } else {
-            clearInterval(pollInterval);
-            // Load results
+        final_k: evalSettings.finalK,
+        sample_limit: sampleLimit,
+        onLine: (line) => {
+          appendTerminalLine(line);
+        },
+        onProgress: (percent, message) => {
+          setEvalProgress({
+            current: percent,
+            total: 100,
+            status: message || 'Running evaluation...'
+          });
+          updateTerminalProgress(percent, message);
+        },
+        onError: (message) => {
+          setEvalRunning(false);
+          setEvalProgress((prev) => ({ ...prev, status: message || 'Error' }));
+          appendTerminalLine(`\x1b[31mError: ${message}\x1b[0m`);
+        },
+        onComplete: async () => {
+          try {
             const results = await fetchJson('eval/results');
             setEvalResults(results);
             if (results.run_id) {
               setLatestRunId(results.run_id);
             }
+          } catch (err) {
+            appendTerminalLine(`\x1b[31mError fetching results: ${err}\x1b[0m`);
+          } finally {
             setEvalRunning(false);
+            setEvalProgress({ current: 100, total: 100, status: 'Complete' });
+            updateTerminalProgress(100, 'Complete');
           }
-        } catch (err) {
-          clearInterval(pollInterval);
-          setEvalRunning(false);
-          alert(`Evaluation failed: ${err}`);
         }
-      }, 1000);
+      });
     } catch (err) {
       setEvalRunning(false);
-      alert(`Failed to start evaluation: ${err}`);
+      setEvalProgress((prev) => ({ ...prev, status: 'Failed to start' }));
+      appendTerminalLine(`\x1b[31mFailed to start evaluation: ${err}\x1b[0m`);
     }
   };
 
@@ -473,7 +533,11 @@ export function EvaluateSubtab() {
             <label>Use Multi-Query</label>
             <select
               value={evalSettings.useMulti ? '1' : '0'}
-              onChange={e => setEvalSettings(prev => ({ ...prev, useMulti: e.target.value === '1' }))}
+              onChange={e => {
+                const newValue = e.target.value === '1';
+                setEvalSettings(prev => ({ ...prev, useMulti: newValue }));
+                localStorage.setItem('eval_useMulti', String(newValue));
+              }}
             >
               <option value="1">Yes</option>
               <option value="0">No</option>
@@ -484,7 +548,11 @@ export function EvaluateSubtab() {
             <input
               type="number"
               value={evalSettings.finalK}
-              onChange={e => setEvalSettings(prev => ({ ...prev, finalK: parseInt(e.target.value) || 5 }))}
+              onChange={e => {
+                const newValue = parseInt(e.target.value) || 5;
+                setEvalSettings(prev => ({ ...prev, finalK: newValue }));
+                localStorage.setItem('eval_finalK', String(newValue));
+              }}
               min="1"
               max="20"
             />
@@ -493,7 +561,11 @@ export function EvaluateSubtab() {
             <label>Sample Size</label>
             <select
               value={evalSettings.sampleSize}
-              onChange={e => setEvalSettings(prev => ({ ...prev, sampleSize: e.target.value }))}
+              onChange={e => {
+                const newValue = e.target.value;
+                setEvalSettings(prev => ({ ...prev, sampleSize: newValue }));
+                localStorage.setItem('eval_sampleSize', newValue);
+              }}
             >
               <option value="">Full (All Questions)</option>
               <option value="10">Quick (10 Questions)</option>
@@ -512,6 +584,47 @@ export function EvaluateSubtab() {
         >
           {evalRunning ? 'Running...' : 'Run Full Evaluation'}
         </button>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+          <button
+            onClick={() => {
+              setTerminalVisible(!terminalVisible);
+              const terminal = getTerminal();
+              terminal?.show?.();
+            }}
+            data-tooltip="EVAL_LOGS_TERMINAL"
+            title="Show the sliding terminal with raw eval logs"
+            style={{
+              background: 'var(--bg-elev2)',
+              color: 'var(--link)',
+              border: '1px solid var(--link)',
+              padding: '8px 12px',
+              borderRadius: '6px',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            {terminalVisible ? 'Hide Logs' : 'See Logs'}
+          </button>
+        </div>
+
+        <div
+          style={{
+            maxHeight: terminalVisible ? '400px' : '0',
+            opacity: terminalVisible ? 1 : 0,
+            overflow: 'hidden',
+            transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease',
+            marginTop: terminalVisible ? '12px' : '0'
+          }}
+        >
+          <LiveTerminal
+            ref={terminalRef}
+            id="eval_terminal"
+            title="RAG Evaluation Logs"
+            initialContent={['Ready for evaluation logs...']}
+          />
+        </div>
 
         {/* Results Display */}
         {evalResults && (

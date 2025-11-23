@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { configApi } from '@/api/config';
+import { useTooltips } from '@/hooks/useTooltips';
 
 interface MCPServer {
   name: string;
@@ -19,6 +20,8 @@ export function MCPSubtab() {
   const [testResult, setTestResult] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const { tooltips } = useTooltips();
 
   useEffect(() => {
     checkMCPStatus();
@@ -75,60 +78,67 @@ export function MCPSubtab() {
 
   async function startMCPServer() {
     setIsLoading(true);
+    setActionMessage('Starting MCP HTTP Server...');
     try {
       const response = await fetch(api('/api/mcp/http/start'), { method: 'POST' });
       const data = await response.json();
       if (data.success) {
-        alert('MCP HTTP Server started successfully on port 8013');
+        setActionMessage('MCP HTTP Server started successfully on port 8013');
         await checkMCPStatus();
       } else {
-        alert(`Failed to start MCP server: ${data.error || 'Unknown error'}`);
+        setActionMessage(`Failed to start MCP server: ${data.error || 'Unknown error'}`);
       }
     } catch (error: any) {
-      alert(`Error starting MCP server: ${error.message}`);
+      setActionMessage(`Error starting MCP server: ${error.message}`);
     } finally {
       setIsLoading(false);
+      setTimeout(() => setActionMessage(null), 3000);
     }
   }
 
   async function stopMCPServer() {
     setIsLoading(true);
+    setActionMessage('Stopping MCP HTTP Server...');
     try {
       const response = await fetch(api('/api/mcp/http/stop'), { method: 'POST' });
       const data = await response.json();
       if (data.success) {
-        alert('MCP HTTP Server stopped successfully');
+        setActionMessage('MCP HTTP Server stopped successfully');
         await checkMCPStatus();
       } else {
-        alert(`Failed to stop MCP server: ${data.error || 'Unknown error'}`);
+        setActionMessage(`Failed to stop MCP server: ${data.error || 'Unknown error'}`);
       }
     } catch (error: any) {
-      alert(`Error stopping MCP server: ${error.message}`);
+      setActionMessage(`Error stopping MCP server: ${error.message}`);
     } finally {
       setIsLoading(false);
+      setTimeout(() => setActionMessage(null), 3000);
     }
   }
 
   async function restartMCPServer() {
     setIsLoading(true);
+    setActionMessage('Restarting MCP HTTP Server...');
     try {
       const response = await fetch(api('/api/mcp/http/restart'), { method: 'POST' });
       const data = await response.json();
       if (data.success) {
-        alert('MCP HTTP Server restarted successfully');
+        setActionMessage('MCP HTTP Server restarted successfully');
         await checkMCPStatus();
       } else {
-        alert(`Failed to restart MCP server: ${data.error || 'Unknown error'}`);
+        setActionMessage(`Failed to restart MCP server: ${data.error || 'Unknown error'}`);
       }
     } catch (error: any) {
-      alert(`Error restarting MCP server: ${error.message}`);
+      setActionMessage(`Error restarting MCP server: ${error.message}`);
     } finally {
       setIsLoading(false);
+      setTimeout(() => setActionMessage(null), 3000);
     }
   }
 
   async function saveMCPSettings() {
     setIsSaving(true);
+    setActionMessage('Saving MCP settings...');
     try {
       // Parse URL to extract host, port, and path
       const url = new URL(serverUrl);
@@ -149,18 +159,19 @@ export function MCPSubtab() {
       if (apiKey.trim()) {
         const result = await configApi.saveMCPKey(apiKey);
         if (result.status === 'success') {
-          alert('MCP settings and API key saved successfully! Restart the MCP server for changes to take effect.');
+          setActionMessage('MCP settings and API key saved successfully! Restart the MCP server for changes to take effect.');
           setApiKey(''); // Clear for security
         } else {
-          alert(`Settings saved but API key failed: ${result.message || 'Unknown error'}`);
+          setActionMessage(`Settings saved but API key failed: ${result.message || 'Unknown error'}`);
         }
       } else {
-        alert('MCP settings saved successfully! Restart the MCP server for changes to take effect.');
+        setActionMessage('MCP settings saved successfully! Restart the MCP server for changes to take effect.');
       }
     } catch (error: any) {
-      alert(`Error saving MCP settings: ${error.message}`);
+      setActionMessage(`Error saving MCP settings: ${error.message}`);
     } finally {
       setIsSaving(false);
+      setTimeout(() => setActionMessage(null), 5000); // Longer timeout for this message
     }
   }
 
@@ -178,6 +189,21 @@ export function MCPSubtab() {
 
   return (
     <div className="settings-section">
+      {/* Action message */}
+      {actionMessage && (
+        <div style={{
+          padding: '12px',
+          background: 'var(--bg-elev2)',
+          border: '1px solid var(--line)',
+          borderRadius: '6px',
+          marginBottom: '16px',
+          fontSize: '12px',
+          color: 'var(--fg)'
+        }}>
+          {actionMessage}
+        </div>
+      )}
+
       <h2>MCP Server Connection Status</h2>
 
       {/* Server List */}
@@ -270,7 +296,7 @@ export function MCPSubtab() {
       <div style={{ marginBottom: '16px' }}>
         <div className="input-row">
           <div className="input-group">
-            <label>Server URL</label>
+            <label dangerouslySetInnerHTML={{ __html: tooltips.MCP_SERVER_URL }} />
             <input
               type="text"
               value={serverUrl}
@@ -293,7 +319,7 @@ export function MCPSubtab() {
 
         <div className="input-row">
           <div className="input-group">
-            <label>API Key (Optional)</label>
+            <label dangerouslySetInnerHTML={{ __html: tooltips.MCP_API_KEY }} />
             <input
               type="password"
               value={apiKey}

@@ -61,30 +61,21 @@ def create_app() -> FastAPI:
 
     app = FastAPI(title="AGRO RAG + GUI")
 
-    # CORS (dev-friendly defaults; configurable via env/registry)
-    try:
-        raw_origins = _config_registry.get_str("CORS_ALLOW_ORIGINS", "")
-    except Exception:
-        raw_origins = ""
-    try:
-        origin_regex = _config_registry.get_str("CORS_ALLOW_ORIGIN_REGEX", "")
-    except Exception:
-        origin_regex = ""
-    allow_origins = [o.strip() for o in (raw_origins or "").split(",") if o.strip()]
-
-    # Sensible default for dev: allow localhost/127.0.0.1 on any port
-    if not allow_origins and not origin_regex:
-        origin_regex = r"^https?://(localhost|127\\.0\\.0\\.1)(:\\d{1,5})?$"
-
+    # CORS configuration for multiple developers on Vite dev servers (ports 5170-5179)
+    # Also allows production origins and same-origin requests
     cors_kwargs = dict(
-        allow_credentials=True,  # Enable credentials for same-origin requests
+        allow_credentials=True,  # Enable credentials for auth/cookies if needed
         allow_methods=["*"],
-        allow_headers=["*"]
+        allow_headers=["*"],
+        # Explicit origins for production and common dev ports
+        allow_origins=[
+            "http://localhost:8012",
+            "http://127.0.0.1:8012",
+            # Production origins can be added here
+        ],
+        # Regex pattern to allow Vite dev server ports 5170-5179
+        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1):517[0-9]$"
     )
-    if origin_regex:
-        cors_kwargs["allow_origin_regex"] = origin_regex
-    else:
-        cors_kwargs["allow_origins"] = allow_origins
 
     app.add_middleware(CORSMiddleware, **cors_kwargs)
 

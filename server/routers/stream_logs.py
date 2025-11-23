@@ -4,11 +4,14 @@ Real-time log streaming for build operations, Docker, and more
 """
 import asyncio
 import json
-from fastapi import APIRouter, Request
-from fastapi.responses import StreamingResponse
-from typing import AsyncGenerator
+import os
+import sys
 import subprocess
 import time
+from typing import AsyncGenerator, Optional
+from fastapi import APIRouter, Request
+from fastapi.responses import StreamingResponse
+from common.paths import repo_root
 
 router = APIRouter()
 
@@ -199,4 +202,69 @@ async def stream_operation(
     return StreamingResponse(
         generate(),
         media_type="text/event-stream"
+    )
+
+
+async def stream_index_run(
+    repo: Optional[str],
+    skip_dense: int,
+    enrich: int,
+    request: Request
+) -> AsyncGenerator[str, None]:
+    """Stream indexer run stdout as SSE logs."""
+    env = {**os.environ, "REPO_ROOT": str(repo_root())}
+    if repo:
+        env["REPO"] = repo
+    if skip_dense:
+        env["SKIP_DENSE"] = "1"
+    if enrich:
+        env["ENRICH_CODE_CHUNKS"] = "true"
+
+    cmd = [sys.executable, "-m", "indexer.index_repo"]
+    start_msg = f"Starting indexer (repo={env.get('REPO', 'agro')}, skip_dense={bool(skip_dense)}, enrich={bool(enrich)})"
+    yield f"data: {json.dumps({'type': 'log', 'message': start_msg})}\n\n"
+    yield f"data: {json.dumps({'type': 'progress', 'percent': 0, 'message': 'Initializing indexer'})}\n\n"
+
+    process = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        bufsize=1,
+        universal_newlines=True,
+        cwd=str(repo_root()),
+        env=env,
+    )
+
+    for line in iter(process.stdout.readline, ''):
+        if await request.is_disconnected():
+            process.terminate()
+            break
+        yield f"data: {json.dumps({'type': 'log', 'message': line.strip()})}\n\n"
+        await asyncio.sleep(0.01)
+
+    process.wait()
+
+    if process.returncode == 0:
+        yield f"data: {json.dumps({'type': 'progress', 'percent': 100, 'message': 'Indexing complete'})}\n\n"
+        yield "data: {\"type\": \"complete\"}\n\n"
+    else:
+        yield f"data: {json.dumps({'type': 'error', 'message': f'Indexing failed with code {process.returncode}'})}\n\n"
+
+
+@router.get("/api/stream/index/run")
+async def stream_index(
+    request: Request,
+    repo: Optional[str] = None,
+    skip_dense: int = 0,
+    enrich: int = 0
+):
+    """Run the indexer with streaming logs via SSE."""
+    return StreamingResponse(
+        stream_index_run(repo, skip_dense, enrich, request),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )

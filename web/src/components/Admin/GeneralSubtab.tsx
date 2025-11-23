@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { configApi } from '@/api/config';
 import { apiClient, api } from '@/api/client';
+import { useTooltips } from '@/hooks/useTooltips';
 import type { AppConfig, EnvConfig } from '@/types';
 
 export function GeneralSubtab() {
@@ -60,6 +61,8 @@ export function GeneralSubtab() {
   // Loading states
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const { tooltips } = useTooltips();
 
   // Load initial config
   useEffect(() => {
@@ -117,7 +120,7 @@ export function GeneralSubtab() {
 
   async function loadWebhookConfig() {
     try {
-      const { data } = await apiClient.get(api('/webhooks/config'));
+      const { data } = await apiClient.get(api('/api/monitoring/webhooks/config'));
       if (data) {
         setWebhookEnabled(data.alert_notify_enabled !== false);
         const severities = (data.alert_notify_severities || 'critical,warning').split(',');
@@ -134,6 +137,7 @@ export function GeneralSubtab() {
   async function saveGeneralSettings() {
     try {
       setSaving(true);
+      setActionMessage('Saving general settings...');
       const envUpdate: Partial<EnvConfig> = {
         THEME_MODE: themeMode,
         AGRO_EDITION: agroEdition,
@@ -164,12 +168,13 @@ export function GeneralSubtab() {
       };
 
       await configApi.saveConfig({ env: envUpdate });
-      alert('General settings saved successfully!');
+      setActionMessage('General settings saved successfully!');
     } catch (err) {
       console.error('Failed to save settings:', err);
-      alert('Failed to save settings: ' + (err as Error).message);
+      setActionMessage('Failed to save settings: ' + (err as Error).message);
     } finally {
       setSaving(false);
+      setTimeout(() => setActionMessage(null), 3000);
     }
   }
 
@@ -190,7 +195,7 @@ export function GeneralSubtab() {
         alert_webhook_timeout_seconds: alertWebhookTimeout,
       };
 
-      await apiClient.post(api('/webhooks/config'), payload);
+      await apiClient.post(api('/api/monitoring/webhooks/config'), payload);
       setWebhookSaveStatus('Saved successfully!');
       setTimeout(() => setWebhookSaveStatus(''), 3000);
     } catch (err) {
@@ -221,6 +226,21 @@ export function GeneralSubtab() {
 
   return (
     <div style={{ padding: '20px' }}>
+      {/* Action message */}
+      {actionMessage && (
+        <div style={{
+          padding: '12px',
+          background: 'var(--bg-elev2)',
+          border: '1px solid var(--line)',
+          borderRadius: '6px',
+          marginBottom: '16px',
+          fontSize: '12px',
+          color: 'var(--fg)'
+        }}>
+          {actionMessage}
+        </div>
+      )}
+
       {/* Theme & Appearance */}
       <div className="settings-section">
         <h3>Theme & Appearance</h3>
@@ -242,7 +262,7 @@ export function GeneralSubtab() {
         <h3>Server Settings</h3>
         <div className="input-row">
           <div className="input-group">
-            <label>Edition (AGRO_EDITION)</label>
+            <label dangerouslySetInnerHTML={{ __html: tooltips.AGRO_EDITION }} />
             <input type="text" value={agroEdition} onChange={(e) => setAgroEdition(e.target.value)} placeholder="oss | pro | enterprise" />
           </div>
           <div className="input-group">
@@ -285,7 +305,7 @@ export function GeneralSubtab() {
         </div>
         <div className="input-row">
           <div className="input-group">
-            <label>Chat Streaming Enabled</label>
+            <label dangerouslySetInnerHTML={{ __html: tooltips.CHAT_STREAMING_ENABLED }} />
             <select value={chatStreamingEnabled} onChange={(e) => setChatStreamingEnabled(Number(e.target.value))}>
               <option value="1">Enabled</option>
               <option value="0">Disabled</option>
@@ -300,14 +320,14 @@ export function GeneralSubtab() {
         <p className="small">Configure distributed tracing, metrics collection, and monitoring.</p>
         <div className="input-row">
           <div className="input-group">
-            <label>Tracing Enabled</label>
+            <label dangerouslySetInnerHTML={{ __html: tooltips.TRACING_ENABLED }} />
             <select value={tracingEnabled} onChange={(e) => setTracingEnabled(Number(e.target.value))}>
               <option value="1">Enabled</option>
               <option value="0">Disabled</option>
             </select>
           </div>
           <div className="input-group">
-            <label>Trace Sampling Rate</label>
+            <label dangerouslySetInnerHTML={{ __html: tooltips.TRACE_SAMPLING_RATE }} />
             <input
               type="number"
               value={traceSamplingRate}
@@ -339,7 +359,7 @@ export function GeneralSubtab() {
         </div>
         <div className="input-row">
           <div className="input-group">
-            <label>Log Level</label>
+            <label dangerouslySetInnerHTML={{ __html: tooltips.LOG_LEVEL }} />
             <select value={logLevel} onChange={(e) => setLogLevel(e.target.value)}>
               <option value="DEBUG">DEBUG</option>
               <option value="INFO">INFO</option>
@@ -372,7 +392,7 @@ export function GeneralSubtab() {
               <span className="toggle-track" aria-hidden="true">
                 <span className="toggle-thumb"></span>
               </span>
-              <span className="toggle-label">Enable Embedded Editor</span>
+              <span className="toggle-label" dangerouslySetInnerHTML={{ __html: tooltips.EDITOR_ENABLED }} />
             </label>
             <p className="small">Start OpenVSCode Server container on up.sh</p>
           </div>
@@ -382,7 +402,7 @@ export function GeneralSubtab() {
               <span className="toggle-track" aria-hidden="true">
                 <span className="toggle-thumb"></span>
               </span>
-              <span className="toggle-label">Enable Editor Embed (iframe)</span>
+              <span className="toggle-label" dangerouslySetInnerHTML={{ __html: tooltips.EDITOR_EMBED_ENABLED }} />
             </label>
             <p className="small">Show the editor inline in the GUI (hides automatically in CI)</p>
           </div>

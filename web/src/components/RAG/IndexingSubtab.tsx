@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { LiveTerminal, LiveTerminalHandle } from '../LiveTerminal/LiveTerminal';
+import { TerminalService } from '@/services/TerminalService';
 
 interface IndexStats {
   chunks?: number;
@@ -17,7 +19,6 @@ export function IndexingSubtab() {
   // Simple indexing state
   const [simpleRepo, setSimpleRepo] = useState<string>('');
   const [simpleDense, setSimpleDense] = useState<boolean>(true);
-  const [simpleOutput, setSimpleOutput] = useState<string>('');
   const [simpleRunning, setSimpleRunning] = useState<boolean>(false);
 
   // Advanced indexing state
@@ -25,7 +26,7 @@ export function IndexingSubtab() {
   const [embeddingType, setEmbeddingType] = useState<string>('openai');
   const [skipDense, setSkipDense] = useState<string>('0');
   const [enrichChunks, setEnrichChunks] = useState<string>('0');
-  const [indexStatus, setIndexStatus] = useState<string>('');
+  const [indexStatus, setIndexStatus] = useState<string>('Ready to index...');
   const [indexProgress, setIndexProgress] = useState<number>(0);
   const [indexRunning, setIndexRunning] = useState<boolean>(false);
 
@@ -69,6 +70,29 @@ export function IndexingSubtab() {
   const [repos, setRepos] = useState<RepoInfo[]>([]);
   const [currentRepo, setCurrentRepo] = useState<string>('');
   const [currentBranch, setCurrentBranch] = useState<string>('');
+  const [terminalVisible, setTerminalVisible] = useState<boolean>(false);
+  const terminalRef = useRef<LiveTerminalHandle>(null);
+
+  const getTerminal = useCallback(() => {
+    return terminalRef.current || (window as any).terminal_indexing_terminal;
+  }, []);
+
+  const resetTerminal = useCallback((title: string) => {
+    const t = getTerminal();
+    t?.show?.();
+    t?.clear?.();
+    t?.setTitle?.(title);
+  }, [getTerminal]);
+
+  const appendTerminalLine = useCallback((line: string) => {
+    const t = getTerminal();
+    t?.appendLine?.(line);
+  }, [getTerminal]);
+
+  const updateTerminalProgress = useCallback((percent: number, message?: string) => {
+    const t = getTerminal();
+    t?.updateProgress?.(percent, message);
+  }, [getTerminal]);
 
   // Load config on mount
   useEffect(() => {
@@ -157,24 +181,43 @@ export function IndexingSubtab() {
     }
 
     setSimpleRunning(true);
-    setSimpleOutput('Starting indexing...\n');
+    setTerminalVisible(true);
+    resetTerminal(`Indexing: ${simpleRepo}`);
+    appendTerminalLine(`🚀 Starting indexing for repo=${simpleRepo} dense=${simpleDense ? 'on' : 'off'}`);
+    setIndexProgress(0);
+    setIndexStatus('Starting indexing...');
 
     try {
-      const response = await fetch(`/api/index/run?repo=${encodeURIComponent(simpleRepo)}&dense=${simpleDense}`, {
-        method: 'POST'
+      TerminalService.streamIndexRun('indexing_terminal', {
+        repo: simpleRepo,
+        skip_dense: !simpleDense,
+        enrich: false,
+        onLine: (line) => {
+          appendTerminalLine(line);
+          setIndexStatus((prev) => `${prev ? `${prev}\n` : ''}${line}`);
+        },
+        onProgress: (percent, message) => {
+          const pct = percent || 0;
+          setIndexProgress(pct);
+          setIndexStatus(message || 'Indexing...');
+          updateTerminalProgress(pct, message);
+        },
+        onError: (err) => {
+          appendTerminalLine(`\x1b[31mError: ${err}\x1b[0m`);
+          setIndexStatus(`Error: ${err}`);
+          setSimpleRunning(false);
+        },
+        onComplete: async () => {
+          updateTerminalProgress(100, 'Complete');
+          setIndexProgress(100);
+          setIndexStatus('Indexing complete');
+          setSimpleRunning(false);
+          await loadIndexStats();
+        }
       });
-
-      const data = await response.json();
-
-      if (data.error) {
-        setSimpleOutput(prev => prev + `\nError: ${data.error}\n`);
-      } else {
-        setSimpleOutput(prev => prev + `\nSuccess! Indexed ${data.chunks || 0} chunks.\n`);
-        await loadIndexStats();
-      }
     } catch (error) {
-      setSimpleOutput(prev => prev + `\nFailed: ${error}\n`);
-    } finally {
+      appendTerminalLine(`\x1b[31mFailed: ${error}\x1b[0m`);
+      setIndexStatus(`Failed: ${error}`);
       setSimpleRunning(false);
     }
   };
@@ -186,72 +229,54 @@ export function IndexingSubtab() {
     }
 
     setIndexRunning(true);
-    setIndexStatus('Starting indexing...\n');
+    setTerminalVisible(true);
+    resetTerminal(`Indexing: ${indexRepo}`);
+    appendTerminalLine(`🚀 Starting indexing for repo=${indexRepo}, skip_dense=${skipDense}, enrich=${enrichChunks}`);
+    setIndexStatus('Starting indexing...');
     setIndexProgress(0);
 
     try {
-      const payload = {
+      TerminalService.streamIndexRun('indexing_terminal', {
         repo: indexRepo,
-        skip_dense: parseInt(skipDense, 10),
-        enrich: parseInt(enrichChunks, 10),
-        embedding_type: embeddingType
-      };
-
-      const response = await fetch('/api/index/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await response.json();
-
-      if (data.error) {
-        setIndexStatus(prev => prev + `\nError: ${data.error}\n`);
-      } else {
-        setIndexStatus(prev => prev + `\nIndexing started successfully.\n`);
-        pollIndexStatus();
-      }
-    } catch (error) {
-      setIndexStatus(prev => prev + `\nFailed: ${error}\n`);
-      setIndexRunning(false);
-    }
-  };
-
-  const pollIndexStatus = async () => {
-    const interval = setInterval(async () => {
-      try {
-        const response = await fetch('/api/index/status');
-        const data = await response.json();
-
-        if (data.status) {
-          setIndexStatus(data.status);
-        }
-
-        if (data.progress !== undefined) {
-          setIndexProgress(data.progress);
-        }
-
-        if (data.completed || data.error) {
-          clearInterval(interval);
+        skip_dense: parseInt(skipDense, 10) === 1,
+        enrich: parseInt(enrichChunks, 10) === 1,
+        onLine: (line) => {
+          appendTerminalLine(line);
+          setIndexStatus((prev) => `${prev ? `${prev}\n` : ''}${line}`);
+        },
+        onProgress: (percent, message) => {
+          const pct = percent || 0;
+          setIndexProgress(pct);
+          setIndexStatus(message || 'Indexing...');
+          updateTerminalProgress(pct, message);
+        },
+        onError: (err) => {
+          appendTerminalLine(`\x1b[31mError: ${err}\x1b[0m`);
+          setIndexStatus(`Error: ${err}`);
+          setIndexRunning(false);
+        },
+        onComplete: async () => {
+          updateTerminalProgress(100, 'Complete');
+          setIndexProgress(100);
+          setIndexStatus('Indexing complete');
           setIndexRunning(false);
           await loadIndexStats();
         }
-      } catch (error) {
-        console.error('Failed to poll index status:', error);
-        clearInterval(interval);
-        setIndexRunning(false);
-      }
-    }, 1000);
+      });
+    } catch (error) {
+      appendTerminalLine(`\x1b[31mFailed: ${error}\x1b[0m`);
+      setIndexStatus(`Failed: ${error}`);
+      setIndexRunning(false);
+    }
   };
 
   const handleStopIndexing = async () => {
-    try {
-      await fetch('/api/index/stop', { method: 'POST' });
-      setIndexRunning(false);
-      setIndexStatus(prev => prev + '\nIndexing stopped by user.\n');
-    } catch (error) {
-      console.error('Failed to stop indexing:', error);
-    }
+    // Disconnect the SSE stream; backend terminates the process when client disconnects
+    TerminalService.disconnect('indexing_terminal');
+    setIndexRunning(false);
+    setSimpleRunning(false);
+    setIndexStatus(prev => `${prev ? `${prev}\n` : ''}Indexing stopped by user.`);
+    appendTerminalLine('\x1b[33mIndexing stopped by user.\x1b[0m');
   };
 
   const handleSaveSettings = async () => {
@@ -439,26 +464,6 @@ export function IndexingSubtab() {
           >
             {simpleRunning ? 'INDEXING...' : 'INDEX NOW'}
           </button>
-
-          <pre
-            id="simple-output"
-            style={{
-              display: simpleOutput ? 'block' : 'none',
-              marginTop: '24px',
-              padding: '20px',
-              background: 'var(--code-bg)',
-              color: 'var(--code-fg)',
-              border: '2px solid var(--line)',
-              borderRadius: '8px',
-              fontFamily: "'SF Mono', 'Consolas', monospace",
-              fontSize: '12px',
-              lineHeight: '1.5',
-              maxHeight: '600px',
-              overflowY: 'auto',
-              whiteSpace: 'pre-wrap',
-              wordWrap: 'break-word'
-            }}
-          >{simpleOutput}</pre>
         </div>
       </div>
 
@@ -594,6 +599,30 @@ export function IndexingSubtab() {
           </button>
         </div>
 
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+          <button
+            onClick={() => {
+              setTerminalVisible(!terminalVisible);
+              const t = getTerminal();
+              t?.show?.();
+            }}
+            data-tooltip="INDEX_LOGS_TERMINAL"
+            title="Show the sliding terminal with raw indexing logs"
+            style={{
+              background: 'var(--bg-elev2)',
+              color: 'var(--link)',
+              border: '1px solid var(--link)',
+              padding: '8px 12px',
+              borderRadius: '6px',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            {terminalVisible ? 'Hide Logs' : 'See Logs'}
+          </button>
+        </div>
+
         <div style={{ marginTop: '16px' }}>
           <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: 'var(--accent)' }}>Progress</label>
           <div className="progress" style={{ background: 'var(--card-bg)', border: '1px solid var(--line)', borderRadius: '6px', height: '24px', overflow: 'hidden' }}>
@@ -635,6 +664,23 @@ export function IndexingSubtab() {
           >
             {indexStatus || 'Ready to index...'}
           </div>
+        </div>
+
+        <div
+          style={{
+            maxHeight: terminalVisible ? '400px' : '0',
+            opacity: terminalVisible ? 1 : 0,
+            overflow: 'hidden',
+            transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease',
+            marginTop: terminalVisible ? '12px' : '0'
+          }}
+        >
+          <LiveTerminal
+            ref={terminalRef}
+            id="indexing_terminal"
+            title="Indexing Logs"
+            initialContent={['Ready for indexing logs...']}
+          />
         </div>
       </div>
 

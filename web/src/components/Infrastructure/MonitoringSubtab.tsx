@@ -2,6 +2,7 @@
 // Grafana metrics display and alert configuration
 
 import { useState, useEffect } from 'react';
+import { useTooltips } from '@/hooks/useTooltips';
 
 export function MonitoringSubtab() {
   const [errorRateThreshold, setErrorRateThreshold] = useState('5.0');
@@ -13,6 +14,8 @@ export function MonitoringSubtab() {
   const [cohereRerankCalls, setCohereRerankCalls] = useState('30');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const { tooltips } = useTooltips();
 
   useEffect(() => {
     loadAlertConfig();
@@ -46,6 +49,7 @@ export function MonitoringSubtab() {
 
   async function saveAlertConfig() {
     setSaving(true);
+    setActionMessage('Saving alert configuration...');
     try {
       const config = {
         error_rate_threshold_percent: parseFloat(errorRateThreshold),
@@ -65,14 +69,15 @@ export function MonitoringSubtab() {
 
       const data = await response.json();
       if (data.status === 'ok') {
-        alert(`Alert configuration saved successfully! Updated ${data.updated} threshold(s).`);
+        setActionMessage(`Alert configuration saved successfully! Updated ${data.updated} threshold(s).`);
       } else {
-        alert(`Failed to save alert configuration: ${data.message || 'Unknown error'}`);
+        setActionMessage(`Failed to save alert configuration: ${data.message || 'Unknown error'}`);
       }
     } catch (error: any) {
-      alert(`Error saving alert configuration: ${error.message}`);
+      setActionMessage(`Error saving alert configuration: ${error.message}`);
     } finally {
       setSaving(false);
+      setTimeout(() => setActionMessage(null), 3000);
     }
   }
 
@@ -86,6 +91,21 @@ export function MonitoringSubtab() {
 
   return (
     <div className="settings-section">
+      {/* Action message */}
+      {actionMessage && (
+        <div style={{
+          padding: '12px',
+          background: 'var(--bg-elev2)',
+          border: '1px solid var(--line)',
+          borderRadius: '6px',
+          marginBottom: '16px',
+          fontSize: '12px',
+          color: 'var(--fg)'
+        }}>
+          {actionMessage}
+        </div>
+      )}
+
       <h2>Performance & Reliability Alerts</h2>
       <p className="small" style={{ marginBottom: '24px' }}>
         Set thresholds for error rates, latency, and timeout incidents.
@@ -105,7 +125,7 @@ export function MonitoringSubtab() {
 
         <div className="input-row">
           <div className="input-group">
-            <label>Error Rate Threshold (%)</label>
+            <label dangerouslySetInnerHTML={{ __html: tooltips.ERROR_RATE_THRESHOLD }} />
             <input
               type="number"
               value={errorRateThreshold}
@@ -127,7 +147,7 @@ export function MonitoringSubtab() {
             </p>
           </div>
           <div className="input-group">
-            <label>Request Latency P99 (seconds)</label>
+            <label dangerouslySetInnerHTML={{ __html: tooltips.LATENCY_P99_THRESHOLD }} />
             <input
               type="number"
               value={latencyP99}
@@ -152,7 +172,7 @@ export function MonitoringSubtab() {
 
         <div className="input-row">
           <div className="input-group">
-            <label>Timeout Errors (per 5 min)</label>
+            <label dangerouslySetInnerHTML={{ __html: tooltips.TIMEOUT_ERRORS_THRESHOLD }} />
             <input
               type="number"
               value={timeoutErrors}
@@ -174,7 +194,7 @@ export function MonitoringSubtab() {
             </p>
           </div>
           <div className="input-group">
-            <label>Rate Limit Errors (per 5 min)</label>
+            <label dangerouslySetInnerHTML={{ __html: tooltips.RATE_LIMIT_ERRORS_THRESHOLD }} />
             <input
               type="number"
               value={rateLimitErrors}
@@ -215,7 +235,7 @@ export function MonitoringSubtab() {
 
         <div className="input-row">
           <div className="input-group">
-            <label>Endpoint Call Frequency (calls/min)</label>
+            <label dangerouslySetInnerHTML={{ __html: tooltips.ENDPOINT_CALL_FREQUENCY }} />
             <input
               type="number"
               value={endpointCallFreq}
@@ -237,7 +257,7 @@ export function MonitoringSubtab() {
             </p>
           </div>
           <div className="input-group">
-            <label>Sustained Frequency Duration (minutes)</label>
+            <label dangerouslySetInnerHTML={{ __html: tooltips.ENDPOINT_SUSTAINED_DURATION }} />
             <input
               type="number"
               value={sustainedDuration}
@@ -262,7 +282,7 @@ export function MonitoringSubtab() {
 
         <div className="input-row">
           <div className="input-group">
-            <label>Cohere Rerank Calls (calls/min)</label>
+            <label dangerouslySetInnerHTML={{ __html: tooltips.COHERE_RERANK_CALLS }} />
             <input
               type="number"
               value={cohereRerankCalls}

@@ -22,6 +22,140 @@ class TerminalServiceClass {
   }
 
   /**
+   * Stream evaluation run logs (raw stdout) via dedicated SSE endpoint
+   */
+  streamEvalRun(
+    terminalId: string,
+    params: {
+      use_multi?: boolean;
+      final_k?: number;
+      sample_limit?: number;
+      onLine?: (line: string) => void;
+      onProgress?: (percent: number, message: string) => void;
+      onError?: (error: string) => void;
+      onComplete?: () => void;
+    }
+  ): void {
+    // Close existing connection if any
+    this.disconnect(terminalId);
+
+    const { onLine, onProgress, onError, onComplete, ...queryParams } = params;
+    const qs = new URLSearchParams();
+    Object.entries(queryParams).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        const encoded = typeof value === 'boolean' ? (value ? 1 : 0) : value;
+        qs.append(key, String(encoded));
+      }
+    });
+    const url = `${this.baseUrl}/api/eval/run/stream${qs.toString() ? `?${qs.toString()}` : ''}`;
+
+    const sse = new EventSource(url);
+    const terminal: TerminalInstance = { id: terminalId, sse, onLine, onProgress, onError, onComplete };
+
+    sse.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        switch (data.type) {
+          case 'log':
+            onLine?.(data.message);
+            break;
+          case 'progress':
+            onProgress?.(data.percent, data.message || '');
+            break;
+          case 'error':
+            onError?.(data.message);
+            onLine?.(`\x1b[31mERROR: ${data.message}\x1b[0m`);
+            break;
+          case 'complete':
+            onComplete?.();
+            this.disconnect(terminalId);
+            break;
+          default:
+            if (data.message) {
+              onLine?.(data.message);
+            }
+        }
+      } catch (_) {
+        onLine?.(event.data);
+      }
+    };
+
+    sse.onerror = (error) => {
+      console.error(`[TerminalService] SSE error for ${terminalId}:`, error);
+      onError?.('Connection lost');
+      this.disconnect(terminalId);
+    };
+
+    this.terminals.set(terminalId, terminal);
+  }
+
+  /**
+   * Stream indexer run with raw logs and progress
+   */
+  streamIndexRun(
+    terminalId: string,
+    params: {
+      repo?: string;
+      skip_dense?: boolean;
+      enrich?: boolean;
+      onLine?: (line: string) => void;
+      onProgress?: (percent: number, message: string) => void;
+      onError?: (error: string) => void;
+      onComplete?: () => void;
+    }
+  ): void {
+    this.disconnect(terminalId);
+    const { onLine, onProgress, onError, onComplete, ...queryParams } = params;
+    const qs = new URLSearchParams();
+    Object.entries(queryParams).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        const encoded = typeof value === 'boolean' ? (value ? 1 : 0) : value;
+        qs.append(key, String(encoded));
+      }
+    });
+    const url = `${this.baseUrl}/api/stream/index/run${qs.toString() ? `?${qs.toString()}` : ''}`;
+
+    const sse = new EventSource(url);
+    const terminal: TerminalInstance = { id: terminalId, sse, onLine, onProgress, onError, onComplete };
+
+    sse.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        switch (data.type) {
+          case 'log':
+            onLine?.(data.message);
+            break;
+          case 'progress':
+            onProgress?.(data.percent, data.message || '');
+            break;
+          case 'error':
+            onError?.(data.message);
+            onLine?.(`\x1b[31mERROR: ${data.message}\x1b[0m`);
+            break;
+          case 'complete':
+            onComplete?.();
+            this.disconnect(terminalId);
+            break;
+          default:
+            if (data.message) {
+              onLine?.(data.message);
+            }
+        }
+      } catch (_) {
+        onLine?.(event.data);
+      }
+    };
+
+    sse.onerror = (error) => {
+      console.error(`[TerminalService] SSE error for ${terminalId}:`, error);
+      onError?.('Connection lost');
+      this.disconnect(terminalId);
+    };
+
+    this.terminals.set(terminalId, terminal);
+  }
+
+  /**
    * Connect to a log stream via SSE
    */
   connectToStream(

@@ -92,21 +92,36 @@ test.describe('Infrastructure Subtabs Wiring', () => {
     await expect(repoInput).toBeVisible();
     await repoInput.fill('agro');
 
+    // Test new fields added in Phase 1
+    const collectionSuffixInput = page.locator('input[placeholder="default"]');
+    await expect(collectionSuffixInput).toBeVisible();
+    await collectionSuffixInput.fill('test');
+
+    const outDirInput = page.locator('input[placeholder="./out"]');
+    await expect(outDirInput).toBeVisible();
+    await outDirInput.fill('./out');
+
     // Scroll to save button
     const saveButton = page.locator('button:has-text("Save Configuration")');
     await saveButton.scrollIntoViewIfNeeded();
 
+    // Verify tooltips are present (check for rich HTML content)
+    const qdrantLabel = page.locator('label').filter({ hasText: 'Qdrant URL' }).first();
+    const labelContent = await qdrantLabel.innerHTML();
+    expect(labelContent).toContain('<strong>');
+
     // Click Save Configuration
     await saveButton.click();
 
-    // Wait for save operation
-    await page.waitForTimeout(1500);
+    // Wait for action message to appear (not alert)
+    await page.waitForSelector('text=Saving configuration...', { timeout: 3000 });
 
-    // Verify alert appears
-    page.on('dialog', async dialog => {
-      expect(dialog.message()).toContain('saved successfully');
-      await dialog.accept();
-    });
+    // Wait for success message
+    await page.waitForSelector('text=Configuration saved successfully!', { timeout: 3000 });
+
+    // Verify message auto-dismisses
+    await page.waitForTimeout(3500);
+    await expect(page.locator('text=Configuration saved successfully!')).not.toBeVisible();
 
     // Reload page and verify values persist
     await page.reload();
@@ -120,6 +135,9 @@ test.describe('Infrastructure Subtabs Wiring', () => {
     // Verify saved values are loaded
     const reloadedQdrantInput = page.locator('input[placeholder*="6333"]');
     await expect(reloadedQdrantInput).toHaveValue('http://127.0.0.1:6333');
+
+    const reloadedCollectionSuffixInput = page.locator('input[placeholder="default"]');
+    await expect(reloadedCollectionSuffixInput).toHaveValue('test');
   });
 
   test('Monitoring Subtab - Load and save alert thresholds', async ({ page }) => {

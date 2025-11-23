@@ -5,10 +5,12 @@ This router handles evaluating the quality of the entire RAG pipeline (retrieval
 against a Golden Dataset. It calculates metrics like Hit Rate and MRR.
 """
 import os
+import json
+import time
 import threading
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from pathlib import Path
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from server.utils import atomic_write_json, read_json
 from server.services.config_registry import get_config_registry
 
@@ -35,7 +37,11 @@ def eval_run(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
         _EVAL_STATUS["running"] = True
         try:
              from eval.eval_loop import run_eval_with_results
-             results = run_eval_with_results(sample_limit=payload.get("sample_limit"))
+             results = run_eval_with_results(
+                 sample_limit=payload.get("sample_limit"),
+                 use_multi_override=payload.get("use_multi"),
+                 final_k_override=payload.get("final_k")
+             )
              _EVAL_STATUS["results"] = results
              _EVAL_STATUS["total"] = results.get("total", 0)
         except Exception as e:
@@ -237,6 +243,164 @@ def eval_run_instrumented(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
 
     threading.Thread(target=run_thread, daemon=True).start()
     return {"ok": True, "message": "Instrumented evaluation started"}
+
+
+@router.get("/api/eval/run/stream")
+async def eval_run_stream(
+    request: Request,
+    use_multi: Optional[int] = None,
+    final_k: Optional[int] = None,
+    sample_limit: Optional[int] = None
+):
+    """Run evaluation and stream raw logs/progress via SSE."""
+    global _EVAL_STATUS
+
+    if _EVAL_STATUS["running"]:
+        async def already_running():
+            yield f"data: {json.dumps({'type': 'error', 'message': 'Evaluation already running'})}\n\n"
+        return StreamingResponse(already_running(), media_type="text/event-stream")
+
+    async def generate():
+        global _EVAL_STATUS
+        _EVAL_STATUS["running"] = True
+        _EVAL_STATUS["progress"] = 0
+        _EVAL_STATUS["results"] = None
+
+        # Resolve settings with per-run overrides falling back to config
+        try:
+            default_use_multi = _config.get_int('EVAL_MULTI', 1) == 1
+            default_final_k = _config.get_int('EVAL_FINAL_K', 5)
+            use_multi_val = default_use_multi if use_multi is None else bool(int(use_multi))
+            final_k_val = default_final_k if final_k is None else max(1, int(final_k))
+
+            # Resolve golden path
+            from eval.eval_rag import _resolve_golden_path, hit, MULTI_M  # type: ignore
+            from retrieval.hybrid_search import search_routed, search_routed_multi
+
+            golden_path = _resolve_golden_path()
+            start_msg = f"Starting eval: use_multi={use_multi_val}, final_k={final_k_val}, sample_limit={sample_limit if sample_limit else 'all'}, golden={golden_path}"
+            yield f"data: {json.dumps({'type': 'log', 'message': start_msg})}\n\n"
+
+            if not os.path.exists(golden_path):
+                msg = f"No golden questions file found at {golden_path}"
+                _EVAL_STATUS["results"] = {"error": msg}
+                yield f"data: {json.dumps({'type': 'error', 'message': msg})}\n\n"
+                return
+
+            try:
+                with open(golden_path) as f:
+                    raw_gold = json.load(f)
+            except Exception as e:
+                msg = f"Failed to read golden file: {e}"
+                _EVAL_STATUS["results"] = {"error": msg}
+                yield f"data: {json.dumps({'type': 'error', 'message': msg})}\n\n"
+                return
+
+            # Validate questions
+            gold = []
+            for i, row in enumerate(raw_gold):
+                if not isinstance(row, dict) or 'q' not in row:
+                    continue
+                if not row.get('q', '').strip():
+                    continue
+                gold.append(row)
+
+            if sample_limit and sample_limit > 0:
+                gold = gold[:sample_limit]
+
+            total = len(gold)
+            _EVAL_STATUS["total"] = total
+
+            if total == 0:
+                msg = "No valid golden questions found"
+                _EVAL_STATUS["results"] = {"error": msg}
+                yield f"data: {json.dumps({'type': 'error', 'message': msg})}\n\n"
+                return
+
+            hits_top1 = 0
+            hits_topk = 0
+            results = []
+            start_time = time.time()
+
+            yield f"data: {json.dumps({'type': 'log', 'message': f'Loaded {total} questions'})}\n\n"
+
+            for idx, row in enumerate(gold, 1):
+                if await request.is_disconnected():
+                    yield f"data: {json.dumps({'type': 'error', 'message': 'Client disconnected'})}\n\n"
+                    break
+
+                q = row['q']
+                repo = row.get('repo') or os.getenv('REPO', 'agro')
+                expect = row.get('expect_paths') or []
+
+                yield f"data: {json.dumps({'type': 'log', 'message': f'[{idx}/{total}] {q}'})}\n\n"
+
+                try:
+                    if use_multi_val:
+                        docs = search_routed_multi(q, repo_override=repo, m=MULTI_M, final_k=final_k_val)
+                    else:
+                        docs = search_routed(q, repo_override=repo, final_k=final_k_val)
+                except Exception as e:
+                    docs = []
+                    err_msg = f"⚠ Search failed: {e}"
+                    yield f"data: {json.dumps({'type': 'log', 'message': err_msg})}\n\n"
+
+                paths = [d.get('file_path', '') for d in docs]
+                top1_hit = hit(paths[:1], expect) if paths else False
+                topk_hit = hit(paths, expect) if paths else False
+
+                if top1_hit:
+                    hits_top1 += 1
+                if topk_hit:
+                    hits_topk += 1
+
+                results.append({
+                    "question": q,
+                    "repo": repo,
+                    "expect_paths": expect,
+                    "top1_path": paths[:1],
+                    "top1_hit": top1_hit,
+                    "topk_hit": topk_hit,
+                    "top_paths": paths[:final_k_val]
+                })
+
+                percent = (idx / total) * 100 if total else 0
+                _EVAL_STATUS["progress"] = idx
+                yield f"data: {json.dumps({'type': 'progress', 'percent': percent, 'message': f'Question {idx}/{total}'})}\n\n"
+
+            duration = time.time() - start_time
+            top1_accuracy = hits_top1 / max(1, total)
+            topk_accuracy = hits_topk / max(1, total)
+
+            summary = {
+                "total": total,
+                "top1_hits": hits_top1,
+                "topk_hits": hits_topk,
+                "top1_accuracy": round(top1_accuracy, 3),
+                "topk_accuracy": round(topk_accuracy, 3),
+                "final_k": final_k_val,
+                "use_multi": use_multi_val,
+                "duration_secs": round(duration, 2),
+                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "results": results
+            }
+
+            _EVAL_STATUS["results"] = summary
+
+            yield f"data: {json.dumps({'type': 'log', 'message': f'Complete: top1={hits_top1}/{total}, topk={hits_topk}/{total}, duration={round(duration, 2)}s'})}\n\n"
+            yield "data: {\"type\": \"complete\"}\n\n"
+        finally:
+            _EVAL_STATUS["running"] = False
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 @router.get("/api/eval/status")
 def eval_status() -> Dict[str, Any]:

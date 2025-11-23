@@ -23,7 +23,7 @@ try:
 except ImportError:
     _config_registry = None
 
-router = APIRouter(prefix="/webhooks", tags=["webhooks"])
+router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
 monitoring_router = APIRouter(prefix="/api/monitoring", tags=["monitoring"])
 
 # Alert history log file

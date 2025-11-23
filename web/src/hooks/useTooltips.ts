@@ -51,6 +51,26 @@ export function useTooltips() {
       REDIS_URL: L('Redis URL', 'Connection string for Redis, used for LangGraph checkpoints and optional session memory. The graph runs even if Redis is down (stateless mode).', [
         ['Redis Docs', 'https://redis.io/docs/latest/']
       ]),
+      REPO_ROOT: L(
+        'Repository Root Override',
+        'Override the auto-detected project root directory. AGRO normally detects the repository root automatically by walking up from the current working directory to find .git or pyproject.toml. Use this setting when running in Docker, when AGRO is installed outside the repository, or when you need to force a specific root path. Leave empty to use auto-detection. Example: /workspace/myproject',
+        [
+          ['Path Resolution', 'https://en.wikipedia.org/wiki/Path_(computing)#Absolute_and_relative_paths'],
+          ['Docker Volume Mounts', 'https://docs.docker.com/storage/volumes/'],
+          ['Project Structure', '/docs/DIRECTORY_STRUCTURE.md']
+        ],
+        [['Optional', 'info'], ['Docker-friendly', 'info']]
+      ),
+      FILES_ROOT: L(
+        'Files Root Override',
+        'Override the root directory for the /files HTTP mount point. This setting controls where the FastAPI static file server looks for files when serving requests to /files/*. By default, AGRO uses the repository root. Set this when you need to serve files from a different location, such as a mounted volume in Docker, a shared NFS mount, or a custom data directory. Example: /mnt/shared/agro-files',
+        [
+          ['Static Files (FastAPI)', 'https://fastapi.tiangolo.com/tutorial/static-files/'],
+          ['File Serving', '/docs/FILE_SERVING.md'],
+          ['Docker Volumes', 'https://docs.docker.com/storage/volumes/#use-a-volume-with-docker-compose']
+        ],
+        [['Optional', 'info'], ['Advanced', 'warn']]
+      ),
       REPO: L('Active Repository', 'Logical repository name for routing and indexing. MCP and CLI use this to scope retrieval.', [
         ['Docs: MCP Quickstart', '/docs/QUICKSTART_MCP.md']
       ]),
@@ -70,6 +90,53 @@ export function useTooltips() {
       REPOS_FILE: L('Repos File', 'Path to repos.json that defines repo names, paths, keywords, path boosts, and layer bonuses used for routing.', [
         ['Local repos.json', '/files/repos.json']
       ]),
+      GUI_DIR: L(
+        'GUI Directory',
+        'Path to the legacy JavaScript GUI directory. This is the static file directory containing the original JavaScript-based web interface (index.html, js/, css/). Used by the FastAPI server to serve the legacy GUI at the root path when the React app is not available. Most users should leave this at the default ./gui. Only change if you have moved the GUI files to a custom location or are using a custom build directory.',
+        [
+          ['Legacy GUI Structure', '/gui/README.md'],
+          ['Static Files (FastAPI)', 'https://fastapi.tiangolo.com/tutorial/static-files/'],
+          ['Migration to React', '/docs/REACT_MIGRATION.md']
+        ],
+        [['Legacy', 'warn'], ['Optional', 'info']]
+      ),
+      DOCS_DIR: L(
+        'Documentation Directory',
+        'Path to the documentation directory containing markdown files, API references, and user guides. This directory is served at /docs/* by the FastAPI static file handler, making documentation accessible through the web interface. Used by the built-in documentation viewer and help system. Default is ./docs. Change this if you have moved your documentation to a custom location or are using a shared docs directory across multiple projects.',
+        [
+          ['Documentation Index', '/docs/README.md'],
+          ['API Reference', '/docs/API_REFERENCE.md'],
+          ['Static File Serving', 'https://fastapi.tiangolo.com/tutorial/static-files/']
+        ],
+        [['Optional', 'info']]
+      ),
+      DATA_DIR: L(
+        'Data Directory',
+        'Path to the data directory containing static data files like exclude patterns, golden test sets, evaluation datasets, and other resources. This directory stores exclude_globs.txt (file exclusion patterns), golden.json (test questions), and other data files used by indexing, evaluation, and filtering logic. Default is ./data. Only change if you need to use a shared data directory, custom test sets, or are running in a containerized environment with mounted data volumes.',
+        [
+          ['Data Files', '/data/README.md'],
+          ['Exclude Patterns', '/data/exclude_globs.txt'],
+          ['Golden Test Set', '/data/golden.json'],
+          ['Evaluation Guide', '/docs/EVALUATION.md']
+        ],
+        [['Optional', 'info'], ['Contains test data', 'info']]
+      ),
+      EVAL_LOGS_TERMINAL: L(
+        'Evaluation Logs Terminal',
+        'Open the sliding terminal to stream raw evaluation output (question-by-question) and verify the exact settings used for the last run.',
+        [
+          ['Evaluation Guide', '/docs/EVALUATION.md']
+        ],
+        [['Live output', 'info']]
+      ),
+      INDEX_LOGS_TERMINAL: L(
+        'Indexing Logs Terminal',
+        'Open the sliding terminal to stream raw indexer output with the exact repo/skip_dense/enrich settings used for the run.',
+        [
+          ['Indexing Guide', '/docs/INDEXING.md']
+        ],
+        [['Live output', 'info']]
+      ),
       REPO_PATH: L(
         'Repo Path (fallback)',
         'Absolute filesystem path to the active repository when repos.json is not configured. This is the directory that will be indexed for code retrieval. Use repos.json instead for multi-repo setups with routing, keywords, and path boosts. Example: /Users/you/projects/myapp',
@@ -100,6 +167,67 @@ export function useTooltips() {
       MCP_HTTP_PATH: L('MCP HTTP Path', 'URL path for the HTTP MCP endpoint (default /mcp).', [
         ['Docs: Remote MCP', '/docs/REMOTE_MCP.md']
       ]),
+      MCP_SERVER_URL: L('MCP Server URL', 'Complete URL for the HTTP MCP server. Combines host, port, and path into a single endpoint that MCP clients connect to.', [
+        ['Docs: Remote MCP', '/docs/REMOTE_MCP.md'],
+        ['Model Context Protocol', 'https://modelcontextprotocol.io']
+      ]),
+      MCP_API_KEY: L('MCP API Key (Optional)', 'Authentication key for securing MCP server access. Stored in .env file. Leave empty to disable authentication (not recommended for production).', [
+        ['MCP Security Guide', '/docs/REMOTE_MCP.md']
+      ], [['Stored in .env', 'security']]),
+
+      // Monitoring & Alerts
+      ERROR_RATE_THRESHOLD: L('Error Rate Threshold (%)', 'Percentage threshold for triggering error rate alerts. When the error rate across all requests exceeds this percentage over a 5-minute window, Grafana will trigger an alert. Typical values: 5% for production (strict), 10-15% for development. Set lower for critical systems, higher for experimental features.', [
+        ['Grafana Alerting', 'https://grafana.com/docs/grafana/latest/alerting/'],
+        ['SLOs and Error Budgets', 'https://sre.google/sre-book/service-level-objectives/']
+      ], [['Performance', 'warn']]),
+      LATENCY_P99_THRESHOLD: L('Request Latency P99 (seconds)', '99th percentile latency threshold in seconds. When 99% of requests take longer than this threshold, an alert is triggered. P99 latency represents worst-case user experience - if P99 is 5s, 1% of users wait longer than 5s. Typical values: 2-5s for user-facing APIs, 10-30s for batch jobs.', [
+        ['Understanding Percentiles', 'https://www.elastic.co/blog/averages-can-dangerous-use-percentile'],
+        ['SLIs and SLOs', 'https://sre.google/sre-book/service-level-objectives/']
+      ], [['Performance', 'warn']]),
+      TIMEOUT_ERRORS_THRESHOLD: L('Timeout Errors (per 5 min)', 'Maximum number of timeout errors allowed in a 5-minute window before triggering an alert. Timeout errors indicate requests that took too long and were forcibly terminated. Common causes: slow LLM APIs, overloaded database, network issues. Typical values: 10-20 for production, 50+ for development.', [
+        ['Timeout Best Practices', 'https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/']
+      ], [['Reliability', 'err']]),
+      RATE_LIMIT_ERRORS_THRESHOLD: L('Rate Limit Errors (per 5 min)', 'Maximum number of rate limit errors (HTTP 429) allowed in a 5-minute window. Rate limits protect against excessive API usage and prevent cost overruns. Common sources: OpenAI API, Cohere, Voyage AI. If this alert fires frequently, consider upgrading API tier or implementing request batching.', [
+        ['Rate Limiting (OpenAI)', 'https://platform.openai.com/docs/guides/rate-limits'],
+        ['Backoff Strategies', 'https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/']
+      ], [['Cost Control', 'warn']]),
+      ENDPOINT_CALL_FREQUENCY: L('Endpoint Call Frequency (calls/min)', 'Alert when a single API endpoint receives this many calls per minute. Detects infinite loops, polling gone wrong, or DDoS-like patterns. For example, if /api/search is called 100 times/min for 2+ minutes, something is likely wrong. Typical values: 10-30 calls/min for normal usage, 100+ for high-traffic production.', [
+        ['API Rate Patterns', '/docs/API_MONITORING.md']
+      ], [['Anomaly Detection', 'warn']]),
+      ENDPOINT_SUSTAINED_DURATION: L('Sustained Frequency Duration (minutes)', 'How long the high call frequency must be sustained before triggering an alert. Prevents false positives from legitimate bursts. For example, if frequency threshold is 20 calls/min and duration is 2 minutes, the endpoint must receive 20+ calls/min for 2 consecutive minutes to alert. Typical values: 2-5 minutes for quick detection, 10+ for noise reduction.', [
+        ['Alert Design Patterns', 'https://grafana.com/docs/grafana/latest/alerting/fundamentals/']
+      ], [['Anomaly Detection', 'warn']]),
+      COHERE_RERANK_CALLS: L('Cohere Rerank Calls (calls/min)', 'Alert when Cohere reranking API is called this many times per minute. Reranking is expensive ($1-2 per 1M tokens) and high call rates can quickly increase costs. Normal usage: 5-10 calls/min. If this spikes to 50+, check for loops or unnecessary reranking. Consider caching rerank results or using local reranker instead.', [
+        ['Cohere Pricing', 'https://cohere.com/pricing'],
+        ['Reranking Strategy', '/docs/RERANKING.md']
+      ], [['Cost Control', 'warn'], ['API Usage', 'info']]),
+
+      // Admin / General Settings
+      AGRO_EDITION: L('AGRO Edition', 'Deployment edition: "oss" (open source), "pro" (professional), or "enterprise". Controls feature availability and licensing. OSS: core features only. Pro: adds advanced retrieval, custom rerankers, multi-repo. Enterprise: adds SSO, audit logs, priority support. This setting is informational only - actual features are controlled by license key.', [
+        ['Edition Comparison', '/docs/EDITIONS.md'],
+        ['Licensing', '/docs/LICENSE.md']
+      ], [['Informational', 'info']]),
+      TRACING_ENABLED: L('Tracing Enabled', 'Enable distributed tracing for debugging and performance monitoring. When enabled, every RAG query generates detailed trace spans showing exact timing for embedding, retrieval, reranking, and generation steps. Traces are sent to LangSmith (if configured) or stored locally. Disable in production if not actively debugging to reduce overhead. Impact: ~5-10ms per query when enabled.', [
+        ['LangSmith Tracing', 'https://docs.smith.langchain.com/tracing'],
+        ['OpenTelemetry', 'https://opentelemetry.io/docs/']
+      ], [['Performance Impact', 'warn']]),
+      TRACE_SAMPLING_RATE: L('Trace Sampling Rate', 'Fraction of queries to trace (0.0 = none, 1.0 = all). Use 1.0 during development to trace every query. In production, use 0.1-0.3 to sample 10-30% of traffic, reducing storage costs while still catching issues. For example, 0.2 means 20% of queries are traced, 80% skip tracing. Tip: Set to 1.0 when debugging specific issues, then lower to 0.1-0.3 for normal operation.', [
+        ['Sampling Strategies', 'https://opentelemetry.io/docs/specs/otel/trace/sdk/#sampling']
+      ], [['Cost Optimization', 'info']]),
+      LOG_LEVEL: L('Log Level', 'Controls verbosity of server logs. DEBUG: everything (very noisy, use for troubleshooting). INFO: normal operations, requests, errors. WARNING: only warnings and errors. ERROR: only errors. Recommended: INFO for production, DEBUG when troubleshooting. Logs are written to stdout and optionally to data/logs/ directory. Lower levels (ERROR) improve performance slightly by reducing I/O.', [
+        ['Python Logging Levels', 'https://docs.python.org/3/library/logging.html#logging-levels']
+      ]),
+      EDITOR_ENABLED: L('Enable Embedded Editor', 'Start OpenVSCode Server container when running ./up.sh. This provides a full VS Code experience in your browser at port 4440. Useful for editing code, viewing files, and debugging without leaving AGRO. Docker container runs code-server with AGRO repository mounted. Note: Requires Docker. Auto-disabled in CI environments. Resource usage: ~200MB RAM, negligible CPU when idle.', [
+        ['code-server (GitHub)', 'https://github.com/coder/code-server'],
+        ['VS Code Web', 'https://code.visualstudio.com/docs/editor/vscode-web']
+      ], [['Docker Required', 'info']]),
+      EDITOR_EMBED_ENABLED: L('Enable Editor Embed (iframe)', 'Show the VS Code editor inline in the AGRO GUI using an iframe. When disabled, the editor is still accessible at its port (4440) but won\'t be embedded in the GUI. Automatically hides in CI environments to avoid iframe issues. Disable if you prefer opening the editor in a separate tab or if you experience rendering issues. Has no performance impact when editor is not visible.', [
+        ['Iframe Security', 'https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe#security']
+      ]),
+      CHAT_STREAMING_ENABLED: L('Chat Streaming Enabled', 'Enable server-sent events (SSE) streaming for chat responses. When enabled, answers stream token-by-token as they generate, providing immediate feedback. When disabled, entire answer waits until generation completes. Streaming improves perceived latency for long answers but slightly increases server load. Recommended: enabled for better UX. Disable if you experience SSE connection issues behind certain proxies.', [
+        ['Server-Sent Events', 'https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events'],
+        ['Streaming Chat', '/docs/CHAT.md']
+      ], [['UX', 'info']]),
 
       // Models / Providers
       GEN_MODEL: L('Generation Model', 'Answer model. Local: qwen3-coder:14b via Ollama. Cloud: gpt-4o-mini, etc. Larger models cost more and can be slower; smaller ones are faster/cheaper.', [

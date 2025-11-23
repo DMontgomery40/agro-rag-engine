@@ -7,7 +7,7 @@ import sys
 import json
 import time
 import argparse
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from dotenv import load_dotenv
 from pathlib import Path
 from eval.eval_rag import hit, _resolve_golden_path, USE_MULTI, FINAL_K, MULTI_M  # type: ignore[import]
@@ -28,7 +28,11 @@ if _config_registry is not None:
 else:
     BASELINE_PATH = os.getenv('BASELINE_PATH', 'data/evals/eval_baseline.json')
 
-def run_eval_with_results(sample_limit: int = None) -> Dict[str, Any]:
+def run_eval_with_results(
+    sample_limit: int = None,
+    use_multi_override: Optional[bool] = None,
+    final_k_override: Optional[int] = None
+) -> Dict[str, Any]:
     """Run evaluation on golden questions, optionally limited to a sample.
 
     Args:
@@ -66,6 +70,10 @@ def run_eval_with_results(sample_limit: int = None) -> Dict[str, Any]:
         print(f"[eval] Limiting to sample of {sample_limit} questions (total available: {len(gold)})")
 
     total = len(valid_questions)
+
+    # Apply per-run overrides (fall back to config defaults)
+    use_multi_val = USE_MULTI if use_multi_override is None else bool(use_multi_override)
+    final_k_val = FINAL_K if final_k_override is None else max(1, int(final_k_override))
     hits_top1 = 0
     hits_topk = 0
     results = []
@@ -76,10 +84,10 @@ def run_eval_with_results(sample_limit: int = None) -> Dict[str, Any]:
         repo = row.get('repo') or os.getenv('REPO', 'agro')
         expect = row.get('expect_paths') or []
         try:
-            if USE_MULTI:
-                docs = search_routed_multi(q, repo_override=repo, m=MULTI_M, final_k=FINAL_K)
+            if use_multi_val:
+                docs = search_routed_multi(q, repo_override=repo, m=MULTI_M, final_k=final_k_val)
             else:
-                docs = search_routed(q, repo_override=repo, final_k=FINAL_K)
+                docs = search_routed(q, repo_override=repo, final_k=final_k_val)
         except Exception as e:
             print(f"⚠ Search failed for question {i}: {e}", file=sys.stderr)
             docs = []
@@ -97,7 +105,7 @@ def run_eval_with_results(sample_limit: int = None) -> Dict[str, Any]:
             "top1_path": paths[:1],
             "top1_hit": top1_hit,
             "topk_hit": topk_hit,
-            "top_paths": paths[:FINAL_K]
+            "top_paths": paths[:final_k_val]
         })
     dt = time.time() - t0
     return {
@@ -106,8 +114,8 @@ def run_eval_with_results(sample_limit: int = None) -> Dict[str, Any]:
         "topk_hits": hits_topk,
         "top1_accuracy": round(hits_top1 / max(1, total), 3),
         "topk_accuracy": round(hits_topk / max(1, total), 3),
-        "final_k": FINAL_K,
-        "use_multi": USE_MULTI,
+        "final_k": final_k_val,
+        "use_multi": use_multi_val,
         "duration_secs": round(dt, 2),
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
         "results": results

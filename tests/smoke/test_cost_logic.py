@@ -65,3 +65,4 @@ def test_cost_estimate_embed_scaling():
     assert abs(emb["cost_daily"] - expected_emb_daily) < 0.0001
     assert abs(data["daily"] - expected_emb_daily) < 0.0001
 
+

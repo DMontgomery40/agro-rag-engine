@@ -633,21 +633,28 @@ def _load_bm25_map(idx_dir: str):
     BM25 returns integer indices, this maps them back
     to actual chunk identifiers for retrieval.
     
+    CRITICAL: Must return chunk IDs (not Qdrant point IDs/UUIDs) to ensure
+    proper fusion with dense results in RRF.
+    
     Args:
         idx_dir: BM25 index directory path
         
     Returns:
         List mapping indices to chunk IDs, or None if not found
     """
-    pid_json = os.path.join(idx_dir, 'bm25_point_ids.json')
-    if os.path.exists(pid_json):
-        m = json.load(open(pid_json))
+    # Priority 1: bm25_map.json contains chunk IDs (correct for BM25)
+    map_json = os.path.join(idx_dir, 'bm25_map.json')
+    if os.path.exists(map_json):
+        m = json.load(open(map_json))
         return [m[str(i)] for i in range(len(m))]
+    
+    # Priority 2: chunk_ids.txt contains chunk IDs (correct for BM25)
     map_path = os.path.join(idx_dir, 'chunk_ids.txt')
     if os.path.exists(map_path):
         with open(map_path, 'r', encoding='utf-8') as f:
             ids = [line.strip() for line in f if line.strip()]
         return ids
+    
     return None
 
 
@@ -743,8 +750,9 @@ def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final
                     )
                     # Extract points from Qdrant response (format varies by version)
                     points = getattr(dres, 'points', dres)
+                    # CRITICAL: Use chunk ID from payload (not point UUID) for proper RRF fusion
                     # type: ignore needed - Qdrant response type varies
-                    dense_pairs = [(str(p.id), dict(p.payload)) for p in points]  # type: ignore[union-attr] - Dynamic response type
+                    dense_pairs = [(str(p.payload.get('id', p.id)), dict(p.payload)) for p in points]  # type: ignore[union-attr] - Dynamic response type
                     span.set_attribute("results_count", len(dense_pairs))
             except Exception as ex:
                 span.set_attribute("error", str(ex))
@@ -771,8 +779,9 @@ def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final
                 )
                 # Extract points from Qdrant response (format varies by version)
                 points = getattr(dres, 'points', dres)
+                # CRITICAL: Use chunk ID from payload (not point UUID) for proper RRF fusion
                 # type: ignore needed - Qdrant response type varies
-                dense_pairs = [(str(p.id), dict(p.payload)) for p in points]  # type: ignore[union-attr] - Dynamic response type
+                dense_pairs = [(str(p.payload.get('id', p.id)), dict(p.payload)) for p in points]  # type: ignore[union-attr] - Dynamic response type
         except Exception as ex:
             print(f"[hybrid_search] ERROR: Vector search (Qdrant) failed: {ex}")
             print(f"[hybrid_search] Qdrant URL: {QDRANT_URL}, Collection: {coll}")
