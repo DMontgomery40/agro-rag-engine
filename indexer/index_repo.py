@@ -71,9 +71,9 @@ _config = get_config_registry()
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 if OPENAI_API_KEY and OPENAI_API_KEY.strip().upper() in {"SK-REPLACE", "REPLACE"}:
     OPENAI_API_KEY = None
-QDRANT_URL = os.getenv('QDRANT_URL','http://127.0.0.1:6333')
+QDRANT_URL = _config.get_str('QDRANT_URL', 'http://127.0.0.1:6333')
 # Repo scoping
-REPO = os.getenv('REPO', 'project').strip()
+REPO = _config.get_str('REPO', 'project').strip()
 # Resolve repo paths and outdir from config (repos.json or env)
 try:
     BASES = get_repo_paths(REPO)
@@ -82,7 +82,7 @@ except Exception:
     BASES = [str(Path(__file__).resolve().parent)]
 OUTDIR = out_dir(REPO)
 # Allow explicit collection override (for versioned collections per embedding config)
-COLLECTION = os.getenv('COLLECTION_NAME', f'code_chunks_{REPO}')
+COLLECTION = _config.get_str('COLLECTION_NAME', f'code_chunks_{REPO}')
 
 
 # Centralized file indexing gate (extensions, excludes, heuristics)
@@ -380,13 +380,26 @@ def main() -> None:
     stemmer = Stemmer('english')
     tokenizer = Tokenizer(stemmer=stemmer, stopwords='en')
     corpus_tokens = tokenizer.tokenize(corpus)
-    retriever = bm25s.BM25(method='lucene', k1=1.2, b=0.65)
+    
+    # Load BM25 parameters from config
+    from server.services.config_registry import get_config_registry
+    cfg = get_config_registry()
+    bm25_k1 = cfg.get_float('BM25_K1', 1.2)
+    bm25_b = cfg.get_float('BM25_B', 0.4)
+    
+    retriever = bm25s.BM25(method='lucene', k1=bm25_k1, b=bm25_b)
     retriever.index(corpus_tokens)
     os.makedirs(os.path.join(OUTDIR, 'bm25_index'), exist_ok=True)
+    
+    # CRITICAL FIX: retriever.vocab_dict is {0:0, 1:1, ...} by default
+    # We need to replace it with the tokenizer's actual stemmed word->ID mapping
     try:
-        retriever.vocab_dict = {str(k): v for k, v in retriever.vocab_dict.items()}
+        # get_vocab_dict() returns stemmed words -> IDs (e.g. {'fastapi': 1, 'applic': 2})
+        retriever.vocab_dict = tokenizer.get_vocab_dict()
     except Exception:
-        pass
+        # Fallback to original behavior if tokenizer structure changed
+        retriever.vocab_dict = {str(k): v for k, v in retriever.vocab_dict.items()}
+    
     retriever.save(os.path.join(OUTDIR, 'bm25_index'), corpus=corpus)
     tokenizer.save_vocab(save_dir=os.path.join(OUTDIR, 'bm25_index'))
     tokenizer.save_stopwords(save_dir=os.path.join(OUTDIR, 'bm25_index'))
