@@ -228,3 +228,6 @@ out/**
 !out.noindex-shared/**
  test-results/**
 *.png
+
+# Large Qdrant snapshots
+data/snapshots/
