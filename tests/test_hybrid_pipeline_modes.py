@@ -112,8 +112,17 @@ def test_rerank_enabled_invokes_cross_encoder(monkeypatch, stub_pipeline):
     calls = []
 
     def _rerank_reverse(q, docs, top_k=10, trace=None):
+        """Stub reranker that reverses docs and assigns descending rerank_scores.
+        
+        Real ce_rerank sets rerank_score on each doc, which _apply_agro_bonuses
+        uses as the base score. We must do the same to ensure our ordering persists.
+        """
         calls.append(q)
-        return list(reversed(docs))[:top_k]
+        reversed_docs = list(reversed(docs))[:top_k]
+        # Assign descending rerank_scores so ordering is preserved after bonus application
+        for i, doc in enumerate(reversed_docs):
+            doc['rerank_score'] = 1.0 - (i * 0.1)  # First gets 1.0, second gets 0.9, etc.
+        return reversed_docs
 
     monkeypatch.setattr(hybrid_search, "ce_rerank", _rerank_reverse)
     original_cfg = hybrid_search._HYBRID_CFG
@@ -133,7 +142,7 @@ def test_rerank_enabled_invokes_cross_encoder(monkeypatch, stub_pipeline):
     results = hybrid_search.search("rerank enabled path", repo="agro", topk_dense=5, topk_sparse=0, final_k=2)
 
     assert calls, "ce_rerank should be invoked when reranking is enabled"
-    assert [r["id"] for r in results] == ["two", "one"], "Stub reranker should reverse ordering"
+    assert [r["id"] for r in results] == ["two", "one"], "Reranker should reverse ordering (via rerank_score)"
 
 
 def test_multi_query_disabled_uses_single_variant(monkeypatch, stub_pipeline):
