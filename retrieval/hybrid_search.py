@@ -39,7 +39,8 @@ If you're seeing import errors at RUNTIME (not in your IDE), check:
 import os
 import json
 import collections
-from typing import List, Dict
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Tuple
 from pathlib import Path
 import time as _time
 from common.config_loader import choose_repo_from_query, get_default_repo, out_dir
@@ -113,10 +114,12 @@ _VENDOR_MODE = _config_registry.get_str('VENDOR_MODE', 'prefer_first_party')
 _HYDRATION_MODE = _config_registry.get_str('HYDRATION_MODE', 'lazy')
 _HYDRATION_MAX_CHARS = _config_registry.get_int('HYDRATION_MAX_CHARS', 2000)
 _DISABLE_RERANK = _config_registry.get_int('DISABLE_RERANK', 0)
-_PROJECT_PATH_BOOSTS = _config_registry.get_str('project_PATH_BOOSTS', 'app/,lib/,config/,scripts/,server/,api/,api/app,app/services,app/routers,api/admin_ui,app/plugins')
+_PROJECT_PATH_BOOSTS = _config_registry.get_str('PATH_BOOSTS', '/gui,/server,/indexer,/retrieval')
 _QDRANT_URL = _config_registry.get_str('QDRANT_URL', 'http://127.0.0.1:6333')
 _REPO = _config_registry.get_str('REPO', 'project')
 _COLLECTION_NAME = _config_registry.get_str('COLLECTION_NAME', f'code_chunks_{_config_registry.get_str("REPO", "project")}')
+_VECTOR_BACKEND = _config_registry.get_str('VECTOR_BACKEND', 'qdrant')
+_RERANKER_BACKEND = _config_registry.get_str('RERANKER_BACKEND', 'local')
 
 
 def reload_config():
@@ -132,6 +135,7 @@ def reload_config():
     global _USE_SEMANTIC_SYNONYMS, _TOPK_DENSE, _TOPK_SPARSE, _VENDOR_MODE
     global _HYDRATION_MODE, _HYDRATION_MAX_CHARS, _DISABLE_RERANK
     global _PROJECT_PATH_BOOSTS, _QDRANT_URL, _REPO, _COLLECTION_NAME
+    global _VECTOR_BACKEND, _RERANKER_BACKEND, _HYBRID_CFG
     _RRF_K_DIV = _config_registry.get_int('RRF_K_DIV', 60)
     _CARD_BONUS = _config_registry.get_float('CARD_BONUS', 0.08)
     _FILENAME_BOOST_EXACT = _config_registry.get_float('FILENAME_BOOST_EXACT', 1.5)
@@ -154,10 +158,77 @@ def reload_config():
     _HYDRATION_MODE = _config_registry.get_str('HYDRATION_MODE', 'lazy')
     _HYDRATION_MAX_CHARS = _config_registry.get_int('HYDRATION_MAX_CHARS', 2000)
     _DISABLE_RERANK = _config_registry.get_int('DISABLE_RERANK', 0)
-    _PROJECT_PATH_BOOSTS = _config_registry.get_str('project_PATH_BOOSTS', 'app/,lib/,config/,scripts/,server/,api/,api/app,app/services,app/routers,api/admin_ui,app/plugins')
+    _PROJECT_PATH_BOOSTS = _config_registry.get_str('PATH_BOOSTS', '/gui,/server,/indexer,/retrieval')
     _QDRANT_URL = _config_registry.get_str('QDRANT_URL', 'http://127.0.0.1:6333')
     _REPO = _config_registry.get_str('REPO', 'project')
     _COLLECTION_NAME = _config_registry.get_str('COLLECTION_NAME', f'code_chunks_{_config_registry.get_str("REPO", "project")}')
+    _VECTOR_BACKEND = _config_registry.get_str('VECTOR_BACKEND', 'qdrant')
+    _RERANKER_BACKEND = _config_registry.get_str('RERANKER_BACKEND', 'local')
+    _HYBRID_CFG = _build_runtime_config()
+
+
+@dataclass
+class HybridRuntimeConfig:
+    """Runtime view of the hybrid search knobs.
+
+    Consolidates config_registry values so internal helpers can receive
+    a small, typed bundle rather than reading globals repeatedly.
+    """
+
+    rrf_k_div: int
+    card_bonus: float
+    filename_boost_exact: float
+    filename_boost_partial: float
+    final_k: int
+    bm25_weight: float
+    vector_weight: float
+    card_search_enabled: bool
+    multi_query_m: int
+    query_expansion_enabled: bool
+    use_semantic_synonyms: bool
+    topk_dense: int
+    topk_sparse: int
+    vendor_mode: str
+    hydration_mode: str
+    hydration_max_chars: int
+    disable_rerank: bool
+    project_path_boosts: str
+    qdrant_url: str
+    repo: str
+    collection_name: str
+    vector_backend: str
+    reranker_backend: str
+
+
+def _build_runtime_config() -> HybridRuntimeConfig:
+    return HybridRuntimeConfig(
+        rrf_k_div=_RRF_K_DIV,
+        card_bonus=_CARD_BONUS,
+        filename_boost_exact=_FILENAME_BOOST_EXACT,
+        filename_boost_partial=_FILENAME_BOOST_PARTIAL,
+        final_k=_FINAL_K,
+        bm25_weight=_BM25_WEIGHT,
+        vector_weight=_VECTOR_WEIGHT,
+        card_search_enabled=bool(_CARD_SEARCH_ENABLED),
+        multi_query_m=_MULTI_QUERY_M,
+        query_expansion_enabled=bool(_QUERY_EXPANSION_ENABLED),
+        use_semantic_synonyms=bool(_USE_SEMANTIC_SYNONYMS),
+        topk_dense=_TOPK_DENSE,
+        topk_sparse=_TOPK_SPARSE,
+        vendor_mode=_VENDOR_MODE,
+        hydration_mode=_HYDRATION_MODE,
+        hydration_max_chars=_HYDRATION_MAX_CHARS,
+        disable_rerank=bool(_DISABLE_RERANK),
+        project_path_boosts=_PROJECT_PATH_BOOSTS,
+        qdrant_url=_QDRANT_URL,
+        repo=_REPO,
+        collection_name=_COLLECTION_NAME,
+        vector_backend=_VECTOR_BACKEND,
+        reranker_backend=_RERANKER_BACKEND,
+    )
+
+
+_HYBRID_CFG = _build_runtime_config()
 
 
 def _classify_query(q: str) -> str:
@@ -329,13 +400,14 @@ def _feature_bonus(query: str, fp: str, code: str) -> float:
     Returns:
         Cumulative bonus score (typically 0.0 to 0.24)
     """
+    repo = _HYBRID_CFG.repo if _HYBRID_CFG else REPO
     ql = (query or '').lower()
     fp = (fp or '').lower()
     code = (code or '').lower()
     bumps = 0.0
     
     # Discriminative keyword boosting
-    keywords = _load_discriminative_keywords(REPO)
+    keywords = _load_discriminative_keywords(repo)
     if keywords:
         # Check how many discriminative keywords match
         matches_in_query = sum(1 for kw in keywords if kw in ql)
@@ -418,6 +490,28 @@ def _project_path_boost(fp: str, repo_tag: str) -> float:
         if tok and tok in s:
             bonus += 0.06
     return min(bonus, 0.18)
+
+
+def _add_trace_event(trace: object | None, name: str, payload: dict) -> None:
+    """Best-effort trace emission without breaking search flow."""
+    try:
+        if trace is not None and hasattr(trace, 'add'):
+            trace.add(name, payload)
+    except Exception:
+        pass
+
+
+def _normalize_scores(scores: Dict[str, float]) -> Dict[str, float]:
+    """Normalize a score dictionary into [0,1] range for blending."""
+    if not scores:
+        return {}
+    vals = list(scores.values())
+    max_v = max(vals)
+    min_v = min(vals)
+    if max_v == min_v:
+        return {k: 1.0 for k in scores}
+    denom = max_v - min_v
+    return {k: (v - min_v) / denom for k, v in scores.items()}
 
 
 try:
@@ -598,6 +692,23 @@ def rrf(dense: list, sparse: list, k: int = 10, kdiv: int | None = None) -> list
     return [pid for pid, _ in ranked[:k]]
 
 
+@dataclass
+class RetrievalOutput:
+    """Container for a retrieval stage."""
+
+    pairs: List[Tuple[str, Dict]]
+    scores: Dict[str, float] = field(default_factory=dict)
+    source: str = "unknown"
+
+    @property
+    def ids(self) -> List[str]:
+        return [pid for pid, _ in self.pairs]
+
+    @property
+    def by_id(self) -> Dict[str, Dict]:
+        return {pid: doc for pid, doc in self.pairs}
+
+
 def _load_chunks(repo: str) -> List[Dict]:
     """Load chunk metadata from indexed repository.
     
@@ -658,6 +769,17 @@ def _load_bm25_map(idx_dir: str):
     return None
 
 
+def _load_tokenizer(repo: str) -> Optional[Tokenizer]:
+    """Load BM25 tokenizer with persisted vocab for a repo."""
+    idx_dir = os.path.join(out_dir(repo), 'bm25_index')
+    try:
+        tokenizer = Tokenizer(stemmer=Stemmer('english'), stopwords='en')
+        tokenizer.load_vocab(idx_dir)
+        return tokenizer
+    except Exception:
+        return None
+
+
 def _load_cards_bm25(repo: str):
     """Load BM25 index for card-based retrieval.
     
@@ -697,6 +819,334 @@ def _load_cards_map(repo: str) -> Dict:
         return {'by_idx': {}, 'by_chunk_id': {}}
 
 
+def _merge_payloads(primary: Dict[str, Dict], secondary: Dict[str, Dict]) -> Dict[str, Dict]:
+    """Merge two payload dictionaries, preferring fields from primary."""
+    merged = dict(secondary)
+    for pid, doc in primary.items():
+        if pid in merged:
+            merged[pid] = {**merged[pid], **doc}
+        else:
+            merged[pid] = doc
+    return merged
+
+
+def _vector_search_stage(query: str, repo: str, topk_dense: int, trace: object | None) -> RetrievalOutput:
+    """Run dense vector search via Qdrant (or skip if disabled)."""
+    if topk_dense <= 0 or _HYBRID_CFG.vector_backend.lower() == 'faiss':
+        return RetrievalOutput([], {}, "dense")
+
+    pairs: List[Tuple[str, Dict]] = []
+    scores: Dict[str, float] = {}
+    start = _time.time()
+    backend = _HYBRID_CFG.vector_backend.lower()
+
+    def _emit_metrics(duration_ms: float):
+        try:
+            from server.api_tracker import track_trace, track_api_call, APIProvider
+            track_trace(
+                step="vector_search",
+                provider=backend,
+                model=_config_registry.get_str('COLLECTION_NAME', f'code_chunks_{repo}'),
+                duration_ms=duration_ms,
+                extra={"results": len(pairs), "repo": repo},
+            )
+            track_api_call(
+                provider=APIProvider.QDRANT,
+                endpoint="/query_points",
+                method="POST",
+                duration_ms=duration_ms,
+                status_code=200,
+                tokens_estimated=0,
+                cost_usd=0.0,
+            )
+        except Exception:
+            pass
+
+    if _tracer:
+        with _tracer.start_as_current_span(
+            "agro.vector_search",
+            attributes={"query": query, "topk": topk_dense, "backend": backend},
+        ) as span:
+            try:
+                embedding = _get_embedding(query, kind="query")
+                if backend != 'faiss':
+                    qc = QdrantClient(url=_HYBRID_CFG.qdrant_url)
+                    coll = _config_registry.get_str('COLLECTION_NAME', f'code_chunks_{repo}')
+                    dres = qc.query_points(
+                        collection_name=coll,
+                        query=embedding,
+                        using='dense',
+                        limit=topk_dense,
+                        with_payload=models.PayloadSelectorInclude(
+                            include=['file_path', 'start_line', 'end_line', 'language', 'layer', 'repo', 'hash', 'id', 'origin']
+                        ),
+                    )
+                    points = getattr(dres, 'points', dres)
+                    for p in points:
+                        payload = dict(p.payload)
+                        pid = str(payload.get('id', p.id))
+                        if hasattr(p, 'score'):
+                            scores[pid] = float(getattr(p, 'score', 0.0) or 0.0)
+                            payload['vector_score'] = scores[pid]
+                        pairs.append((pid, payload))
+                    span.set_attribute("results_count", len(pairs))
+            except Exception as ex:
+                span.set_attribute("error", str(ex))
+    else:
+        try:
+            embedding = _get_embedding(query, kind="query")
+        except Exception as ex:
+            print(f"[hybrid_search] WARNING: Failed to get embedding for query: {ex}")
+            return RetrievalOutput([], {}, "dense")
+        try:
+            if backend != 'faiss':
+                qc = QdrantClient(url=_HYBRID_CFG.qdrant_url)
+                coll = _config_registry.get_str('COLLECTION_NAME', f'code_chunks_{repo}')
+                dres = qc.query_points(
+                    collection_name=coll,
+                    query=embedding,
+                    using='dense',
+                    limit=topk_dense,
+                    with_payload=models.PayloadSelectorInclude(
+                        include=['file_path', 'start_line', 'end_line', 'language', 'layer', 'repo', 'hash', 'id', 'origin']
+                    ),
+                )
+                points = getattr(dres, 'points', dres)
+                for p in points:
+                    payload = dict(p.payload)
+                    pid = str(payload.get('id', p.id))
+                    if hasattr(p, 'score'):
+                        scores[pid] = float(getattr(p, 'score', 0.0) or 0.0)
+                        payload['vector_score'] = scores[pid]
+                    pairs.append((pid, payload))
+        except Exception as ex:
+            print(f"[hybrid_search] ERROR: Vector search (Qdrant) failed: {ex}")
+            print(f"[hybrid_search] Qdrant URL: {_HYBRID_CFG.qdrant_url}, Collection: {_config_registry.get_str('COLLECTION_NAME', f'code_chunks_{repo}')}")
+            pairs = []
+
+    duration_ms = (_time.time() - start) * 1000
+    _emit_metrics(duration_ms)
+    _add_trace_event(trace, 'vector_search', {
+        'duration_ms': duration_ms,
+        'results': len(pairs),
+        'repo': repo,
+        'backend': backend,
+    })
+    return RetrievalOutput(pairs, scores, "dense")
+
+
+def _bm25_search_stage(query: str, repo: str, tokenizer: Optional[Tokenizer], chunks: List[Dict], topk_sparse: int, trace: object | None) -> RetrievalOutput:
+    """Run sparse BM25 search using persisted index."""
+    if topk_sparse <= 0 or tokenizer is None:
+        return RetrievalOutput([], {}, "bm25")
+
+    idx_dir = os.path.join(out_dir(repo), 'bm25_index')
+    start = _time.time()
+    pairs: List[Tuple[str, Dict]] = []
+    scores: Dict[str, float] = {}
+
+    try:
+        retriever = bm25s.BM25.load(idx_dir)
+        tokens = tokenizer.tokenize([query])
+        ids, bm25_scores = retriever.retrieve(tokens, k=topk_sparse)
+        ids = ids.tolist()[0] if hasattr(ids, 'tolist') else list(ids[0])
+        bm25_scores = bm25_scores.tolist()[0] if hasattr(bm25_scores, 'tolist') else list(bm25_scores[0])
+        id_map = _load_bm25_map(idx_dir)
+        by_chunk_id = {str(c['id']): c for c in chunks}
+        for idx, i in enumerate(ids):
+            chunk = None
+            if id_map is not None and 0 <= i < len(id_map):
+                pid_or_cid = id_map[i]
+                key = str(pid_or_cid)
+                if key in by_chunk_id:
+                    chunk = by_chunk_id[key].copy()
+                elif 0 <= i < len(chunks):
+                    chunk = chunks[i].copy()
+            elif 0 <= i < len(chunks):
+                chunk = chunks[i].copy()
+            if chunk:
+                bm25_score = float(bm25_scores[idx]) if idx < len(bm25_scores) else 0.0
+                chunk['bm25_score'] = bm25_score
+                pairs.append((str(chunk['id']), chunk))
+                scores[str(chunk['id'])] = bm25_score
+    except Exception as ex:
+        print(f"[hybrid_search] ERROR: BM25 retrieval failed: {ex}")
+        pairs = []
+        scores = {}
+
+    duration_ms = (_time.time() - start) * 1000
+    try:
+        from server.api_tracker import track_trace
+        track_trace(step="bm25_search", provider="local", model="bm25s", duration_ms=duration_ms,
+                    extra={"results": len(pairs), "repo": repo})
+    except Exception:
+        pass
+    _add_trace_event(trace, 'bm25_search', {
+        'duration_ms': duration_ms,
+        'results': len(pairs),
+        'repo': repo,
+    })
+    return RetrievalOutput(pairs, scores, "bm25")
+
+
+def _card_hit_ids(query: str, repo: str, tokenizer: Optional[Tokenizer], topk_sparse: int) -> set[str]:
+    """Return chunk IDs that match via card BM25 search."""
+    if not tokenizer or not _HYBRID_CFG.card_search_enabled:
+        return set()
+    cards_retr = _load_cards_bm25(repo)
+    if cards_retr is None:
+        return set()
+    card_chunk_ids: set[str] = set()
+    try:
+        cards_map = _load_cards_map(repo)
+        tokens = tokenizer.tokenize([query])
+        c_ids, _ = cards_retr.retrieve(tokens, k=min(topk_sparse, 30))
+        c_ids_flat = c_ids[0] if hasattr(c_ids, '__getitem__') else c_ids
+        for card_idx in c_ids_flat:
+            chunk_id = cards_map['by_idx'].get(int(card_idx))
+            if chunk_id:
+                card_chunk_ids.add(str(chunk_id))
+    except Exception as ex:
+        import sys
+        print(f"[hybrid_search] DEBUG: Card retrieval failed (optional feature): {ex}", file=sys.stderr)
+    return card_chunk_ids
+
+
+def _blend_hybrid_scores(docs: List[Dict], dense_output: RetrievalOutput, sparse_output: RetrievalOutput) -> None:
+    """Blend dense/sparse scores into a hybrid_score for downstream ranking."""
+    norm_dense = _normalize_scores(dense_output.scores)
+    norm_sparse = _normalize_scores(sparse_output.scores)
+    vector_weight = getattr(_HYBRID_CFG, "vector_weight", _VECTOR_WEIGHT)
+    bm25_weight = getattr(_HYBRID_CFG, "bm25_weight", _BM25_WEIGHT)
+    for d in docs:
+        pid = str(d.get('id', '') or '')
+        blended = 0.0
+        if pid in norm_dense:
+            blended += vector_weight * norm_dense[pid]
+        if pid in norm_sparse:
+            blended += bm25_weight * norm_sparse[pid]
+        if blended:
+            d['hybrid_score'] = blended
+            d.setdefault('rerank_score', blended)
+        elif 'bm25_score' in d:
+            d.setdefault('rerank_score', d.get('bm25_score', 0.0))
+
+
+def _fuse_candidates(dense_output: RetrievalOutput, sparse_output: RetrievalOutput, final_k: int, repo: str, trace: object | None) -> Tuple[List[str], List[Dict]]:
+    """Fuse dense and sparse ids using RRF and collect candidate docs."""
+    start = _time.time()
+    dense_ids = dense_output.ids
+    sparse_ids = sparse_output.ids
+    fused = []
+    if dense_ids or sparse_ids:
+        fused = rrf(dense_ids, sparse_ids, k=max(final_k, 2 * final_k), kdiv=_HYBRID_CFG.rrf_k_div)
+    if not fused:
+        fused = sparse_ids[:final_k] or dense_ids[:final_k]
+
+    by_id = _merge_payloads(dense_output.by_id, sparse_output.by_id)
+    docs = [by_id[pid] for pid in fused if pid in by_id]
+
+    duration_ms = (_time.time() - start) * 1000
+    _add_trace_event(trace, 'rrf_fusion', {
+        'duration_ms': duration_ms,
+        'dense': len(dense_ids),
+        'sparse': len(sparse_ids),
+        'repo': repo,
+    })
+    try:
+        from server.api_tracker import track_trace
+        track_trace(step="rrf_fusion", provider="local", model="rrf",
+                    duration_ms=duration_ms, extra={"dense": len(dense_ids), "sparse": len(sparse_ids), "repo": repo})
+    except Exception:
+        pass
+    return fused, docs
+
+
+def _hydrate_if_needed(repo: str, docs: List[Dict], trace: object | None) -> None:
+    """Hydrate code content if hydration is enabled."""
+    if _HYBRID_CFG.hydration_mode.lower() == 'none':
+        return
+    start = _time.time()
+    _hydrate_docs_inplace(repo, docs)
+    duration_ms = (_time.time() - start) * 1000
+    try:
+        from server.api_tracker import track_trace
+        track_trace(step="hydrate", provider="local", model="chunks.jsonl", duration_ms=duration_ms,
+                    extra={"hydrated": sum(1 for d in docs if d.get('code')), "candidates": len(docs), "repo": repo})
+    except Exception:
+        pass
+    _add_trace_event(trace, 'hydrate', {
+        'duration_ms': duration_ms,
+        'hydrated': sum(1 for d in docs if d.get('code')),
+        'candidates': len(docs),
+        'repo': repo,
+    })
+
+
+def _maybe_rerank_candidates(query: str, docs: List[Dict], final_k: int, repo: str, trace: object | None) -> List[Dict]:
+    """Apply cross-encoder reranking unless disabled or deferred."""
+    rerank_backend = (_HYBRID_CFG.reranker_backend or 'local').lower()
+    skip_local_rerank = rerank_backend == 'cohere'
+    if bool(_HYBRID_CFG.disable_rerank) or skip_local_rerank:
+        return docs[:final_k]
+
+    start = _time.time()
+    reranked = ce_rerank(query, docs, top_k=final_k, trace=trace)
+    duration_ms = (_time.time() - start) * 1000
+    try:
+        from server.api_tracker import track_trace
+        track_trace(step="cross_encoder_rerank", provider=rerank_backend,
+                    model=_config_registry.get_str('RERANKER_MODEL', ''), duration_ms=duration_ms,
+                    extra={"candidates": len(docs), "top_k": final_k, "repo": repo})
+    except Exception:
+        pass
+    _add_trace_event(trace, 'rerank', {
+        'duration_ms': duration_ms,
+        'candidates': len(docs),
+        'top_k': final_k,
+        'repo': repo,
+    })
+    return reranked
+
+
+def _apply_agro_bonuses(docs: List[Dict], query: str, card_chunk_ids: set[str], repo: str) -> None:
+    """Apply AGRO-specific bonus logic after reranking."""
+    intent = _classify_query(query)
+    q_lower = query.lower()
+    wants_code = any(k in q_lower for k in ['implementation', 'where is', 'how does', 'function', 'class', 'method', 'api', 'code'])
+
+    for d in docs:
+        fp = d.get('file_path', '')
+        layer = (d.get('layer') or '').lower()
+        lang = (d.get('language') or '').lower()
+        base_score = d.get('rerank_score', 0.0) or d.get('hybrid_score', 0.0) or d.get('bm25_score', 0.0) or 0.0
+        score = float(base_score)
+
+        if wants_code:
+            if lang in ('python', 'javascript', 'typescript', 'go', 'rust', 'java', 'cpp', 'c'):
+                score += 0.50
+            elif lang in ('markdown', 'md', 'rst', 'txt'):
+                score -= 0.50
+
+        cid = str(d.get('id', '') or '')
+        if cid and cid in card_chunk_ids:
+            d['card_hit'] = True
+            score += _card_bonus(cid, card_chunk_ids)
+
+        score += _path_bonus(fp, repo)
+        score += _project_path_boost(fp, repo)
+        score += _project_layer_bonus(layer, intent)
+        score += _provider_plugin_hint(fp, d.get('code', '') or '')
+        score += _origin_bonus(d.get('origin', ''), _VENDOR_MODE)
+        score += _feature_bonus(query, fp, d.get('code', '') or '')
+        if d.get('origin', '').lower() == 'vendor' and _VENDOR_PENALTY:
+            score += _VENDOR_PENALTY
+
+        d['rerank_score'] = score
+
+    docs.sort(key=lambda x: x.get('rerank_score', 0.0), reverse=True)
+
+
 @with_langtrace_root_span()
 def search(query: str, repo: str, topk_dense: int = 75, topk_sparse: int = 75, final_k: int = 10, trace: object | None = None) -> List[Dict]:
     """Core hybrid search implementation.
@@ -722,359 +1172,55 @@ def search(query: str, repo: str, topk_dense: int = 75, topk_sparse: int = 75, f
     return _search_impl(query, repo, topk_dense, topk_sparse, final_k, trace)
 
 def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final_k: int, trace: object | None) -> List[Dict]:
+    cfg = _HYBRID_CFG
+    dense_k = max(0, int(topk_dense))
+    sparse_k = max(0, int(topk_sparse))
+    final_k = max(1, int(final_k))
+
     chunks = _load_chunks(repo)
     if not chunks:
         return []
-    
-    # Apply synonym expansion if enabled
-    use_synonyms = bool(_USE_SEMANTIC_SYNONYMS)
-    expanded_query = expand_query_with_synonyms(query, repo, max_expansions=3) if use_synonyms else query
-    
-    # SPAN: Vector Search (Qdrant)
-    dense_pairs = []
-    _vs_start = _time.time()
-    backend = _config_registry.get_str('VECTOR_BACKEND','qdrant').lower()
-    if _tracer:
-        with _tracer.start_as_current_span("agro.vector_search", attributes={"query": expanded_query, "topk": topk_dense}) as span:
-            qc = QdrantClient(url=QDRANT_URL)
-            coll = _config_registry.get_str('COLLECTION_NAME', f'code_chunks_{repo}')
-            try:
-                e = _get_embedding(expanded_query, kind="query")
-                if backend != 'faiss':
-                    dres = qc.query_points(
-                        collection_name=coll,
-                        query=e,
-                        using='dense',
-                        limit=topk_dense,
-                        with_payload=models.PayloadSelectorInclude(include=['file_path', 'start_line', 'end_line', 'language', 'layer', 'repo', 'hash', 'id'])
-                    )
-                    # Extract points from Qdrant response (format varies by version)
-                    points = getattr(dres, 'points', dres)
-                    # CRITICAL: Use chunk ID from payload (not point UUID) for proper RRF fusion
-                    # type: ignore needed - Qdrant response type varies
-                    dense_pairs = [(str(p.payload.get('id', p.id)), dict(p.payload)) for p in points]  # type: ignore[union-attr] - Dynamic response type
-                    span.set_attribute("results_count", len(dense_pairs))
-            except Exception as ex:
-                span.set_attribute("error", str(ex))
-                dense_pairs = []
-    else:
-        # No tracing
-        qc = QdrantClient(url=QDRANT_URL)
-        coll = _config_registry.get_str('COLLECTION_NAME', f'code_chunks_{repo}')
-        try:
-            e = _get_embedding(expanded_query, kind="query")
-        except Exception as ex:
-            print(f"[hybrid_search] WARNING: Failed to get embedding for query: {ex}")
-            e = []
-        try:
-            if backend == 'faiss':
-                dense_pairs = []
-            else:
-                dres = qc.query_points(
-                    collection_name=coll,
-                    query=e,
-                    using='dense',
-                    limit=topk_dense,
-                    with_payload=models.PayloadSelectorInclude(include=['file_path', 'start_line', 'end_line', 'language', 'layer', 'repo', 'hash', 'id'])
-                )
-                # Extract points from Qdrant response (format varies by version)
-                points = getattr(dres, 'points', dres)
-                # CRITICAL: Use chunk ID from payload (not point UUID) for proper RRF fusion
-                # type: ignore needed - Qdrant response type varies
-                dense_pairs = [(str(p.payload.get('id', p.id)), dict(p.payload)) for p in points]  # type: ignore[union-attr] - Dynamic response type
-        except Exception as ex:
-            print(f"[hybrid_search] ERROR: Vector search (Qdrant) failed: {ex}")
-            print(f"[hybrid_search] Qdrant URL: {QDRANT_URL}, Collection: {coll}")
-            dense_pairs = []
-    # Track vector search (Qdrant) duration via trace log
+
+    expanded_query = expand_query_with_synonyms(query, repo, max_expansions=3) if cfg.use_semantic_synonyms else query
+    tokenizer = _load_tokenizer(repo)
+
+    dense_output = _vector_search_stage(expanded_query, repo, dense_k, trace)
+    sparse_output = _bm25_search_stage(expanded_query, repo, tokenizer, chunks, sparse_k, trace)
+    card_chunk_ids = _card_hit_ids(expanded_query, repo, tokenizer, sparse_k)
+
+    _fused_ids, docs = _fuse_candidates(dense_output, sparse_output, final_k, repo, trace)
+    _blend_hybrid_scores(docs, dense_output, sparse_output)
+    _hydrate_if_needed(repo, docs, trace)
+
     try:
-        from server.api_tracker import track_trace, track_api_call, APIProvider
-        vs_ms = (_time.time() - _vs_start) * 1000
-        track_trace(step="vector_search", provider="qdrant", model=_config_registry.get_str('COLLECTION_NAME', f'code_chunks_{repo}'),
-                    duration_ms=vs_ms, extra={"results": len(dense_pairs), "repo": repo})
-        # Mirror as API call metric (no cost/tokens for DB query)
-        track_api_call(provider=APIProvider.QDRANT, endpoint="/query_points", method="POST",
-                       duration_ms=vs_ms, status_code=200, tokens_estimated=0, cost_usd=0.0)
-    except Exception:
-        pass
-    # Emit trace event for vector search
-    try:
-        if trace is not None and hasattr(trace, 'add'):
-            trace.add('vector_search', {
-                'duration_ms': (_time.time() - _vs_start) * 1000,
-                'results': len(dense_pairs),
-                'repo': repo,
-                'backend': backend
+        rank_map_dense = {pid: i + 1 for i, pid in enumerate(dense_output.ids[:max(final_k, 50)])}
+        rank_map_sparse = {pid: i + 1 for i, pid in enumerate(sparse_output.ids[:max(final_k, 50)])}
+        cands = []
+        seen_pre = set()
+        for pid in list(rank_map_dense.keys()) + list(rank_map_sparse.keys()):
+            if pid in seen_pre:
+                continue
+            seen_pre.add(pid)
+            meta = dense_output.by_id.get(pid) or sparse_output.by_id.get(pid) or {}
+            cands.append({
+                'path': meta.get('file_path'),
+                'start': meta.get('start_line'),
+                'end': meta.get('end_line'),
+                'card_hit': str(meta.get('id', '')) in card_chunk_ids,
+                'bm25_rank': rank_map_sparse.get(pid),
+                'dense_rank': rank_map_dense.get(pid),
             })
+        _add_trace_event(trace, 'retriever.retrieve', {
+            'k_sparse': int(sparse_k),
+            'k_dense': int(dense_k),
+            'candidates': cands[:max(final_k, 50)],
+        })
     except Exception:
         pass
 
-    # SPAN: BM25 Sparse Retrieval
-    _bm_start = _time.time()
-    if _tracer:
-        with _tracer.start_as_current_span("agro.bm25_search", attributes={"query": expanded_query, "topk": topk_sparse}) as span:
-            idx_dir = os.path.join(out_dir(repo), 'bm25_index')
-            retriever = bm25s.BM25.load(idx_dir)
-            tokenizer = Tokenizer(stemmer=Stemmer('english'), stopwords='en')
-            tokens = tokenizer.tokenize([expanded_query])
-            ids, _ = retriever.retrieve(tokens, k=topk_sparse)
-            ids = ids.tolist()[0] if hasattr(ids, 'tolist') else list(ids[0])
-            id_map = _load_bm25_map(idx_dir)
-            by_chunk_id = {str(c['id']): c for c in chunks}
-            sparse_pairs = []
-            for i in ids:
-                if id_map is not None:
-                    if 0 <= i < len(id_map):
-                        pid_or_cid = id_map[i]
-                        key = str(pid_or_cid)
-                        if key in by_chunk_id:
-                            sparse_pairs.append((key, by_chunk_id[key]))
-                        else:
-                            if 0 <= i < len(chunks):
-                                sparse_pairs.append((str(chunks[i]['id']), chunks[i]))
-                else:
-                    if 0 <= i < len(chunks):
-                        sparse_pairs.append((str(chunks[i]['id']), chunks[i]))
-            span.set_attribute("results_count", len(sparse_pairs))
-    else:
-        idx_dir = os.path.join(out_dir(repo), 'bm25_index')
-        retriever = bm25s.BM25.load(idx_dir)
-        tokenizer = Tokenizer(stemmer=Stemmer('english'), stopwords='en')
-        tokens = tokenizer.tokenize([expanded_query])
-        ids, _ = retriever.retrieve(tokens, k=topk_sparse)
-        ids = ids.tolist()[0] if hasattr(ids, 'tolist') else list(ids[0])
-        id_map = _load_bm25_map(idx_dir)
-        by_chunk_id = {str(c['id']): c for c in chunks}
-        sparse_pairs = []
-        for i in ids:
-            if id_map is not None:
-                if 0 <= i < len(id_map):
-                    pid_or_cid = id_map[i]
-                    key = str(pid_or_cid)
-                    if key in by_chunk_id:
-                        sparse_pairs.append((key, by_chunk_id[key]))
-                    else:
-                        if 0 <= i < len(chunks):
-                            sparse_pairs.append((str(chunks[i]['id']), chunks[i]))
-            else:
-                if 0 <= i < len(chunks):
-                    sparse_pairs.append((str(chunks[i]['id']), chunks[i]))
-
-    # Record BM25 duration in trace logs
-    try:
-        from server.api_tracker import track_trace
-        bm_ms = (_time.time() - _bm_start) * 1000
-        track_trace(step="bm25_search", provider="local", model="bm25s", duration_ms=bm_ms,
-                    extra={"results": len(sparse_pairs), "repo": repo})
-    except Exception:
-        pass
-    try:
-        if trace is not None and hasattr(trace, 'add'):
-            trace.add('bm25_search', {
-                'duration_ms': (_time.time() - _bm_start) * 1000,
-                'results': len(sparse_pairs),
-                'repo': repo
-            })
-    except Exception:
-        pass
-
-    card_chunk_ids: set = set()
-    cards_retr = _load_cards_bm25(repo)
-    if cards_retr is not None:
-        try:
-            cards_map = _load_cards_map(repo)
-            # Use expanded query for card retrieval too
-            tokens = tokenizer.tokenize([expanded_query])
-            c_ids, _ = cards_retr.retrieve(tokens, k=min(topk_sparse, 30))
-            c_ids_flat = c_ids[0] if hasattr(c_ids, '__getitem__') else c_ids
-            for card_idx in c_ids_flat:
-                chunk_id = cards_map['by_idx'].get(int(card_idx))
-                if chunk_id:
-                    card_chunk_ids.add(str(chunk_id))
-        except Exception as ex:
-            # Card retrieval is optional - log and continue
-            import sys
-            print(f"[hybrid_search] DEBUG: Card retrieval failed (optional feature): {ex}", file=sys.stderr)
-
-    # SPAN: RRF Fusion
-    dense_ids = [pid for pid, _ in dense_pairs]
-    sparse_ids = [pid for pid, _ in sparse_pairs]
-    _rrf0 = _time.time()
-    if _tracer:
-        with _tracer.start_as_current_span("agro.rrf_fusion", attributes={
-            "dense_count": len(dense_ids),
-            "sparse_count": len(sparse_ids),
-            "final_k": final_k
-        }) as span:
-            fused = rrf(dense_ids, sparse_ids, k=max(final_k, 2 * final_k)) if dense_pairs else sparse_ids[:final_k]
-            span.set_attribute("fused_count", len(fused))
-    else:
-        fused = rrf(dense_ids, sparse_ids, k=max(final_k, 2 * final_k)) if dense_pairs else sparse_ids[:final_k]
-    try:
-        from server.api_tracker import track_trace
-        track_trace(step="rrf_fusion", provider="local", model="rrf", duration_ms=((_time.time()-_rrf0)*1000),
-                    extra={"dense": len(dense_ids), "sparse": len(sparse_ids), "repo": repo})
-    except Exception:
-        pass
-    try:
-        if trace is not None and hasattr(trace, 'add'):
-            trace.add('rrf_fusion', {
-                'duration_ms': (_time.time() - _rrf0) * 1000,
-                'dense': len(dense_ids),
-                'sparse': len(sparse_ids),
-                'repo': repo
-            })
-    except Exception:
-        pass
-    
-    by_id = {pid: p for pid, p in (dense_pairs + sparse_pairs)}
-    docs = [by_id[pid] for pid in fused if pid in by_id]
-    if _HYDRATION_MODE.lower() != 'none':
-        _h0 = _time.time()
-        _hydrate_docs_inplace(repo, docs)
-        try:
-            from server.api_tracker import track_trace
-            track_trace(step="hydrate", provider="local", model="chunks.jsonl", duration_ms=((_time.time()-_h0)*1000),
-                        extra={"hydrated": sum(1 for d in docs if d.get('code')), "candidates": len(docs), "repo": repo})
-        except Exception:
-            pass
-        try:
-            if trace is not None and hasattr(trace, 'add'):
-                trace.add('hydrate', {
-                    'duration_ms': (_time.time() - _h0) * 1000,
-                    'hydrated': sum(1 for d in docs if d.get('code')),
-                    'candidates': len(docs),
-                    'repo': repo
-                })
-        except Exception:
-            pass
-    # tracing: pre-rerank candidate snapshot
-    try:
-        if trace is not None and hasattr(trace, 'add'):
-            cands = []
-            seen_pre = set()
-            # Use union of bm25+dense by earliest rank observed
-            rank_map_dense = {pid: i+1 for i, pid in enumerate(dense_ids[:max(final_k, 50)])}
-            rank_map_sparse = {pid: i+1 for i, pid in enumerate(sparse_ids[:max(final_k, 50)])}
-            for pid in list(rank_map_dense.keys()) + list(rank_map_sparse.keys()):
-                if pid in seen_pre:
-                    continue
-                seen_pre.add(pid)
-                meta = by_id.get(pid, {})
-                cands.append({
-                    'path': meta.get('file_path'),
-                    'start': meta.get('start_line'),
-                    'end': meta.get('end_line'),
-                    'card_hit': str(meta.get('id','')) in card_chunk_ids,
-                    'bm25_rank': rank_map_sparse.get(pid),
-                    'dense_rank': rank_map_dense.get(pid),
-                })
-            trace.add('retriever.retrieve', {
-                'k_sparse': int(topk_sparse),
-                'k_dense': int(topk_dense),
-                'candidates': cands[:max(final_k, 50)],
-            })
-    except Exception as ex:
-        # Tracing is optional - log and continue
-        import sys
-        print(f"[hybrid_search] DEBUG: Tracing failed (optional feature): {ex}", file=sys.stderr)
-
-    # DEBUG: What does RRF return? (removed for production - enable via DEBUG env var)
-    # print(f"  [DEBUG] After RRF, top 5:")
-    # for i, d in enumerate(docs[:5], 1):
-    #     print(f"    {i}. {d['file_path'].split('/')[-1]} ({d.get('language')})")
-    
-    # CRITICAL: Detect implementation queries to prioritize code over docs
-    # This is essential for developer productivity - they usually want code, not documentation
-    q_lower = query.lower()
-    wants_code = any(k in q_lower for k in ['implementation', 'where is', 'how does', 'function', 'class', 'method', 'api', 'code'])
-    
-    # DISABLED: This reordering is causing problems - code files in wrong order
-    # if wants_code:
-    #     code_docs = [d for d in docs if d.get('language', '').lower() in ('python', 'javascript', 'typescript', 'go', 'rust', 'java', 'cpp', 'c', 'php', 'ruby')]
-    #     other_docs = [d for d in docs if d not in code_docs]
-    #     docs = code_docs[:min(50, len(code_docs))] + other_docs[:max(25, final_k)]
-    
-    # SPAN: Cross-Encoder Reranking
-    # Skip local reranking if Cohere will be used in search_routed_multi()
-    rerank_backend = _config_registry.get_str('RERANKER_BACKEND', 'local').lower()
-    skip_local_rerank = (rerank_backend == 'cohere')  # Cohere will rerank later
-    
-    if not skip_local_rerank:
-        # Apply local cross-encoder reranking
-        if _tracer:
-            with _tracer.start_as_current_span("agro.cross_encoder_rerank", attributes={
-                "candidates_count": len(docs),
-                "top_k": final_k
-            }) as span:
-                _t0 = _time.time()
-                docs = ce_rerank(query, docs, top_k=final_k, trace=trace)
-                span.set_attribute("reranked_count", len(docs))
-                try:
-                    from server.api_tracker import track_trace
-                    track_trace(step="cross_encoder_rerank", provider=_config_registry.get_str('RERANKER_BACKEND','local'),
-                                model=_config_registry.get_str('RERANKER_MODEL', ''), duration_ms=((_time.time()-_t0)*1000),
-                                extra={"candidates": len(docs), "top_k": final_k, "repo": repo})
-                except Exception:
-                    pass
-        else:
-            _t0 = _time.time()
-            docs = ce_rerank(query, docs, top_k=final_k, trace=trace)
-            try:
-                from server.api_tracker import track_trace
-                track_trace(step="cross_encoder_rerank", provider=_config_registry.get_str('RERANKER_BACKEND','local'),
-                            model=_config_registry.get_str('RERANKER_MODEL', ''), duration_ms=((_time.time()-_t0)*1000),
-                            extra={"candidates": len(docs), "top_k": final_k, "repo": repo})
-            except Exception:
-                pass
-        try:
-            if trace is not None and hasattr(trace, 'add'):
-                trace.add('rerank', {
-                    'duration_ms': (_time.time() - _t0) * 1000,
-                    'candidates': len(docs),
-                    'top_k': final_k,
-                    'repo': repo
-                })
-        except Exception:
-            pass
-
-    # Apply all scoring bonuses (CRITICAL: Must happen regardless of reranker backend)
-    intent = _classify_query(query)
-    
-    for d in docs:
-        fp = d.get('file_path', '')
-        layer = (d.get('layer') or '').lower()
-        lang = (d.get('language') or '').lower()
-        score = float(d.get('rerank_score', 0.0) or 0.0)
-        
-        # CRITICAL SCORING: Prioritize code files for implementation queries
-        # Without this, documentation often outranks actual code, frustrating developers
-        if wants_code:
-            if lang in ('python', 'javascript', 'typescript', 'go', 'rust', 'java', 'cpp', 'c'):
-                score += 0.50  # Huge boost ensures code appears first
-            elif lang in ('markdown', 'md', 'rst', 'txt'):
-                score -= 0.50  # Heavy penalty pushes docs down
-        
-        # Card hit bonus (semantic cards retrieval via BM25 over summaries)
-        try:
-            cid = str(d.get('id', '') or '')
-            if cid and cid in card_chunk_ids:
-                d['card_hit'] = True
-                score += _card_bonus(cid, card_chunk_ids)
-        except Exception:
-            pass
-        score += _path_bonus(fp, repo)
-        score += _project_layer_bonus(layer, intent)
-        score += _provider_plugin_hint(fp, d.get('code', '') or '')
-        score += _origin_bonus(d.get('origin', ''), _VENDOR_MODE)
-        score += _feature_bonus(query, fp, d.get('code', '') or '')
-        d['rerank_score'] = score
-    
-    # Re-sort after applying all bonuses
-    docs.sort(key=lambda x: x.get('rerank_score', 0.0), reverse=True)
-    
-    # NOW return top-k (bonuses have been applied)
-    return docs[:final_k]
+    reranked_docs = _maybe_rerank_candidates(query, docs, final_k, repo, trace)
+    _apply_agro_bonuses(reranked_docs, query, card_chunk_ids, repo)
+    return reranked_docs[:final_k]
 
 
 def _hydrate_docs_inplace(repo: str, docs: list[dict]) -> None:
