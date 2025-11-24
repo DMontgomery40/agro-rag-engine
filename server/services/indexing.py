@@ -28,7 +28,8 @@ def start(payload: Dict[str, Any] | None = None) -> Dict[str, Any]:
             repo = _config_registry.get_str("REPO", "agro")
             _INDEX_STATUS.append(f"Indexing repository: {repo}")
             # Ensure the indexer resolves repo paths correctly and uses the same interpreter
-            env = {**os.environ, "REPO": repo, "REPO_ROOT": str(repo_root())}
+            root = repo_root()
+            env = {**os.environ, "REPO": repo, "REPO_ROOT": str(root), "PYTHONPATH": str(root)}
             if payload.get("enrich"):
                 env["ENRICH_CODE_CHUNKS"] = "true"
                 _INDEX_STATUS.append("Enriching chunks with summaries and keywords...")
@@ -39,7 +40,7 @@ def start(payload: Dict[str, Any] | None = None) -> Dict[str, Any]:
                 [sys.executable, "-m", "indexer.index_repo"],
                 capture_output=True,
                 text=True,
-                cwd=repo_root(),
+                cwd=root,
                 env=env
             )
             if result.returncode == 0:
@@ -61,9 +62,11 @@ def stats() -> Dict[str, Any]:
 
 async def run(repo: str, dense: bool):
     async def stream_output():
+        root = repo_root()
         env = os.environ.copy()
         env['REPO'] = repo
-        env['REPO_ROOT'] = str(repo_root())
+        env['REPO_ROOT'] = str(root)
+        env['PYTHONPATH'] = str(root)
         env['SKIP_DENSE'] = '0' if dense else '1'
         cmd = [sys.executable, '-m', 'indexer.index_repo']
         proc = await asyncio.create_subprocess_exec(

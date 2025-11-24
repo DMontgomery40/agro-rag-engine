@@ -22,7 +22,9 @@
         "examples/",
         "bin/",
         "reports/",
-        "screenshots/"
+        "screenshots/",
+        "web/dist",
+        "gui"
       ],
       "keywords": [
         "models",

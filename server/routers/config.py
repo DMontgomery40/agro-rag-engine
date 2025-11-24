@@ -17,7 +17,15 @@ def get_config_schema() -> Dict[str, Any]:
 
 @router.post("/api/env/reload")
 def api_env_reload() -> Dict[str, Any]:
-    return cfg.env_reload()
+    result = cfg.env_reload()
+    # Reload hybrid_search module globals to pick up config changes
+    try:
+        from retrieval import hybrid_search
+        hybrid_search.reload_config()
+        logger.info("Reloaded hybrid_search config globals")
+    except Exception as e:
+        logger.warning(f"Failed to reload hybrid_search config: {e}")
+    return result
 
 
 @router.post("/api/env/save")

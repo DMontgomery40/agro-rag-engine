@@ -1,977 +1,354 @@
 [
   {
-    "_comment": "AGRO RAG Engine - Golden Test Questions",
-    "_comment2": "expect_paths includes ALL relevant files, not just the main one"
-  },
-  {
-    "q": "Where is the hybrid search implementation that combines BM25 and vector search?",
+    "q": "How does RRF (Reciprocal Rank Fusion) combine BM25 and vector results?",
     "repo": "agro",
     "expect_paths": [
-      "retrieval/hybrid_search.py",
-      "server/langgraph_app.py",
-      "server/app.py",
-      "eval/eval_rag.py"
-    ]
-  },
-  {
-    "q": "How does the indexing pipeline work? Where is the main indexer?",
-    "repo": "agro",
-    "expect_paths": [
-      "indexer/index_repo.py",
-      "retrieval/ast_chunker.py",
-      "common/filtering.py",
-      "common/config_loader.py",
-      "retrieval/embed_cache.py",
-      "common/qdrant_utils.py"
-    ]
-  },
-  {
-    "q": "Where is the FastAPI server and main API routes defined?",
-    "repo": "agro",
-    "expect_paths": [
-      "server/app.py",
-      "server/langgraph_app.py",
-      "server/feedback.py",
-      "server/telemetry.py",
-      "server/metrics.py"
-    ]
-  },
-  {
-    "q": "Where is the LangGraph conversational RAG pipeline implemented?",
-    "repo": "agro",
-    "expect_paths": [
-      "server/langgraph_app.py",
-      "retrieval/hybrid_search.py",
-      "server/tracing.py",
-      "server/app.py"
-    ]
-  },
-  {
-    "q": "How does the cross-encoder reranker work?",
-    "repo": "agro",
-    "expect_paths": [
-      "retrieval/rerank.py",
-      "retrieval/hybrid_search.py",
-      "scripts/train_reranker.py",
-      "scripts/mine_triplets.py",
-      "gui/js/reranker.js"
-    ]
-  },
-  {
-    "q": "Where is the MCP (Model Context Protocol) server for stdio transport?",
-    "repo": "agro",
-    "expect_paths": [
-      "server/mcp/server.py",
-      "server/mcp/http.py",
-      "node_mcp/server.js",
-      "server/langgraph_app.py"
-    ]
-  },
-  {
-    "q": "Where is the GUI main HTML and JavaScript?",
-    "repo": "agro",
-    "expect_paths": [
-      "gui/index.html",
-      "gui/app.js",
-      "gui/js/navigation.js",
-      "gui/js/chat.js",
-      "gui/css/tokens.css",
-      "gui/css/micro-interactions.css"
-    ]
-  },
-  {
-    "q": "How does the navigation system work in the GUI?",
-    "repo": "agro",
-    "expect_paths": [
-      "gui/js/navigation.js",
-      "gui/index.html",
-      "gui/app.js"
-    ]
-  },
-  {
-    "q": "Where is the chat interface implementation?",
-    "repo": "agro",
-    "expect_paths": [
-      "gui/js/chat.js",
-      "gui/index.html",
-      "server/app.py",
-      "server/langgraph_app.py",
-      "cli/chat_cli.py"
-    ]
-  },
-  {
-    "q": "Where is the AST-aware code chunking implemented?",
-    "repo": "agro",
-    "expect_paths": [
-      "retrieval/ast_chunker.py",
-      "indexer/index_repo.py",
-      "common/filtering.py"
-    ]
-  },
-  {
-    "q": "How does the embedding cache work to avoid recomputation?",
-    "repo": "agro",
-    "expect_paths": [
-      "retrieval/embed_cache.py",
-      "indexer/index_repo.py",
       "retrieval/hybrid_search.py"
     ]
   },
   {
-    "q": "Where is the semantic card building logic?",
+    "q": "Where is the tokenizer vocab loaded for BM25 queries?",
     "repo": "agro",
     "expect_paths": [
-      "indexer/build_cards.py",
-      "common/metadata.py",
-      "server/cards_builder.py",
-      "gui/js/cards.js"
+      "retrieval/hybrid_search.py"
     ]
   },
   {
-    "q": "Where is the repository configuration loaded from repos.json?",
+    "q": "How are chunk IDs mapped to BM25 index positions?",
     "repo": "agro",
     "expect_paths": [
-      "common/config_loader.py",
-      "repos.json",
-      "server/app.py",
-      "gui/js/config.js",
+      "retrieval/hybrid_search.py",
       "indexer/index_repo.py"
     ]
   },
   {
-    "q": "How are file filtering and exclusion rules defined?",
+    "q": "Where does query expansion happen in the retrieval pipeline?",
     "repo": "agro",
     "expect_paths": [
-      "common/filtering.py",
-      "data/exclude_globs.txt",
-      "retrieval/ast_chunker.py",
-      "indexer/index_repo.py"
-    ]
-  },
-  {
-    "q": "Where is the metadata enrichment for code chunks?",
-    "repo": "agro",
-    "expect_paths": [
-      "common/metadata.py",
-      "indexer/build_cards.py",
-      "server/cards_builder.py"
-    ]
-  },
-  {
-    "q": "Where is the Qdrant vector database integration?",
-    "repo": "agro",
-    "expect_paths": [
-      "common/qdrant_utils.py",
-      "retrieval/hybrid_search.py",
-      "indexer/index_repo.py",
-      "docker-compose.yml"
-    ]
-  },
-  {
-    "q": "How does multi-query expansion work?",
-    "repo": "agro",
-    "expect_paths": [
-      "retrieval/hybrid_search.py",
-      "server/langgraph_app.py",
       "retrieval/synonym_expander.py"
     ]
   },
   {
-    "q": "Where is the tracing system for debugging RAG pipelines?",
+    "q": "How is the BM25 index saved and what files does it create?",
     "repo": "agro",
     "expect_paths": [
-      "server/tracing.py",
-      "server/app.py",
-      "server/langgraph_app.py",
-      "gui/js/trace.js"
+      "indexer/index_repo.py"
     ]
   },
   {
-    "q": "Where are the keyword generation scripts?",
+    "q": "Where are code language detection functions implemented?",
     "repo": "agro",
     "expect_paths": [
-      "scripts/generate_smart_keywords.py",
-      "discriminative_keywords.json",
-      "semantic_keywords.json",
-      "llm_keywords.json",
+      "retrieval/ast_chunker.py"
+    ]
+  },
+  {
+    "q": "How does the system handle tree-sitter parsing errors?",
+    "repo": "agro",
+    "expect_paths": [
+      "retrieval/ast_chunker.py"
+    ]
+  },
+  {
+    "q": "Where is the Redis checkpoint system configured for LangGraph?",
+    "repo": "agro",
+    "expect_paths": [
+      "server/langgraph_app.py"
+    ]
+  },
+  {
+    "q": "How does multi-query retrieval generate query variants?",
+    "repo": "agro",
+    "expect_paths": [
       "retrieval/hybrid_search.py"
     ]
   },
   {
-    "q": "How does the reranker training with triplets work?",
+    "q": "Where are path bonuses calculated for scoring?",
     "repo": "agro",
     "expect_paths": [
-      "scripts/mine_triplets.py",
-      "scripts/train_reranker.py",
-      "data/training/triplets.jsonl",
-      "retrieval/rerank.py",
-      "data/logs/queries.jsonl"
-    ]
-  },
-  {
-    "q": "Where is the Docker Compose and infrastructure setup?",
-    "repo": "agro",
-    "expect_paths": [
-      "docker-compose.yml",
-      "docker-compose.services.yml",
-      "Dockerfile",
-      "Dockerfile.node",
-      "scripts/up.sh",
-      "scripts/down.sh"
-    ]
-  },
-  {
-    "q": "Where is the Grafana dashboard configuration?",
-    "repo": "agro",
-    "expect_paths": [
-      "infra/grafana/provisioning/dashboards/agro_overview.json",
-      "infra/grafana/provisioning/dashboards/dashboards.yml",
-      "infra/grafana/provisioning/datasources/prometheus.yml",
-      "infra/grafana/provisioning/datasources/loki.yml",
-      "docker-compose.yml",
-      "gui/js/grafana.js"
-    ]
-  },
-  {
-    "q": "Where is the Prometheus metrics configuration?",
-    "repo": "agro",
-    "expect_paths": [
-      "infra/prometheus.yml",
-      "infra/prometheus-alert-rules.yml",
-      "server/metrics.py",
-      "telemetry/prometheus.yml",
-      "docker-compose.yml"
-    ]
-  },
-  {
-    "q": "How does the CLI chat tool work?",
-    "repo": "agro",
-    "expect_paths": [
-      "cli/chat_cli.py",
-      "server/app.py",
-      "server/langgraph_app.py",
       "retrieval/hybrid_search.py"
     ]
   },
   {
-    "q": "Where are the Playwright end-to-end tests?",
+    "q": "How does layer bonus scoring work for different code layers?",
     "repo": "agro",
     "expect_paths": [
-      "tests/gui.spec.ts",
-      "tests/api.spec.ts",
-      "tests/test_dashboard.py",
-      "tests/test_metrics_tab.py",
-      "tools/playwright.config.ts"
+      "retrieval/hybrid_search.py"
     ]
   },
   {
-    "q": "Where is the evaluation harness for testing RAG quality?",
+    "q": "Where is the filename boost multiplier applied?",
     "repo": "agro",
     "expect_paths": [
-      "eval/eval_rag.py",
-      "eval/eval_loop.py",
-      "data/golden.json",
-      "data/evals/eval_baseline.json",
-      "gui/js/golden_questions.js"
+      "retrieval/hybrid_search.py"
     ]
   },
   {
-    "q": "How does the theme system work in the GUI?",
+    "q": "How are vendor/third-party code penalties calculated?",
     "repo": "agro",
     "expect_paths": [
-      "gui/js/theme.js",
-      "gui/css/tokens.css",
-      "gui/css/micro-interactions.css",
-      "gui/index.html",
-      "gui/app.js"
+      "retrieval/hybrid_search.py"
     ]
   },
   {
-    "q": "Where is the configuration management in the GUI?",
+    "q": "Where is streaming eval output implemented with SSE?",
     "repo": "agro",
     "expect_paths": [
-      "gui/js/config.js",
-      "server/app.py",
-      "common/config_loader.py",
-      "repos.json"
+      "server/routers/eval.py"
     ]
   },
   {
-    "q": "Where is the index statistics computation?",
+    "q": "How does the eval compare current results to baseline?",
     "repo": "agro",
     "expect_paths": [
-      "server/index_stats.py",
-      "indexer/index_stats.py",
-      "server/app.py",
-      "gui/js/index-display.js"
+      "eval/eval_loop.py"
     ]
   },
   {
-    "q": "How does the confidence gating work in LangGraph?",
+    "q": "Where are eval results stored and how are they timestamped?",
     "repo": "agro",
     "expect_paths": [
-      "server/langgraph_app.py",
-      "retrieval/hybrid_search.py",
+      "server/routers/eval.py"
+    ]
+  },
+  {
+    "q": "How does the frequency limiter middleware detect anomalies?",
+    "repo": "agro",
+    "expect_paths": [
+      "server/frequency_limiter.py"
+    ]
+  },
+  {
+    "q": "Where is the API request interceptor configured?",
+    "repo": "agro",
+    "expect_paths": [
+      "server/api_interceptor.py"
+    ]
+  },
+  {
+    "q": "How are CORS origins validated and configured?",
+    "repo": "agro",
+    "expect_paths": [
+      "server/asgi.py"
+    ]
+  },
+  {
+    "q": "Where is the static file serving middleware setup?",
+    "repo": "agro",
+    "expect_paths": [
+      "server/asgi.py"
+    ]
+  },
+  {
+    "q": "How does config hot-reload work when files change?",
+    "repo": "agro",
+    "expect_paths": [
+      "server/services/config_registry.py"
+    ]
+  },
+  {
+    "q": "Where are environment variable overrides handled?",
+    "repo": "agro",
+    "expect_paths": [
+      "server/services/config_registry.py"
+    ]
+  },
+  {
+    "q": "How does the config validation ensure weights sum to 1.0?",
+    "repo": "agro",
+    "expect_paths": [
+      "server/models/agro_config_model.py"
+    ]
+  },
+  {
+    "q": "Where are Pydantic field validators defined for config?",
+    "repo": "agro",
+    "expect_paths": [
+      "server/models/agro_config_model.py"
+    ]
+  },
+  {
+    "q": "How does the reranker decide between local and Cohere backend?",
+    "repo": "agro",
+    "expect_paths": [
       "retrieval/rerank.py"
     ]
   },
   {
-    "q": "Where are the API endpoint handlers for RAG queries?",
+    "q": "Where is the cross-encoder model loaded and cached?",
     "repo": "agro",
     "expect_paths": [
-      "server/app.py",
-      "server/langgraph_app.py",
-      "server/mcp/server.py",
-      "server/mcp/http.py"
+      "retrieval/rerank.py"
     ]
   },
   {
-    "q": "How does the query rewriting work when confidence is low?",
+    "q": "How does snippet truncation work for reranker input?",
     "repo": "agro",
     "expect_paths": [
-      "server/langgraph_app.py",
-      "retrieval/hybrid_search.py",
-      "server/env_model.py"
+      "retrieval/rerank.py"
     ]
   },
   {
-    "q": "Where is the synonym expansion for semantic search?",
+    "q": "Where is the embedding model selected based on provider?",
     "repo": "agro",
     "expect_paths": [
-      "retrieval/synonym_expander.py",
-      "data/semantic_synonyms.json",
-      "retrieval/hybrid_search.py"
-    ]
-  },
-  {
-    "q": "Where are the cost calculation utilities for token usage?",
-    "repo": "agro",
-    "expect_paths": [
-      "gui/js/cost_logic.js",
-      "gui/js/storage-calculator.js",
-      "gui/prices.json",
-      "server/metrics.py",
-      "gui/index.html"
-    ]
-  },
-  {
-    "q": "How does the dashboard tab render system status?",
-    "repo": "agro",
-    "expect_paths": [
-      "gui/js/dashboard.js",
-      "server/app.py",
-      "server/index_stats.py",
-      "gui/index.html"
-    ]
-  },
-  {
-    "q": "Where is the telemetry logging for queries and feedback?",
-    "repo": "agro",
-    "expect_paths": [
-      "server/telemetry.py",
-      "data/logs/queries.jsonl",
-      "server/app.py",
-      "server/feedback.py"
-    ]
-  },
-  {
-    "q": "How does the MCP HTTP server work?",
-    "repo": "agro",
-    "expect_paths": [
-      "server/mcp/http.py",
-      "server/mcp/server.py",
-      "server/langgraph_app.py"
-    ]
-  },
-  {
-    "q": "Where is the Node.js MCP server implementation?",
-    "repo": "agro",
-    "expect_paths": [
-      "node_mcp/server.js",
-      "node_mcp/package.json",
-      "server/langgraph_app.py"
-    ]
-  },
-  {
-    "q": "Where are the common path utilities?",
-    "repo": "agro",
-    "expect_paths": [
-      "common/paths.py",
-      "common/config_loader.py",
-      "indexer/index_repo.py"
-    ]
-  },
-  {
-    "q": "How does the file selection and upload work in the GUI?",
-    "repo": "agro",
-    "expect_paths": [
-      "gui/js/secrets.js",
-      "gui/index.html",
-      "server/app.py"
-    ]
-  },
-  {
-    "q": "Where is the golden questions test runner?",
-    "repo": "agro",
-    "expect_paths": [
-      "gui/js/golden_questions.js",
-      "data/golden.json",
-      "eval/eval_rag.py",
-      "server/app.py"
-    ]
-  },
-  {
-    "q": "How does the auto-profile wizard work?",
-    "repo": "agro",
-    "expect_paths": [
-      "gui/js/autotune.js",
-      "gui/autotune_policy.json",
-      "gui/index.html",
-      "server/app.py"
-    ]
-  },
-  {
-    "q": "Where is the infrastructure management in the GUI?",
-    "repo": "agro",
-    "expect_paths": [
-      "gui/js/docker.js",
-      "docker-compose.yml",
-      "scripts/up.sh",
-      "scripts/status.sh"
-    ]
-  },
-  {
-    "q": "How does the reranker UI component work?",
-    "repo": "agro",
-    "expect_paths": [
-      "gui/js/reranker.js",
-      "retrieval/rerank.py",
-      "server/app.py",
-      "gui/index.html"
-    ]
-  },
-  {
-    "q": "Where are the alert configuration and management?",
-    "repo": "agro",
-    "expect_paths": [
-      "gui/js/alerts.js",
-      "infra/alertmanager.yml",
-      "infra/prometheus-alert-rules.yml",
-      "server/metrics.py"
-    ]
-  },
-  {
-    "q": "How does the profiles system work for saving configurations?",
-    "repo": "agro",
-    "expect_paths": [
-      "gui/js/profile_logic.js",
-      "gui/js/index_profiles.js",
-      "gui/profiles/",
-      "server/app.py",
-      "gui/index.html"
-    ]
-  },
-  {
-    "q": "Where is the VS Code integration for embedded editor?",
-    "repo": "agro",
-    "expect_paths": [
-      "gui/js/vscode.js",
-      "gui/index.html",
-      "scripts/editor_up.sh",
-      "scripts/editor_down.sh"
-    ]
-  },
-  {
-    "q": "How does the Makefile orchestrate development tasks?",
-    "repo": "agro",
-    "expect_paths": [
-      "Makefile",
-      "scripts/up.sh",
-      "scripts/down.sh",
-      "docker-compose.yml"
-    ]
-  },
-  {
-    "q": "Where are the Python requirements defined?",
-    "repo": "agro",
-    "expect_paths": [
-      "requirements.txt",
-      "requirements-rag.txt",
-      "requirements.lock"
-    ]
-  },
-  {
-    "q": "How does the feedback collection system work?",
-    "repo": "agro",
-    "expect_paths": [
-      "server/feedback.py",
-      "server/telemetry.py",
-      "data/logs/queries.jsonl",
-      "server/app.py"
-    ]
-  },
-  {
-    "q": "Where are helpful error message utilities defined?",
-    "repo": "agro",
-    "expect_paths": [
-      "gui/js/error-helpers.js",
-      "gui/index.html"
-    ]
-  },
-  {
-    "q": "Where are GUI tooltips implemented?",
-    "repo": "agro",
-    "expect_paths": [
-      "gui/js/tooltips.js",
-      "gui/index.html"
-    ]
-  },
-  {
-    "q": "How do I configure the Qdrant URL for vector search?",
-    "repo": "agro",
-    "expect_paths": [
-      "common/qdrant_utils.py",
-      "retrieval/hybrid_search.py",
-      "docker-compose.yml",
-      "gui/js/tooltips.js"
-    ]
-  },
-  {
-    "q": "What is EMBEDDING_TYPE and how does it affect retrieval?",
-    "repo": "agro",
-    "expect_paths": [
-      "retrieval/embed_cache.py",
-      "indexer/index_repo.py",
-      "gui/js/tooltips.js",
-      "common/config_loader.py"
-    ]
-  },
-  {
-    "q": "How do I configure multi-query expansion with MQ_REWRITES?",
-    "repo": "agro",
-    "expect_paths": [
-      "retrieval/hybrid_search.py",
-      "server/langgraph_app.py",
-      "gui/js/tooltips.js"
-    ]
-  },
-  {
-    "q": "What are the confidence thresholds CONF_TOP1, CONF_AVG5, and CONF_ANY?",
-    "repo": "agro",
-    "expect_paths": [
-      "server/langgraph_app.py",
-      "retrieval/hybrid_search.py",
-      "gui/js/tooltips.js"
-    ]
-  },
-  {
-    "q": "How do I configure reranking with RERANK_BACKEND and Cohere?",
-    "repo": "agro",
-    "expect_paths": [
-      "retrieval/rerank.py",
-      "retrieval/hybrid_search.py",
-      "gui/js/tooltips.js",
-      "server/langgraph_app.py"
-    ]
-  },
-  {
-    "q": "What is TOPK_DENSE and TOPK_SPARSE for hybrid search tuning?",
-    "repo": "agro",
-    "expect_paths": [
-      "retrieval/hybrid_search.py",
-      "gui/js/tooltips.js",
-      "server/langgraph_app.py"
-    ]
-  },
-  {
-    "q": "How do I set up local reranking with RERANKER_MODEL?",
-    "repo": "agro",
-    "expect_paths": [
-      "retrieval/rerank.py",
-      "models/cross-encoder-agro.baseline/README.md",
-      "gui/js/tooltips.js",
-      "scripts/train_reranker.py"
-    ]
-  },
-  {
-    "q": "What is HYDRATION_MODE and how does it affect memory usage?",
-    "repo": "agro",
-    "expect_paths": [
-      "retrieval/hybrid_search.py",
-      "indexer/index_repo.py",
-      "gui/js/tooltips.js"
-    ]
-  },
-  {
-    "q": "How do I configure code enrichment with ENRICH_BACKEND?",
-    "repo": "agro",
-    "expect_paths": [
-      "indexer/build_cards.py",
-      "common/metadata.py",
-      "gui/js/tooltips.js",
-      "indexer/index_repo.py"
-    ]
-  },
-  {
-    "q": "What is VENDOR_MODE and how does it prioritize first-party code?",
-    "repo": "agro",
-    "expect_paths": [
-      "retrieval/hybrid_search.py",
-      "retrieval/rerank.py",
-      "gui/js/tooltips.js"
-    ]
-  },
-  {
-    "q": "How do I configure the MCP HTTP server with MCP_HTTP_HOST and MCP_HTTP_PORT?",
-    "repo": "agro",
-    "expect_paths": [
-      "server/mcp/http.py",
-      "server/mcp/server.py",
-      "gui/js/tooltips.js"
-    ]
-  },
-  {
-    "q": "What is OUT_DIR_BASE and why does it matter for MCP sync?",
-    "repo": "agro",
-    "expect_paths": [
-      "common/config_loader.py",
-      "common/paths.py",
-      "indexer/index_repo.py",
-      "gui/js/tooltips.js"
-    ]
-  },
-  {
-    "q": "How do I configure different models per channel with GEN_MODEL_HTTP and GEN_MODEL_MCP?",
-    "repo": "agro",
-    "expect_paths": [
-      "server/langgraph_app.py",
-      "server/env_model.py",
-      "gui/js/tooltips.js",
-      "server/app.py"
-    ]
-  },
-  {
-    "q": "What is COLLECTION_SUFFIX for A/B testing indexes?",
-    "repo": "agro",
-    "expect_paths": [
-      "common/qdrant_utils.py",
-      "indexer/index_repo.py",
-      "gui/js/tooltips.js"
-    ]
-  },
-  {
-    "q": "How do I create helpful error messages with causes and fixes?",
-    "repo": "agro",
-    "expect_paths": [
-      "gui/js/error-helpers.js",
-      "gui/index.html"
-    ]
-  },
-  {
-    "q": "What is the createHelpfulError function and its parameters?",
-    "repo": "agro",
-    "expect_paths": [
-      "gui/js/error-helpers.js"
-    ]
-  },
-  {
-    "q": "How do I configure Voyage AI embeddings with VOYAGE_API_KEY?",
-    "repo": "agro",
-    "expect_paths": [
-      "retrieval/embed_cache.py",
-      "indexer/index_repo.py",
-      "gui/js/tooltips.js"
-    ]
-  },
-  {
-    "q": "What is CARDS_MAX and how does it affect score boosting?",
-    "repo": "agro",
-    "expect_paths": [
-      "indexer/build_cards.py",
-      "retrieval/hybrid_search.py",
-      "gui/js/tooltips.js",
-      "server/cards_builder.py"
-    ]
-  },
-  {
-    "q": "How do I configure evaluation with GOLDEN_PATH and EVAL_FINAL_K?",
-    "repo": "agro",
-    "expect_paths": [
-      "eval/eval_rag.py",
-      "eval/eval_loop.py",
-      "data/golden.json",
-      "gui/js/tooltips.js"
-    ]
-  },
-  {
-    "q": "What is SKIP_DENSE for BM25-only indexing?",
-    "repo": "agro",
-    "expect_paths": [
-      "indexer/index_repo.py",
-      "retrieval/hybrid_search.py",
-      "gui/js/tooltips.js"
-    ]
-  },
-  {
-    "q": "How do I configure LangChain tracing with LANGCHAIN_TRACING_V2?",
-    "repo": "agro",
-    "expect_paths": [
-      "server/tracing.py",
-      "server/langgraph_app.py",
-      "gui/js/tooltips.js"
-    ]
-  },
-  {
-    "q": "What is ENRICH_CODE_CHUNKS and how does it improve retrieval quality?",
-    "repo": "agro",
-    "expect_paths": [
-      "indexer/build_cards.py",
-      "common/metadata.py",
-      "indexer/index_repo.py",
-      "gui/js/tooltips.js"
-    ]
-  },
-  {
-    "q": "How do I configure the HTTP server port with PORT setting?",
-    "repo": "agro",
-    "expect_paths": [
-      "server/app.py",
-      "docker-compose.yml",
-      "gui/js/tooltips.js"
-    ]
-  },
-  {
-    "q": "What is THREAD_ID for conversation state in LangGraph?",
-    "repo": "agro",
-    "expect_paths": [
-      "server/langgraph_app.py",
-      "cli/chat_cli.py",
-      "gui/js/tooltips.js"
-    ]
-  },
-  {
-    "q": "How do I configure Anthropic Claude models with ANTHROPIC_API_KEY?",
-    "repo": "agro",
-    "expect_paths": [
-      "server/langgraph_app.py",
-      "server/env_model.py",
-      "gui/js/tooltips.js"
-    ]
-  },
-  {
-    "q": "What is OPENAI_BASE_URL for OpenAI-compatible endpoints?",
-    "repo": "agro",
-    "expect_paths": [
-      "server/langgraph_app.py",
-      "retrieval/embed_cache.py",
-      "gui/js/tooltips.js"
-    ]
-  },
-  {
-    "q": "How do I configure Google Gemini models with GOOGLE_API_KEY?",
-    "repo": "agro",
-    "expect_paths": [
-      "server/langgraph_app.py",
-      "retrieval/embed_cache.py",
-      "gui/js/tooltips.js"
-    ]
-  },
-  {
-    "q": "What is EMBEDDING_DIM and how does it affect Qdrant storage?",
-    "repo": "agro",
-    "expect_paths": [
-      "common/qdrant_utils.py",
-      "indexer/index_repo.py",
-      "gui/js/tooltips.js"
-    ]
-  },
-  {
-    "q": "How do I configure Redis for LangGraph checkpoints with REDIS_URL?",
-    "repo": "agro",
-    "expect_paths": [
-      "server/langgraph_app.py",
-      "docker-compose.yml",
-      "gui/js/tooltips.js"
-    ]
-  },
-  {
-    "q": "What is TRANSFORMERS_TRUST_REMOTE_CODE security warning about?",
-    "repo": "agro",
-    "expect_paths": [
-      "retrieval/rerank.py",
-      "gui/js/tooltips.js",
       "retrieval/embed_cache.py"
     ]
   },
   {
-    "q": "How do I configure Netlify deployment with NETLIFY_API_KEY and NETLIFY_DOMAINS?",
+    "q": "How does the embedding cache handle batch operations?",
     "repo": "agro",
     "expect_paths": [
-      "server/mcp/server.py",
-      "gui/js/tooltips.js"
+      "retrieval/embed_cache.py"
     ]
   },
   {
-    "q": "What is FINAL_K and how does it balance precision vs recall?",
+    "q": "Where are chunk overlaps calculated during AST chunking?",
     "repo": "agro",
     "expect_paths": [
-      "retrieval/hybrid_search.py",
-      "server/langgraph_app.py",
-      "gui/js/tooltips.js"
+      "retrieval/ast_chunker.py"
     ]
   },
   {
-    "q": "How do I configure Ollama local models with OLLAMA_URL?",
+    "q": "How does the indexer handle binary files and large files?",
     "repo": "agro",
     "expect_paths": [
-      "server/langgraph_app.py",
-      "indexer/build_cards.py",
-      "gui/js/tooltips.js"
+      "common/filtering.py",
+      "indexer/index_repo.py"
     ]
   },
   {
-    "q": "What is HYDRATION_MAX_CHARS for preventing huge chunk bloat?",
+    "q": "Where is the progress bar displayed during indexing?",
     "repo": "agro",
     "expect_paths": [
-      "retrieval/hybrid_search.py",
-      "indexer/index_repo.py",
-      "gui/js/tooltips.js"
+      "indexer/index_repo.py"
     ]
   },
   {
-    "q": "How do I configure repos.json with REPOS_FILE setting?",
+    "q": "How are import statements extracted from code chunks?",
     "repo": "agro",
     "expect_paths": [
-      "common/config_loader.py",
-      "repos.json",
-      "gui/js/tooltips.js"
+      "retrieval/ast_chunker.py"
     ]
   },
   {
-    "q": "What is REPO_PATH fallback when repos.json is not configured?",
+    "q": "Where is repo routing logic that maps queries to repositories?",
     "repo": "agro",
     "expect_paths": [
-      "common/config_loader.py",
-      "indexer/index_repo.py",
-      "gui/js/tooltips.js"
+      "retrieval/hybrid_search.py"
     ]
   },
   {
-    "q": "How do I configure path boosts for repository routing?",
+    "q": "How does intent classification determine query type?",
     "repo": "agro",
     "expect_paths": [
-      "retrieval/hybrid_search.py",
-      "repos.json",
-      "gui/js/tooltips.js"
+      "retrieval/hybrid_search.py"
     ]
   },
   {
-    "q": "What is EVAL_MULTI for testing multi-query during evaluation?",
+    "q": "Where are document hydration limits enforced?",
     "repo": "agro",
     "expect_paths": [
-      "eval/eval_loop.py",
-      "eval/eval_rag.py",
-      "gui/js/tooltips.js"
+      "retrieval/hybrid_search.py"
     ]
   },
   {
-    "q": "How do I configure BASELINE_PATH for regression testing?",
+    "q": "How does the terminal service handle SSE connections?",
     "repo": "agro",
     "expect_paths": [
-      "eval/eval_loop.py",
-      "data/evals/eval_baseline.json",
-      "gui/js/tooltips.js"
+      "server/routers/stream_logs.py"
     ]
   },
   {
-    "q": "What is COHERE_RERANK_MODEL for specifying rerank model version?",
+    "q": "Where is subprocess output captured for indexing jobs?",
     "repo": "agro",
     "expect_paths": [
-      "retrieval/rerank.py",
-      "gui/js/tooltips.js"
+      "server/services/indexing.py"
     ]
   },
   {
-    "q": "How do I configure enrichment model with ENRICH_MODEL_OLLAMA?",
+    "q": "How are Qdrant collections created with proper schema?",
     "repo": "agro",
     "expect_paths": [
-      "indexer/build_cards.py",
-      "common/metadata.py",
-      "gui/js/tooltips.js"
+      "common/qdrant_utils.py"
     ]
   },
   {
-    "q": "What is AGRO_EDITION for feature gating in deployments?",
+    "q": "Where is vector search performed against Qdrant?",
     "repo": "agro",
     "expect_paths": [
-      "server/app.py",
-      "gui/index.html",
-      "gui/js/tooltips.js"
+      "retrieval/hybrid_search.py"
     ]
   },
   {
-    "q": "How do I create inline error messages with createInlineError?",
+    "q": "How does the system detect if Qdrant is available?",
     "repo": "agro",
     "expect_paths": [
-      "gui/js/error-helpers.js"
+      "common/qdrant_utils.py"
     ]
   },
   {
-    "q": "What is createAlertError for alert-style error messages?",
+    "q": "Where are triplets generated for reranker training?",
     "repo": "agro",
     "expect_paths": [
-      "gui/js/error-helpers.js"
+      "scripts/mine_triplets.py"
     ]
   },
   {
-    "q": "How does the tooltip system attach help icons to form fields?",
+    "q": "How does the learning reranker training loop work?",
     "repo": "agro",
     "expect_paths": [
-      "gui/js/tooltips.js",
-      "gui/index.html"
+      "reranker/learning_reranker.py"
     ]
   },
   {
-    "q": "What is the buildTooltipMap function for configuration help?",
+    "q": "Where are training metrics logged during reranker training?",
     "repo": "agro",
     "expect_paths": [
-      "gui/js/tooltips.js"
+      "reranker/learning_reranker.py"
     ]
   },
   {
-    "q": "How do I troubleshoot Qdrant connection failures?",
+    "q": "How are negative examples sampled for triplet mining?",
     "repo": "agro",
     "expect_paths": [
-      "common/qdrant_utils.py",
-      "docker-compose.yml",
-      "gui/js/tooltips.js",
-      "gui/js/error-helpers.js"
+      "scripts/mine_triplets.py"
     ]
   },
   {
-    "q": "How do I fix retrieval returning no results?",
+    "q": "Where is the Docker daemon status checked?",
     "repo": "agro",
     "expect_paths": [
-      "retrieval/hybrid_search.py",
-      "common/config_loader.py",
-      "gui/js/tooltips.js",
-      "gui/js/error-helpers.js"
+      "server/routers/docker.py"
     ]
   },
   {
-    "q": "What causes reranking model load failures?",
+    "q": "How does the MCP server handle tool invocations?",
     "repo": "agro",
     "expect_paths": [
-      "retrieval/rerank.py",
-      "gui/js/tooltips.js",
-      "gui/js/error-helpers.js"
+      "server/mcp/server.py"
     ]
   },
   {
-    "q": "smoke test question",
+    "q": "Where are LangSmith trace IDs generated and tracked?",
     "repo": "agro",
     "expect_paths": [
-      "README.md"
+      "server/tracing.py"
+    ]
+  },
+  {
+    "q": "How does Prometheus collect RAG performance metrics?",
+    "repo": "agro",
+    "expect_paths": [
+      "server/metrics.py"
+    ]
+  },
+  {
+    "q": "Where are alertmanager webhooks received and processed?",
+    "repo": "agro",
+    "expect_paths": [
+      "server/alerts.py"
     ]
   }
 ]

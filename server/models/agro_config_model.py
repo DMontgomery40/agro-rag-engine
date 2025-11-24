@@ -100,6 +100,20 @@ class RetrievalConfig(BaseModel):
         description="Weight for BM25 in hybrid search"
     )
 
+    bm25_k1: float = Field(
+        default=1.2,
+        ge=0.5,
+        le=3.0,
+        description="BM25 term frequency saturation parameter (higher = more weight to term frequency)"
+    )
+
+    bm25_b: float = Field(
+        default=0.4,
+        ge=0.0,
+        le=1.0,
+        description="BM25 length normalization (0=no penalty, 1=full penalty, 0.3-0.5 recommended for code)"
+    )
+
     vector_weight: float = Field(
         default=0.7,
         ge=0.0,
@@ -1084,6 +1098,8 @@ class AgroConfigRoot(BaseModel):
             'EVAL_MULTI': self.retrieval.eval_multi,
             'QUERY_EXPANSION_ENABLED': self.retrieval.query_expansion_enabled,
             'BM25_WEIGHT': self.retrieval.bm25_weight,
+            'BM25_K1': self.retrieval.bm25_k1,
+            'BM25_B': self.retrieval.bm25_b,
             'VECTOR_WEIGHT': self.retrieval.vector_weight,
             'CARD_SEARCH_ENABLED': self.retrieval.card_search_enabled,
             'MULTI_QUERY_M': self.retrieval.multi_query_m,
@@ -1260,6 +1276,8 @@ class AgroConfigRoot(BaseModel):
                 eval_multi=data.get('EVAL_MULTI', 1),
                 query_expansion_enabled=data.get('QUERY_EXPANSION_ENABLED', 1),
                 bm25_weight=data.get('BM25_WEIGHT', 0.3),
+                bm25_k1=data.get('BM25_K1', 1.2),
+                bm25_b=data.get('BM25_B', 0.4),
                 vector_weight=data.get('VECTOR_WEIGHT', 0.7),
                 card_search_enabled=data.get('CARD_SEARCH_ENABLED', 1),
                 multi_query_m=data.get('MULTI_QUERY_M', 4),
@@ -1436,6 +1454,8 @@ AGRO_CONFIG_KEYS = {
     'EVAL_MULTI',
     'QUERY_EXPANSION_ENABLED',
     'BM25_WEIGHT',
+    'BM25_K1',
+    'BM25_B',
     'VECTOR_WEIGHT',
     'CARD_SEARCH_ENABLED',
     'MULTI_QUERY_M',

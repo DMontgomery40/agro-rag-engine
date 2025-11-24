@@ -380,7 +380,13 @@ class CardsBuildJob:
                 tok = Tokenizer(stemmer=stemmer, stopwords="en")
                 docs = [ln.strip() for ln in paths["cards_txt"].read_text(encoding="utf-8").splitlines() if ln.strip()]
                 tokens = tok.tokenize(docs)
-                retriever = bm25s.BM25(method="lucene", k1=1.2, b=0.65)
+                # Load BM25 parameters from config
+                from server.services.config_registry import get_config_registry
+                cfg = get_config_registry()
+                bm25_k1 = cfg.get_float('BM25_K1', 1.2)
+                bm25_b = cfg.get_float('BM25_B', 0.4)
+                
+                retriever = bm25s.BM25(method="lucene", k1=bm25_k1, b=bm25_b)
                 retriever.index(tokens)
                 try:
                     retriever.vocab_dict = {str(k): v for k, v in retriever.vocab_dict.items()}

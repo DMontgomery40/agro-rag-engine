@@ -332,6 +332,46 @@ export function useTooltips() {
         ],
         [['Core Setting', 'info']]
       ),
+      BM25_WEIGHT: L(
+        'BM25 Weight (Hybrid Fusion)',
+        'Weight assigned to BM25 (sparse lexical) scores during hybrid search fusion. BM25 excels at exact keyword matches - variable names, function names, error codes, technical terms. Higher weights (0.5-0.7) prioritize keyword precision. Lower weights (0.2-0.4) defer to dense embeddings. The fusion formula: final_score = (BM25_WEIGHT × bm25_score) + (VECTOR_WEIGHT × dense_score). Sweet spot: 0.4-0.5 for balanced hybrid retrieval. The two weights should sum to approximately 1.0.',
+        [
+          ['BM25 Algorithm', 'https://en.wikipedia.org/wiki/Okapi_BM25'],
+          ['Hybrid Search Overview', 'https://qdrant.tech/articles/hybrid-search/'],
+          ['Sparse vs Dense Retrieval', 'https://www.pinecone.io/learn/hybrid-search-intro/']
+        ],
+        [['Advanced RAG tuning', 'info'], ['Pairs with VECTOR_WEIGHT', 'info']]
+      ),
+      VECTOR_WEIGHT: L(
+        'Vector Weight (Hybrid Fusion)',
+        'Weight assigned to dense vector (semantic embedding) scores during hybrid fusion. Dense embeddings capture semantic meaning and conceptual similarity, excelling at natural language queries. Higher weights (0.5-0.7) prioritize semantic relevance. Lower weights (0.2-0.4) defer to BM25 lexical matching. The fusion formula: final_score = (BM25_WEIGHT × bm25_score) + (VECTOR_WEIGHT × dense_score). Sweet spot: 0.5-0.6 for balanced hybrid retrieval. The two weights should sum to approximately 1.0.',
+        [
+          ['Dense Embeddings', 'https://www.sbert.net/docs/pretrained_models.html'],
+          ['Hybrid Search Explained', 'https://qdrant.tech/articles/hybrid-search/'],
+          ['Semantic Search', 'https://en.wikipedia.org/wiki/Semantic_search']
+        ],
+        [['Advanced RAG tuning', 'info'], ['Pairs with BM25_WEIGHT', 'info']]
+      ),
+      BM25_K1: L(
+        'BM25 K1 (Term Frequency Saturation)',
+        'Controls how quickly BM25 scores saturate as term frequency increases. Higher values (1.5-2.0) give more weight to repeated terms - useful when term frequency signals importance (e.g., "database" appearing 10 times in DB code). Lower values (0.8-1.2) reduce the impact of repetition, better for code where terms naturally repeat. Default: 1.2. Standard range: 1.2-2.0 for most IR systems. For code search: 1.0-1.5 recommended as repeated terms are common but not always meaningful.',
+        [
+          ['BM25 Parameters Explained', 'https://en.wikipedia.org/wiki/Okapi_BM25#The_ranking_function'],
+          ['Tuning BM25', 'https://opensourceconnections.com/blog/2015/10/16/bm25-the-next-generation-of-lucene-relevation/'],
+          ['BM25 Research Paper', 'https://www.staff.city.ac.uk/~sbrp622/papers/foundations_bm25_review.pdf']
+        ],
+        [['Requires re-indexing', 'warn'], ['Advanced parameter', 'info']]
+      ),
+      BM25_B: L(
+        'BM25 B (Length Normalization)',
+        'Controls document length normalization in BM25 scoring. Value between 0.0-1.0. Higher values (0.6-0.8) heavily penalize longer documents - use for datasets with short docs like tweets or code snippets. Lower values (0.2-0.4) reduce length penalty - better for code where longer files may be more comprehensive, not less relevant. Default: 0.4 (tuned for code). Standard: 0.75 for general text. Set to 0 to disable length normalization entirely.',
+        [
+          ['BM25 Length Normalization', 'https://en.wikipedia.org/wiki/Okapi_BM25#The_ranking_function'],
+          ['Document Length Effect', 'https://nlp.stanford.edu/IR-book/html/htmledition/length-normalization-1.html'],
+          ['BM25 Parameter Tuning', 'https://kmwllc.com/index.php/2020/03/20/understanding-tf-idf-and-bm-25/']
+        ],
+        [['Requires re-indexing', 'warn'], ['Code-specific tuning', 'info']]
+      ),
 
       // Additional settings truncated for brevity - the full map contains 600+ tooltips
       // This implementation maintains parity with tooltips.js

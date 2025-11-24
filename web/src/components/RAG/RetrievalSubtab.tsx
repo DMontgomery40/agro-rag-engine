@@ -39,6 +39,8 @@ export function RetrievalSubtab() {
   const [hydrationMaxChars, setHydrationMaxChars] = useState<number>(2000);
   const [vendorMode, setVendorMode] = useState<string>('prefer_first_party');
   const [bm25Weight, setBm25Weight] = useState<number>(0.3);
+  const [bm25K1, setBm25K1] = useState<number>(1.2);
+  const [bm25B, setBm25B] = useState<number>(0.4);
   const [vectorWeight, setVectorWeight] = useState<number>(0.7);
   const [cardSearchEnabled, setCardSearchEnabled] = useState<string>('1');
   const [multiQueryM, setMultiQueryM] = useState<number>(4);
@@ -135,6 +137,8 @@ export function RetrievalSubtab() {
       setHydrationMaxChars(parseInt(env.HYDRATION_MAX_CHARS || '2000', 10));
       setVendorMode(env.VENDOR_MODE || 'prefer_first_party');
       setBm25Weight(parseFloat(env.BM25_WEIGHT || '0.3'));
+      setBm25K1(parseFloat(env.BM25_K1 || '1.2'));
+      setBm25B(parseFloat(env.BM25_B || '0.4'));
       setVectorWeight(parseFloat(env.VECTOR_WEIGHT || '0.7'));
       setCardSearchEnabled(env.CARD_SEARCH_ENABLED || '1');
       setMultiQueryM(parseInt(env.MULTI_QUERY_M || '4', 10));
@@ -763,6 +767,44 @@ export function RetrievalSubtab() {
         min={0.0}
         max={1.0}
         step={0.1}
+      />
+    </div>
+  </div>
+
+  <div className="input-row">
+    <div className="input-group">
+      <label>
+        BM25 K1 (Term Frequency)
+        <span className="help-icon" data-tooltip="BM25_K1">?</span>
+      </label>
+      <input
+        type="number"
+        id="BM25_K1"
+        name="BM25_K1"
+        value={bm25K1}
+        onChange={(e) => setBm25K1(parseFloat(e.target.value) || 1.2)}
+        onBlur={() => updateConfig('BM25_K1', bm25K1)}
+        min={0.5}
+        max={3.0}
+        step={0.1}
+      />
+    </div>
+
+    <div className="input-group">
+      <label>
+        BM25 B (Length Penalty)
+        <span className="help-icon" data-tooltip="BM25_B">?</span>
+      </label>
+      <input
+        type="number"
+        id="BM25_B"
+        name="BM25_B"
+        value={bm25B}
+        onChange={(e) => setBm25B(parseFloat(e.target.value) || 0.4)}
+        onBlur={() => updateConfig('BM25_B', bm25B)}
+        min={0.0}
+        max={1.0}
+        step={0.05}
       />
     </div>
   </div>

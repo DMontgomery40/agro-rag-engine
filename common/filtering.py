@@ -27,11 +27,7 @@ def _prune_dirs_in_place(dirs: list[str]) -> None:
 def _should_index_file(name: str) -> bool:
     n = (name or "").lower()
     
-    # ALWAYS index important .txt files
-    if n in ("requirements.txt", "requirements-rag.txt", "exclude_globs.txt"):
-        return True
-    
-    # EXCLUDE MARKDOWN and generic text files (per user requirement)
+    # EXCLUDE MARKDOWN and generic text files (including requirements.txt)
     if n.endswith((".md", ".markdown", ".rst", ".txt")):
         return False
     

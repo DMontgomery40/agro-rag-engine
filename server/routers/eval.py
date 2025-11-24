@@ -11,6 +11,7 @@ import threading
 from typing import Dict, Any, Optional
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from server.utils import atomic_write_json, read_json
 from server.services.config_registry import get_config_registry
 
