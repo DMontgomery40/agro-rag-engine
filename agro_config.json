@@ -39,7 +39,7 @@
     "freshness_bonus": 0.05
   },
   "embedding": {
-    "embedding_type": "local",
+    "embedding_type": "openai",
     "embedding_model": "text-embedding-3-large",
     "embedding_dim": 3072,
     "voyage_model": "voyage-code-3",

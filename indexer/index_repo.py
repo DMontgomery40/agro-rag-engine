@@ -35,7 +35,10 @@ _cfg = get_config_registry()
 REPO = _cfg.get_str('REPO', 'agro')
 QDRANT_URL = _cfg.get_str('QDRANT_URL', 'http://127.0.0.1:6333')
 COLLECTION = _cfg.get_str('COLLECTION_NAME', f'code_chunks_{REPO}')
-EMBEDDING_TYPE = _cfg.get_str('EMBEDDING_TYPE', 'local').lower()
+EMBEDDING_TYPE = _cfg.get_str('EMBEDDING_TYPE', 'openai').lower()
+EMBEDDING_MODEL = _cfg.get_str('EMBEDDING_MODEL', 'text-embedding-3-large')
+EMBEDDING_MODEL_LOCAL = _cfg.get_str('EMBEDDING_MODEL_LOCAL', 'BAAI/bge-small-en-v1.5')
+VOYAGE_MODEL = _cfg.get_str('VOYAGE_MODEL', 'voyage-code-3')
 
 # File extensions to index
 SOURCE_EXTS = {
@@ -105,13 +108,21 @@ def should_index(path: str, repo_excludes: List[str] = None) -> bool:
 
 
 def get_embedding_func():
-    """Return embedding function based on config."""
+    """Return embedding function based on config.
+    
+    Reads EMBEDDING_TYPE and EMBEDDING_MODEL from config registry.
+    """
+    # Get embedding dimension from config
+    embed_dim = _cfg.get_int('EMBEDDING_DIM', 3072)
+    
     if EMBEDDING_TYPE == 'local':
         from sentence_transformers import SentenceTransformer
-        model = SentenceTransformer('BAAI/bge-small-en-v1.5')
+        model = SentenceTransformer(EMBEDDING_MODEL_LOCAL)
+        # Local models have varying dimensions - get from model
+        local_dim = model.get_sentence_embedding_dimension()
         def embed(texts: List[str]) -> List[List[float]]:
             return model.encode(texts, normalize_embeddings=True, show_progress_bar=False).tolist()
-        return embed, 384
+        return embed, local_dim
     
     elif EMBEDDING_TYPE == 'voyage':
         import voyageai
@@ -121,22 +132,22 @@ def get_embedding_func():
             all_embs = []
             for i in range(0, len(texts), 64):
                 batch = texts[i:i+64]
-                r = client.embed(batch, model='voyage-code-3', input_type='document', output_dimension=512)
+                r = client.embed(batch, model=VOYAGE_MODEL, input_type='document', output_dimension=512)
                 all_embs.extend(r.embeddings)
             return all_embs
         return embed, 512
     
-    else:  # openai
+    else:  # openai (default)
         from openai import OpenAI
         client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
         def embed(texts: List[str]) -> List[List[float]]:
             all_embs = []
             for i in range(0, len(texts), 64):
                 batch = texts[i:i+64]
-                r = client.embeddings.create(input=batch, model='text-embedding-3-small')
+                r = client.embeddings.create(input=batch, model=EMBEDDING_MODEL)
                 all_embs.extend([d.embedding for d in r.data])
             return all_embs
-        return embed, 1536
+        return embed, embed_dim
 
 
 def main():

@@ -43,6 +43,11 @@ export function DataQualitySubtab() {
   const [keywordsRefreshHours, setKeywordsRefreshHours] = useState<number>(24);
   const [error, setError] = useState<string>('');
 
+  // Keyword generation state
+  const [keywordsGenerating, setKeywordsGenerating] = useState<boolean>(false);
+  const [keywordsGenerateStatus, setKeywordsGenerateStatus] = useState<string>('');
+  const [generatedKeywordsCount, setGeneratedKeywordsCount] = useState<number | null>(null);
+
   // Load repos list
   useEffect(() => {
     const loadRepos = async () => {
@@ -199,6 +204,49 @@ export function DataQualitySubtab() {
     }
   };
 
+  /**
+   * Generate keywords for the selected repository
+   * Calls /api/keywords/generate endpoint
+   */
+  const handleGenerateKeywords = async () => {
+    if (!selectedRepo) {
+      setError('Please select a repository first');
+      return;
+    }
+
+    setKeywordsGenerating(true);
+    setKeywordsGenerateStatus('Generating keywords...');
+    setGeneratedKeywordsCount(null);
+    setError('');
+
+    try {
+      const response = await fetch(api('keywords/generate'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ repo: selectedRepo })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.ok !== false) {
+        const count = data.count || data.keywords?.length || 0;
+        setGeneratedKeywordsCount(count);
+        setKeywordsGenerateStatus(`✓ Generated ${count} keywords for ${selectedRepo}`);
+        console.log(`[DataQualitySubtab] Generated ${count} keywords for ${selectedRepo}`);
+      } else {
+        const errorMsg = data.error || data.detail || 'Unknown error generating keywords';
+        setKeywordsGenerateStatus(`✗ Error: ${errorMsg}`);
+        setError(errorMsg);
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to generate keywords';
+      setKeywordsGenerateStatus(`✗ Failed: ${errorMsg}`);
+      setError(errorMsg);
+      console.error('[DataQualitySubtab] Keyword generation error:', err);
+    } finally {
+      setKeywordsGenerating(false);
+    }
+  };
 
   const handleBuildCards = async () => {
     setBuildInProgress(true);
@@ -365,7 +413,7 @@ export function DataQualitySubtab() {
         <div className="input-row">
           <div className="input-group">
             <label>
-              Keywords Boost
+              Keywords Multiplicative Boost
               <span className="help-icon" data-tooltip="KEYWORDS_BOOST">?</span>
             </label>
             <input
@@ -420,6 +468,62 @@ export function DataQualitySubtab() {
             />
           </div>
         </div>
+
+        {/* Generate Keywords Button */}
+        <div className="input-row" style={{ marginTop: '20px' }}>
+          <div className="input-group">
+            <button
+              id="btn-generate-keywords"
+              onClick={handleGenerateKeywords}
+              disabled={keywordsGenerating || !selectedRepo}
+              data-tooltip="GENERATE_KEYWORDS"
+              title="Extract discriminative keywords from the indexed codebase using TF-IDF analysis"
+              style={{
+                width: '100%',
+                background: keywordsGenerating ? 'var(--fg-muted)' : 'var(--link)',
+                color: keywordsGenerating ? 'var(--bg)' : 'var(--on-link)',
+                border: 'none',
+                padding: '14px 24px',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: 700,
+                cursor: keywordsGenerating ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <span style={{ fontSize: '18px' }}>⭐</span>
+              {keywordsGenerating ? 'Generating...' : 'Generate Keywords'}
+            </button>
+          </div>
+        </div>
+
+        {/* Generation Status */}
+        {keywordsGenerateStatus && (
+          <div
+            style={{
+              marginTop: '12px',
+              padding: '12px',
+              background: keywordsGenerateStatus.includes('✓') ? 'rgba(0, 255, 136, 0.1)' : 
+                         keywordsGenerateStatus.includes('✗') ? 'rgba(255, 80, 80, 0.1)' : 
+                         'var(--card-bg)',
+              border: `1px solid ${keywordsGenerateStatus.includes('✓') ? 'var(--ok)' : 
+                                  keywordsGenerateStatus.includes('✗') ? 'var(--err)' : 
+                                  'var(--line)'}`,
+              borderRadius: '6px',
+              fontSize: '13px',
+              fontFamily: "'SF Mono', monospace",
+              color: keywordsGenerateStatus.includes('✓') ? 'var(--ok)' : 
+                     keywordsGenerateStatus.includes('✗') ? 'var(--err)' : 
+                     'var(--fg-muted)'
+            }}
+          >
+            {keywordsGenerateStatus}
+          </div>
+        )}
       </div>
 
       {/* Code Cards Builder & Viewer */}

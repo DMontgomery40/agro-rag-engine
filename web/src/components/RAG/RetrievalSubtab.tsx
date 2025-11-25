@@ -915,7 +915,7 @@ export function RetrievalSubtab() {
           </div>
           <div className="input-group">
             <label>
-              Card Bonus
+              Card Multiplicative Bonus
               <span className="help-icon" data-tooltip="CARD_BONUS">?</span>
             </label>
             <input
@@ -934,7 +934,7 @@ export function RetrievalSubtab() {
         <div className="input-row">
           <div className="input-group">
             <label>
-              Filename Boost (Exact Match)
+              Filename Multiplicative Boost (Exact)
               <span className="help-icon" data-tooltip="FILENAME_BOOST_EXACT">?</span>
             </label>
             <input
@@ -950,7 +950,7 @@ export function RetrievalSubtab() {
           </div>
           <div className="input-group">
             <label>
-              Filename Boost (Partial Match)
+              Filename Multiplicative Boost (Partial)
               <span className="help-icon" data-tooltip="FILENAME_BOOST_PARTIAL">?</span>
             </label>
             <input
@@ -1023,7 +1023,7 @@ export function RetrievalSubtab() {
         <div className="input-row">
           <div className="input-group">
             <label>
-              Layer Bonus (GUI)
+              Layer Multiplicative Bonus (GUI)
               <span className="help-icon" data-tooltip="LAYER_BONUS_GUI">?</span>
             </label>
             <input
@@ -1040,7 +1040,7 @@ export function RetrievalSubtab() {
           </div>
           <div className="input-group">
             <label>
-              Layer Bonus (Retrieval)
+              Layer Multiplicative Bonus (Retrieval)
               <span className="help-icon" data-tooltip="LAYER_BONUS_RETRIEVAL">?</span>
             </label>
             <input
@@ -1077,7 +1077,7 @@ export function RetrievalSubtab() {
           </div>
           <div className="input-group">
             <label>
-              Freshness Bonus
+              Freshness Multiplicative Bonus
               <span className="help-icon" data-tooltip="FRESHNESS_BONUS">?</span>
             </label>
             <input
