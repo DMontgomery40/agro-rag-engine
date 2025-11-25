@@ -22,7 +22,7 @@ interface ChatConfig {
 
 const DEFAULT_CONFIG: ChatConfig = {
   systemPrompt: 'You are a helpful AI assistant that answers questions about codebases using RAG (Retrieval-Augmented Generation). Provide accurate, concise answers with citations.',
-  model: 'gpt-4o-mini',
+  model: 'gpt-5.1-mini',
   temperature: 0,
   maxTokens: 1000,
   topP: 1,
@@ -326,7 +326,7 @@ export function ChatSettings() {
                   borderRadius: '4px',
                   fontSize: '13px'
                 }}
-                placeholder="gpt-4o-mini"
+                placeholder="gpt-5.1-mini"
               />
             )}
           </div>

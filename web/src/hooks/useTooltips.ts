@@ -129,6 +129,22 @@ export function useTooltips() {
         ],
         [['Live output', 'info']]
       ),
+      EVAL_PRIMARY_RUN: L(
+        'Primary Run (AFTER)',
+        'Select the evaluation run to analyze. This is typically the most recent run you want to inspect. When comparing, this is the "AFTER" run showing your latest configuration changes. The accuracy metrics and question results will be displayed from this run.',
+        [
+          ['Evaluation Guide', '/docs/EVALUATION.md']
+        ],
+        [['Required', 'info']]
+      ),
+      EVAL_COMPARE_RUN: L(
+        'Compare With (BEFORE)',
+        'Optionally select a previous evaluation run to compare against. This enables the configuration diff view showing exactly what parameters changed between runs, and highlights regressions (questions that got worse) vs improvements. The AI Analysis will use both runs to provide root cause analysis and recommendations.',
+        [
+          ['Evaluation Guide', '/docs/EVALUATION.md']
+        ],
+        [['Optional', 'info'], ['Enables AI Analysis', 'success']]
+      ),
       INDEX_LOGS_TERMINAL: L(
         'Indexing Logs Terminal',
         'Open the sliding terminal to stream raw indexer output with the exact repo/skip_dense/enrich settings used for the run.',

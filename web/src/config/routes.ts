@@ -9,6 +9,7 @@ import ChatTab from '../components/tabs/ChatTab.tsx';
 import VSCodeTab from '../components/tabs/VSCodeTab.tsx';
 import GrafanaTab from '../components/tabs/GrafanaTab.jsx';
 import RAGTab from '../components/tabs/RAGTab.tsx';
+import EvalAnalysisTab from '../components/tabs/EvalAnalysisTab';
 import ProfilesTab from '../components/tabs/ProfilesTab';
 import InfrastructureTab from '../components/tabs/InfrastructureTab';
 import AdminTab from '../components/tabs/AdminTab';
@@ -92,11 +93,19 @@ export const routes: RouteConfig[] = [
     ]
   },
   {
+    path: '/eval',
+    element: EvalAnalysisTab,
+    label: 'Eval Analysis',
+    icon: '🔬',
+    order: 7,
+    subtabs: []
+  },
+  {
     path: '/profiles',
     element: ProfilesTab,
     label: 'Profiles',
     icon: '💾',
-    order: 7,
+    order: 8,
     subtabs: [
       { id: 'budget', title: 'Budget Calculator' },
       { id: 'management', title: 'Profile Management' },
@@ -108,7 +117,7 @@ export const routes: RouteConfig[] = [
     element: InfrastructureTab,
     label: 'Infrastructure',
     icon: '🔧',
-    order: 8,
+    order: 9,
     subtabs: [
       { id: 'services', title: 'Services' },
       { id: 'mcp', title: 'MCP Servers' },
@@ -121,7 +130,7 @@ export const routes: RouteConfig[] = [
     element: AdminTab,
     label: 'Admin',
     icon: '⚙️',
-    order: 9,
+    order: 10,
     subtabs: [
       { id: 'general', title: 'General' },
       { id: 'git', title: 'Git Integration' },
@@ -134,7 +143,7 @@ export const routes: RouteConfig[] = [
     element: Docker,
     label: 'Docker',
     icon: '🐳',
-    order: 10,
+    order: 11,
     subtabs: []
   }
 ];

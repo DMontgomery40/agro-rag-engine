@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 interface QuestionResult {
   question: string;
@@ -29,17 +29,123 @@ interface EvalDrillDownProps {
   compareWithRunId?: string;
 }
 
+// Helper to format config values with proper wrapping
+const formatConfigValue = (value: any): React.ReactNode => {
+  if (Array.isArray(value)) {
+    if (value.length === 0) return <span style={{ color: 'var(--fg-muted)' }}>[]</span>;
+    if (value.length <= 3) {
+      return (
+        <span style={{ wordBreak: 'break-word', maxWidth: '200px', display: 'inline-block' }}>
+          {JSON.stringify(value)}
+        </span>
+      );
+    }
+    // For long arrays, show truncated with count
+    return (
+      <span title={JSON.stringify(value)} style={{ cursor: 'help' }}>
+        [{value.slice(0, 2).map(v => JSON.stringify(v)).join(', ')}...] 
+        <span style={{ color: 'var(--fg-muted)', fontSize: '10px', marginLeft: '4px' }}>
+          ({value.length} items)
+        </span>
+      </span>
+    );
+  }
+  if (typeof value === 'boolean') {
+    return value ? '✓' : '✗';
+  }
+  if (typeof value === 'string' && value.length > 50) {
+    return (
+      <span title={value} style={{ cursor: 'help' }}>
+        {value.slice(0, 40)}...
+        <span style={{ color: 'var(--fg-muted)', fontSize: '10px', marginLeft: '4px' }}>
+          ({value.length} chars)
+        </span>
+      </span>
+    );
+  }
+  return JSON.stringify(value);
+};
+
 export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWithRunId }) => {
   const [evalRun, setEvalRun] = useState<EvalRun | null>(null);
   const [compareRun, setCompareRun] = useState<EvalRun | null>(null);
   const [selectedQuestion, setSelectedQuestion] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // LLM Analysis state
+  const [llmAnalysis, setLlmAnalysis] = useState<string | null>(null);
+  const [llmLoading, setLlmLoading] = useState(false);
+  const [llmError, setLlmError] = useState<string | null>(null);
+  const [modelUsed, setModelUsed] = useState<string | null>(null);
+
+  // Function to fetch LLM analysis
+  const fetchLLMAnalysis = useCallback(async (
+    currentRun: EvalRun, 
+    compRun: EvalRun, 
+    configDiffs: any[], 
+    topkRegressions: QuestionResult[], 
+    topkImprovements: QuestionResult[],
+    top1RegressionsCount: number,
+    top1ImprovementsCount: number
+  ) => {
+    setLlmLoading(true);
+    setLlmError(null);
+    setLlmAnalysis(null);
+    
+    try {
+      const response = await fetch('/api/eval/analyze_comparison', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          current_run: {
+            run_id: currentRun.run_id,
+            top1_accuracy: currentRun.top1_accuracy,
+            topk_accuracy: currentRun.topk_accuracy,
+            total: currentRun.total,
+            duration_secs: currentRun.duration_secs
+          },
+          compare_run: {
+            run_id: compRun.run_id,
+            top1_accuracy: compRun.top1_accuracy,
+            topk_accuracy: compRun.topk_accuracy,
+            total: compRun.total,
+            duration_secs: compRun.duration_secs
+          },
+          config_diffs: configDiffs,
+          // Top-K question-level changes (shown in results table)
+          topk_regressions: topkRegressions.map(r => ({ question: r.question })),
+          topk_improvements: topkImprovements.map(r => ({ question: r.question })),
+          // Top-1 counts (for sanity checking)
+          top1_regressions_count: top1RegressionsCount,
+          top1_improvements_count: top1ImprovementsCount
+        })
+      });
+      
+      const data = await response.json();
+      if (data.ok) {
+        setLlmAnalysis(data.analysis);
+        setModelUsed(data.model_used);
+      } else {
+        setLlmError(data.error || 'Failed to generate analysis');
+      }
+    } catch (err) {
+      setLlmError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setLlmLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchRuns = async () => {
       try {
         setLoading(true);
+        // Reset ALL LLM analysis state when runs change
+        setLlmAnalysis(null);
+        setLlmError(null);
+        setLlmLoading(false);
+        setModelUsed(null);
+        
         const response = await fetch(`/api/eval/results/${runId}`);
         if (!response.ok) throw new Error('Failed to fetch run data');
         const data = await response.json();
@@ -53,6 +159,8 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
             const compareData = await compareResponse.json();
             setCompareRun(compareData);
           }
+        } else {
+          setCompareRun(null);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error');
@@ -309,19 +417,29 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
                       <div key={key} style={{
                         display: 'flex',
                         justifyContent: 'space-between',
-                        alignItems: 'center',
+                        alignItems: 'flex-start',
+                        gap: '8px',
                         fontSize: '12px',
                         padding: '4px 8px',
                         background: 'var(--card-bg)',
-                        borderRadius: '4px'
+                        borderRadius: '4px',
+                        minWidth: 0
                       }}>
-                        <span style={{ color: 'var(--fg)', fontFamily: 'monospace' }}>{key}</span>
+                        <span style={{ 
+                          color: 'var(--fg)', 
+                          fontFamily: 'monospace',
+                          flexShrink: 0 
+                        }}>{key}</span>
                         <span style={{
                           color: 'var(--link)',
                           fontWeight: 600,
-                          fontFamily: 'monospace'
+                          fontFamily: 'monospace',
+                          textAlign: 'right',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          maxWidth: '180px'
                         }}>
-                          {typeof value === 'boolean' ? (value ? '✓' : '✗') : JSON.stringify(value)}
+                          {formatConfigValue(value)}
                         </span>
                       </div>
                     ))}
@@ -450,53 +568,77 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
                 );
               }
 
-              // Non-array params (existing rendering)
+              // Non-array params - compact layout with truncation
+              const formatValue = (val: any) => {
+                const str = JSON.stringify(val);
+                if (str.length > 20) return str.slice(0, 17) + '...';
+                return str;
+              };
+              
               return (
                 <div key={key} style={{
-                  display: 'grid',
-                  gridTemplateColumns: '200px 1fr auto',
-                  gap: '16px',
-                  padding: '12px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '10px 16px',
                   background: 'var(--card-bg)',
-                  border: '2px solid var(--line)',
+                  border: '1px solid var(--line)',
                   borderRadius: '8px',
-                  alignItems: 'center'
+                  flexWrap: 'wrap'
                 }}>
-                  <div style={{ fontWeight: 700, color: 'var(--accent)', fontFamily: 'monospace' }}>
+                  <div style={{ 
+                    fontWeight: 600, 
+                    color: 'var(--accent)', 
+                    fontFamily: 'monospace',
+                    minWidth: '160px',
+                    fontSize: '13px'
+                  }}>
                     {key}
                   </div>
-                  <div style={{ display: 'flex', gap: '16px', fontFamily: 'monospace', alignItems: 'center' }}>
-                    <div style={{
-                      padding: '6px 12px',
-                      background: 'rgba(var(--err-rgb), 0.1)',
-                      border: '1px solid var(--err)',
-                      borderRadius: '6px',
-                      color: 'var(--err)',
-                      fontWeight: 600
-                    }}>
-                      BEFORE: {JSON.stringify(previous)}
-                    </div>
-                    <span style={{ fontSize: '18px', color: 'var(--accent)' }}>→</span>
-                    <div style={{
-                      padding: '6px 12px',
-                      background: 'rgba(var(--accent-green-rgb), 0.1)',
-                      border: '1px solid var(--accent-green)',
-                      borderRadius: '6px',
-                      color: 'var(--accent-green)',
-                      fontWeight: 600
-                    }}>
-                      AFTER: {JSON.stringify(current)}
-                    </div>
-                  </div>
-                  <div style={{
-                    fontSize: '10px',
-                    color: 'var(--fg-muted)',
-                    textAlign: 'right',
-                    fontStyle: 'italic'
+                  <div style={{ 
+                    display: 'flex', 
+                    gap: '8px', 
+                    fontFamily: 'monospace', 
+                    alignItems: 'center',
+                    fontSize: '12px'
                   }}>
-                    {direction}
-                    {perfImproved && <div style={{ color: 'var(--accent-green)', fontWeight: 600 }}>⬆ perf improved</div>}
-                    {!perfImproved && <div style={{ color: 'var(--err)', fontWeight: 600 }}>⬇ perf declined</div>}
+                    <div 
+                      title={JSON.stringify(previous)}
+                      style={{
+                        padding: '4px 10px',
+                        background: 'var(--bg-elev2)',
+                        border: '1px solid var(--fg-muted)',
+                        borderRadius: '4px',
+                        color: 'var(--fg-muted)',
+                        fontWeight: 500,
+                        maxWidth: '150px',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {formatValue(previous)}
+                    </div>
+                    <span style={{ color: 'var(--accent)', fontSize: '14px' }}>→</span>
+                    <div 
+                      title={JSON.stringify(current)}
+                      style={{
+                        padding: '4px 10px',
+                        background: perfImproved 
+                          ? 'rgba(var(--accent-green-rgb), 0.15)' 
+                          : 'rgba(var(--err-rgb), 0.15)',
+                        border: `1px solid ${perfImproved ? 'var(--accent-green)' : 'var(--err)'}`,
+                        borderRadius: '4px',
+                        color: perfImproved ? 'var(--accent-green)' : 'var(--err)',
+                        fontWeight: 600,
+                        maxWidth: '150px',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {formatValue(current)}
+                    </div>
                   </div>
                 </div>
               );
@@ -524,6 +666,247 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
                 <span style={{ color: 'var(--fg-muted)' }}> (questions that got better)</span>
               </div>
             </div>
+          </div>
+
+          {/* 🤖 LLM Analysis Section */}
+          <div style={{
+            marginTop: '24px',
+            padding: '20px',
+            background: 'linear-gradient(135deg, rgba(var(--link-rgb), 0.08), rgba(var(--accent-rgb), 0.04))',
+            borderRadius: '12px',
+            border: '2px solid var(--link)'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '16px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '20px' }}>🤖</span>
+                <h4 style={{
+                  margin: 0,
+                  fontSize: '15px',
+                  fontWeight: 700,
+                  color: 'var(--link)'
+                }}>
+                  AI Analysis & Recommendations
+                </h4>
+                {modelUsed && (
+                  <span style={{
+                    fontSize: '10px',
+                    padding: '3px 8px',
+                    background: 'var(--bg-elev2)',
+                    borderRadius: '10px',
+                    color: 'var(--fg-muted)'
+                  }}>
+                    {modelUsed}
+                  </span>
+                )}
+              </div>
+              
+              {!llmAnalysis && !llmLoading && (
+                <button
+                  onClick={() => {
+                    if (evalRun && compareRun) {
+                      // Calculate Top-K changes (what we show in the table)
+                      const topkRegressions = evalRun.results.filter((_, idx) => {
+                        const currentHit = evalRun.results[idx]?.topk_hit;
+                        const previousHit = compareRun.results[idx]?.topk_hit;
+                        return !currentHit && previousHit;
+                      });
+                      const topkImprovements = evalRun.results.filter((_, idx) => {
+                        const currentHit = evalRun.results[idx]?.topk_hit;
+                        const previousHit = compareRun.results[idx]?.topk_hit;
+                        return currentHit && !previousHit;
+                      });
+                      // Calculate Top-1 changes (for complete picture)
+                      const top1Regressions = evalRun.results.filter((_, idx) => {
+                        const currentHit = evalRun.results[idx]?.top1_hit;
+                        const previousHit = compareRun.results[idx]?.top1_hit;
+                        return !currentHit && previousHit;
+                      });
+                      const top1Improvements = evalRun.results.filter((_, idx) => {
+                        const currentHit = evalRun.results[idx]?.top1_hit;
+                        const previousHit = compareRun.results[idx]?.top1_hit;
+                        return currentHit && !previousHit;
+                      });
+                      // Send both metrics for accurate analysis
+                      fetchLLMAnalysis(
+                        evalRun, 
+                        compareRun, 
+                        configDiffs || [], 
+                        topkRegressions, 
+                        topkImprovements,
+                        top1Regressions.length,
+                        top1Improvements.length
+                      );
+                    }
+                  }}
+                  style={{
+                    background: 'var(--link)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <span>✨</span>
+                  Generate AI Analysis
+                </button>
+              )}
+              
+              {llmAnalysis && (
+                <button
+                  onClick={() => {
+                    setLlmAnalysis(null);
+                    setLlmError(null);
+                  }}
+                  style={{
+                    background: 'transparent',
+                    color: 'var(--fg-muted)',
+                    border: '1px solid var(--line)',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    fontSize: '11px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {llmLoading && (
+              <div style={{
+                textAlign: 'center',
+                padding: '32px',
+                color: 'var(--fg-muted)'
+              }}>
+                <div style={{ fontSize: '24px', marginBottom: '12px' }}>⏳</div>
+                <div>Analyzing comparison with AI...</div>
+                <div style={{ fontSize: '11px', marginTop: '8px', opacity: 0.7 }}>
+                  This may take a few seconds
+                </div>
+              </div>
+            )}
+
+            {llmError && (
+              <div style={{
+                background: 'rgba(var(--err-rgb), 0.1)',
+                border: '1px solid var(--err)',
+                borderRadius: '8px',
+                padding: '16px',
+                color: 'var(--err)',
+                fontSize: '13px'
+              }}>
+                <strong>Error:</strong> {llmError}
+              </div>
+            )}
+
+            {llmAnalysis && (
+              <div style={{
+                background: 'var(--card-bg)',
+                borderRadius: '8px',
+                padding: '20px',
+                fontSize: '13px',
+                lineHeight: 1.7,
+                color: 'var(--fg)'
+              }}>
+                {/* Render markdown-like content */}
+                {llmAnalysis.split('\n').map((line, idx) => {
+                  // Headers
+                  if (line.startsWith('## ')) {
+                    return (
+                      <h3 key={idx} style={{
+                        fontSize: '15px',
+                        fontWeight: 700,
+                        color: 'var(--accent)',
+                        marginTop: idx > 0 ? '20px' : 0,
+                        marginBottom: '12px',
+                        borderBottom: '1px solid var(--line)',
+                        paddingBottom: '8px'
+                      }}>
+                        {line.replace('## ', '')}
+                      </h3>
+                    );
+                  }
+                  if (line.startsWith('### ')) {
+                    return (
+                      <h4 key={idx} style={{
+                        fontSize: '14px',
+                        fontWeight: 600,
+                        color: 'var(--link)',
+                        marginTop: '16px',
+                        marginBottom: '8px'
+                      }}>
+                        {line.replace('### ', '')}
+                      </h4>
+                    );
+                  }
+                  // Bold text
+                  if (line.startsWith('**') && line.endsWith('**')) {
+                    return (
+                      <div key={idx} style={{
+                        fontWeight: 700,
+                        color: 'var(--fg)',
+                        marginTop: '12px',
+                        marginBottom: '4px'
+                      }}>
+                        {line.replace(/\*\*/g, '')}
+                      </div>
+                    );
+                  }
+                  // List items
+                  if (line.match(/^[\d]+\.\s/) || line.startsWith('- ')) {
+                    return (
+                      <div key={idx} style={{
+                        paddingLeft: '20px',
+                        marginBottom: '6px',
+                        position: 'relative'
+                      }}>
+                        <span style={{
+                          position: 'absolute',
+                          left: 0,
+                          color: 'var(--accent)'
+                        }}>
+                          {line.startsWith('- ') ? '•' : line.match(/^[\d]+/)?.[0] + '.'}
+                        </span>
+                        {line.replace(/^[\d]+\.\s/, '').replace(/^-\s/, '')}
+                      </div>
+                    );
+                  }
+                  // Empty lines
+                  if (line.trim() === '') {
+                    return <div key={idx} style={{ height: '8px' }} />;
+                  }
+                  // Regular paragraph
+                  return (
+                    <p key={idx} style={{ margin: '8px 0' }}>
+                      {line}
+                    </p>
+                  );
+                })}
+              </div>
+            )}
+
+            {!llmAnalysis && !llmLoading && !llmError && (
+              <div style={{
+                textAlign: 'center',
+                padding: '24px',
+                color: 'var(--fg-muted)',
+                fontSize: '13px'
+              }}>
+                Click "Generate AI Analysis" to get insights about this comparison,
+                including root cause analysis and actionable recommendations.
+              </div>
+            )}
           </div>
         </div>
       )}

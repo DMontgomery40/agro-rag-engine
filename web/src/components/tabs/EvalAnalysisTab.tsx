@@ -1,0 +1,371 @@
+// AGRO - Eval Analysis Tab
+// Top-level tab for evaluation drill-down and AI analysis
+// This is the keystone feature - comparing eval runs with LLM insights
+
+import React, { useState, useEffect } from 'react';
+import { EvalDrillDown } from '@/components/Evaluation/EvalDrillDown';
+
+interface EvalRunMeta {
+  run_id: string;
+  timestamp: string;
+  top1_accuracy: number;
+  topk_accuracy: number;
+  total: number;
+}
+
+export const EvalAnalysisTab: React.FC = () => {
+  const [runs, setRuns] = useState<EvalRunMeta[]>([]);
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+  const [compareRunId, setCompareRunId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch available eval runs
+  useEffect(() => {
+    const fetchRuns = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/eval/runs');
+        if (!response.ok) throw new Error('Failed to fetch eval runs');
+        const data = await response.json();
+        
+        // Sort by timestamp descending (newest first)
+        const sortedRuns = (data.runs || []).sort((a: EvalRunMeta, b: EvalRunMeta) => 
+          b.run_id.localeCompare(a.run_id)
+        );
+        
+        setRuns(sortedRuns);
+        
+        // Auto-select the most recent run
+        if (sortedRuns.length > 0 && !selectedRunId) {
+          setSelectedRunId(sortedRuns[0].run_id);
+          // If there's a second run, auto-select it for comparison
+          if (sortedRuns.length > 1) {
+            setCompareRunId(sortedRuns[1].run_id);
+          }
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRuns();
+  }, []);
+
+  // Format run label for dropdown
+  const formatRunLabel = (run: EvalRunMeta) => {
+    const date = run.run_id.replace(/^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})$/, '$1-$2-$3 $4:$5');
+    const accuracy = (run.topk_accuracy * 100).toFixed(1);
+    return `${date} — ${accuracy}% (${run.total} questions)`;
+  };
+
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        color: 'var(--fg-muted)'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '3px solid var(--line)',
+            borderTopColor: 'var(--accent)',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 16px'
+          }} />
+          Loading evaluation runs...
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{
+        padding: '24px',
+        textAlign: 'center',
+        color: 'var(--err)'
+      }}>
+        <div style={{ fontSize: '24px', marginBottom: '12px' }}>⚠️</div>
+        <div>Error loading evaluation runs: {error}</div>
+        <button
+          onClick={() => window.location.reload()}
+          style={{
+            marginTop: '16px',
+            padding: '8px 16px',
+            background: 'var(--accent)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer'
+          }}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (runs.length === 0) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        padding: '48px',
+        textAlign: 'center'
+      }}>
+        <div style={{ fontSize: '48px', marginBottom: '16px' }}>📊</div>
+        <h2 style={{ color: 'var(--fg)', marginBottom: '8px' }}>No Evaluation Runs Yet</h2>
+        <p style={{ color: 'var(--fg-muted)', maxWidth: '400px', marginBottom: '24px' }}>
+          Run your first evaluation to see detailed analysis and comparisons here.
+          Go to RAG → Evaluate to create your first eval run.
+        </p>
+        <button
+          onClick={() => window.location.hash = '#/rag?subtab=evaluate'}
+          style={{
+            padding: '12px 24px',
+            background: 'var(--accent)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <span>🧪</span>
+          Run First Evaluation
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden'
+    }}>
+      {/* Header with Run Selectors */}
+      <div style={{
+        padding: '20px 24px',
+        borderBottom: '1px solid var(--line)',
+        background: 'linear-gradient(135deg, var(--bg) 0%, var(--bg-elev1) 100%)'
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '16px'
+        }}>
+          <div>
+            <h2 style={{
+              fontSize: '22px',
+              fontWeight: 700,
+              color: 'var(--fg)',
+              margin: 0,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}>
+              <span style={{ fontSize: '26px' }}>🔬</span>
+              Eval Analysis
+            </h2>
+            <p style={{
+              fontSize: '13px',
+              color: 'var(--fg-muted)',
+              margin: '4px 0 0'
+            }}>
+              Deep-dive into evaluation runs with AI-powered insights and recommendations
+            </p>
+          </div>
+          
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '12px',
+            color: 'var(--fg-muted)'
+          }}>
+            <span>{runs.length} runs available</span>
+          </div>
+        </div>
+
+        {/* Run Selectors */}
+        <div style={{
+          display: 'flex',
+          gap: '24px',
+          alignItems: 'flex-end',
+          flexWrap: 'wrap'
+        }}>
+          {/* Primary Run Selector */}
+          <div style={{ flex: '1', minWidth: '280px' }}>
+            <label 
+              style={{ 
+                display: 'block', 
+                fontSize: '11px', 
+                fontWeight: 600, 
+                color: 'var(--accent)',
+                textTransform: 'uppercase',
+                marginBottom: '6px',
+                letterSpacing: '0.5px'
+              }}
+            >
+              Primary Run (AFTER)
+              <span className="help-icon" data-tooltip="EVAL_PRIMARY_RUN" style={{ marginLeft: '4px', cursor: 'help' }}>?</span>
+            </label>
+            <select
+              value={selectedRunId || ''}
+              onChange={(e) => setSelectedRunId(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                background: 'var(--input-bg)',
+                color: 'var(--fg)',
+                border: '2px solid var(--accent)',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 500,
+                cursor: 'pointer'
+              }}
+            >
+              {runs.map(run => (
+                <option key={run.run_id} value={run.run_id}>
+                  {formatRunLabel(run)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Comparison Run Selector */}
+          <div style={{ flex: '1', minWidth: '280px' }}>
+            <label 
+              style={{ 
+                display: 'block', 
+                fontSize: '11px', 
+                fontWeight: 600, 
+                color: 'var(--link)',
+                textTransform: 'uppercase',
+                marginBottom: '6px',
+                letterSpacing: '0.5px'
+              }}
+            >
+              Compare With (BEFORE)
+              <span className="help-icon" data-tooltip="EVAL_COMPARE_RUN" style={{ marginLeft: '4px', cursor: 'help' }}>?</span>
+            </label>
+            <select
+              value={compareRunId || ''}
+              onChange={(e) => setCompareRunId(e.target.value || null)}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                background: 'var(--input-bg)',
+                color: 'var(--fg)',
+                border: '2px solid var(--link)',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 500,
+                cursor: 'pointer'
+              }}
+            >
+              <option value="">— No comparison (single run view) —</option>
+              {runs.filter(r => r.run_id !== selectedRunId).map(run => (
+                <option key={run.run_id} value={run.run_id}>
+                  {formatRunLabel(run)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Quick Actions */}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={() => {
+                // Swap primary and compare
+                const temp = selectedRunId;
+                setSelectedRunId(compareRunId);
+                setCompareRunId(temp);
+              }}
+              disabled={!compareRunId}
+              style={{
+                padding: '10px 14px',
+                background: 'var(--bg-elev2)',
+                color: 'var(--fg)',
+                border: '1px solid var(--line)',
+                borderRadius: '8px',
+                fontSize: '13px',
+                cursor: compareRunId ? 'pointer' : 'not-allowed',
+                opacity: compareRunId ? 1 : 0.5,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+              title="Swap primary and comparison runs"
+            >
+              ↕️ Swap
+            </button>
+            <button
+              onClick={() => window.location.hash = '#/rag?subtab=evaluate'}
+              style={{
+                padding: '10px 14px',
+                background: 'var(--accent)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+              title="Run a new evaluation"
+            >
+              + New Eval
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Drill Down Content */}
+      <div style={{
+        flex: 1,
+        overflow: 'auto'
+      }}>
+        {selectedRunId ? (
+          <EvalDrillDown 
+            key={`${selectedRunId}-${compareRunId || 'none'}`}
+            runId={selectedRunId} 
+            compareWithRunId={compareRunId || undefined}
+          />
+        ) : (
+          <div style={{
+            padding: '48px',
+            textAlign: 'center',
+            color: 'var(--fg-muted)'
+          }}>
+            Select an evaluation run to view details
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default EvalAnalysisTab;
+

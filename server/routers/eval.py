@@ -560,3 +560,130 @@ def load_historical_metrics_endpoint() -> Dict[str, Any]:
         return {"ok": True, "message": "Historical eval metrics loaded successfully"}
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+
+@router.post("/api/eval/analyze_comparison")
+def analyze_eval_comparison(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Use LLM to analyze eval comparison and provide insights.
+    
+    Body: { current_run: {...}, compare_run: {...}, config_diffs: [...] }
+    Returns: { analysis: str, suggestions: [...] }
+    """
+    try:
+        from server.env_model import generate_text
+        
+        current_run = payload.get("current_run", {})
+        compare_run = payload.get("compare_run", {})
+        config_diffs = payload.get("config_diffs", [])
+        # Top-K question-level changes (what's shown in the results table)
+        topk_regressions = payload.get("topk_regressions", payload.get("regressions", []))
+        topk_improvements = payload.get("topk_improvements", payload.get("improvements", []))
+        # Top-1 counts for sanity checking
+        top1_regressions_count = payload.get("top1_regressions_count", 0)
+        top1_improvements_count = payload.get("top1_improvements_count", 0)
+        
+        # Build the prompt for LLM analysis
+        system_prompt = """You are an expert RAG (Retrieval-Augmented Generation) system analyst.
+Your job is to analyze evaluation comparisons and provide HONEST, SKEPTICAL insights.
+
+CRITICAL: Do NOT force explanations that don't make sense. If the data is contradictory or confusing:
+- Say so clearly: "This result is surprising and may indicate other factors at play"
+- Consider: index changes, data drift, golden question updates, or measurement noise
+- Acknowledge when correlation ≠ causation
+- It's BETTER to say "I'm not sure why this happened" than to fabricate a plausible-sounding but wrong explanation
+
+Be rigorous:
+1. Question whether the config changes ACTUALLY explain the performance delta
+2. Flag when results seem counterintuitive (e.g., disabling a feature improving results)
+3. Consider confounding variables: Was the index rebuilt? Did the test set change?
+4. Provide actionable suggestions only when you have reasonable confidence
+
+Format your response with clear sections using markdown headers."""
+
+        # Build user prompt with eval data
+        current_metrics = f"""Top-1 Accuracy: {current_run.get('top1_accuracy', 0) * 100:.1f}%
+Top-K Accuracy: {current_run.get('topk_accuracy', 0) * 100:.1f}%
+Total Questions: {current_run.get('total', 0)}
+Duration: {current_run.get('duration_secs', 0):.1f}s"""
+
+        compare_metrics = f"""Top-1 Accuracy: {compare_run.get('top1_accuracy', 0) * 100:.1f}%
+Top-K Accuracy: {compare_run.get('topk_accuracy', 0) * 100:.1f}%
+Total Questions: {compare_run.get('total', 0)}
+Duration: {compare_run.get('duration_secs', 0):.1f}s"""
+
+        delta_top1 = (current_run.get('top1_accuracy', 0) - compare_run.get('top1_accuracy', 0)) * 100
+        delta_topk = (current_run.get('topk_accuracy', 0) - compare_run.get('topk_accuracy', 0)) * 100
+
+        config_changes_str = "\n".join([
+            f"- **{d.get('key', 'unknown')}**: {d.get('previous', d.get('prev', '?'))} → {d.get('current', d.get('curr', '?'))}"
+            for d in config_diffs[:15]  # Limit to 15 most important changes
+        ]) if config_diffs else "No configuration changes detected."
+
+        # Build question lists
+        topk_regression_list = "\n".join([f"- {r.get('question', 'Unknown')}" for r in topk_regressions[:10]]) if topk_regressions else "None"
+        topk_improvement_list = "\n".join([f"- {i.get('question', 'Unknown')}" for i in topk_improvements[:10]]) if topk_improvements else "None"
+
+        # Calculate expected counts from accuracy deltas for sanity check
+        total = current_run.get('total', 50)
+        expected_top1_delta = round(delta_top1 * total / 100)
+        expected_topk_delta = round(delta_topk * total / 100)
+
+        user_prompt = f"""## Eval Comparison Analysis Request
+
+### BEFORE Run ({compare_run.get('run_id', 'baseline')})
+{compare_metrics}
+
+### AFTER Run ({current_run.get('run_id', 'current')})
+{current_metrics}
+
+### Performance Delta
+- Top-1: {'+' if delta_top1 >= 0 else ''}{delta_top1:.1f}% (expected ~{expected_top1_delta:+d} questions)
+- Top-K: {'+' if delta_topk >= 0 else ''}{delta_topk:.1f}% (expected ~{expected_topk_delta:+d} questions)
+
+### Question-Level Changes (Top-K metric)
+- **Top-K Regressions**: {len(topk_regressions)} questions got worse
+- **Top-K Improvements**: {len(topk_improvements)} questions got better
+
+### Question-Level Changes (Top-1 metric)
+- **Top-1 Regressions**: {top1_regressions_count} questions got worse  
+- **Top-1 Improvements**: {top1_improvements_count} questions got better
+
+### Configuration Changes
+{config_changes_str}
+
+### Top-K Regressed Questions (sample)
+{topk_regression_list}
+
+### Top-K Improved Questions (sample)
+{topk_improvement_list}
+
+---
+
+Please analyze this comparison and provide:
+1. **Root Cause Analysis**: What likely caused the performance change?
+2. **Recommendations**: 2-3 specific, actionable suggestions to improve results
+3. **Risk Assessment**: Any concerns about the configuration changes?
+
+Keep the analysis concise (under 400 words) but insightful."""
+
+        # Call the LLM - use gpt-5.1 for best analysis
+        analysis_model = _config.get_str("GEN_MODEL", "gpt-5.1")
+        analysis_text, _meta = generate_text(
+            user_input=user_prompt,
+            system_instructions=system_prompt,
+            model=analysis_model
+        )
+
+        return {
+            "ok": True,
+            "analysis": analysis_text,
+            "model_used": analysis_model
+        }
+
+    except Exception as e:
+        import traceback
+        return {
+            "ok": False,
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }

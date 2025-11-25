@@ -93,7 +93,7 @@
     "rerank_input_snippet_chars": 700
   },
   "generation": {
-    "gen_model": "gpt-5",
+    "gen_model": "gpt-5.1",
     "gen_temperature": 0.1,
     "gen_max_tokens": 2048,
     "gen_top_p": 1.0,
@@ -103,7 +103,7 @@
     "enrich_backend": "openai",
     "enrich_disabled": 0,
     "ollama_num_ctx": 8192,
-    "gen_model_cli": "gpt-5",
+    "gen_model_cli": "gpt-4o-mini",
     "gen_model_ollama": "gpt-4o-mini",
     "ollama_request_timeout": 300,
     "ollama_stream_idle_timeout": 60

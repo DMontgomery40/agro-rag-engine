@@ -7,7 +7,7 @@ export function Sidepanel() {
 
   // Live Cost Calculator state
   const [costProvider, setCostProvider] = useState('openai');
-  const [costModel, setCostModel] = useState('gpt-4o-mini');
+  const [costModel, setCostModel] = useState('gpt-5.1-mini');
   const [costEmbeddingProvider, setCostEmbeddingProvider] = useState('openai');
   const [costEmbeddingModel, setCostEmbeddingModel] = useState('text-embedding-3-small');
   const [costRerankProvider, setCostRerankProvider] = useState('cohere');

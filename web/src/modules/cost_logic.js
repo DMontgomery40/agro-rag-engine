@@ -211,7 +211,7 @@ export const CostLogic = {
 
     const payload = {
       gen_provider: readStr('cost-provider','openai').trim(),
-      gen_model: readStr('cost-model','gpt-4o-mini').trim(),
+      gen_model: readStr('cost-model','gpt-5.1-mini').trim(),
       tokens_in: readInt('cost-in', 500),
       tokens_out: readInt('cost-out', 800),
       embed_provider: readStr('cost-embed-provider','openai').trim(),
