@@ -1,1480 +1,372 @@
-"""AGRO RAG Engine - Hybrid Search Module
+"""Clean Hybrid Search - v2 Rewrite
 
-This module implements the core retrieval functionality for the AGRO RAG engine,
-combining multiple search strategies for optimal code and documentation retrieval.
+Simple, working search that:
+1. BM25 sparse search
+2. Qdrant vector search  
+3. RRF fusion
+4. Cross-encoder reranking
+5. Returns results
 
-Key Features:
-- Hybrid search: Combines dense vector search (Qdrant) with sparse BM25 retrieval
-- Intelligent reranking using cross-encoder models (local or cloud-based)
-- Query expansion and multi-query fusion for better recall
-- Discriminative keyword boosting for domain-specific relevance
-- Configurable scoring bonuses based on file paths, layers, and content
-
-================================================================================
-IMPORTANT NOTE FOR COMMERCIAL USERS AND CONTRIBUTORS:
-================================================================================
-
-The "type: ignore" comments throughout this file are INTENTIONAL and REQUIRED.
-They are NOT bugs or errors that need fixing.
-
-Why these exist:
-1. Third-party packages (bm25s, Stemmer, voyageai, langtrace_python_sdk) don't 
-   provide type stubs (.pyi files) or py.typed markers
-2. Python's type checker cannot infer types for these packages
-3. The code works PERFECTLY at runtime - this is purely a static analysis limitation
-
-What this means:
-- The red underlines in your IDE are expected and safe to ignore
-- The functionality is 100% working and tested (see tests/test_rag_smoke.py)
-- Adding more type: ignore comments would just create noise
-- These packages are industry-standard and well-maintained
-
-If you're seeing import errors at RUNTIME (not in your IDE), check:
-1. Dependencies are installed: pip install -r requirements.txt
-2. Virtual environment is activated
-3. PYTHONPATH includes the project root
-================================================================================
+No bells and whistles - just working search.
 """
 
 import os
 import json
-import collections
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
 from pathlib import Path
-import time as _time
-from common.config_loader import choose_repo_from_query, get_default_repo, out_dir
-from dotenv import load_dotenv, find_dotenv
+from typing import List, Dict, Optional
+from collections import defaultdict
 
-# Load environment variables early so all downstream imports can access them
-# This ensures API keys, model paths, and config values are available
-try:
-    load_dotenv(override=False)
-except Exception:
-    pass  # Non-critical if .env doesn't exist
+# BM25
+import bm25s
+from bm25s.tokenization import Tokenizer
+from Stemmer import Stemmer
 
-# Optional tracing support for performance monitoring and debugging
-# LangTrace provides OpenTelemetry-based distributed tracing
-# NOTE: The type: ignore comments are REQUIRED because these packages lack type stubs
-# This does NOT indicate an error - the code works perfectly at runtime
-try:
-    from opentelemetry import trace as otel_trace
-    from langtrace_python_sdk import with_langtrace_root_span, with_additional_attributes  # type: ignore[import] - No type stubs available
-    _tracer = otel_trace.get_tracer(__name__)
-    _HAS_LANGTRACE = True
-except Exception:
-    # Tracing is optional - provide no-op decorators if unavailable
-    _tracer = None  # type: ignore[assignment] - Intentionally None when tracing disabled
-    _HAS_LANGTRACE = False
-    # Dummy decorators that pass through unchanged when tracing is disabled
-    def with_langtrace_root_span(name=None):
-        def decorator(func):
-            return func
-        return decorator
-    def with_additional_attributes(**kwargs):
-        def decorator(func):
-            return func
-        return decorator
+# Qdrant
+from qdrant_client import QdrantClient, models
 
-# Core search dependencies
-# NOTE: type: ignore comments are REQUIRED for packages without type stubs
-# These are third-party packages that work correctly but lack typing information
-from qdrant_client import QdrantClient, models  # Vector database client
-import bm25s  # BM25 sparse retrieval - No type stubs available
-from bm25s.tokenization import Tokenizer  # BM25 tokenization - No type stubs available
-from Stemmer import Stemmer  # type: ignore[import] - PyStemmer package lacks type stubs
-from .rerank import rerank_results as ce_rerank  # Cross-encoder reranking
-from server.env_model import generate_text  # LLM text generation for query expansion
-from .synonym_expander import expand_query_with_synonyms  # Semantic synonym expansion
-from server.services.config_registry import get_config_registry  # Config registry for tunable params
+# Local imports
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from common.config_loader import out_dir
+from server.services.config_registry import get_config_registry
 
-# Module-level cached configuration values for performance
-# These are loaded once at module import time from the ConfigRegistry
-# Values can be updated by calling reload_config() after config changes
-_config_registry = get_config_registry()
-_RRF_K_DIV = _config_registry.get_int('RRF_K_DIV', 60)
-_CARD_BONUS = _config_registry.get_float('CARD_BONUS', 0.08)
-_FILENAME_BOOST_EXACT = _config_registry.get_float('FILENAME_BOOST_EXACT', 1.5)
-_FILENAME_BOOST_PARTIAL = _config_registry.get_float('FILENAME_BOOST_PARTIAL', 1.2)
-_FINAL_K = _config_registry.get_int('FINAL_K', 10)
-_BM25_WEIGHT = _config_registry.get_float('BM25_WEIGHT', 0.3)
-_VECTOR_WEIGHT = _config_registry.get_float('VECTOR_WEIGHT', 0.7)
-_CARD_SEARCH_ENABLED = _config_registry.get_int('CARD_SEARCH_ENABLED', 1)
-_MULTI_QUERY_M = _config_registry.get_int('MULTI_QUERY_M', 4)
-_QUERY_EXPANSION_ENABLED = _config_registry.get_int('QUERY_EXPANSION_ENABLED', 1)
-_LAYER_BONUS_GUI = _config_registry.get_float('LAYER_BONUS_GUI', 0.15)
-_LAYER_BONUS_RETRIEVAL = _config_registry.get_float('LAYER_BONUS_RETRIEVAL', 0.15)
-_LAYER_BONUS_INDEXER = _config_registry.get_float('LAYER_BONUS_INDEXER', 0.15)
-_VENDOR_PENALTY = _config_registry.get_float('VENDOR_PENALTY', -0.1)
-_FRESHNESS_BONUS = _config_registry.get_float('FRESHNESS_BONUS', 0.05)
-_USE_SEMANTIC_SYNONYMS = _config_registry.get_int('USE_SEMANTIC_SYNONYMS', 1)
-_TOPK_DENSE = _config_registry.get_int('TOPK_DENSE', 75)
-_TOPK_SPARSE = _config_registry.get_int('TOPK_SPARSE', 75)
-_VENDOR_MODE = _config_registry.get_str('VENDOR_MODE', 'prefer_first_party')
-_HYDRATION_MODE = _config_registry.get_str('HYDRATION_MODE', 'lazy')
-_HYDRATION_MAX_CHARS = _config_registry.get_int('HYDRATION_MAX_CHARS', 2000)
-_DISABLE_RERANK = _config_registry.get_int('DISABLE_RERANK', 0)
-_PROJECT_PATH_BOOSTS = _config_registry.get_str('PATH_BOOSTS', '/gui,/server,/indexer,/retrieval')
-_QDRANT_URL = _config_registry.get_str('QDRANT_URL', 'http://127.0.0.1:6333')
-_REPO = _config_registry.get_str('REPO', 'project')
-_COLLECTION_NAME = _config_registry.get_str('COLLECTION_NAME', f'code_chunks_{_config_registry.get_str("REPO", "project")}')
-_VECTOR_BACKEND = _config_registry.get_str('VECTOR_BACKEND', 'qdrant')
-_RERANKER_BACKEND = _config_registry.get_str('RERANKER_BACKEND', 'local')
+# Config
+_cfg = get_config_registry()
+REPO = _cfg.get_str('REPO', 'agro')
+QDRANT_URL = _cfg.get_str('QDRANT_URL', 'http://127.0.0.1:6333')
+COLLECTION = _cfg.get_str('COLLECTION_NAME', f'code_chunks_{REPO}')
+EMBEDDING_TYPE = _cfg.get_str('EMBEDDING_TYPE', 'local').lower()
+
+# Search weights
+BM25_WEIGHT = 0.4  # Increase BM25 weight for small codebases
+VECTOR_WEIGHT = 0.6
+
+# Stopwords for query preprocessing (question words that hurt BM25)
+QUERY_STOPWORDS = {
+    'where', 'what', 'how', 'when', 'which', 'who', 'why', 'is', 'are',
+    'the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'of', 'with',
+    'does', 'do', 'can', 'could', 'would', 'should', 'please', 'help',
+}
 
 
-def reload_config():
-    """Reload configuration values from the registry.
-
-    Call this function after config changes to update module-level cached values.
-    This is automatically called when the config registry is reloaded via the API.
-    """
-    global _RRF_K_DIV, _CARD_BONUS, _FILENAME_BOOST_EXACT, _FILENAME_BOOST_PARTIAL
-    global _FINAL_K, _BM25_WEIGHT, _VECTOR_WEIGHT, _CARD_SEARCH_ENABLED, _MULTI_QUERY_M
-    global _QUERY_EXPANSION_ENABLED, _LAYER_BONUS_GUI, _LAYER_BONUS_RETRIEVAL
-    global _LAYER_BONUS_INDEXER, _VENDOR_PENALTY, _FRESHNESS_BONUS
-    global _USE_SEMANTIC_SYNONYMS, _TOPK_DENSE, _TOPK_SPARSE, _VENDOR_MODE
-    global _HYDRATION_MODE, _HYDRATION_MAX_CHARS, _DISABLE_RERANK
-    global _PROJECT_PATH_BOOSTS, _QDRANT_URL, _REPO, _COLLECTION_NAME
-    global _VECTOR_BACKEND, _RERANKER_BACKEND, _HYBRID_CFG
-    _RRF_K_DIV = _config_registry.get_int('RRF_K_DIV', 60)
-    _CARD_BONUS = _config_registry.get_float('CARD_BONUS', 0.08)
-    _FILENAME_BOOST_EXACT = _config_registry.get_float('FILENAME_BOOST_EXACT', 1.5)
-    _FILENAME_BOOST_PARTIAL = _config_registry.get_float('FILENAME_BOOST_PARTIAL', 1.2)
-    _FINAL_K = _config_registry.get_int('FINAL_K', 10)
-    _BM25_WEIGHT = _config_registry.get_float('BM25_WEIGHT', 0.3)
-    _VECTOR_WEIGHT = _config_registry.get_float('VECTOR_WEIGHT', 0.7)
-    _CARD_SEARCH_ENABLED = _config_registry.get_int('CARD_SEARCH_ENABLED', 1)
-    _MULTI_QUERY_M = _config_registry.get_int('MULTI_QUERY_M', 4)
-    _QUERY_EXPANSION_ENABLED = _config_registry.get_int('QUERY_EXPANSION_ENABLED', 1)
-    _LAYER_BONUS_GUI = _config_registry.get_float('LAYER_BONUS_GUI', 0.15)
-    _LAYER_BONUS_RETRIEVAL = _config_registry.get_float('LAYER_BONUS_RETRIEVAL', 0.15)
-    _LAYER_BONUS_INDEXER = _config_registry.get_float('LAYER_BONUS_INDEXER', 0.15)
-    _VENDOR_PENALTY = _config_registry.get_float('VENDOR_PENALTY', -0.1)
-    _FRESHNESS_BONUS = _config_registry.get_float('FRESHNESS_BONUS', 0.05)
-    _USE_SEMANTIC_SYNONYMS = _config_registry.get_int('USE_SEMANTIC_SYNONYMS', 1)
-    _TOPK_DENSE = _config_registry.get_int('TOPK_DENSE', 75)
-    _TOPK_SPARSE = _config_registry.get_int('TOPK_SPARSE', 75)
-    _VENDOR_MODE = _config_registry.get_str('VENDOR_MODE', 'prefer_first_party')
-    _HYDRATION_MODE = _config_registry.get_str('HYDRATION_MODE', 'lazy')
-    _HYDRATION_MAX_CHARS = _config_registry.get_int('HYDRATION_MAX_CHARS', 2000)
-    _DISABLE_RERANK = _config_registry.get_int('DISABLE_RERANK', 0)
-    _PROJECT_PATH_BOOSTS = _config_registry.get_str('PATH_BOOSTS', '/gui,/server,/indexer,/retrieval')
-    _QDRANT_URL = _config_registry.get_str('QDRANT_URL', 'http://127.0.0.1:6333')
-    _REPO = _config_registry.get_str('REPO', 'project')
-    _COLLECTION_NAME = _config_registry.get_str('COLLECTION_NAME', f'code_chunks_{_config_registry.get_str("REPO", "project")}')
-    _VECTOR_BACKEND = _config_registry.get_str('VECTOR_BACKEND', 'qdrant')
-    _RERANKER_BACKEND = _config_registry.get_str('RERANKER_BACKEND', 'local')
-    _HYBRID_CFG = _build_runtime_config()
+def preprocess_query(query: str) -> str:
+    """Remove stopwords from query for better BM25 matching."""
+    words = query.lower().split()
+    filtered = [w for w in words if w not in QUERY_STOPWORDS and len(w) > 1]
+    return ' '.join(filtered) if filtered else query
 
 
-@dataclass
-class HybridRuntimeConfig:
-    """Runtime view of the hybrid search knobs.
-
-    Consolidates config_registry values so internal helpers can receive
-    a small, typed bundle rather than reading globals repeatedly.
-    """
-
-    rrf_k_div: int
-    card_bonus: float
-    filename_boost_exact: float
-    filename_boost_partial: float
-    final_k: int
-    bm25_weight: float
-    vector_weight: float
-    card_search_enabled: bool
-    multi_query_m: int
-    query_expansion_enabled: bool
-    use_semantic_synonyms: bool
-    topk_dense: int
-    topk_sparse: int
-    vendor_mode: str
-    hydration_mode: str
-    hydration_max_chars: int
-    disable_rerank: bool
-    project_path_boosts: str
-    qdrant_url: str
-    repo: str
-    collection_name: str
-    vector_backend: str
-    reranker_backend: str
-
-
-def _build_runtime_config() -> HybridRuntimeConfig:
-    return HybridRuntimeConfig(
-        rrf_k_div=_RRF_K_DIV,
-        card_bonus=_CARD_BONUS,
-        filename_boost_exact=_FILENAME_BOOST_EXACT,
-        filename_boost_partial=_FILENAME_BOOST_PARTIAL,
-        final_k=_FINAL_K,
-        bm25_weight=_BM25_WEIGHT,
-        vector_weight=_VECTOR_WEIGHT,
-        card_search_enabled=bool(_CARD_SEARCH_ENABLED),
-        multi_query_m=_MULTI_QUERY_M,
-        query_expansion_enabled=bool(_QUERY_EXPANSION_ENABLED),
-        use_semantic_synonyms=bool(_USE_SEMANTIC_SYNONYMS),
-        topk_dense=_TOPK_DENSE,
-        topk_sparse=_TOPK_SPARSE,
-        vendor_mode=_VENDOR_MODE,
-        hydration_mode=_HYDRATION_MODE,
-        hydration_max_chars=_HYDRATION_MAX_CHARS,
-        disable_rerank=bool(_DISABLE_RERANK),
-        project_path_boosts=_PROJECT_PATH_BOOSTS,
-        qdrant_url=_QDRANT_URL,
-        repo=_REPO,
-        collection_name=_COLLECTION_NAME,
-        vector_backend=_VECTOR_BACKEND,
-        reranker_backend=_RERANKER_BACKEND,
-    )
-
-
-_HYBRID_CFG = _build_runtime_config()
-
-
-def _classify_query(q: str) -> str:
-    """Classify query intent to optimize search strategy.
+def get_embedding(text: str) -> List[float]:
+    """Get embedding for query text."""
+    if EMBEDDING_TYPE == 'local':
+        from sentence_transformers import SentenceTransformer
+        # Cache model
+        if not hasattr(get_embedding, '_model'):
+            get_embedding._model = SentenceTransformer('BAAI/bge-small-en-v1.5')
+        return get_embedding._model.encode([text], normalize_embeddings=True)[0].tolist()
     
-    This function analyzes the query to determine which part of the codebase
-    is most likely to contain relevant results. The classification is used to
-    apply targeted scoring bonuses to improve result relevance.
+    elif EMBEDDING_TYPE == 'voyage':
+        import voyageai
+        if not hasattr(get_embedding, '_client'):
+            get_embedding._client = voyageai.Client(api_key=os.getenv('VOYAGE_API_KEY'))
+        r = get_embedding._client.embed([text], model='voyage-code-3', input_type='query', output_dimension=512)
+        return r.embeddings[0]
     
-    Args:
-        q: The user's search query
-        
-    Returns:
-        One of: 'gui', 'retrieval', 'indexer', 'eval', 'infra', or 'server'
-    """
-    ql = (q or '').lower()
-    
-    # GUI/Frontend queries
-    if any(k in ql for k in ['gui', 'ui', 'dashboard', 'button', 'component', 'frontend', 'css', 'html', 'interface']):
-        return 'gui'
-    
-    # Retrieval/Search queries
-    if any(k in ql for k in ['search', 'retrieval', 'bm25', 'vector', 'qdrant', 'embedding', 'rerank', 'hybrid']):
-        return 'retrieval'
-    
-    # Indexing queries
-    if any(k in ql for k in ['index', 'indexer', 'chunking', 'ast', 'parse', 'chunk']):
-        return 'indexer'
-    
-    # Evaluation/Testing queries
-    if any(k in ql for k in ['eval', 'test', 'golden', 'evaluation', 'metric', 'performance']):
-        return 'eval'
-    
-    # Infrastructure/Docker queries  
-    if any(k in ql for k in ['docker', 'compose', 'infra', 'prometheus', 'grafana', 'redis']):
-        return 'infra'
-    
-    # Default to server (FastAPI, LangGraph, etc.)
-    return 'server'
+    else:  # openai
+        from openai import OpenAI
+        if not hasattr(get_embedding, '_client'):
+            get_embedding._client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+        r = get_embedding._client.embeddings.create(input=text, model='text-embedding-3-small')
+        return r.data[0].embedding
 
 
-# Cache for layer bonuses to avoid repeated file I/O
-_LAYER_BONUSES_CACHE = None
-
-def _project_layer_bonus(layer: str, intent: str) -> float:
-    """Apply scoring bonus based on code layer and query intent.
-    
-    Layer bonuses are configurable via repos.json and can be modified through
-    the GUI. This allows customization of search relevance for different
-    repository structures.
-    
-    Args:
-        layer: The code layer (e.g., 'gui', 'server', 'retrieval')
-        intent: The classified query intent
-        
-    Returns:
-        Bonus score to add (0.0 to 0.15 typically)
-    """
-    global _LAYER_BONUSES_CACHE
-    
-    # Load bonuses from repos.json (cached for performance)
-    if _LAYER_BONUSES_CACHE is None:
-        try:
-            from common.config_loader import layer_bonuses
-            # type: ignore needed because return type varies by config
-            _LAYER_BONUSES_CACHE = layer_bonuses(REPO)  # type: ignore[assignment] - Dynamic config type
-        except Exception:
-            # Fallback to project-accurate defaults if config loading fails
-            _LAYER_BONUSES_CACHE = {
-                'gui':       {'gui': 0.15, 'server': 0.05},
-                'retrieval': {'retrieval': 0.15, 'server': 0.05},
-                'indexer':   {'indexer': 0.15, 'retrieval': 0.08, 'common': 0.05},
-                'eval':      {'eval': 0.15, 'tests': 0.10, 'retrieval': 0.05},
-                'infra':     {'infra': 0.15, 'scripts': 0.08},
-                'server':    {'server': 0.15, 'retrieval': 0.05, 'common': 0.05},
-            }
-    
-    layer_lower = (layer or '').lower()
-    intent_lower = (intent or 'server').lower()
-    return _LAYER_BONUSES_CACHE.get(intent_lower, {}).get(layer_lower, 0.0)
-
-
-def _provider_plugin_hint(fp: str, code: str) -> float:
-    fp = (fp or '').lower()
-    code = (code or '').lower()
-    keys = ['provider', 'providers', 'integration', 'adapter', 'webhook', 'pushover', 'apprise', 'hubspot']
-    return 0.06 if any(k in fp or k in code for k in keys) else 0.0
-
-
-def _origin_bonus(origin: str, mode: str) -> float:
-    origin = (origin or '').lower()
-    mode = (mode or 'prefer_first_party').lower()
-    if mode == 'prefer_first_party':
-        return 0.06 if origin == 'first_party' else (-0.08 if origin == 'vendor' else 0.0)
-    if mode == 'prefer_vendor':
-        return 0.06 if origin == 'vendor' else 0.0
-    return 0.0
-
-
-# Cache for discriminative keywords to avoid repeated file I/O
-_DISCRIMINATIVE_KEYWORDS = None
-
-def _load_discriminative_keywords(repo: str) -> List[str]:
-    """Load discriminative keywords for intelligent result boosting.
-    
-    Discriminative keywords are domain-specific terms that indicate
-    high relevance for particular files. These are generated by analyzing
-    the repository and identifying terms that distinguish important files.
-    
-    Args:
-        repo: Repository name to load keywords for
-        
-    Returns:
-        List of discriminative keyword strings
-    """
-    global _DISCRIMINATIVE_KEYWORDS
-    if _DISCRIMINATIVE_KEYWORDS is not None:
-        return _DISCRIMINATIVE_KEYWORDS
-    
+def load_chunks(repo: str) -> Dict[str, Dict]:
+    """Load chunk metadata by ID."""
+    chunks_path = os.path.join(out_dir(repo), 'chunks.jsonl')
+    chunks = {}
     try:
-        # Try root directory first (where generate_smart_keywords.py saves them)
-        from pathlib import Path
-        root_file = Path(__file__).parent.parent / "discriminative_keywords.json"
-        if root_file.exists():
-            kw_file = root_file
-        else:
-            # Fallback to data directory
-            from common.paths import data_dir
-            kw_file = data_dir() / f"discriminative_keywords_{repo}.json"
-            if not kw_file.exists():
-                kw_file = data_dir() / "discriminative_keywords.json"
-        
-        if kw_file.exists():
-            data = json.loads(kw_file.read_text())
-            # Extract keywords from JSON (handle different formats)
-            if isinstance(data, list):
-                _DISCRIMINATIVE_KEYWORDS = [k['term'] if isinstance(k, dict) else str(k) for k in data]
-            elif isinstance(data, dict):
-                # Try repo-specific bucket
-                if repo in data:
-                    _DISCRIMINATIVE_KEYWORDS = [k['term'] if isinstance(k, dict) else str(k) for k in data[repo]]
-                else:
-                    # Flatten all keywords
-                    _DISCRIMINATIVE_KEYWORDS = []
-                    for v in data.values():
-                        if isinstance(v, list):
-                            _DISCRIMINATIVE_KEYWORDS.extend([k['term'] if isinstance(k, dict) else str(k) for k in v])
-            else:
-                _DISCRIMINATIVE_KEYWORDS = []
-        else:
-            _DISCRIMINATIVE_KEYWORDS = []
-    except Exception:
-        _DISCRIMINATIVE_KEYWORDS = []
-    
-    return _DISCRIMINATIVE_KEYWORDS
-
-def _feature_bonus(query: str, fp: str, code: str) -> float:
-    """Apply intelligent feature-based scoring bonuses.
-    
-    This is where discriminative keyword boosting happens! Files containing
-    keywords that match the query get significant score boosts, helping
-    surface the most relevant results.
-    
-    Args:
-        query: The search query
-        fp: File path being scored
-        code: Code content (first 2000 chars for performance)
-        
-    Returns:
-        Cumulative bonus score (typically 0.0 to 0.24)
-    """
-    repo = _HYBRID_CFG.repo if _HYBRID_CFG else REPO
-    ql = (query or '').lower()
-    fp = (fp or '').lower()
-    code = (code or '').lower()
-    bumps = 0.0
-    
-    # Discriminative keyword boosting
-    keywords = _load_discriminative_keywords(repo)
-    if keywords:
-        # Check how many discriminative keywords match
-        matches_in_query = sum(1 for kw in keywords if kw in ql)
-        matches_in_path = sum(1 for kw in keywords if kw in fp)
-        matches_in_code = sum(1 for kw in keywords[:20] if kw in code)  # Only check top 20 in code for performance
-        
-        # Apply graduated boosts based on match quality
-        if matches_in_query > 0:
-            # Keywords in query are highly relevant
-            if matches_in_path > 0:
-                bumps += 0.08 * min(matches_in_path, 3)  # Path + query match is very strong
-            if matches_in_code > 0:
-                bumps += 0.06 * min(matches_in_code, 2)  # Code + query match is strong
-        elif matches_in_path > 0:
-            # Keywords in path even without query match are still useful
-            bumps += 0.04 * min(matches_in_path, 2)
-    
-    # Legacy hardcoded boosts (keep for backward compat)
-    if any(k in ql for k in ['diagnostic', 'health', 'event log', 'phi', 'hipaa']):
-        if ('diagnostic' in fp) or ('diagnostic' in code) or ('event' in fp and 'log' in fp):
-            bumps += 0.06
-    
-    return bumps
-
-
-def _card_bonus(chunk_id: str, card_chunk_ids: set) -> float:
-    """Boost chunks that matched via card-based retrieval.
-
-    Card matches indicate semantic relevance beyond keyword matching,
-    so they get a scoring bonus.
-
-    Args:
-        chunk_id: ID of chunk to check
-        card_chunk_ids: Set of chunk IDs that matched via cards
-
-    Returns:
-        Bonus score (_CARD_BONUS if matched, 0.0 otherwise)
-    """
-    return _CARD_BONUS if str(chunk_id) in card_chunk_ids else 0.0
-
-
-def _path_bonus(fp: str, repo: str | None = None) -> float:
-    fp = (fp or '').lower()
-    bonus = 0.0
-    
-    # Use repos.json path_boosts if available
-    if repo:
-        try:
-            from common.config_loader import path_boosts
-            repo_boosts = path_boosts(repo)
-            for boost_path in repo_boosts:
-                if boost_path and boost_path.lower() in fp:
-                    bonus += 0.06  # Same boost as _project_path_boost
-        except Exception:
-            pass
-    
-    # Fallback to hardcoded boosts if no repo-specific boosts found
-    if bonus == 0.0:
-        for sfx, b in [
-            ('/identity/', 0.12),
-            ('/auth/', 0.12),
-            ('/server', 0.10),
-            ('/backend', 0.10),
-            ('/api/', 0.08),
-        ]:
-            if sfx in fp:
-                bonus += b
-    
-    return min(bonus, 0.18)  # Cap at 0.18 like _project_path_boost
-
-
-def _project_path_boost(fp: str, repo_tag: str) -> float:
-    if (repo_tag or '').lower() != 'project':
-        return 0.0
-    cfg = _PROJECT_PATH_BOOSTS
-    tokens = [t.strip().lower() for t in cfg.split(',') if t.strip()]
-    s = (fp or '').lower()
-    bonus = 0.0
-    for tok in tokens:
-        if tok and tok in s:
-            bonus += 0.06
-    return min(bonus, 0.18)
-
-
-def _add_trace_event(trace: object | None, name: str, payload: dict) -> None:
-    """Best-effort trace emission without breaking search flow."""
-    try:
-        if trace is not None and hasattr(trace, 'add'):
-            trace.add(name, payload)
-    except Exception:
-        pass
-
-
-def _normalize_scores(scores: Dict[str, float]) -> Dict[str, float]:
-    """Normalize a score dictionary into [0,1] range for blending."""
-    if not scores:
-        return {}
-    vals = list(scores.values())
-    max_v = max(vals)
-    min_v = min(vals)
-    if max_v == min_v:
-        return {k: 1.0 for k in scores}
-    denom = max_v - min_v
-    return {k: (v - min_v) / denom for k, v in scores.items()}
-
-
-try:
-    load_dotenv(override=False)
-    repo_root = Path(__file__).resolve().parent
-    env_path = repo_root / ".env"
-    if env_path.exists():
-        load_dotenv(dotenv_path=env_path, override=False)
-    else:
-        alt = find_dotenv(usecwd=True)
-        if alt:
-            load_dotenv(dotenv_path=alt, override=False)
-except Exception:
-    pass
-
-# Use cached config values instead of os.getenv()
-QDRANT_URL = _QDRANT_URL
-REPO = _REPO
-VENDOR_MODE = _VENDOR_MODE
-COLLECTION = _COLLECTION_NAME
-
-
-def _lazy_import_openai():
-    """Lazy import OpenAI to avoid loading if not needed.
-    
-    This reduces startup time and memory usage when using alternative
-    embedding providers like Voyage or local models.
-    """
-    from openai import OpenAI
-    return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-
-def _lazy_import_voyage():
-    """Lazy import Voyage AI for code-optimized embeddings.
-    
-    Voyage provides specialized embeddings for code search that often
-    outperform general-purpose models.
-    
-    NOTE: type: ignore is REQUIRED - voyageai package lacks type stubs
-    """
-    import voyageai  # type: ignore[import] - No type stubs for voyageai package
-    return voyageai.Client(api_key=os.getenv("VOYAGE_API_KEY"))
-
-
-# Cache for local embedding models to avoid reloading
-_local_embed_model = None
-_mxbai_embed_model = None
-
-
-def _get_embedding(text: str, kind: str = "query") -> list[float]:
-    """Generate embeddings using configured provider.
-    
-    Supports multiple embedding providers:
-    - OpenAI: General purpose, good quality
-    - Voyage: Optimized for code search
-    - Local: Privacy-preserving, no API costs
-    - MXBAI: High-quality open source embeddings
-    
-    Args:
-        text: Text to embed
-        kind: 'query' or 'document' (affects Voyage encoding)
-        
-    Returns:
-        Embedding vector as list of floats
-    """
-    et = _config_registry.get_str("EMBEDDING_TYPE", "openai").lower()
-    if et == "mxbai":
-        global _mxbai_embed_model
-        if _mxbai_embed_model is None:
-            from sentence_transformers import SentenceTransformer
-            # MXBAI with Matryoshka representation learning (configurable dimensions)
-            _mxbai_embed_model = SentenceTransformer('mixedbread-ai/mxbai-embed-large-v1')
-        
-        # MXBAI uses special query prefixes for better retrieval
-        if kind == "query":
-            prefixed_text = "Represent this sentence for searching relevant passages: " + text
-        else:
-            prefixed_text = text
-            
-        # Get configurable dimensions (MXBAI supports Matryoshka)
-        dim = _config_registry.get_int("EMBEDDING_DIM", 1024)
-        embedding = _mxbai_embed_model.encode([prefixed_text], normalize_embeddings=True, show_progress_bar=False)[0]
-        
-        # Truncate to desired dimensions if needed
-        if len(embedding) > dim:
-            embedding = embedding[:dim]
-            
-        return embedding.tolist()
-    if et == "voyage":
-        import time
-        from server.api_tracker import track_api_call, APIProvider
-
-        vo = _lazy_import_voyage()
-        voyage_model = _config_registry.get_str('VOYAGE_MODEL', 'voyage-code-3')
-        start = time.time()
-        out = vo.embed([text], model=voyage_model, input_type=kind, output_dimension=512)
-        duration_ms = (time.time() - start) * 1000
-
-        # Voyage pricing: ~$0.00012 per 1k tokens for voyage-code-3
-        # Estimate tokens = len(text) / 4 (rough char-to-token ratio)
-        tokens_est = len(text) // 4
-        cost_usd = (tokens_est / 1000) * 0.00012
-
-        track_api_call(
-            provider=APIProvider.VOYAGE,
-            endpoint="https://api.voyageai.com/v1/embeddings",
-            method="POST",
-            duration_ms=duration_ms,
-            status_code=200,
-            tokens_estimated=tokens_est,
-            cost_usd=cost_usd
-        )
-
-        return out.embeddings[0]
-    if et == "local":
-        global _local_embed_model
-        if _local_embed_model is None:
-            from sentence_transformers import SentenceTransformer
-            # Use configurable local embedding model
-            local_model = _config_registry.get_str('EMBEDDING_MODEL_LOCAL', 'BAAI/bge-small-en-v1.5')
-            _local_embed_model = SentenceTransformer(local_model)
-        return _local_embed_model.encode([text], normalize_embeddings=True, show_progress_bar=False)[0].tolist()
-    import time
-    from server.api_tracker import track_api_call, APIProvider
-
-    client = _lazy_import_openai()
-    embedding_model = _config_registry.get_str('EMBEDDING_MODEL', 'text-embedding-3-large')
-
-    start = time.time()
-    resp = client.embeddings.create(input=text, model=embedding_model)
-    duration_ms = (time.time() - start) * 1000
-
-    # OpenAI pricing varies by model - use resp.usage if available
-    tokens_used = resp.usage.total_tokens if hasattr(resp, 'usage') else len(text) // 4
-    # text-embedding-3-large is ~$0.00013 per 1k tokens
-    cost_usd = (tokens_used / 1000) * 0.00013
-
-    track_api_call(
-        provider=APIProvider.OPENAI,
-        endpoint="https://api.openai.com/v1/embeddings",
-        method="POST",
-        duration_ms=duration_ms,
-        status_code=200,
-        tokens_estimated=tokens_used,
-        cost_usd=cost_usd
-    )
-
-    return resp.data[0].embedding
-
-
-def rrf(dense: list, sparse: list, k: int = 10, kdiv: int | None = None) -> list:
-    """Reciprocal Rank Fusion - combines multiple ranked lists.
-
-    RRF is a simple but effective way to merge results from different
-    retrieval methods (dense vectors and sparse BM25) without needing
-    to normalize scores.
-    
-    Args:
-        dense: List of document IDs from vector search
-        sparse: List of document IDs from BM25 search
-        k: Number of results to return
-        kdiv: Constant for rank smoothing (higher = more weight to top ranks).
-              If None, uses value from config registry (_RRF_K_DIV).
-
-    Returns:
-        Fused list of top-k document IDs
-    """
-    # Use cached config value if kdiv not explicitly provided
-    if kdiv is None:
-        kdiv = _RRF_K_DIV
-
-    score: dict = collections.defaultdict(float)
-    for rank, pid in enumerate(dense, start=1):
-        score[pid] += 1.0 / (kdiv + rank)
-    for rank, pid in enumerate(sparse, start=1):
-        score[pid] += 1.0 / (kdiv + rank)
-    ranked = sorted(score.items(), key=lambda x: x[1], reverse=True)
-    return [pid for pid, _ in ranked[:k]]
-
-
-@dataclass
-class RetrievalOutput:
-    """Container for a retrieval stage."""
-
-    pairs: List[Tuple[str, Dict]]
-    scores: Dict[str, float] = field(default_factory=dict)
-    source: str = "unknown"
-
-    @property
-    def ids(self) -> List[str]:
-        return [pid for pid, _ in self.pairs]
-
-    @property
-    def by_id(self) -> Dict[str, Dict]:
-        return {pid: doc for pid, doc in self.pairs}
-
-
-def _load_chunks(repo: str) -> List[Dict]:
-    """Load chunk metadata from indexed repository.
-    
-    Chunks are code segments created during indexing.
-    Only metadata is loaded here - actual code is loaded
-    on-demand via _hydrate_docs_inplace() for performance.
-    
-    Args:
-        repo: Repository name
-        
-    Returns:
-        List of chunk metadata dictionaries
-    """
-    p = os.path.join(out_dir(repo), 'chunks.jsonl')
-    chunks: List[Dict] = []
-    if os.path.exists(p):
-        with open(p, 'r', encoding='utf-8') as f:
+        with open(chunks_path, 'r', encoding='utf-8') as f:
             for line in f:
-                try:
-                    o = json.loads(line)
-                except Exception:
-                    continue
-                o.pop('code', None)
-                o.pop('summary', None)
-                o.pop('keywords', None)
-                chunks.append(o)
+                c = json.loads(line)
+                chunks[c['id']] = c
+    except FileNotFoundError:
+        pass
     return chunks
 
 
-def _load_bm25_map(idx_dir: str):
-    """Load mapping from BM25 indices to chunk IDs.
-    
-    BM25 returns integer indices, this maps them back
-    to actual chunk identifiers for retrieval.
-    
-    CRITICAL: Must return chunk IDs (not Qdrant point IDs/UUIDs) to ensure
-    proper fusion with dense results in RRF.
-    
-    Args:
-        idx_dir: BM25 index directory path
-        
-    Returns:
-        List mapping indices to chunk IDs, or None if not found
-    """
-    # Priority 1: bm25_map.json contains chunk IDs (correct for BM25)
-    map_json = os.path.join(idx_dir, 'bm25_map.json')
-    if os.path.exists(map_json):
-        m = json.load(open(map_json))
-        return [m[str(i)] for i in range(len(m))]
-    
-    # Priority 2: chunk_ids.txt contains chunk IDs (correct for BM25)
-    map_path = os.path.join(idx_dir, 'chunk_ids.txt')
-    if os.path.exists(map_path):
-        with open(map_path, 'r', encoding='utf-8') as f:
-            ids = [line.strip() for line in f if line.strip()]
-        return ids
-    
-    return None
-
-
-def _load_tokenizer(repo: str) -> Optional[Tokenizer]:
-    """Load BM25 tokenizer with persisted vocab for a repo."""
+def bm25_search(query: str, repo: str, k: int = 50) -> List[tuple]:
+    """BM25 sparse search. Returns [(chunk_id, score), ...]"""
     idx_dir = os.path.join(out_dir(repo), 'bm25_index')
-    try:
-        tokenizer = Tokenizer(stemmer=Stemmer('english'), stopwords='en')
-        tokenizer.load_vocab(idx_dir)
-        return tokenizer
-    except Exception:
-        return None
-
-
-def _load_cards_bm25(repo: str):
-    """Load BM25 index for card-based retrieval.
     
-    Cards contain AI-generated summaries of code chunks.
-    Searching over these summaries often finds relevant
-    code that keyword search might miss.
-    
-    Args:
-        repo: Repository name
-        
-    Returns:
-        BM25 retriever object or None if not available
-    """
-    idx_dir = os.path.join(out_dir(repo), 'bm25_cards')
-    try:
-        import bm25s
-        retr = bm25s.BM25.load(idx_dir)
-        return retr
-    except Exception:
-        return None
-
-
-def _load_cards_map(repo: str) -> Dict:
-    cards_file = os.path.join(out_dir(repo), 'cards.jsonl')
-    cards_by_idx = {}
-    cards_by_chunk_id = {}
-    try:
-        with open(cards_file, 'r', encoding='utf-8') as f:
-            for idx, line in enumerate(f):
-                card = json.loads(line)
-                chunk_id = str(card.get('id', ''))
-                if chunk_id:
-                    cards_by_idx[idx] = chunk_id
-                    cards_by_chunk_id[chunk_id] = card
-        return {'by_idx': cards_by_idx, 'by_chunk_id': cards_by_chunk_id}
-    except Exception:
-        return {'by_idx': {}, 'by_chunk_id': {}}
-
-
-def _merge_payloads(primary: Dict[str, Dict], secondary: Dict[str, Dict]) -> Dict[str, Dict]:
-    """Merge two payload dictionaries, preferring fields from primary."""
-    merged = dict(secondary)
-    for pid, doc in primary.items():
-        if pid in merged:
-            merged[pid] = {**merged[pid], **doc}
-        else:
-            merged[pid] = doc
-    return merged
-
-
-def _vector_search_stage(query: str, repo: str, topk_dense: int, trace: object | None) -> RetrievalOutput:
-    """Run dense vector search via Qdrant (or skip if disabled)."""
-    if topk_dense <= 0 or _HYBRID_CFG.vector_backend.lower() == 'faiss':
-        return RetrievalOutput([], {}, "dense")
-
-    pairs: List[Tuple[str, Dict]] = []
-    scores: Dict[str, float] = {}
-    start = _time.time()
-    backend = _HYBRID_CFG.vector_backend.lower()
-
-    def _emit_metrics(duration_ms: float):
-        try:
-            from server.api_tracker import track_trace, track_api_call, APIProvider
-            track_trace(
-                step="vector_search",
-                provider=backend,
-                model=_config_registry.get_str('COLLECTION_NAME', f'code_chunks_{repo}'),
-                duration_ms=duration_ms,
-                extra={"results": len(pairs), "repo": repo},
-            )
-            track_api_call(
-                provider=APIProvider.QDRANT,
-                endpoint="/query_points",
-                method="POST",
-                duration_ms=duration_ms,
-                status_code=200,
-                tokens_estimated=0,
-                cost_usd=0.0,
-            )
-        except Exception:
-            pass
-
-    if _tracer:
-        with _tracer.start_as_current_span(
-            "agro.vector_search",
-            attributes={"query": query, "topk": topk_dense, "backend": backend},
-        ) as span:
-            try:
-                embedding = _get_embedding(query, kind="query")
-                if backend != 'faiss':
-                    qc = QdrantClient(url=_HYBRID_CFG.qdrant_url)
-                    coll = _config_registry.get_str('COLLECTION_NAME', f'code_chunks_{repo}')
-                    dres = qc.query_points(
-                        collection_name=coll,
-                        query=embedding,
-                        using='dense',
-                        limit=topk_dense,
-                        with_payload=models.PayloadSelectorInclude(
-                            include=['file_path', 'start_line', 'end_line', 'language', 'layer', 'repo', 'hash', 'id', 'origin']
-                        ),
-                    )
-                    points = getattr(dres, 'points', dres)
-                    for p in points:
-                        payload = dict(p.payload)
-                        pid = str(payload.get('id', p.id))
-                        if hasattr(p, 'score'):
-                            scores[pid] = float(getattr(p, 'score', 0.0) or 0.0)
-                            payload['vector_score'] = scores[pid]
-                        pairs.append((pid, payload))
-                    span.set_attribute("results_count", len(pairs))
-            except Exception as ex:
-                span.set_attribute("error", str(ex))
-    else:
-        try:
-            embedding = _get_embedding(query, kind="query")
-        except Exception as ex:
-            print(f"[hybrid_search] WARNING: Failed to get embedding for query: {ex}")
-            return RetrievalOutput([], {}, "dense")
-        try:
-            if backend != 'faiss':
-                qc = QdrantClient(url=_HYBRID_CFG.qdrant_url)
-                coll = _config_registry.get_str('COLLECTION_NAME', f'code_chunks_{repo}')
-                dres = qc.query_points(
-                    collection_name=coll,
-                    query=embedding,
-                    using='dense',
-                    limit=topk_dense,
-                    with_payload=models.PayloadSelectorInclude(
-                        include=['file_path', 'start_line', 'end_line', 'language', 'layer', 'repo', 'hash', 'id', 'origin']
-                    ),
-                )
-                points = getattr(dres, 'points', dres)
-                for p in points:
-                    payload = dict(p.payload)
-                    pid = str(payload.get('id', p.id))
-                    if hasattr(p, 'score'):
-                        scores[pid] = float(getattr(p, 'score', 0.0) or 0.0)
-                        payload['vector_score'] = scores[pid]
-                    pairs.append((pid, payload))
-        except Exception as ex:
-            print(f"[hybrid_search] ERROR: Vector search (Qdrant) failed: {ex}")
-            print(f"[hybrid_search] Qdrant URL: {_HYBRID_CFG.qdrant_url}, Collection: {_config_registry.get_str('COLLECTION_NAME', f'code_chunks_{repo}')}")
-            pairs = []
-
-    duration_ms = (_time.time() - start) * 1000
-    _emit_metrics(duration_ms)
-    _add_trace_event(trace, 'vector_search', {
-        'duration_ms': duration_ms,
-        'results': len(pairs),
-        'repo': repo,
-        'backend': backend,
-    })
-    return RetrievalOutput(pairs, scores, "dense")
-
-
-def _bm25_search_stage(query: str, repo: str, tokenizer: Optional[Tokenizer], chunks: List[Dict], topk_sparse: int, trace: object | None) -> RetrievalOutput:
-    """Run sparse BM25 search using persisted index."""
-    if topk_sparse <= 0 or tokenizer is None:
-        return RetrievalOutput([], {}, "bm25")
-
-    idx_dir = os.path.join(out_dir(repo), 'bm25_index')
-    start = _time.time()
-    pairs: List[Tuple[str, Dict]] = []
-    scores: Dict[str, float] = {}
-
+    # Load BM25 index
     try:
         retriever = bm25s.BM25.load(idx_dir)
-        tokens = tokenizer.tokenize([query])
-        ids, bm25_scores = retriever.retrieve(tokens, k=topk_sparse)
-        ids = ids.tolist()[0] if hasattr(ids, 'tolist') else list(ids[0])
-        bm25_scores = bm25_scores.tolist()[0] if hasattr(bm25_scores, 'tolist') else list(bm25_scores[0])
-        id_map = _load_bm25_map(idx_dir)
-        by_chunk_id = {str(c['id']): c for c in chunks}
-        for idx, i in enumerate(ids):
-            chunk = None
-            if id_map is not None and 0 <= i < len(id_map):
-                pid_or_cid = id_map[i]
-                key = str(pid_or_cid)
-                if key in by_chunk_id:
-                    chunk = by_chunk_id[key].copy()
-                elif 0 <= i < len(chunks):
-                    chunk = chunks[i].copy()
-            elif 0 <= i < len(chunks):
-                chunk = chunks[i].copy()
-            if chunk:
-                bm25_score = float(bm25_scores[idx]) if idx < len(bm25_scores) else 0.0
-                chunk['bm25_score'] = bm25_score
-                pairs.append((str(chunk['id']), chunk))
-                scores[str(chunk['id'])] = bm25_score
-    except Exception as ex:
-        print(f"[hybrid_search] ERROR: BM25 retrieval failed: {ex}")
-        pairs = []
-        scores = {}
-
-    duration_ms = (_time.time() - start) * 1000
-    try:
-        from server.api_tracker import track_trace
-        track_trace(step="bm25_search", provider="local", model="bm25s", duration_ms=duration_ms,
-                    extra={"results": len(pairs), "repo": repo})
-    except Exception:
-        pass
-    _add_trace_event(trace, 'bm25_search', {
-        'duration_ms': duration_ms,
-        'results': len(pairs),
-        'repo': repo,
-    })
-    return RetrievalOutput(pairs, scores, "bm25")
-
-
-def _card_hit_ids(query: str, repo: str, tokenizer: Optional[Tokenizer], topk_sparse: int) -> set[str]:
-    """Return chunk IDs that match via card BM25 search."""
-    if not tokenizer or not _HYBRID_CFG.card_search_enabled:
-        return set()
-    cards_retr = _load_cards_bm25(repo)
-    if cards_retr is None:
-        return set()
-    card_chunk_ids: set[str] = set()
-    try:
-        cards_map = _load_cards_map(repo)
-        tokens = tokenizer.tokenize([query])
-        c_ids, _ = cards_retr.retrieve(tokens, k=min(topk_sparse, 30))
-        c_ids_flat = c_ids[0] if hasattr(c_ids, '__getitem__') else c_ids
-        for card_idx in c_ids_flat:
-            chunk_id = cards_map['by_idx'].get(int(card_idx))
-            if chunk_id:
-                card_chunk_ids.add(str(chunk_id))
-    except Exception as ex:
-        import sys
-        print(f"[hybrid_search] DEBUG: Card retrieval failed (optional feature): {ex}", file=sys.stderr)
-    return card_chunk_ids
-
-
-def _blend_hybrid_scores(docs: List[Dict], dense_output: RetrievalOutput, sparse_output: RetrievalOutput) -> None:
-    """Blend dense/sparse scores into a hybrid_score for downstream ranking."""
-    norm_dense = _normalize_scores(dense_output.scores)
-    norm_sparse = _normalize_scores(sparse_output.scores)
-    vector_weight = getattr(_HYBRID_CFG, "vector_weight", _VECTOR_WEIGHT)
-    bm25_weight = getattr(_HYBRID_CFG, "bm25_weight", _BM25_WEIGHT)
-    for d in docs:
-        pid = str(d.get('id', '') or '')
-        blended = 0.0
-        if pid in norm_dense:
-            blended += vector_weight * norm_dense[pid]
-        if pid in norm_sparse:
-            blended += bm25_weight * norm_sparse[pid]
-        if blended:
-            d['hybrid_score'] = blended
-            d.setdefault('rerank_score', blended)
-        elif 'bm25_score' in d:
-            d.setdefault('rerank_score', d.get('bm25_score', 0.0))
-
-
-def _fuse_candidates(dense_output: RetrievalOutput, sparse_output: RetrievalOutput, final_k: int, repo: str, trace: object | None) -> Tuple[List[str], List[Dict]]:
-    """Fuse dense and sparse ids using RRF and collect candidate docs."""
-    start = _time.time()
-    dense_ids = dense_output.ids
-    sparse_ids = sparse_output.ids
-    fused = []
-    if dense_ids or sparse_ids:
-        fused = rrf(dense_ids, sparse_ids, k=max(final_k, 2 * final_k), kdiv=_HYBRID_CFG.rrf_k_div)
-    if not fused:
-        fused = sparse_ids[:final_k] or dense_ids[:final_k]
-
-    by_id = _merge_payloads(dense_output.by_id, sparse_output.by_id)
-    docs = [by_id[pid] for pid in fused if pid in by_id]
-
-    duration_ms = (_time.time() - start) * 1000
-    _add_trace_event(trace, 'rrf_fusion', {
-        'duration_ms': duration_ms,
-        'dense': len(dense_ids),
-        'sparse': len(sparse_ids),
-        'repo': repo,
-    })
-    try:
-        from server.api_tracker import track_trace
-        track_trace(step="rrf_fusion", provider="local", model="rrf",
-                    duration_ms=duration_ms, extra={"dense": len(dense_ids), "sparse": len(sparse_ids), "repo": repo})
-    except Exception:
-        pass
-    return fused, docs
-
-
-def _hydrate_if_needed(repo: str, docs: List[Dict], trace: object | None) -> None:
-    """Hydrate code content if hydration is enabled."""
-    if _HYBRID_CFG.hydration_mode.lower() == 'none':
-        return
-    start = _time.time()
-    _hydrate_docs_inplace(repo, docs)
-    duration_ms = (_time.time() - start) * 1000
-    try:
-        from server.api_tracker import track_trace
-        track_trace(step="hydrate", provider="local", model="chunks.jsonl", duration_ms=duration_ms,
-                    extra={"hydrated": sum(1 for d in docs if d.get('code')), "candidates": len(docs), "repo": repo})
-    except Exception:
-        pass
-    _add_trace_event(trace, 'hydrate', {
-        'duration_ms': duration_ms,
-        'hydrated': sum(1 for d in docs if d.get('code')),
-        'candidates': len(docs),
-        'repo': repo,
-    })
-
-
-def _maybe_rerank_candidates(query: str, docs: List[Dict], final_k: int, repo: str, trace: object | None) -> List[Dict]:
-    """Apply cross-encoder reranking unless disabled or deferred."""
-    rerank_backend = (_HYBRID_CFG.reranker_backend or 'local').lower()
-    skip_local_rerank = rerank_backend == 'cohere'
-    if bool(_HYBRID_CFG.disable_rerank) or skip_local_rerank:
-        return docs[:final_k]
-
-    start = _time.time()
-    reranked = ce_rerank(query, docs, top_k=final_k, trace=trace)
-    duration_ms = (_time.time() - start) * 1000
-    try:
-        from server.api_tracker import track_trace
-        track_trace(step="cross_encoder_rerank", provider=rerank_backend,
-                    model=_config_registry.get_str('RERANKER_MODEL', ''), duration_ms=duration_ms,
-                    extra={"candidates": len(docs), "top_k": final_k, "repo": repo})
-    except Exception:
-        pass
-    _add_trace_event(trace, 'rerank', {
-        'duration_ms': duration_ms,
-        'candidates': len(docs),
-        'top_k': final_k,
-        'repo': repo,
-    })
-    return reranked
-
-
-def _apply_agro_bonuses(docs: List[Dict], query: str, card_chunk_ids: set[str], repo: str) -> None:
-    """Apply AGRO-specific bonus logic after reranking."""
-    intent = _classify_query(query)
-    q_lower = query.lower()
-    wants_code = any(k in q_lower for k in ['implementation', 'where is', 'how does', 'function', 'class', 'method', 'api', 'code'])
-
-    for d in docs:
-        fp = d.get('file_path', '')
-        layer = (d.get('layer') or '').lower()
-        lang = (d.get('language') or '').lower()
-        base_score = d.get('rerank_score', 0.0) or d.get('hybrid_score', 0.0) or d.get('bm25_score', 0.0) or 0.0
-        score = float(base_score)
-
-        if wants_code:
-            if lang in ('python', 'javascript', 'typescript', 'go', 'rust', 'java', 'cpp', 'c'):
-                score += 0.50
-            elif lang in ('markdown', 'md', 'rst', 'txt'):
-                score -= 0.50
-
-        cid = str(d.get('id', '') or '')
-        if cid and cid in card_chunk_ids:
-            d['card_hit'] = True
-            score += _card_bonus(cid, card_chunk_ids)
-
-        score += _path_bonus(fp, repo)
-        score += _project_path_boost(fp, repo)
-        score += _project_layer_bonus(layer, intent)
-        score += _provider_plugin_hint(fp, d.get('code', '') or '')
-        score += _origin_bonus(d.get('origin', ''), _VENDOR_MODE)
-        score += _feature_bonus(query, fp, d.get('code', '') or '')
-        if d.get('origin', '').lower() == 'vendor' and _VENDOR_PENALTY:
-            score += _VENDOR_PENALTY
-
-        d['rerank_score'] = score
-
-    docs.sort(key=lambda x: x.get('rerank_score', 0.0), reverse=True)
-
-
-@with_langtrace_root_span()
-def search(query: str, repo: str, topk_dense: int = 75, topk_sparse: int = 75, final_k: int = 10, trace: object | None = None) -> List[Dict]:
-    """Core hybrid search implementation.
+    except Exception as e:
+        print(f"[bm25] Failed to load index: {e}")
+        return []
     
-    Combines multiple retrieval strategies:
-    1. Dense vector search using embeddings (semantic similarity)
-    2. Sparse BM25 search (keyword matching)
-    3. Card-based retrieval (searches over AI-generated summaries)
-    4. Cross-encoder reranking for precision
-    5. Multiple scoring bonuses for domain-specific relevance
+    # Load tokenizer with vocab
+    stemmer = Stemmer('english')
+    tokenizer = Tokenizer(stemmer=stemmer, stopwords='en')
+    try:
+        tokenizer.load_vocab(idx_dir)
+    except:
+        pass
     
-    Args:
-        query: Search query text
-        repo: Repository to search in
-        topk_dense: Number of results from vector search
-        topk_sparse: Number of results from BM25 search
-        final_k: Final number of results to return
-        trace: Optional tracing object for debugging
+    # Preprocess and tokenize query
+    processed = preprocess_query(query)
+    tokens = tokenizer.tokenize([processed])
+    
+    # Retrieve
+    try:
+        indices, scores = retriever.retrieve(tokens, k=k)
+        indices = indices[0].tolist() if hasattr(indices[0], 'tolist') else list(indices[0])
+        scores = scores[0].tolist() if hasattr(scores[0], 'tolist') else list(scores[0])
+    except Exception as e:
+        print(f"[bm25] Retrieve failed: {e}")
+        return []
+    
+    # Load ID mapping
+    id_map = {}
+    map_path = os.path.join(idx_dir, 'bm25_map.json')
+    try:
+        with open(map_path, 'r') as f:
+            id_map = json.load(f)
+    except:
+        pass
+    
+    # Map indices to chunk IDs
+    results = []
+    for idx, score in zip(indices, scores):
+        chunk_id = id_map.get(str(idx))
+        if chunk_id and score > 0:
+            results.append((chunk_id, float(score)))
+    
+    return results
+
+
+def vector_search(query: str, repo: str, k: int = 50) -> List[tuple]:
+    """Qdrant vector search. Returns [(chunk_id, score), ...]"""
+    try:
+        embedding = get_embedding(query)
+    except Exception as e:
+        print(f"[vector] Embedding failed: {e}")
+        return []
+    
+    try:
+        qc = QdrantClient(url=QDRANT_URL)
+        coll = _cfg.get_str('COLLECTION_NAME', f'code_chunks_{repo}')
         
-    Returns:
-        List of document dictionaries with scores and metadata
-    """
-    return _search_impl(query, repo, topk_dense, topk_sparse, final_k, trace)
-
-def _search_impl(query: str, repo: str, topk_dense: int, topk_sparse: int, final_k: int, trace: object | None) -> List[Dict]:
-    cfg = _HYBRID_CFG
-    dense_k = max(0, int(topk_dense))
-    sparse_k = max(0, int(topk_sparse))
-    final_k = max(1, int(final_k))
-
-    chunks = _load_chunks(repo)
-    if not chunks:
+        response = qc.query_points(
+            collection_name=coll,
+            query=embedding,
+            using='dense',
+            limit=k,
+            with_payload=['id', 'file_path', 'start_line', 'end_line', 'language']
+        )
+        
+        results = []
+        points = getattr(response, 'points', response)
+        for p in points:
+            chunk_id = p.payload.get('id')
+            score = getattr(p, 'score', 0.0)
+            if chunk_id:
+                results.append((chunk_id, float(score)))
+        
+        return results
+    
+    except Exception as e:
+        print(f"[vector] Search failed: {e}")
         return []
 
-    expanded_query = expand_query_with_synonyms(query, repo, max_expansions=3) if cfg.use_semantic_synonyms else query
-    tokenizer = _load_tokenizer(repo)
 
-    dense_output = _vector_search_stage(expanded_query, repo, dense_k, trace)
-    sparse_output = _bm25_search_stage(expanded_query, repo, tokenizer, chunks, sparse_k, trace)
-    card_chunk_ids = _card_hit_ids(expanded_query, repo, tokenizer, sparse_k)
-
-    _fused_ids, docs = _fuse_candidates(dense_output, sparse_output, final_k, repo, trace)
-    _blend_hybrid_scores(docs, dense_output, sparse_output)
-    _hydrate_if_needed(repo, docs, trace)
-
-    try:
-        rank_map_dense = {pid: i + 1 for i, pid in enumerate(dense_output.ids[:max(final_k, 50)])}
-        rank_map_sparse = {pid: i + 1 for i, pid in enumerate(sparse_output.ids[:max(final_k, 50)])}
-        cands = []
-        seen_pre = set()
-        for pid in list(rank_map_dense.keys()) + list(rank_map_sparse.keys()):
-            if pid in seen_pre:
-                continue
-            seen_pre.add(pid)
-            meta = dense_output.by_id.get(pid) or sparse_output.by_id.get(pid) or {}
-            cands.append({
-                'path': meta.get('file_path'),
-                'start': meta.get('start_line'),
-                'end': meta.get('end_line'),
-                'card_hit': str(meta.get('id', '')) in card_chunk_ids,
-                'bm25_rank': rank_map_sparse.get(pid),
-                'dense_rank': rank_map_dense.get(pid),
-            })
-        _add_trace_event(trace, 'retriever.retrieve', {
-            'k_sparse': int(sparse_k),
-            'k_dense': int(dense_k),
-            'candidates': cands[:max(final_k, 50)],
-        })
-    except Exception:
-        pass
-
-    reranked_docs = _maybe_rerank_candidates(query, docs, final_k, repo, trace)
-    _apply_agro_bonuses(reranked_docs, query, card_chunk_ids, repo)
-    return reranked_docs[:final_k]
-
-
-def _hydrate_docs_inplace(repo: str, docs: list[dict]) -> None:
-    """Load full code content for search results.
-    
-    Search initially returns only metadata for performance.
-    This function loads the actual code content when needed.
+def rrf_fusion(results_list: List[List[tuple]], k: int = 60) -> List[str]:
+    """Reciprocal Rank Fusion of multiple result lists.
     
     Args:
-        repo: Repository name
-        docs: List of document dicts to hydrate in-place
+        results_list: List of [(id, score), ...] lists
+        k: RRF constant (higher = more weight to top ranks)
+    
+    Returns:
+        Fused list of IDs, sorted by combined score
     """
-    needed_ids: set[str] = set()
-    needed_hashes: set[str] = set()
-    for d in docs:
-        if d.get('code'):
-            continue
-        cid = str(d.get('id', '') or '')
-        h = d.get('hash')
-        if cid:
-            needed_ids.add(cid)
-        if h:
-            needed_hashes.add(h)
-    if not needed_ids and not needed_hashes:
-        return
-    jl = os.path.join(out_dir(repo), 'chunks.jsonl')
-    max_chars = _HYDRATION_MAX_CHARS
-    found_by_id: dict[str, str] = {}
-    found_by_hash: dict[str, str] = {}
+    scores = defaultdict(float)
+    
+    for results in results_list:
+        for rank, (doc_id, _) in enumerate(results, start=1):
+            scores[doc_id] += 1.0 / (k + rank)
+    
+    # Sort by score descending
+    ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+    return [doc_id for doc_id, _ in ranked]
+
+
+def rerank(query: str, docs: List[Dict], k: int = 10) -> List[Dict]:
+    """Cross-encoder reranking."""
+    if not docs:
+        return []
+    
     try:
-        with open(jl, 'r', encoding='utf-8') as f:
-            for line in f:
-                try:
-                    o = json.loads(line)
-                except Exception:
-                    continue
-                cid = str(o.get('id', '') or '')
-                h = o.get('hash')
-                code = (o.get('code') or '')
-                if max_chars > 0 and code:
-                    code = code[:max_chars]
-                if cid and cid in needed_ids and cid not in found_by_id:
-                    found_by_id[cid] = code
-                if h and h in needed_hashes and h not in found_by_hash:
-                    found_by_hash[h] = code
-                if len(found_by_id) >= len(needed_ids) and len(found_by_hash) >= len(needed_hashes):
-                    break
-    except FileNotFoundError:
-        return
+        from rerankers import Reranker
+        
+        # Get reranker model from config
+        model = _cfg.get_str('RERANKER_MODEL', 'cross-encoder/ms-marco-MiniLM-L-12-v2')
+        
+        # Check for local trained model
+        local_model = Path(__file__).parent.parent / 'models' / 'cross-encoder-agro'
+        if local_model.exists():
+            model = str(local_model)
+        
+        # Cache reranker
+        if not hasattr(rerank, '_reranker') or rerank._model_name != model:
+            rerank._reranker = Reranker(model, model_type='cross-encoder')
+            rerank._model_name = model
+        
+        # Prepare docs for reranking
+        texts = []
+        for d in docs:
+            code = d.get('code', '')[:600]  # Truncate for speed
+            fp = d.get('file_path', '')
+            texts.append(f"{fp}\n{code}")
+        
+        # Rerank
+        ranked = rerank._reranker.rank(query=query, docs=texts, doc_ids=list(range(len(docs))))
+        
+        # Apply scores and reorder
+        for res in ranked.results:
+            idx = res.document.doc_id
+            if idx < len(docs):
+                docs[idx]['rerank_score'] = float(res.score)
+        
+        docs.sort(key=lambda x: x.get('rerank_score', 0), reverse=True)
+        return docs[:k]
+    
+    except Exception as e:
+        print(f"[rerank] Failed: {e}, returning unranked")
+        return docs[:k]
+
+
+def hydrate_docs(docs: List[Dict], chunks: Dict[str, Dict]) -> None:
+    """Add code content to docs that don't have it."""
     for d in docs:
         if not d.get('code'):
-            cid = str(d.get('id', '') or '')
-            h = d.get('hash')
-            d['code'] = found_by_id.get(cid) or (found_by_hash.get(h) if h else '') or ''
+            chunk_id = d.get('id')
+            if chunk_id and chunk_id in chunks:
+                d['code'] = chunks[chunk_id].get('code', '')
 
 
-def _apply_filename_boosts(docs: list[dict], question: str) -> None:
-    """Apply smart filename and extension-based scoring.
-
-    Boosts results where:
-    - Filename matches query terms (_FILENAME_BOOST_EXACT, default 1.5x)
-    - Path components match query terms (_FILENAME_BOOST_PARTIAL, default 1.2x)
-    - Code files over documentation (1.3x for .py, 0.3x for .md)
-
-    This significantly improves relevance for queries like
-    'hybrid_search.py implementation' or 'index.html styling'.
-
-    Args:
-        docs: Documents to score (modified in-place)
-        question: User's search query
+def search(
+    query: str,
+    repo: str = None,
+    topk_bm25: int = 50,
+    topk_vector: int = 50,
+    final_k: int = 10,
+) -> List[Dict]:
     """
-    terms = set((question or '').lower().replace('/', ' ').replace('-', ' ').split())
-    for d in docs:
-        fp = (d.get('file_path') or '').lower()
-        fn = os.path.basename(fp)
-        parts = fp.split('/')
-        score = float(d.get('rerank_score', 0.0) or 0.0)
-
-        # Apply boosts for filename/path matches (use cached config values)
-        if any(t and t in fn for t in terms):
-            score *= _FILENAME_BOOST_EXACT
-        if any(t and t in p for t in terms for p in parts):
-            score *= _FILENAME_BOOST_PARTIAL
-        
-        # Apply boosts for high-value code files
-        if fp.endswith('.py'):
-            score *= 1.3  # Boost Python files
-        elif fp.endswith('index.html') or fp.endswith('/index.html'):
-            score *= 1.25  # Boost index.html files
-        elif fp.endswith(('.ts', '.tsx', '.js', '.jsx')):
-            score *= 1.2  # Boost TypeScript/JavaScript files
-        elif fp.endswith(('.go', '.rs', '.java', '.cpp', '.c')):
-            score *= 1.15  # Boost other code files
-        
-        # Apply penalties for documentation files (prefer code over docs)
-        if fp.endswith('.md'):
-            score *= 0.3  # Heavy penalty for markdown files
-        elif fp.endswith('.txt') or fp.endswith('.rst'):
-            score *= 0.5  # Medium penalty for text/rst files
-        
-        d['rerank_score'] = score
-    docs.sort(key=lambda x: x.get('rerank_score', 0.0), reverse=True)
-
-
-def route_repo(query: str, default_repo: str | None = None) -> str:
-    """Intelligently route query to appropriate repository.
-    
-    Supports explicit routing with 'repo:query' syntax or
-    automatic detection based on query content.
-    
-    Args:
-        query: User's search query
-        default_repo: Fallback repo if auto-detection fails
-        
-    Returns:
-        Repository name to search
-    """
-    try:
-        return choose_repo_from_query(query, default=(default_repo or get_default_repo()))
-    except Exception:
-        q = (query or '').lower().strip()
-        if ':' in q:
-            cand, _ = q.split(':', 1)
-            cand = cand.strip()
-            if cand:
-                return cand
-        return (default_repo or _REPO or 'project').strip()
-
-
-def search_routed(query: str, repo_override: str | None = None, final_k: int = 10, trace: object | None = None):
-    """Simple single-query search with repo routing.
-    
-    Use this for:
-    - Fast, simple searches
-    - When you don't need query expansion
-    - Testing and debugging
-    
-    For production use, prefer search_routed_multi() which
-    provides better recall through query expansion.
+    Main search function.
     
     Args:
         query: Search query
-        repo_override: Force specific repo
-        final_k: Number of results
-        trace: Optional tracing
-        
+        repo: Repository name (defaults to config)
+        topk_bm25: Number of BM25 results
+        topk_vector: Number of vector results
+        final_k: Final number of results to return
+    
     Returns:
-        Search results
+        List of result dicts with file_path, start_line, end_line, code, score
     """
-    repo = (repo_override or route_repo(query, default_repo=_REPO) or _REPO).strip()
-    return search(query, repo=repo, final_k=final_k, trace=trace)
+    repo = repo or REPO
+    
+    # Load chunk metadata
+    chunks = load_chunks(repo)
+    if not chunks:
+        print(f"[search] No chunks found for repo '{repo}'")
+        return []
+    
+    # BM25 search
+    bm25_results = bm25_search(query, repo, k=topk_bm25)
+    
+    # Vector search
+    vector_results = vector_search(query, repo, k=topk_vector)
+    
+    # Debug: Show overlap
+    bm25_ids = set(r[0] for r in bm25_results[:20])
+    vector_ids = set(r[0] for r in vector_results[:20])
+    overlap = len(bm25_ids & vector_ids)
+    
+    # RRF fusion
+    fused_ids = rrf_fusion([bm25_results, vector_results], k=60)
+    
+    # Build result docs
+    docs = []
+    for chunk_id in fused_ids[:final_k * 2]:  # Get more for reranking
+        if chunk_id in chunks:
+            doc = chunks[chunk_id].copy()
+            doc['id'] = chunk_id
+            docs.append(doc)
+    
+    # Hydrate with code
+    hydrate_docs(docs, chunks)
+    
+    # Rerank
+    results = rerank(query, docs, k=final_k)
+    
+    return results
 
 
-def expand_queries(query: str, m: int = 4) -> list[str]:
-    """Use LLM to generate query variants for better recall.
-    
-    Different phrasings of the same question can match different
-    documents. This improves search coverage significantly.
-    
-    Example:
-        'fix search bug' might expand to:
-        - 'debug search issue'
-        - 'resolve retrieval problem'
-        - 'search function error'
-    
-    Args:
-        query: Original query
-        m: Number of variants to generate
-        
-    Returns:
-        List of query variants (includes original)
+# ============================================================================
+# API Compatibility Functions
+# These match the old hybrid_search.py interface for drop-in replacement
+# ============================================================================
+
+def route_repo(query: str, default_repo: str = None) -> str:
+    """Route query to appropriate repo (simple implementation)."""
+    # Check for explicit repo prefix like "agro: query"
+    if ':' in query:
+        parts = query.split(':', 1)
+        if len(parts[0].strip()) < 20:  # Likely a repo name
+            return parts[0].strip()
+    return default_repo or REPO
+
+
+def search_routed(query: str, repo_override: str = None, final_k: int = 10, trace=None) -> List[Dict]:
+    """Simple search with repo routing."""
+    repo = repo_override or route_repo(query)
+    return search(query, repo=repo, final_k=final_k)
+
+
+def search_routed_multi(query: str, repo_override: str = None, m: int = 4, final_k: int = 10, trace=None) -> List[Dict]:
     """
-    if m <= 1:
-        return [query]
-    try:
-        sys = "Rewrite a developer query into multiple search-friendly variants without changing meaning."
-        user = f"Count: {m}\nQuery: {query}\nOutput one variant per line, no numbering."
-        text, _ = generate_text(user_input=user, system_instructions=sys, reasoning_effort=None)
-        lines = [ln.strip('- ').strip() for ln in (text or '').splitlines() if ln.strip()]
-        uniq = []
-        for ln in lines:
-            if ln and ln not in uniq:
-                uniq.append(ln)
-        return (uniq or [query])[:m]
-    except Exception:
-        return [query]
-
-
-@with_langtrace_root_span()
-def search_routed_multi(query: str, repo_override: str | None = None, m: int = 4, final_k: int = 10, trace: object | None = None):
-    """Advanced multi-query search with query expansion.
+    Multi-query search (compatible with old API).
     
-    This is the RECOMMENDED entry point for search! It:
-    1. Expands the query into multiple variants using LLM
-    2. Searches with each variant for better recall
-    3. Deduplicates and reranks combined results
-    4. Applies intelligent boosting for code vs documentation
-    
-    Args:
-        query: Original search query
-        repo_override: Force specific repo (None = auto-detect)
-        m: Number of query variants to generate
-        final_k: Number of final results
-        trace: Optional tracing object
-        
-    Returns:
-        Top-k ranked search results
+    For now, just calls single search. Multi-query expansion can be added back later.
     """
-    repo = (repo_override or route_repo(query) or _REPO).strip()
-    variants = expand_queries(query, m=m)
-    try:
-        if trace is not None and hasattr(trace, 'add'):
-            trace.add('router.decide', {
-                'policy': 'code',  # heuristic profile
-                'intent': _classify_query(query),
-                'query_original': query,
-                'query_rewrites': variants[1:] if len(variants) > 1 else [],
-                'knobs': {
-                    'topk_sparse': _TOPK_SPARSE,
-                    'topk_dense': _TOPK_DENSE,
-                    'final_k': int(final_k),
-                    'hydration_mode': _HYDRATION_MODE,
-                },
-            })
-    except Exception:
-        pass
-    all_docs = []
-    for qv in variants:
-        docs = search(qv, repo=repo, final_k=final_k, trace=trace)
-        all_docs.extend(docs)
-    seen = set()
-    uniq = []
-    for d in all_docs:
-        key = (d.get('file_path'), d.get('start_line'), d.get('end_line'))
-        if key in seen:
-            continue
-        seen.add(key)
-        uniq.append(d)
+    repo = repo_override or route_repo(query)
+    # Could add query expansion here later
+    return search(query, repo=repo, final_k=final_k)
+
+
+def expand_queries(query: str, m: int = 4) -> List[str]:
+    """Generate query variants (stub for compatibility)."""
+    # Just return original for now - can add LLM expansion later
+    return [query]
+
+
+def reload_config():
+    """Reload config (stub for compatibility)."""
+    pass
+
+
+# Simple test
+if __name__ == '__main__':
+    query = "Where is hybrid search implemented?"
+    print(f"Query: {query}\n")
     
-    # CRITICAL: Prioritize code files for implementation queries BEFORE final rerank
-    q_lower = query.lower()
-    wants_code = any(k in q_lower for k in ['implementation', 'where is', 'how does', 'function', 'class', 'method', 'api', 'code'])
-    if wants_code:
-        code_docs = [d for d in uniq if d.get('language', '').lower() in ('python', 'javascript', 'typescript', 'go', 'rust', 'java', 'cpp', 'c')]
-        other_docs = [d for d in uniq if d not in code_docs]
-        uniq = code_docs + other_docs  # Code first
+    results = search(query, final_k=5)
     
-    try:
-        # Allow callers to disable reranking for fast smoke paths
-        if bool(_DISABLE_RERANK):
-            return uniq[:final_k]
-        from .rerank import rerank_results as _rr
-        reranked = _rr(query, uniq, top_k=final_k)
-        _apply_filename_boosts(reranked, query)
-        return reranked
-    except Exception:
-        return uniq[:final_k]
+    print(f"Results ({len(results)}):")
+    for i, r in enumerate(results):
+        fp = r.get('file_path', '?')
+        score = r.get('rerank_score', 0)
+        print(f"  {i+1}. [{score:.3f}] {fp}")
+
