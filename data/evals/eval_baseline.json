@@ -1,34 +1,31 @@
 {
   "total": 1,
   "top1_hits": 0,
-  "topk_hits": 0,
+  "topk_hits": 1,
   "top1_accuracy": 0.0,
-  "topk_accuracy": 0.0,
+  "topk_accuracy": 1.0,
   "final_k": 5,
   "use_multi": true,
-  "duration_secs": 8.34,
-  "timestamp": "2025-11-22 01:33:04",
+  "duration_secs": 0.47,
+  "timestamp": "2025-11-25 14:45:12",
   "results": [
     {
-      "question": "Where is the hybrid search implementation that combines BM25 and vector search?",
+      "question": "How does RRF (Reciprocal Rank Fusion) combine BM25 and vector results?",
       "repo": "agro",
       "expect_paths": [
-        "retrieval/hybrid_search.py",
-        "server/langgraph_app.py",
-        "server/app.py",
-        "eval/eval_rag.py"
+        "retrieval/hybrid_search.py"
       ],
       "top1_path": [
-        "requirements-rag.txt"
+        "retrieval/hybrid_search_v2.py"
       ],
       "top1_hit": false,
-      "topk_hit": false,
+      "topk_hit": true,
       "top_paths": [
-        "requirements-rag.txt",
-        ".worktrees/feature-ui-migration/requirements-rag.txt",
-        "requirements.txt",
-        ".worktrees/feature-ui-migration/requirements.txt",
-        "web/src/modules/tooltips.js"
+        "retrieval/hybrid_search_v2.py",
+        "retrieval/hybrid_search.py",
+        "retrieval/hybrid_search.py",
+        "web/src/modules/profile_renderer.js",
+        "ui/ALL_KNOBS.yaml"
       ]
     }
   ]

@@ -72,7 +72,10 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
   const [selectedQuestion, setSelectedQuestion] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
+  // UI state
+  const [configExpanded, setConfigExpanded] = useState(false);
+
   // LLM Analysis state
   const [llmAnalysis, setLlmAnalysis] = useState<string | null>(null);
   const [llmLoading, setLlmLoading] = useState(false);
@@ -190,14 +193,22 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
 
   const getConfigDiff = () => {
     if (!compareRun) return null;
-    if (!evalRun.config || !compareRun.config) return null;
 
-    const allKeys = new Set([...Object.keys(evalRun.config), ...Object.keys(compareRun.config)]);
+    // Handle case where one or both runs don't have config
+    const currentConfig = evalRun.config || {};
+    const previousConfig = compareRun.config || {};
+
+    // If NEITHER run has config, return null
+    if (Object.keys(currentConfig).length === 0 && Object.keys(previousConfig).length === 0) {
+      return null;
+    }
+
+    const allKeys = new Set([...Object.keys(currentConfig), ...Object.keys(previousConfig)]);
     const diffs: Array<{ key: string; current: any; previous: any; changed: boolean }> = [];
 
     allKeys.forEach(key => {
-      const current = evalRun.config[key];
-      const previous = compareRun.config[key];
+      const current = currentConfig[key];
+      const previous = previousConfig[key];
       const changed = JSON.stringify(current) !== JSON.stringify(previous);
       if (changed) {
         diffs.push({ key, current, previous, changed });
@@ -208,10 +219,10 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
   };
 
   const getRegressionStatus = (questionIdx: number) => {
-    if (!compareRun || !compareRun.results[questionIdx]) return null;
+    if (!compareRun || !compareRun.results?.[questionIdx]) return null;
 
-    const currentHit = evalRun.results[questionIdx]?.topk_hit;
-    const previousHit = compareRun.results[questionIdx]?.topk_hit;
+    const currentHit = evalRun.results?.[questionIdx]?.topk_hit;
+    const previousHit = compareRun.results?.[questionIdx]?.topk_hit;
 
     if (!currentHit && previousHit) return 'regression';
     if (currentHit && !previousHit) return 'improvement';
@@ -219,8 +230,9 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
   };
 
   const configDiffs = getConfigDiff();
-  const regressions = evalRun.results.filter((_, idx) => getRegressionStatus(idx) === 'regression').length;
-  const improvements = evalRun.results.filter((_, idx) => getRegressionStatus(idx) === 'improvement').length;
+  const results = evalRun.results || [];
+  const regressions = results.filter((_, idx) => getRegressionStatus(idx) === 'regression').length;
+  const improvements = results.filter((_, idx) => getRegressionStatus(idx) === 'improvement').length;
 
   // Group config by category for better organization - COMPREHENSIVE categorization
   const groupedConfig = (() => {
@@ -231,22 +243,34 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
       'Reranking': [],
       'Embedding & Chunking': [],
       'Exclusions': [],
+      'Infrastructure': [],
       'Other': []
     };
 
     Object.entries(evalRun.config || {}).forEach(([key, value]) => {
-      if (key.includes('topk_') || key.includes('final_k') || key.includes('rrf_')) {
+      const lowerKey = key.toLowerCase();
+      if (lowerKey.includes('topk_') || lowerKey.includes('final_k') || lowerKey.includes('rrf_') ||
+          lowerKey.includes('multi_m') || lowerKey.includes('use_multi')) {
         groups['Retrieval'].push([key, value]);
-      } else if (key.includes('_weight') || key.includes('keyword_boost') || key.includes('recency_weight')) {
+      } else if (lowerKey.includes('_weight') || lowerKey.includes('keywords_boost') ||
+                 lowerKey.includes('recency_') || lowerKey.includes('filename_boost') ||
+                 lowerKey.includes('vendor_penalty')) {
         groups['Weighting'].push([key, value]);
-      } else if (key.includes('layer_bonus_')) {
+      } else if (lowerKey.includes('layer_bonus_')) {
         groups['Layer Bonuses'].push([key, value]);
-      } else if (key.includes('rerank_') || key.includes('disable_rerank')) {
+      } else if (lowerKey.includes('rerank') || lowerKey.includes('disable_rerank') ||
+                 lowerKey.includes('cross_encoder')) {
         groups['Reranking'].push([key, value]);
-      } else if (key.includes('embed_') || key.includes('chunk_')) {
+      } else if (lowerKey.includes('embed') || lowerKey.includes('chunk_') ||
+                 lowerKey.includes('dimension')) {
         groups['Embedding & Chunking'].push([key, value]);
-      } else if (key.includes('exclude_')) {
+      } else if (lowerKey.includes('exclude_') || lowerKey.includes('_excluded_') ||
+                 lowerKey.includes('path_boost')) {
         groups['Exclusions'].push([key, value]);
+      } else if (lowerKey.includes('qdrant') || lowerKey.includes('redis') ||
+                 lowerKey.includes('host') || lowerKey.includes('port') ||
+                 lowerKey.includes('url') || lowerKey.includes('timeout')) {
+        groups['Infrastructure'].push([key, value]);
       } else {
         groups['Other'].push([key, value]);
       }
@@ -359,32 +383,50 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
         )}
       </div>
 
-      {/* Run Configuration - Always Show */}
+      {/* Run Configuration - Collapsible */}
       <div style={{
         background: 'var(--card-bg)',
         border: '1px solid var(--line)',
         borderRadius: '8px',
-        padding: '16px',
         marginBottom: '24px'
       }}>
-        <h3 style={{
-          fontSize: '14px',
-          fontWeight: 600,
-          color: 'var(--fg)',
-          marginBottom: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}>
-          <span>⚙️</span>
-          Run Configuration — {evalRun.run_id}
-          <span style={{ fontSize: '10px', color: 'var(--fg-muted)', fontWeight: 'normal', marginLeft: '8px' }}>
-            (config keys: {Object.keys(evalRun.config || {}).length}, type: {typeof evalRun.config})
+        <button
+          onClick={() => setConfigExpanded(!configExpanded)}
+          style={{
+            width: '100%',
+            padding: '16px',
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '8px'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '16px' }}>⚙️</span>
+            <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--fg)' }}>
+              Run Configuration — {evalRun.run_id}
+            </span>
+            <span style={{
+              fontSize: '11px',
+              color: '#000',
+              fontWeight: 600,
+              background: 'var(--accent)',
+              padding: '2px 8px',
+              borderRadius: '10px'
+            }}>
+              {Object.keys(evalRun.config || {}).length} keys
+            </span>
+          </div>
+          <span style={{ fontSize: '12px', color: 'var(--fg-muted)' }}>
+            {configExpanded ? '▼ Collapse' : '▶ Expand'}
           </span>
-        </h3>
+        </button>
 
         {Object.keys(evalRun.config || {}).length === 0 ? (
-          <div>
+          <div style={{ padding: '0 16px 16px' }}>
             <div style={{ color: 'var(--fg-muted)', fontSize: '12px', fontStyle: 'italic', marginBottom: '8px' }}>
               No config parameters captured for this run
             </div>
@@ -392,61 +434,127 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
               DEBUG: config = {JSON.stringify(evalRun.config)}
             </div>
           </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
-            {Object.entries(groupedConfig).map(([category, params]) => {
-              if (params.length === 0) return null;
-              return (
-                <div key={category} style={{
+        ) : configExpanded && (
+          <div style={{ padding: '0 16px 16px' }}>
+            {/* Named categories in grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+              {Object.entries(groupedConfig).filter(([category]) => category !== 'Other').map(([category, params]) => {
+                if (params.length === 0) return null;
+                return (
+                  <div key={category} style={{
+                    background: 'var(--bg-elev2)',
+                    borderRadius: '6px',
+                    padding: '10px'
+                  }}>
+                    <div style={{
+                      fontSize: '10px',
+                      fontWeight: 600,
+                      color: 'var(--accent)',
+                      textTransform: 'uppercase',
+                      marginBottom: '8px',
+                      letterSpacing: '0.5px'
+                    }}>
+                      {category} ({params.length})
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {params.map(([key, value]) => (
+                        <div key={key} style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                          gap: '6px',
+                          fontSize: '11px',
+                          padding: '3px 6px',
+                          background: 'var(--card-bg)',
+                          borderRadius: '3px',
+                          minWidth: 0
+                        }}>
+                          <span style={{
+                            color: 'var(--fg)',
+                            fontFamily: 'monospace',
+                            flexShrink: 0,
+                            fontSize: '10px'
+                          }}>{key}</span>
+                          <span style={{
+                            color: 'var(--link)',
+                            fontWeight: 600,
+                            fontFamily: 'monospace',
+                            textAlign: 'right',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            maxWidth: '140px',
+                            fontSize: '10px'
+                          }}>
+                            {formatConfigValue(value)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* "Other" items dispersed across 4 columns below */}
+            {groupedConfig['Other'] && groupedConfig['Other'].length > 0 && (
+              <div style={{ marginTop: '16px' }}>
+                <div style={{
+                  fontSize: '10px',
+                  fontWeight: 600,
+                  color: 'var(--fg-muted)',
+                  textTransform: 'uppercase',
+                  marginBottom: '8px',
+                  letterSpacing: '0.5px'
+                }}>
+                  Other ({groupedConfig['Other'].length})
+                </div>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(4, 1fr)',
+                  gap: '6px',
                   background: 'var(--bg-elev2)',
                   borderRadius: '6px',
-                  padding: '12px'
+                  padding: '10px'
                 }}>
-                  <div style={{
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    color: 'var(--accent)',
-                    textTransform: 'uppercase',
-                    marginBottom: '10px',
-                    letterSpacing: '0.5px'
-                  }}>
-                    {category}
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {params.map(([key, value]) => (
-                      <div key={key} style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'flex-start',
-                        gap: '8px',
-                        fontSize: '12px',
-                        padding: '4px 8px',
-                        background: 'var(--card-bg)',
-                        borderRadius: '4px',
-                        minWidth: 0
+                  {groupedConfig['Other'].map(([key, value]) => (
+                    <div key={key} style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      gap: '6px',
+                      fontSize: '11px',
+                      padding: '3px 6px',
+                      background: 'var(--card-bg)',
+                      borderRadius: '3px',
+                      minWidth: 0
+                    }}>
+                      <span style={{
+                        color: 'var(--fg)',
+                        fontFamily: 'monospace',
+                        flexShrink: 0,
+                        fontSize: '10px',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        maxWidth: '120px'
+                      }} title={key}>{key}</span>
+                      <span style={{
+                        color: 'var(--link)',
+                        fontWeight: 600,
+                        fontFamily: 'monospace',
+                        textAlign: 'right',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        maxWidth: '80px',
+                        fontSize: '10px'
                       }}>
-                        <span style={{ 
-                          color: 'var(--fg)', 
-                          fontFamily: 'monospace',
-                          flexShrink: 0 
-                        }}>{key}</span>
-                        <span style={{
-                          color: 'var(--link)',
-                          fontWeight: 600,
-                          fontFamily: 'monospace',
-                          textAlign: 'right',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          maxWidth: '180px'
-                        }}>
-                          {formatConfigValue(value)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                        {formatConfigValue(value)}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              );
-            })}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -476,7 +584,7 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
               fontSize: '14px',
               fontWeight: 600,
               background: 'var(--accent)',
-              color: 'white',
+              color: '#000',
               padding: '4px 12px',
               borderRadius: '12px'
             }}>
@@ -570,9 +678,11 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
 
               // Non-array params - compact layout with truncation
               const formatValue = (val: any) => {
+                if (val === undefined) return '(not set)';
+                if (val === null) return 'null';
                 const str = JSON.stringify(val);
-                if (str.length > 20) return str.slice(0, 17) + '...';
-                return str;
+                if (str && str.length > 20) return str.slice(0, 17) + '...';
+                return str || '(empty)';
               };
               
               return (
@@ -709,34 +819,36 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
                 <button
                   onClick={() => {
                     if (evalRun && compareRun) {
+                      const evalResults = evalRun.results || [];
+                      const compareResults = compareRun.results || [];
                       // Calculate Top-K changes (what we show in the table)
-                      const topkRegressions = evalRun.results.filter((_, idx) => {
-                        const currentHit = evalRun.results[idx]?.topk_hit;
-                        const previousHit = compareRun.results[idx]?.topk_hit;
+                      const topkRegressions = evalResults.filter((_, idx) => {
+                        const currentHit = evalResults[idx]?.topk_hit;
+                        const previousHit = compareResults[idx]?.topk_hit;
                         return !currentHit && previousHit;
                       });
-                      const topkImprovements = evalRun.results.filter((_, idx) => {
-                        const currentHit = evalRun.results[idx]?.topk_hit;
-                        const previousHit = compareRun.results[idx]?.topk_hit;
+                      const topkImprovements = evalResults.filter((_, idx) => {
+                        const currentHit = evalResults[idx]?.topk_hit;
+                        const previousHit = compareResults[idx]?.topk_hit;
                         return currentHit && !previousHit;
                       });
                       // Calculate Top-1 changes (for complete picture)
-                      const top1Regressions = evalRun.results.filter((_, idx) => {
-                        const currentHit = evalRun.results[idx]?.top1_hit;
-                        const previousHit = compareRun.results[idx]?.top1_hit;
+                      const top1Regressions = evalResults.filter((_, idx) => {
+                        const currentHit = evalResults[idx]?.top1_hit;
+                        const previousHit = compareResults[idx]?.top1_hit;
                         return !currentHit && previousHit;
                       });
-                      const top1Improvements = evalRun.results.filter((_, idx) => {
-                        const currentHit = evalRun.results[idx]?.top1_hit;
-                        const previousHit = compareRun.results[idx]?.top1_hit;
+                      const top1Improvements = evalResults.filter((_, idx) => {
+                        const currentHit = evalResults[idx]?.top1_hit;
+                        const previousHit = compareResults[idx]?.top1_hit;
                         return currentHit && !previousHit;
                       });
                       // Send both metrics for accurate analysis
                       fetchLLMAnalysis(
-                        evalRun, 
-                        compareRun, 
-                        configDiffs || [], 
-                        topkRegressions, 
+                        evalRun,
+                        compareRun,
+                        configDiffs || [],
+                        topkRegressions,
                         topkImprovements,
                         top1Regressions.length,
                         top1Improvements.length
@@ -965,7 +1077,7 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
               </tr>
             </thead>
             <tbody>
-              {evalRun.results.map((result, idx) => {
+              {results.map((result, idx) => {
                 const status = getRegressionStatus(idx);
                 const isExpanded = selectedQuestion === idx;
 

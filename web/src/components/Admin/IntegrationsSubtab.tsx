@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { configApi } from '@/api/config';
+import { webhooksApi } from '@/api/webhooks';
 
 export function IntegrationsSubtab() {
   // LangSmith settings
@@ -120,6 +121,8 @@ export function IntegrationsSubtab() {
   }
 
   async function saveWebhooks() {
+    setSaveStatus('');
+
     const config = {
       slack_url: slackWebhook,
       discord_url: discordWebhook,
@@ -132,7 +135,17 @@ export function IntegrationsSubtab() {
       include_resolved: includeResolved
     };
 
-    alert(`Webhook configuration saved!\n${JSON.stringify(config, null, 2)}`);
+    try {
+      const result = await webhooksApi.save(config);
+      if (result.status === 'success') {
+        setSaveStatus(result.message || 'Webhook configuration saved successfully!');
+        setTimeout(() => setSaveStatus(''), 3000);
+      } else {
+        setSaveStatus('Failed to save webhook configuration');
+      }
+    } catch (error: any) {
+      setSaveStatus(`Error saving webhook configuration: ${error.message}`);
+    }
   }
 
   return (

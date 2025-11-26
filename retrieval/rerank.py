@@ -215,58 +215,65 @@ def rerank_results(query: str, results: List[Dict[str, Any]], top_k: int = 10, t
     except Exception:
         pass
     if backend == 'cohere':
-        # DEBUG: print(f"  → Using Cohere API (no local processing)")
         try:
-            # DEBUG: print(f"  → Importing cohere...")
-            import cohere
-            # DEBUG: print(f"  → Getting API key...")
+            import requests as req
+            import time
+            from server.api_tracker import track_api_call, APIProvider
+
             api_key = os.getenv('COHERE_API_KEY')
             if settings and not cohere_key_present:
                 raise RuntimeError('COHERE_API_KEY not set')
             if not settings and not api_key:
                 raise RuntimeError('COHERE_API_KEY not set')
-            # DEBUG: print(f"  → Creating client...")
-            client = cohere.Client(api_key=api_key)
-            # DEBUG: print(f"  → Client created, building docs...")
+
             docs = []
             for r in results:
                 file_ctx = r.get('file_path', '')
-                # default snippet: 700 for cohere, configurable via env
                 snip_len = snippet_cohere
                 code_snip = (r.get('code') or r.get('text') or '')[:snip_len]
                 docs.append(f"{file_ctx}\n\n{code_snip}")
-            # Limit reranking to top 50 documents (configurable via env) to reduce token usage
             rerank_top_n = min(len(docs), cohere_top_n)
-
-            # Instrument Cohere API call
-            import time
-            from server.api_tracker import track_api_call, APIProvider
 
             start = time.time()
             model_id = cohere_model
-            rr = client.rerank(model=model_id, query=query, documents=docs, top_n=rerank_top_n)
+            resp = req.post(
+                "https://api.cohere.com/v2/rerank",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": model_id,
+                    "query": query,
+                    "documents": docs,
+                    "top_n": rerank_top_n,
+                    "return_documents": False
+                },
+                timeout=10
+            )
+            resp.raise_for_status()
+            rr = resp.json()
             duration_ms = (time.time() - start) * 1000
 
-            # Calculate cost - Cohere rerank is ~$0.002 per 1k searches
-            # Each call is 1 search, so cost = $0.000002 per call
             cost_per_call = 0.000002
-            tokens_est = len(docs) * 100  # Estimate based on doc count
+            tokens_est = len(docs) * 100
 
             track_api_call(
                 provider=APIProvider.COHERE,
-                endpoint="https://api.cohere.ai/v1/rerank",
+                endpoint="https://api.cohere.com/v2/rerank",
                 method="POST",
                 duration_ms=duration_ms,
-                status_code=200,
+                status_code=resp.status_code,
                 tokens_estimated=tokens_est,
                 cost_usd=cost_per_call
             )
 
-            scores = [getattr(x, 'relevance_score', 0.0) for x in rr.results]
+            rr_results = rr.get("results", [])
+            scores = [r.get('relevance_score', 0.0) for r in rr_results]
             max_s = max(scores) if scores else 1.0
-            for item in rr.results:
-                idx = int(getattr(item, 'index', 0))
-                score = float(getattr(item, 'relevance_score', 0.0))
+            for item in rr_results:
+                idx = int(item.get('index', 0))
+                score = float(item.get('relevance_score', 0.0))
                 if idx < len(results):
                     results[idx]['rerank_score'] = (score / max_s) if max_s else 0.0
             results.sort(key=lambda x: x.get('rerank_score', 0.0), reverse=True)

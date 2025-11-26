@@ -23,7 +23,11 @@ import threading
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from dotenv import load_dotenv
 from pydantic import ValidationError
+
+# Load .env FIRST before any os.environ access
+load_dotenv(override=True)
 
 from common.paths import repo_root
 from server.models.agro_config_model import AgroConfigRoot, AGRO_CONFIG_KEYS
@@ -203,6 +207,24 @@ class ConfigRegistry:
             return value
         str_value = str(value).strip().lower()
         return str_value in {'1', 'true', 'yes', 'on'}
+
+    def get_dict(self, key: str, default: Optional[Dict] = None) -> Dict:
+        """Get a config value as dictionary.
+
+        Args:
+            key: Configuration key
+            default: Default value if key not found
+
+        Returns:
+            Dict value or default
+        """
+        value = self.get(key)
+        if value is None:
+            return default if default is not None else {}
+        if isinstance(value, dict):
+            return value
+        logger.warning(f"Config key {key} is not a dict, returning default")
+        return default if default is not None else {}
 
     def get_source(self, key: str) -> Optional[str]:
         """Get the source file for a config key.

@@ -57,7 +57,6 @@ KEYWORDS_BOOST = _cfg.get_float('KEYWORDS_BOOST', 1.3)  # 30% boost for keyword 
 PATH_BOOSTS = _cfg.get_str('PATH_BOOSTS', '/server,/retrieval,/indexer,/web')
 
 # Caches
-_LAYER_BONUSES_CACHE = None
 _DISCRIMINATIVE_KEYWORDS = None
 
 # Stopwords for query preprocessing (question words that hurt BM25)
@@ -113,38 +112,34 @@ def classify_query(query: str) -> str:
 
 def get_layer_bonus(layer: str, intent: str) -> float:
     """Get MULTIPLICATIVE layer bonus based on query intent.
-    
-    Returns multiplier (1.0 = no change, > 1.0 = boost)
+
+    Returns multiplier (> 1.0 = boost, < 1.0 = penalty)
+
+    Reads from LAYER_INTENT_MATRIX in agro_config.json. For backend questions
+    (server, retrieval, indexer), web/gui files get penalized.
+
+    Configurable via Web UI: RAG > Retrieval > Layer Bonuses
     """
-    global _LAYER_BONUSES_CACHE
-    
-    # Load from repos.json (cached)
-    if _LAYER_BONUSES_CACHE is None:
-        try:
-            from common.config_loader import layer_bonuses
-            _LAYER_BONUSES_CACHE = layer_bonuses(REPO)
-        except Exception:
-            # Fallback to defaults (values are additive in config, convert to multiplicative)
-            _LAYER_BONUSES_CACHE = {
-                'gui':       {'gui': 1.15, 'web': 1.10, 'server': 1.05},
-                'retrieval': {'retrieval': 1.15, 'server': 1.05, 'common': 1.05},
-                'indexer':   {'indexer': 1.15, 'retrieval': 1.08, 'common': 1.05},
-                'eval':      {'eval': 1.15, 'tests': 1.10, 'retrieval': 1.05},
-                'infra':     {'infra': 1.15, 'scripts': 1.08},
-                'server':    {'server': 1.15, 'retrieval': 1.05, 'common': 1.05},
-            }
-    
+    # Default intent matrix if config not available
+    DEFAULT_MATRIX = {
+        'gui':       {'gui': 1.2, 'web': 1.2, 'server': 0.9, 'retrieval': 0.8, 'indexer': 0.8},
+        'retrieval': {'retrieval': 1.3, 'server': 1.15, 'common': 1.1, 'web': 0.7, 'gui': 0.6},
+        'indexer':   {'indexer': 1.3, 'retrieval': 1.15, 'common': 1.1, 'web': 0.7, 'gui': 0.6},
+        'eval':      {'eval': 1.3, 'retrieval': 1.15, 'server': 1.1, 'web': 0.8, 'gui': 0.7},
+        'infra':     {'infra': 1.3, 'scripts': 1.15, 'server': 1.1, 'web': 0.9},
+        'server':    {'server': 1.3, 'retrieval': 1.15, 'common': 1.1, 'web': 0.7, 'gui': 0.6},
+    }
+
+    # Read from config registry (with default fallback)
+    intent_matrix = _cfg.get_dict('LAYER_INTENT_MATRIX', DEFAULT_MATRIX)
+
     layer_lower = (layer or '').lower()
     intent_lower = (intent or 'server').lower()
-    
-    # Get from cache, default to 1.0 (no change)
-    intent_bonuses = _LAYER_BONUSES_CACHE.get(intent_lower, {})
+
+    # Get intent-specific bonuses
+    intent_bonuses = intent_matrix.get(intent_lower, {})
     bonus = intent_bonuses.get(layer_lower, 1.0)
-    
-    # If bonus is additive-style (< 1.0), convert to multiplicative
-    if bonus < 1.0:
-        bonus = 1.0 + bonus  # 0.15 becomes 1.15
-    
+
     return bonus
 
 
@@ -179,38 +174,23 @@ def get_path_boost(file_path: str, repo: str = None) -> float:
 
 
 def load_discriminative_keywords(repo: str) -> List[str]:
-    """Load discriminative keywords for the repo."""
+    """Load discriminative keywords from repos.json (single source of truth).
+
+    Keywords are configured per-repo in repos.json under the 'keywords' array.
+    This consolidates the previous multi-file keyword architecture.
+    """
     global _DISCRIMINATIVE_KEYWORDS
-    
+
     if _DISCRIMINATIVE_KEYWORDS is not None:
         return _DISCRIMINATIVE_KEYWORDS
-    
+
     try:
-        # Try repos.json keywords first
         from common.config_loader import get_repo_keywords
-        keywords = get_repo_keywords(repo)
-        if keywords:
-            _DISCRIMINATIVE_KEYWORDS = keywords
-            return _DISCRIMINATIVE_KEYWORDS
-    except Exception:
-        pass
-    
-    # Try discriminative_keywords.json
-    try:
-        kw_file = Path(__file__).parent.parent / 'discriminative_keywords.json'
-        if kw_file.exists():
-            data = json.loads(kw_file.read_text())
-            if isinstance(data, list):
-                _DISCRIMINATIVE_KEYWORDS = [k['term'] if isinstance(k, dict) else str(k) for k in data]
-            elif isinstance(data, dict) and repo in data:
-                _DISCRIMINATIVE_KEYWORDS = [k['term'] if isinstance(k, dict) else str(k) for k in data[repo]]
-            else:
-                _DISCRIMINATIVE_KEYWORDS = []
-        else:
-            _DISCRIMINATIVE_KEYWORDS = []
+        keywords = get_repo_keywords(repo) or []
+        _DISCRIMINATIVE_KEYWORDS = keywords
     except Exception:
         _DISCRIMINATIVE_KEYWORDS = []
-    
+
     return _DISCRIMINATIVE_KEYWORDS
 
 
@@ -279,7 +259,7 @@ def get_filename_boost(file_path: str, query: str) -> float:
     elif fp.endswith(('.go', '.rs', '.java', '.cpp', '.c')):
         boost *= 1.15
     elif fp.endswith('.md'):
-        boost *= 0.3  # Heavy penalty for markdown
+        boost *= 0.7  # Moderate penalty for markdown (was 0.3x, too harsh)
     elif fp.endswith(('.txt', '.rst')):
         boost *= 0.5  # Medium penalty
     
@@ -477,7 +457,11 @@ def rerank(query: str, docs: List[Dict], k: int = 10) -> List[Dict]:
     """Rerank documents using configured backend (cohere, voyage, or local)."""
     if not docs:
         return []
-    
+
+    # Check if reranking is disabled (DISABLE_RERANK=1 means disabled)
+    if _cfg.get_int('DISABLE_RERANK', 0):
+        return docs[:k]
+
     backend = _cfg.get_str('RERANKER_BACKEND', 'local').lower()
     
     try:
@@ -489,26 +473,34 @@ def rerank(query: str, docs: List[Dict], k: int = 10) -> List[Dict]:
             texts.append(f"{fp}\n{code}")
         
         if backend == 'cohere':
-            import cohere
+            import requests as req
             model = _cfg.get_str('COHERE_RERANK_MODEL', 'rerank-v3.5')
-            
-            if not hasattr(rerank, '_cohere_client'):
-                rerank._cohere_client = cohere.Client(api_key=os.getenv('COHERE_API_KEY'))
-            
-            response = rerank._cohere_client.rerank(
-                model=model,
-                query=query,
-                documents=texts,
-                top_n=min(k, len(texts)),
-                return_documents=False
+            api_key = os.getenv('COHERE_API_KEY')
+
+            resp = req.post(
+                "https://api.cohere.com/v2/rerank",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": model,
+                    "query": query,
+                    "documents": texts,
+                    "top_n": min(k, len(texts)),
+                    "return_documents": False
+                },
+                timeout=10
             )
-            
+            resp.raise_for_status()
+            data = resp.json()
+
             # Apply scores based on Cohere response
-            for res in response.results:
-                idx = res.index
+            for res in data.get("results", []):
+                idx = res.get("index", 0)
                 if idx < len(docs):
-                    docs[idx]['rerank_score'] = float(res.relevance_score)
-            
+                    docs[idx]['rerank_score'] = float(res.get("relevance_score", 0))
+
             docs.sort(key=lambda x: x.get('rerank_score', 0), reverse=True)
             return docs[:k]
         
@@ -573,6 +565,23 @@ def hydrate_docs(docs: List[Dict], chunks: Dict[str, Dict]) -> None:
                 d['code'] = chunks[chunk_id].get('code', '')
 
 
+def dedupe_by_file(docs: List[Dict]) -> List[Dict]:
+    """Keep only the highest-scoring chunk per file path.
+
+    This prevents multiple chunks from the same file dominating results,
+    improving result diversity and giving more files a chance to appear.
+    """
+    seen = {}
+    for d in docs:
+        fp = d.get('file_path', '')
+        if not fp:
+            continue
+        existing = seen.get(fp)
+        if existing is None or d.get('rerank_score', 0) > existing.get('rerank_score', 0):
+            seen[fp] = d
+    return list(seen.values())
+
+
 def search(
     query: str,
     repo: str = None,
@@ -625,14 +634,20 @@ def search(
     
     # Hydrate with code
     hydrate_docs(docs, chunks)
-    
-    # Rerank
-    results = rerank(query, docs, k=final_k)
-    
-    # Apply MULTIPLICATIVE scoring bonuses (layer, path, keyword, filename)
-    apply_scoring_bonuses(results, query, repo)
-    
-    return results
+
+    # Apply MULTIPLICATIVE scoring bonuses BEFORE reranking
+    # This way bonuses INFORM the reranker rather than OVERRIDING its decisions
+    apply_scoring_bonuses(docs, query, repo)
+
+    # Rerank (now sees bonus-adjusted scores)
+    results = rerank(query, docs, k=final_k * 2)  # Get more for dedup
+
+    # Deduplicate - keep only highest-scoring chunk per file
+    results = dedupe_by_file(results)
+
+    # Final sort and truncate
+    results.sort(key=lambda x: x.get('rerank_score', 0), reverse=True)
+    return results[:final_k]
 
 
 # ============================================================================
@@ -658,19 +673,98 @@ def search_routed(query: str, repo_override: str = None, final_k: int = 10, trac
 
 def search_routed_multi(query: str, repo_override: str = None, m: int = 4, final_k: int = 10, trace=None) -> List[Dict]:
     """
-    Multi-query search (compatible with old API).
-    
-    For now, just calls single search. Multi-query expansion can be added back later.
+    Multi-query search with LLM-based query expansion.
+
+    Expands the original query into m variants using LLM, searches each,
+    and merges results with deduplication.
+
+    Args:
+        query: Original search query
+        repo_override: Optional repo to search (defaults to routing)
+        m: Number of query variants to generate
+        final_k: Number of results to return
+        trace: Optional tracing object
+
+    Returns:
+        Merged and deduplicated search results
     """
     repo = repo_override or route_repo(query)
-    # Could add query expansion here later
-    return search(query, repo=repo, final_k=final_k)
+
+    # Expand query into variants
+    queries = expand_queries(query, m)
+
+    # Search each variant and merge results
+    all_results = []
+    seen_ids = set()
+    seen_paths = set()
+
+    for q in queries:
+        results = search(q, repo=repo, final_k=final_k)
+        for r in results:
+            # Dedupe by chunk ID and file path
+            rid = r.get('id', '')
+            rpath = r.get('file_path', '')
+            if rid and rid not in seen_ids:
+                seen_ids.add(rid)
+                if rpath not in seen_paths:
+                    seen_paths.add(rpath)
+                    all_results.append(r)
+
+    # Re-sort by score and return top-k
+    all_results.sort(key=lambda x: x.get('rerank_score', 0), reverse=True)
+    return all_results[:final_k]
 
 
 def expand_queries(query: str, m: int = 4) -> List[str]:
-    """Generate query variants (stub for compatibility)."""
-    # Just return original for now - can add LLM expansion later
-    return [query]
+    """Generate query variants using LLM for better semantic recall.
+
+    Rewrites developer queries into multiple search-friendly variants to
+    catch different terminology and phrasings.
+
+    Args:
+        query: Original search query
+        m: Number of variants to generate (including original)
+
+    Returns:
+        List of query variants (always includes original as first)
+    """
+    if m <= 1:
+        return [query]
+
+    try:
+        from server.env_model import generate_text
+
+        sys_prompt = """You are a code search query expander. Given a developer's question,
+generate alternative search queries that might find the same code using different terminology.
+
+Rules:
+- Output one query variant per line
+- Keep variants concise (3-8 words each)
+- Use technical synonyms (auth/authentication, config/configuration, etc.)
+- Include both abstract and specific phrasings
+- Do NOT include explanations, just the queries"""
+
+        user_prompt = f"Generate {m-1} search query variants for: {query}"
+
+        text, _ = generate_text(user_input=user_prompt, system_instructions=sys_prompt, reasoning_effort=None)
+
+        # Parse response lines
+        lines = [ln.strip('- ').strip() for ln in (text or '').splitlines() if ln.strip()]
+        variants = [ln for ln in lines if len(ln) > 2 and len(ln) < 100]
+
+        # Always include original first, then unique variants
+        result = [query]
+        for v in variants:
+            if v.lower() != query.lower() and v not in result:
+                result.append(v)
+                if len(result) >= m:
+                    break
+
+        return result
+
+    except Exception as e:
+        print(f"[expand_queries] LLM expansion failed: {e}, returning original")
+        return [query]
 
 
 def reload_config():

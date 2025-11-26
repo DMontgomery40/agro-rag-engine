@@ -67,6 +67,39 @@ SKIP_FILES = {
 }
 
 
+def infer_layer_from_path(file_path: str) -> str:
+    """Infer architectural layer from file path for scoring bonuses.
+
+    Maps file paths to layer names that match repos.json layer_bonuses keys.
+    This enables intent-based scoring (e.g., 'gui' queries boost 'web' files).
+    """
+    fp = (file_path or '').lower()
+
+    # Web/GUI layer - frontend code
+    if any(x in fp for x in ['web/', 'gui/', '.tsx', '.jsx', 'component']):
+        return 'web'
+    # Server layer - API/backend code (check before retrieval since server/ contains routers)
+    if any(x in fp for x in ['server/', 'routers/', 'app.py', 'asgi.py']):
+        return 'server'
+    # Retrieval layer - search/ranking code
+    if any(x in fp for x in ['retrieval/', 'hybrid_search', 'rerank']):
+        return 'retrieval'
+    # Indexer layer - indexing code
+    if any(x in fp for x in ['indexer/', 'index_repo', 'chunker']):
+        return 'indexer'
+    # Eval layer - evaluation and testing
+    if any(x in fp for x in ['eval/', 'tests/', 'test_', '.spec.ts']):
+        return 'eval'
+    # Infra layer - infrastructure/scripts
+    if any(x in fp for x in ['infra/', 'scripts/', 'docker', 'compose']):
+        return 'infra'
+    # Common utilities
+    if 'common/' in fp:
+        return 'common'
+    # Default
+    return 'other'
+
+
 def should_index(path: str, repo_excludes: List[str] = None) -> bool:
     """Check if file should be indexed."""
     p = Path(path)
@@ -224,9 +257,10 @@ def main():
             if h in seen_hashes:
                 continue
             seen_hashes.add(h)
-            
+
             c['hash'] = h
             c['repo'] = REPO
+            c['layer'] = infer_layer_from_path(rel_path)
             chunks.append(c)
     
     print(f"   Created {len(chunks)} unique chunks")

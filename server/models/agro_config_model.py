@@ -10,7 +10,7 @@ Using Pydantic provides:
 """
 
 from pydantic import BaseModel, Field, field_validator, model_validator
-from typing import Literal
+from typing import Dict, Literal
 
 
 class RetrievalConfig(BaseModel):
@@ -237,41 +237,39 @@ class ScoringConfig(BaseModel):
 
 
 class LayerBonusConfig(BaseModel):
-    """Layer-specific scoring bonuses."""
+    """Layer-specific scoring bonuses with intent-aware matrix.
 
-    gui: float = Field(
-        default=0.15,
-        ge=0.0,
-        le=0.5,
-        description="Bonus for GUI layer"
-    )
+    The intent_matrix maps query intent (gui, retrieval, indexer, eval, infra, server)
+    to layer bonuses. Values > 1.0 are boosts, < 1.0 are penalties.
 
-    retrieval: float = Field(
-        default=0.15,
-        ge=0.0,
-        le=0.5,
-        description="Bonus for retrieval layer"
-    )
-
-    indexer: float = Field(
-        default=0.15,
-        ge=0.0,
-        le=0.5,
-        description="Bonus for indexer layer"
-    )
+    Example: For a 'server' query, web layer gets 0.7 (30% penalty) while
+    server layer gets 1.3 (30% boost).
+    """
 
     vendor_penalty: float = Field(
-        default=-0.1,
-        ge=-0.5,
-        le=0.0,
-        description="Penalty for vendor code"
+        default=0.9,
+        ge=0.5,
+        le=1.0,
+        description="Multiplicative penalty for vendor code (0.9 = 10% penalty)"
     )
 
     freshness_bonus: float = Field(
-        default=0.05,
-        ge=0.0,
-        le=0.3,
-        description="Bonus for recent files"
+        default=1.05,
+        ge=1.0,
+        le=1.3,
+        description="Multiplicative bonus for recent files (1.05 = 5% boost)"
+    )
+
+    intent_matrix: Dict[str, Dict[str, float]] = Field(
+        default_factory=lambda: {
+            "gui": {"gui": 1.2, "web": 1.2, "server": 0.9, "retrieval": 0.8, "indexer": 0.8},
+            "retrieval": {"retrieval": 1.3, "server": 1.15, "common": 1.1, "web": 0.7, "gui": 0.6},
+            "indexer": {"indexer": 1.3, "retrieval": 1.15, "common": 1.1, "web": 0.7, "gui": 0.6},
+            "eval": {"eval": 1.3, "retrieval": 1.15, "server": 1.1, "web": 0.8, "gui": 0.7},
+            "infra": {"infra": 1.3, "scripts": 1.15, "server": 1.1, "web": 0.9},
+            "server": {"server": 1.3, "retrieval": 1.15, "common": 1.1, "web": 0.7, "gui": 0.6},
+        },
+        description="Intent-to-layer bonus matrix. Keys are query intents, values are layer->multiplier maps."
     )
 
 
@@ -1113,12 +1111,10 @@ class AgroConfigRoot(BaseModel):
             'FILENAME_BOOST_PARTIAL': self.scoring.filename_boost_partial,
             'VENDOR_MODE': self.scoring.vendor_mode,
             'PATH_BOOSTS': self.scoring.path_boosts,
-            # Layer bonus params
-            'LAYER_BONUS_GUI': self.layer_bonus.gui,
-            'LAYER_BONUS_RETRIEVAL': self.layer_bonus.retrieval,
-            'LAYER_BONUS_INDEXER': self.layer_bonus.indexer,
+            # Layer bonus params (intent-aware matrix)
             'VENDOR_PENALTY': self.layer_bonus.vendor_penalty,
             'FRESHNESS_BONUS': self.layer_bonus.freshness_bonus,
+            'LAYER_INTENT_MATRIX': self.layer_bonus.intent_matrix,
             # Embedding params (10 new)
             'EMBEDDING_TYPE': self.embedding.embedding_type,
             'EMBEDDING_MODEL': self.embedding.embedding_model,
@@ -1471,12 +1467,10 @@ AGRO_CONFIG_KEYS = {
     'FILENAME_BOOST_PARTIAL',
     'VENDOR_MODE',
     'PATH_BOOSTS',
-    # Layer bonus params (5)
-    'LAYER_BONUS_GUI',
-    'LAYER_BONUS_RETRIEVAL',
-    'LAYER_BONUS_INDEXER',
+    # Layer bonus params (3 - intent matrix is a nested dict)
     'VENDOR_PENALTY',
     'FRESHNESS_BONUS',
+    'LAYER_INTENT_MATRIX',
     # Embedding params (10)
     'EMBEDDING_TYPE',
     'EMBEDDING_MODEL',

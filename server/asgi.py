@@ -43,6 +43,7 @@ from server.routers.mcp_ops import router as mcp_ops_router
 from server.routers.chat import router as chat_router
 from server.routers.stream_logs import router as stream_logs_router
 from server.routers.grafana import router as grafana_router
+from server.routers.webhooks import router as webhooks_router
 
 # Module-level config registry cache
 _config_registry = get_config_registry()
@@ -297,6 +298,7 @@ def create_app() -> FastAPI:
     app.include_router(chat_router)
     app.include_router(stream_logs_router)
     app.include_router(grafana_router)
+    app.include_router(webhooks_router)
 
     # Include existing routers
     app.include_router(feedback_router)

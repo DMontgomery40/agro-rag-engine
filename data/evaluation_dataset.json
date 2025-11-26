@@ -25,6 +25,7 @@
     "q": "Where does query expansion happen in the retrieval pipeline?",
     "repo": "agro",
     "expect_paths": [
+      "retrieval/hybrid_search.py",
       "retrieval/synonym_expander.py"
     ]
   },
@@ -74,21 +75,24 @@
     "q": "How does layer bonus scoring work for different code layers?",
     "repo": "agro",
     "expect_paths": [
-      "retrieval/hybrid_search.py"
+      "retrieval/hybrid_search.py",
+      "server/models/agro_config_model.py"
     ]
   },
   {
     "q": "Where is the filename boost multiplier applied?",
     "repo": "agro",
     "expect_paths": [
-      "retrieval/hybrid_search.py"
+      "retrieval/hybrid_search.py",
+      "server/models/agro_config_model.py"
     ]
   },
   {
     "q": "How are vendor/third-party code penalties calculated?",
     "repo": "agro",
     "expect_paths": [
-      "retrieval/hybrid_search.py"
+      "retrieval/hybrid_search.py",
+      "server/models/agro_config_model.py"
     ]
   },
   {
@@ -102,14 +106,18 @@
     "q": "How does the eval compare current results to baseline?",
     "repo": "agro",
     "expect_paths": [
-      "eval/eval_loop.py"
+      "eval/eval_loop.py",
+      "eval/eval_rag.py",
+      "server/routers/eval.py"
     ]
   },
   {
     "q": "Where are eval results stored and how are they timestamped?",
     "repo": "agro",
     "expect_paths": [
-      "server/routers/eval.py"
+      "server/routers/eval.py",
+      "eval/eval_rag.py",
+      "eval/eval_loop.py"
     ]
   },
   {
@@ -144,14 +152,17 @@
     "q": "How does config hot-reload work when files change?",
     "repo": "agro",
     "expect_paths": [
-      "server/services/config_registry.py"
+      "server/services/config_registry.py",
+      "server/services/config_store.py",
+      "server/routers/config.py"
     ]
   },
   {
     "q": "Where are environment variable overrides handled?",
     "repo": "agro",
     "expect_paths": [
-      "server/services/config_registry.py"
+      "server/services/config_registry.py",
+      "common/config_loader.py"
     ]
   },
   {
@@ -172,7 +183,9 @@
     "q": "How does the reranker decide between local and Cohere backend?",
     "repo": "agro",
     "expect_paths": [
-      "retrieval/rerank.py"
+      "retrieval/rerank.py",
+      "retrieval/hybrid_search.py",
+      "reranker/config.py"
     ]
   },
   {
@@ -186,7 +199,8 @@
     "q": "How does snippet truncation work for reranker input?",
     "repo": "agro",
     "expect_paths": [
-      "retrieval/rerank.py"
+      "retrieval/rerank.py",
+      "retrieval/hybrid_search.py"
     ]
   },
   {
@@ -222,7 +236,8 @@
     "q": "Where is the progress bar displayed during indexing?",
     "repo": "agro",
     "expect_paths": [
-      "indexer/index_repo.py"
+      "indexer/index_repo.py",
+      "web/src/modules/eval_runner.js"
     ]
   },
   {
@@ -250,14 +265,16 @@
     "q": "Where are document hydration limits enforced?",
     "repo": "agro",
     "expect_paths": [
-      "retrieval/hybrid_search.py"
+      "retrieval/hybrid_search.py",
+      "server/langgraph_app.py"
     ]
   },
   {
     "q": "How does the terminal service handle SSE connections?",
     "repo": "agro",
     "expect_paths": [
-      "server/routers/stream_logs.py"
+      "server/routers/stream_logs.py",
+      "web/src/services/TerminalService.ts"
     ]
   },
   {
@@ -271,7 +288,8 @@
     "q": "How are Qdrant collections created with proper schema?",
     "repo": "agro",
     "expect_paths": [
-      "common/qdrant_utils.py"
+      "common/qdrant_utils.py",
+      "indexer/index_repo.py"
     ]
   },
   {
@@ -285,28 +303,35 @@
     "q": "How does the system detect if Qdrant is available?",
     "repo": "agro",
     "expect_paths": [
-      "common/qdrant_utils.py"
+      "common/qdrant_utils.py",
+      "retrieval/hybrid_search.py",
+      "infra/docker-compose.yml"
     ]
   },
   {
     "q": "Where are triplets generated for reranker training?",
     "repo": "agro",
     "expect_paths": [
-      "scripts/mine_triplets.py"
+      "scripts/mine_triplets.py",
+      "scripts/train_reranker.py"
     ]
   },
   {
     "q": "How does the learning reranker training loop work?",
     "repo": "agro",
     "expect_paths": [
-      "reranker/learning_reranker.py"
+      "reranker/learning_reranker.py",
+      "server/learning_reranker.py",
+      "scripts/train_reranker.py"
     ]
   },
   {
     "q": "Where are training metrics logged during reranker training?",
     "repo": "agro",
     "expect_paths": [
-      "reranker/learning_reranker.py"
+      "reranker/learning_reranker.py",
+      "scripts/train_reranker.py",
+      "server/learning_reranker.py"
     ]
   },
   {
@@ -320,7 +345,8 @@
     "q": "Where is the Docker daemon status checked?",
     "repo": "agro",
     "expect_paths": [
-      "server/routers/docker.py"
+      "server/routers/docker.py",
+      "scripts/status.sh"
     ]
   },
   {

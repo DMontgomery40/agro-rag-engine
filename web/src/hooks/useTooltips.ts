@@ -145,6 +145,15 @@ export function useTooltips() {
         ],
         [['Optional', 'info'], ['Enables AI Analysis', 'success']]
       ),
+      RUN_EVAL_ANALYSIS: L(
+        'Run RAG Evaluation',
+        'Execute the full RAG evaluation suite using your current configuration settings. This runs all golden questions through the retrieval pipeline and measures Top-1 and Top-K accuracy. A live terminal will slide down showing real-time progress, and results will automatically appear in the Eval Analysis view when complete.',
+        [
+          ['Evaluation Guide', '/docs/EVALUATION.md'],
+          ['Golden Questions', '/data/golden.json']
+        ],
+        [['Uses current config', 'info'], ['~1-5 min runtime', 'warn']]
+      ),
       INDEX_LOGS_TERMINAL: L(
         'Indexing Logs Terminal',
         'Open the sliding terminal to stream raw indexer output with the exact repo/skip_dense/enrich settings used for the run.',

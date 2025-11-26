@@ -38,96 +38,63 @@ def _read_json(path: Path, default: Any) -> Any:
 
 
 def get_keywords() -> Dict[str, Any]:
-    def extract_terms(obj: Any) -> List[str]:
-        out: List[str] = []
-        try:
-            if isinstance(obj, list):
-                for it in obj:
-                    if isinstance(it, str):
-                        out.append(it)
-                    elif isinstance(it, dict):
-                        for key in ("keyword", "term", "key", "name"):
-                            if key in it and isinstance(it[key], str):
-                                out.append(it[key])
-                                break
-            elif isinstance(obj, dict):
-                for bucket in ("agro", "agro"):
-                    if bucket in obj and isinstance(obj[bucket], list):
-                        out.extend(extract_terms(obj[bucket]))
-                        return out
-                for v in obj.values():
-                    out.extend(extract_terms(v))
-        except Exception:
-            pass
-        return out
+    """Get keywords from repos.json (primary source of truth).
 
-    discr_raw = _read_json(repo_root() / "discriminative_keywords.json", {})
-    sema_raw = _read_json(repo_root() / "semantic_keywords.json", {})
-    llm_raw = _read_json(repo_root() / "llm_keywords.json", {})
-    manual_raw = _read_json(repo_root() / "manual_keywords.json", [])
-    discr = extract_terms(discr_raw)
-    sema = extract_terms(sema_raw)
-    llm = extract_terms(llm_raw)
-    manual = extract_terms(manual_raw) if manual_raw else []
+    Returns keywords in a format compatible with the UI, with all
+    categories pointing to the same consolidated keyword list.
+    """
+    # Load from repos.json (single source of truth)
+    try:
+        from common.config_loader import get_repo_keywords
+        repo = os.getenv("REPO", "agro")
+        keywords = get_repo_keywords(repo) or []
+    except Exception:
+        keywords = []
 
-    def uniq(xs: List[str]) -> List[str]:
-        seen = set()
-        out: List[str] = []
-        for k in xs:
-            k2 = str(k)
-            if k2 not in seen:
-                out.append(k2)
-                seen.add(k2)
-        return out
-
+    # For backward UI compatibility, return in expected format
+    # All categories now point to the same consolidated list
     return {
-        "discriminative": uniq(discr),
-        "semantic": uniq(sema),
-        "llm": uniq(llm),
-        "manual": uniq(manual),
-        "keywords": uniq((discr or []) + (sema or []) + (llm or []) + (manual or [])),
+        "discriminative": keywords,  # Primary keywords from repos.json
+        "semantic": [],              # Deprecated - empty
+        "llm": [],                   # Deprecated - empty
+        "manual": [],                # Deprecated - use repos.json directly
+        "keywords": keywords,        # All keywords (same as discriminative now)
     }
 
 
 def add_keyword(body: Dict[str, Any]) -> Dict[str, Any]:
+    """Add a keyword to repos.json (single source of truth).
+
+    Category parameter is kept for backward compatibility but all
+    keywords now go to repos.json.
+    """
     keyword = str(body.get("keyword", "")).strip()
-    category = str(body.get("category", "")).strip()
     if not keyword:
         return {"error": "Keyword is required"}
 
-    category_files = {
-        "discriminative": repo_root() / "discriminative_keywords.json",
-        "semantic": repo_root() / "semantic_keywords.json",
-    }
+    repo = os.getenv("REPO", "agro")
 
-    if category and category in category_files:
-        file_path = category_files[category]
-        data = _read_json(file_path, {})
-        if not isinstance(data, dict):
-            data = {}
-        if isinstance(data, list):
-            if keyword not in data:
-                data.append(keyword)
-                data.sort()
-        else:
-            data.setdefault("manual", [])
-            if keyword not in data["manual"]:
-                data["manual"].append(keyword)
-                data["manual"].sort()
-        with open(file_path, "w") as f:
-            json.dump(data, f, indent=2)
-        return {"ok": True, "keyword": keyword, "category": category}
-    else:
-        manual_path = repo_root() / "manual_keywords.json"
-        data = _read_json(manual_path, [])
-        if not isinstance(data, list):
-            data = []
-        if keyword not in data:
-            data.append(keyword)
-            data.sort()
-        with open(manual_path, "w") as f:
-            json.dump(data, f, indent=2)
-        return {"ok": True, "keyword": keyword, "category": "manual"}
+    try:
+        repos_path = repo_root() / "repos.json"
+        data = _read_json(repos_path, {"repos": []})
+
+        # Find the repo config
+        for repo_config in data.get("repos", []):
+            if repo_config.get("name") == repo:
+                keywords = repo_config.get("keywords", [])
+                if keyword not in keywords:
+                    keywords.append(keyword)
+                    keywords.sort()
+                    repo_config["keywords"] = keywords
+
+                    with open(repos_path, "w") as f:
+                        json.dump(data, f, indent=2)
+
+                return {"ok": True, "keyword": keyword, "category": "repos.json"}
+
+        return {"error": f"Repo '{repo}' not found in repos.json"}
+    except Exception as e:
+        return {"error": str(e)}
 
 
 def generate_keywords(body: Dict[str, Any]) -> Dict[str, Any]:

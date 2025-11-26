@@ -575,15 +575,21 @@ export function EvaluateSubtab() {
           </div>
         </div>
 
-        {/* Run Button */}
+        {/* Run Button - navigates to Eval Analysis tab with autorun */}
         <button
           className="action-buttons"
-          onClick={runFullEvaluation}
+          onClick={() => {
+            // Navigate to Eval Analysis tab with autorun param
+            window.location.hash = '#/eval-analysis?autorun=true';
+          }}
           disabled={evalRunning}
           style={{ width: '100%', background: 'var(--link)', color: 'var(--accent-contrast)', fontSize: '15px', padding: '14px' }}
         >
-          {evalRunning ? 'Running...' : 'Run Full Evaluation'}
+          🚀 Run Full Evaluation
         </button>
+        <p style={{ fontSize: '11px', color: 'var(--fg-muted)', textAlign: 'center', marginTop: '8px' }}>
+          Opens Eval Analysis tab with live terminal
+        </p>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
           <button

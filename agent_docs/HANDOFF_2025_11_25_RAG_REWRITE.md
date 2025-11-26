@@ -1,7 +1,55 @@
 # RAG Pipeline Rewrite - Handoff Document
-**Date:** November 25, 2025  
-**Last Updated:** November 25, 2025 (Session 2 - Continued work)
+**Date:** November 25, 2025
+**Last Updated:** November 25, 2025 (Session 3 - Layer field + Deduplication fixes)
 **Session Goal:** Fix fundamental performance regression in RAG pipeline
+
+---
+
+## 🆕 SESSION 3 RESULTS (November 25, 2025)
+
+### Performance Improvement: 48% → 60% topk accuracy
+
+| Metric | Before Session 3 | After Session 3 |
+|--------|------------------|-----------------|
+| Top-1 | 32% (16/50) | **38% (19/50)** |
+| Top-K | 48% (24/50) | **60% (30/50)** |
+
+### Fixes Applied
+
+#### 1. Layer Field Added to Indexer
+**Problem:** `layer` field was NEVER populated in chunks.jsonl, causing layer bonuses (1.15x-1.55x) to have zero effect.
+
+**Fix:** Added `infer_layer_from_path()` to `indexer/index_repo.py`:
+- Infers layer from file path patterns (web/, server/, retrieval/, etc.)
+- Now populates `layer` field for all 2001 chunks
+- Distribution: web=1501, infra=176, server=137, retrieval=64, eval=32, indexer=13, common=11
+
+#### 2. Deduplication Added to Search
+**Problem:** Same file could appear multiple times in results (different chunks), reducing result diversity.
+
+**Fix:** Added `dedupe_by_file()` to `retrieval/hybrid_search.py`:
+- Keeps only highest-scoring chunk per file_path
+- Ensures each file appears at most once in results
+- Improves diversity of search results
+
+#### 3. Eval CLI Now Saves Results
+**Problem:** `eval/eval_rag.py` only printed to stdout, didn't save to disk for EvalAnalysis tab.
+
+**Fix:** Added result persistence to `eval/eval_rag.py`:
+- Saves full results to `data/evals/eval_{timestamp}.json`
+- Results now appear in EvalAnalysis tab via `/api/eval/runs`
+
+#### 4. Keyword Architecture Consolidated
+**Problem:** 5 different keyword files (discriminative_keywords.json, semantic_keywords.json, llm_keywords.json, manual_keywords.json, repos.json) - most empty or conflicting.
+
+**Fix:** Consolidated to repos.json as single source of truth:
+- Merged 36 repos.json keywords + 40 discriminative keywords → 54 unique keywords
+- Simplified `load_discriminative_keywords()` in `retrieval/hybrid_search.py`
+- Updated `server/services/keywords.py` to read/write repos.json only
+- Old files can be deleted (discriminative_keywords.json, semantic_keywords.json, llm_keywords.json)
+
+### Still Pending
+- Eval file renaming for clarity (eval_rag_* vs eval_reranker_*)
 
 ---
 

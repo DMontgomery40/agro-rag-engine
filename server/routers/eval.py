@@ -373,7 +373,11 @@ async def eval_run_stream(
             top1_accuracy = hits_top1 / max(1, total)
             topk_accuracy = hits_topk / max(1, total)
 
+            # Generate run_id for persistence and traceability
+            run_id = time.strftime("%Y%m%d_%H%M%S")
+
             summary = {
+                "run_id": run_id,
                 "total": total,
                 "top1_hits": hits_top1,
                 "topk_hits": hits_topk,
@@ -387,6 +391,20 @@ async def eval_run_stream(
             }
 
             _EVAL_STATUS["results"] = summary
+
+            # Save results to disk for persistence across server restarts
+            try:
+                output_dir = Path('data/evals')
+                output_dir.mkdir(parents=True, exist_ok=True)
+
+                output_file = output_dir / f'eval_{run_id}.json'
+                with open(output_file, 'w') as f:
+                    json.dump(summary, f, indent=2)
+
+                yield f"data: {json.dumps({'type': 'log', 'message': f'Results saved to {output_file}'})}\n\n"
+            except Exception as e:
+                # Log error but don't fail the eval
+                yield f"data: {json.dumps({'type': 'log', 'message': f'Warning: Failed to save results: {e}'})}\n\n"
 
             yield f"data: {json.dumps({'type': 'log', 'message': f'Complete: top1={hits_top1}/{total}, topk={hits_topk}/{total}, duration={round(duration, 2)}s'})}\n\n"
             yield "data: {\"type\": \"complete\"}\n\n"
@@ -462,18 +480,29 @@ def eval_list_runs() -> Dict[str, Any]:
 
     runs = []
     for eval_file in sorted(eval_dir.glob('eval_*.json'), reverse=True):
+        # Skip special baseline file - it's not a real eval run
+        if eval_file.name == 'eval_baseline.json':
+            continue
         try:
             data = read_json(eval_file, {})
             run_id = data.get('run_id', eval_file.stem.replace('eval_', ''))
+            # Skip runs that don't have a proper timestamp-based run_id
+            # (they're likely test/debug files)
+            if not run_id or not run_id[0].isdigit():
+                continue
             runs.append({
                 'run_id': run_id,
                 'top1_accuracy': data.get('top1_accuracy', 0),
                 'topk_accuracy': data.get('topk_accuracy', 0),
                 'total': data.get('total', 0),
-                'duration_secs': data.get('duration_secs', 0)
+                'duration_secs': data.get('duration_secs', 0),
+                'has_config': bool(data.get('config'))  # Let UI know if config exists
             })
         except Exception:
             continue
+
+    # Sort by run_id descending (newest first) - run_ids are timestamps like 20251125_201234
+    runs.sort(key=lambda r: r['run_id'], reverse=True)
 
     return {"ok": True, "runs": runs}
 

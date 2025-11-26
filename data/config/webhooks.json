@@ -1,8 +1,8 @@
 {
-  "slack_webhook_url": "",
-  "discord_webhook_url": "",
+  "slack_webhook_url": "https://hooks.slack.com/final-test",
+  "discord_webhook_url": "https://discord.com/test",
   "alert_notify_enabled": true,
-  "alert_notify_severities": "",
+  "alert_notify_severities": "critical",
   "alert_include_resolved": true,
   "alert_webhook_timeout_seconds": 5.0
 }
