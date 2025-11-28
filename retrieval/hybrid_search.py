@@ -770,8 +770,41 @@ Rules:
 
 
 def reload_config():
-    """Reload config (stub for compatibility)."""
-    pass
+    """Reload all cached config values from the config registry.
+    
+    Called by /api/env/reload to ensure module-level cached values
+    are updated when config changes (e.g., when user switches repo).
+    """
+    global REPO, QDRANT_URL, COLLECTION, EMBEDDING_TYPE, EMBEDDING_MODEL
+    global EMBEDDING_MODEL_LOCAL, VOYAGE_MODEL, BM25_WEIGHT, VECTOR_WEIGHT
+    global CARD_BONUS, FILENAME_BOOST_EXACT, FILENAME_BOOST_PARTIAL
+    global LAYER_BONUS_GUI, LAYER_BONUS_RETRIEVAL, LAYER_BONUS_INDEXER
+    global FRESHNESS_BONUS, VENDOR_PENALTY, KEYWORDS_BOOST, PATH_BOOSTS
+    global _DISCRIMINATIVE_KEYWORDS
+    
+    # Re-read all values from registry
+    REPO = _cfg.get_str('REPO', 'agro')
+    QDRANT_URL = _cfg.get_str('QDRANT_URL', 'http://127.0.0.1:6333')
+    COLLECTION = _cfg.get_str('COLLECTION_NAME', f'code_chunks_{REPO}')
+    EMBEDDING_TYPE = _cfg.get_str('EMBEDDING_TYPE', 'openai').lower()
+    EMBEDDING_MODEL = _cfg.get_str('EMBEDDING_MODEL', 'text-embedding-3-large')
+    EMBEDDING_MODEL_LOCAL = _cfg.get_str('EMBEDDING_MODEL_LOCAL', 'BAAI/bge-small-en-v1.5')
+    VOYAGE_MODEL = _cfg.get_str('VOYAGE_MODEL', 'voyage-code-3')
+    BM25_WEIGHT = _cfg.get_float('BM25_WEIGHT', 0.3)
+    VECTOR_WEIGHT = _cfg.get_float('VECTOR_WEIGHT', 0.7)
+    CARD_BONUS = _cfg.get_float('CARD_BONUS', 1.08)
+    FILENAME_BOOST_EXACT = _cfg.get_float('FILENAME_BOOST_EXACT', 1.5)
+    FILENAME_BOOST_PARTIAL = _cfg.get_float('FILENAME_BOOST_PARTIAL', 1.2)
+    LAYER_BONUS_GUI = _cfg.get_float('LAYER_BONUS_GUI', 1.15)
+    LAYER_BONUS_RETRIEVAL = _cfg.get_float('LAYER_BONUS_RETRIEVAL', 1.15)
+    LAYER_BONUS_INDEXER = _cfg.get_float('LAYER_BONUS_INDEXER', 1.15)
+    FRESHNESS_BONUS = _cfg.get_float('FRESHNESS_BONUS', 1.05)
+    VENDOR_PENALTY = _cfg.get_float('VENDOR_PENALTY', 0.9)
+    KEYWORDS_BOOST = _cfg.get_float('KEYWORDS_BOOST', 1.3)
+    PATH_BOOSTS = _cfg.get_str('PATH_BOOSTS', '/server,/retrieval,/indexer,/web')
+    
+    # Clear cached keywords to force re-load with new repo
+    _DISCRIMINATIVE_KEYWORDS = None
 
 
 # Simple test

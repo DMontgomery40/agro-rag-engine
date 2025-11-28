@@ -1,15 +1,28 @@
 // AGRO - Dashboard Quick Actions Component
 // 6 action buttons for common operations
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { QuickActionButton } from './QuickActionButton';
 import { LiveTerminalPanel } from './LiveTerminalPanel';
 import { TerminalService } from '../../services/TerminalService';
+import { RepoSwitcherModal } from '../ui/RepoSwitcherModal';
+import { useRepoStore } from '@/stores/useRepoStore';
 
 export function QuickActions() {
   const [terminalVisible, setTerminalVisible] = useState(false);
   const [statusMessage, setStatusMessage] = useState('Ready');
   const [progress, setProgress] = useState(0);
+  const [showRepoSwitcher, setShowRepoSwitcher] = useState(false);
+  const navigate = useNavigate();
+  
+  // Use centralized repo store
+  const { activeRepo, switching, loadRepos } = useRepoStore();
+  
+  // Load repos on mount
+  useEffect(() => {
+    loadRepos();
+  }, [loadRepos]);
 
   const handleGenerateKeywords = async () => {
     setTerminalVisible(true);
@@ -59,13 +72,18 @@ export function QuickActions() {
   };
 
   const handleChangeRepo = () => {
-    const newRepo = prompt('Enter repository name:');
-    if (newRepo) {
-      window.location.href = `?repo=${newRepo}`;
-    }
+    // Open the repo switcher modal - proper dropdown UI instead of prompt()
+    setShowRepoSwitcher(true);
   };
 
-  const handleRunIndexer = async () => {
+  const handleRunIndexer = () => {
+    // Navigate to RAG > Indexing subtab instead of running directly from dashboard
+    // This lets users configure settings before running
+    navigate('/rag?subtab=indexing');
+  };
+
+  // Legacy direct indexer run - kept for reference but not used
+  const _handleRunIndexerDirect = async () => {
     setTerminalVisible(true);
     setStatusMessage('Starting indexer...');
     setProgress(0);
@@ -229,9 +247,10 @@ export function QuickActions() {
         <QuickActionButton
           id="dash-change-repo"
           icon="📁"
-          label="Change Repo"
+          label={activeRepo ? `Repo: ${activeRepo}` : 'Change Repo'}
           onClick={handleChangeRepo}
           dataAction="change-repo"
+          disabled={switching}
         />
         <QuickActionButton
           id="dash-index-start"
@@ -334,6 +353,12 @@ export function QuickActions() {
 
       {/* Live Terminal */}
       <LiveTerminalPanel containerId="dash-operations-terminal" isVisible={terminalVisible} />
+      
+      {/* Repository Switcher Modal */}
+      <RepoSwitcherModal 
+        isOpen={showRepoSwitcher}
+        onClose={() => setShowRepoSwitcher(false)}
+      />
     </div>
   );
 }

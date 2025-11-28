@@ -8,6 +8,7 @@ import { useAPI } from '@/hooks';
 import { RepositoryConfig } from './RepositoryConfig';
 import { LiveTerminal } from '../LiveTerminal/LiveTerminal';
 import { TerminalService } from '@/services/TerminalService';
+import { useRepoStore } from '@/stores/useRepoStore';
 
 interface RepoData {
   name: string;
@@ -21,7 +22,10 @@ interface RepoData {
 
 export function DataQualitySubtab() {
   const { api } = useAPI();
-  const [repos, setRepos] = useState<string[]>([]);
+  
+  // Use centralized repo store
+  const { repos: storeRepos, activeRepo, loadRepos: storeLoadRepos } = useRepoStore();
+  const repos = storeRepos.map(r => r.name);
   const [selectedRepo, setSelectedRepo] = useState('');
   const [repoData, setRepoData] = useState<RepoData | null>(null);
   const [excludeDirs, setExcludeDirs] = useState('');
@@ -48,31 +52,21 @@ export function DataQualitySubtab() {
   const [keywordsGenerateStatus, setKeywordsGenerateStatus] = useState<string>('');
   const [generatedKeywordsCount, setGeneratedKeywordsCount] = useState<number | null>(null);
 
-  // Load repos list
+  // Load repos list via store
   useEffect(() => {
-    const loadRepos = async () => {
-      try {
-        console.log('[DataQualitySubtab] Fetching repos from', api('repos'));
-        const response = await fetch(api('repos'));
-        const data = await response.json();
-        console.log('[DataQualitySubtab] Got repos data:', data);
-        if (data.repos && Array.isArray(data.repos)) {
-          const repoList = data.repos.map((r: any) => r.name);
-          console.log('[DataQualitySubtab] Repo list:', repoList);
-          setRepos(repoList);
-          if (repoList.length > 0 && !selectedRepo) {
-            console.log('[DataQualitySubtab] Setting selectedRepo to:', repoList[0]);
-            setSelectedRepo(repoList[0]);
-          } else {
-            console.log('[DataQualitySubtab] Not setting selectedRepo. Current value:', selectedRepo);
-          }
-        }
-      } catch (e) {
-        console.error('[DataQualitySubtab] Failed to load repos:', e);
-      }
-    };
-    loadRepos();
-  }, [api]);
+    if (storeRepos.length === 0) {
+      storeLoadRepos();
+    }
+  }, [storeRepos.length, storeLoadRepos]);
+  
+  // Sync selectedRepo with store's activeRepo or first repo when available
+  useEffect(() => {
+    if (repos.length > 0 && !selectedRepo) {
+      const initialRepo = activeRepo || repos[0];
+      console.log('[DataQualitySubtab] Setting selectedRepo to:', initialRepo);
+      setSelectedRepo(initialRepo);
+    }
+  }, [repos, activeRepo, selectedRepo]);
 
   // Load selected repo's data from repos.json
   useEffect(() => {

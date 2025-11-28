@@ -1,12 +1,28 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { LiveTerminal, LiveTerminalHandle } from '../LiveTerminal/LiveTerminal';
 import { TerminalService } from '@/services/TerminalService';
+import { useRepoStore } from '@/stores/useRepoStore';
+import { RepoSelector } from '@/components/ui/RepoSelector';
+import { EmbeddingMismatchWarning, EmbeddingMatchIndicator } from '@/components/ui/EmbeddingMismatchWarning';
 
 interface IndexStats {
+  // API returns total_chunks at root level
+  total_chunks?: number;
+  // Legacy fields for backwards compatibility
   chunks?: number;
   vectors?: number;
   collections?: string[];
   lastIndexed?: string;
+  // From actual API response
+  repos?: Array<{
+    name: string;
+    chunk_count: number;
+  }>;
+  embedding_config?: {
+    provider: string;
+    model: string;
+    dimensions: number;
+  };
 }
 
 interface RepoInfo {
@@ -66,8 +82,9 @@ export function IndexingSubtab() {
   const [embeddingTimeout, setEmbeddingTimeout] = useState<number>(30);
   const [embeddingRetryMax, setEmbeddingRetryMax] = useState<number>(3);
 
-  // Repository list
-  const [repos, setRepos] = useState<RepoInfo[]>([]);
+  // Repository list - use centralized store
+  const { repos: storeRepos, activeRepo, loadRepos: storeLoadRepos } = useRepoStore();
+  const repos = storeRepos.map(r => ({ name: r.name, path: r.path || '', branch: r.branch }));
   const [currentRepo, setCurrentRepo] = useState<string>('');
   const [currentBranch, setCurrentBranch] = useState<string>('');
   const [terminalVisible, setTerminalVisible] = useState<boolean>(false);
@@ -97,9 +114,23 @@ export function IndexingSubtab() {
   // Load config on mount
   useEffect(() => {
     loadConfig();
-    loadRepos();
+    if (storeRepos.length === 0) {
+      storeLoadRepos();
+    }
     loadIndexStats();
-  }, []);
+  }, [storeRepos.length, storeLoadRepos]);
+  
+  // Sync currentRepo with store's activeRepo or first repo when available
+  useEffect(() => {
+    if (repos.length > 0 && !currentRepo) {
+      const initialRepo = activeRepo || repos[0].name;
+      setCurrentRepo(initialRepo);
+      setSimpleRepo(initialRepo);
+      setIndexRepo(initialRepo);
+      const repo = repos.find(r => r.name === initialRepo);
+      setCurrentBranch(repo?.branch || '—');
+    }
+  }, [repos, activeRepo, currentRepo]);
 
   const loadConfig = async () => {
     try {
@@ -146,23 +177,7 @@ export function IndexingSubtab() {
     }
   };
 
-  const loadRepos = async () => {
-    try {
-      const response = await fetch('/api/repos');
-      const data = await response.json();
-      if (data.repos && Array.isArray(data.repos)) {
-        setRepos(data.repos);
-        if (data.repos.length > 0) {
-          setSimpleRepo(data.repos[0].name);
-          setIndexRepo(data.repos[0].name);
-          setCurrentRepo(data.repos[0].name);
-          setCurrentBranch(data.repos[0].branch || '—');
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load repos:', error);
-    }
-  };
+  // Repos are now loaded via the store - see useEffect above
 
   const loadIndexStats = async () => {
     try {
@@ -377,6 +392,9 @@ export function IndexingSubtab() {
 
   return (
     <>
+      {/* Embedding Mismatch Warning - Critical visibility at top of indexing page */}
+      <EmbeddingMismatchWarning variant="full" showActions={true} />
+
       {/* Current Repo Display */}
       <div style={{ background: 'var(--bg-elev1)', border: '2px solid var(--ok)', borderRadius: '8px', padding: '16px 24px', marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -444,26 +462,30 @@ export function IndexingSubtab() {
             <p style={{ fontSize: '13px', color: 'var(--fg-muted)', margin: '8px 0 0 36px' }}>Enables semantic vector search via Qdrant</p>
           </div>
 
-          <button
-            id="simple-index-btn"
-            onClick={handleSimpleIndex}
-            disabled={simpleRunning}
-            style={{
-              width: '100%',
-              padding: '20px',
-              fontSize: '20px',
-              fontWeight: '700',
-              background: simpleRunning ? 'var(--fg-muted)' : 'var(--ok)',
-              color: '#000',
-              border: 'none',
-              borderRadius: '12px',
-              cursor: simpleRunning ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s',
-              boxShadow: '0 4px 12px rgba(0,255,136,0.3)'
-            }}
-          >
-            {simpleRunning ? 'INDEXING...' : 'INDEX NOW'}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <button
+              id="simple-index-btn"
+              onClick={handleSimpleIndex}
+              disabled={simpleRunning}
+              style={{
+                flex: 1,
+                padding: '20px',
+                fontSize: '20px',
+                fontWeight: '700',
+                background: simpleRunning ? 'var(--fg-muted)' : 'var(--ok)',
+                color: '#000',
+                border: 'none',
+                borderRadius: '12px',
+                cursor: simpleRunning ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                boxShadow: '0 4px 12px rgba(0,255,136,0.3)'
+              }}
+            >
+              {simpleRunning ? 'INDEXING...' : 'INDEX NOW'}
+            </button>
+            {/* Green checkmark when embeddings match */}
+            <EmbeddingMatchIndicator />
+          </div>
         </div>
       </div>
 
@@ -547,10 +569,10 @@ export function IndexingSubtab() {
           <div id="index-status-display" style={{ background: 'var(--card-bg)', border: '1px solid var(--line)', borderRadius: '6px', padding: '12px', minHeight: '80px' }}>
             {indexStats ? (
               <>
-                <div>Chunks: {indexStats.chunks || 0}</div>
-                <div>Vectors: {indexStats.vectors || 0}</div>
-                {indexStats.collections && indexStats.collections.length > 0 && (
-                  <div>Collections: {indexStats.collections.join(', ')}</div>
+                <div>Chunks: {indexStats.total_chunks ?? indexStats.chunks ?? 0}</div>
+                <div>Embedding: {indexStats.embedding_config?.provider || 'unknown'} ({indexStats.embedding_config?.dimensions || '?'}d)</div>
+                {indexStats.repos && indexStats.repos.length > 0 && (
+                  <div>Repos: {indexStats.repos.map(r => `${r.name} (${r.chunk_count})`).join(', ')}</div>
                 )}
                 {indexStats.lastIndexed && (
                   <div>Last Indexed: {indexStats.lastIndexed}</div>

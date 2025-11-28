@@ -39,19 +39,54 @@ def pipeline_summary() -> Dict[str, Any]:
 
     # Reranker
     rr_enabled = _config_registry.get_bool("AGRO_RERANKER_ENABLED", False)
-    rr_backend = (_config_registry.get_str("RERANK_BACKEND", "").strip().lower() or None)
-    rr_provider = None
+    rr_active_raw = (_config_registry.get_str("RERANKER_ACTIVE", "").strip().lower() or None)
+    rr_provider_hint = (_config_registry.get_str("RERANKER_PROVIDER", "").strip().lower() or None)
+    rr_backend_hint = (_config_registry.get_str("RERANKER_BACKEND", "").strip().lower() or None) or (_config_registry.get_str("RERANK_BACKEND", "").strip().lower() or None)
+
+    def _norm(val: str | None) -> str | None:
+        if not val:
+            return None
+        v = val.strip().lower()
+        if v in {"off", "none", "disabled"}:
+            return "none"
+        if v == "hf":
+            return "local"
+        return v
+
+    rr_active = _norm(rr_active_raw) or "local"
+    rr_backend = _norm(rr_backend_hint)
+    rr_provider = _norm(rr_provider_hint)
+
+    if rr_active == "none":
+        rr_backend = "none"
+    elif rr_active == "cloud":
+        rr_backend = rr_provider or rr_backend or "cloud"
+    elif rr_active in {"local", "learning"}:
+        rr_backend = rr_active
+    elif rr_active:
+        rr_backend = rr_active
+
+    if not rr_backend:
+        rr_backend = rr_provider or "local"
+
+    if not rr_provider and rr_backend not in {"local", "learning", "none"}:
+        rr_provider = rr_backend
+
+    rr_cloud_model = (
+        _config_registry.get_str("RERANKER_CLOUD_MODEL", "").strip()
+        or _config_registry.get_str("COHERE_RERANK_MODEL", "").strip()
+        or _config_registry.get_str("VOYAGE_RERANK_MODEL", "").strip()
+        or None
+    )
     rr_model = None
-    if rr_backend:
-        if rr_backend in {"cohere", "voyage"}:
-            rr_provider = rr_backend
-            rr_model = _config_registry.get_str("COHERE_RERANK_MODEL", "") if rr_backend == "cohere" else _config_registry.get_str("VOYAGE_RERANK_MODEL", "")
-        elif rr_backend in {"hf", "local"}:
-            rr_provider = rr_backend
-            rr_model = _config_registry.get_str("RERANK_MODEL", "") or _config_registry.get_str("BAAI_RERANK_MODEL", "")
-        elif rr_backend == "learning":
-            rr_provider = "learning"
-            rr_model = _config_registry.get_str("AGRO_LEARNING_RERANKER_MODEL", "cross-encoder-agro")
+    if rr_backend in {"local"}:
+        rr_model = _config_registry.get_str("RERANKER_MODEL", "") or _config_registry.get_str("RERANK_MODEL", "") or _config_registry.get_str("BAAI_RERANK_MODEL", "")
+    elif rr_backend == "learning":
+        rr_model = _config_registry.get_str("AGRO_LEARNING_RERANKER_MODEL", "cross-encoder-agro")
+    elif rr_backend and rr_backend != "none":
+        rr_model = rr_cloud_model
+    if rr_backend in {None, "none"}:
+        rr_enabled = False
 
     # Enrichment
     enrich_enabled = _config_registry.get_bool("ENRICH_CODE_CHUNKS", False)
@@ -110,4 +145,3 @@ def pipeline_summary() -> Dict[str, Any]:
         "generation": {"provider": gen_provider, "model": gen_model},
         "health": {"qdrant": _qdrant_health(), "redis": _redis_health(), "llm": _llm_health()},
     }
-

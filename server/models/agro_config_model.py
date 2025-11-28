@@ -158,7 +158,7 @@ class RetrievalConfig(BaseModel):
 
     hydration_mode: str = Field(
         default="lazy",
-        pattern="^(lazy|eager|off)$",
+        pattern="^(lazy|eager|none|off)$",
         description="Result hydration mode"
     )
 
@@ -184,12 +184,32 @@ class RetrievalConfig(BaseModel):
             raise ValueError('rrf_k_div should be at least 10 for meaningful rank smoothing')
         return v
 
+    @field_validator('hydration_mode', mode='before')
+    @classmethod
+    def normalize_hydration(cls, v: str) -> str:
+        """Normalize hydration aliases to canonical values."""
+        if isinstance(v, str):
+            val = v.strip().lower()
+            if val == 'off':
+                return 'none'
+            return val
+        return v
+
     @model_validator(mode='after')
     def validate_weights_sum_to_one(self):
-        """Ensure BM25 and vector weights sum to 1.0."""
+        """Normalize BM25/vector weights to sum to 1.0 instead of hard failing."""
         total = self.bm25_weight + self.vector_weight
+        if total <= 0:
+            # Reset to safe defaults
+            self.bm25_weight = 0.3
+            self.vector_weight = 0.7
+            return self
         if not (0.99 <= total <= 1.01):
-            raise ValueError('bm25_weight + vector_weight must sum to 1.0')
+            norm_bm25 = self.bm25_weight / total
+            norm_vector = self.vector_weight / total
+            # Clamp to [0,1] after normalization
+            self.bm25_weight = max(0.0, min(1.0, norm_bm25))
+            self.vector_weight = max(0.0, min(1.0, norm_vector))
         return self
 
 
@@ -239,25 +259,43 @@ class ScoringConfig(BaseModel):
 class LayerBonusConfig(BaseModel):
     """Layer-specific scoring bonuses with intent-aware matrix.
 
-    The intent_matrix maps query intent (gui, retrieval, indexer, eval, infra, server)
-    to layer bonuses. Values > 1.0 are boosts, < 1.0 are penalties.
-
-    Example: For a 'server' query, web layer gets 0.7 (30% penalty) while
-    server layer gets 1.3 (30% boost).
+    The base bonuses are additive percentages (e.g., 0.15 = +15%).
+    They are converted downstream to multiplicative factors.
     """
 
+    gui: float = Field(
+        default=0.15,
+        ge=0.0,
+        le=0.5,
+        description="Bonus for GUI/front-end layers"
+    )
+
+    retrieval: float = Field(
+        default=0.15,
+        ge=0.0,
+        le=0.5,
+        description="Bonus for retrieval/API layers"
+    )
+
+    indexer: float = Field(
+        default=0.15,
+        ge=0.0,
+        le=0.5,
+        description="Bonus for indexing/ingestion layers"
+    )
+
     vendor_penalty: float = Field(
-        default=0.9,
-        ge=0.5,
-        le=1.0,
-        description="Multiplicative penalty for vendor code (0.9 = 10% penalty)"
+        default=-0.1,
+        ge=-0.5,
+        le=0.0,
+        description="Penalty for vendor/third-party code (negative values apply a penalty)"
     )
 
     freshness_bonus: float = Field(
-        default=1.05,
-        ge=1.0,
-        le=1.3,
-        description="Multiplicative bonus for recent files (1.05 = 5% boost)"
+        default=0.05,
+        ge=0.0,
+        le=0.3,
+        description="Bonus for recently modified files"
     )
 
     intent_matrix: Dict[str, Dict[str, float]] = Field(
@@ -475,6 +513,21 @@ class IndexingConfig(BaseModel):
 class RerankingConfig(BaseModel):
     """Reranking configuration for result refinement."""
 
+    reranker_active: str = Field(
+        default="local",
+        description="Active reranker choice (local/learning/HF vs cloud provider)"
+    )
+
+    reranker_provider: str = Field(
+        default="",
+        description="Cloud reranker provider when using external API"
+    )
+
+    reranker_cloud_model: str = Field(
+        default="rerank-3.5",
+        description="Selected cloud reranker model for the chosen provider"
+    )
+
     reranker_model: str = Field(
         default="cross-encoder/ms-marco-MiniLM-L-12-v2",
         description="Reranker model path"
@@ -541,8 +594,7 @@ class RerankingConfig(BaseModel):
 
     reranker_backend: str = Field(
         default="local",
-        pattern="^(local|cohere|voyage)$",
-        description="Reranker backend"
+        description="Reranker backend (local/hf/learning for on-host models, provider id for cloud, none/off to disable)"
     )
 
     reranker_timeout: int = Field(
@@ -558,6 +610,50 @@ class RerankingConfig(BaseModel):
         le=2000,
         description="Snippet chars for reranking input"
     )
+
+    transformers_trust_remote_code: int = Field(
+        default=1,
+        ge=0,
+        le=1,
+        description="Allow transformers remote code for HF rerankers that require it"
+    )
+
+    @field_validator('reranker_backend', mode='before')
+    @classmethod
+    def normalize_backend(cls, v: str) -> str:
+        """Normalize backend aliases."""
+        if isinstance(v, str):
+            val = v.strip().lower()
+            if val in {'off', 'none', 'disabled'}:
+                return 'none'
+            if val == 'hf':
+                return 'hf'
+            return val
+        return v
+
+    @field_validator('reranker_active', mode='before')
+    @classmethod
+    def normalize_active(cls, v: str) -> str:
+        if isinstance(v, str):
+            val = v.strip().lower()
+            if val in {'off', 'none', 'disabled'}:
+                return 'none'
+            if val == 'hf':
+                return 'local'
+            if val == 'learning':
+                return 'local'
+            return val
+        return v
+
+    @field_validator('reranker_provider', mode='before')
+    @classmethod
+    def normalize_provider(cls, v: str) -> str:
+        if isinstance(v, str):
+            val = v.strip().lower()
+            if val in {'off', 'none', 'disabled'}:
+                return 'none'
+            return val
+        return v
 
 
 class GenerationConfig(BaseModel):
@@ -791,7 +887,7 @@ class TracingConfig(BaseModel):
 
     tracing_mode: str = Field(
         default="langsmith",
-        pattern="^(langsmith|local|none)$",
+        pattern="^(langsmith|local|none|off)$",
         description="Tracing backend mode"
     )
 
@@ -818,6 +914,17 @@ class TracingConfig(BaseModel):
         default="critical,warning",
         description="Alert severities to notify"
     )
+
+    @field_validator('tracing_mode', mode='before')
+    @classmethod
+    def normalize_tracing_mode(cls, v: str) -> str:
+        """Normalize tracing mode aliases."""
+        if isinstance(v, str):
+            val = v.strip().lower()
+            if val == 'none':
+                return 'off'
+            return val
+        return v
 
 
 class TrainingConfig(BaseModel):
@@ -1028,7 +1135,7 @@ class HydrationConfig(BaseModel):
     
     hydration_mode: str = Field(
         default="lazy",
-        pattern="^(lazy|eager|none)$",
+        pattern="^(lazy|eager|none|off)$",
         description="Context hydration mode"
     )
     
@@ -1038,6 +1145,17 @@ class HydrationConfig(BaseModel):
         le=10000,
         description="Max characters to hydrate"
     )
+
+    @field_validator('hydration_mode', mode='before')
+    @classmethod
+    def normalize_hydration_mode(cls, v: str) -> str:
+        """Map aliases to canonical values."""
+        if isinstance(v, str):
+            val = v.strip().lower()
+            if val == 'off':
+                return 'none'
+            return val
+        return v
 
 
 class EvaluationConfig(BaseModel):
@@ -1239,6 +1357,9 @@ class AgroConfigRoot(BaseModel):
             'VENDOR_MODE': self.scoring.vendor_mode,
             'PATH_BOOSTS': self.scoring.path_boosts,
             # Layer bonus params (intent-aware matrix)
+            'LAYER_BONUS_GUI': self.layer_bonus.gui,
+            'LAYER_BONUS_RETRIEVAL': self.layer_bonus.retrieval,
+            'LAYER_BONUS_INDEXER': self.layer_bonus.indexer,
             'VENDOR_PENALTY': self.layer_bonus.vendor_penalty,
             'FRESHNESS_BONUS': self.layer_bonus.freshness_bonus,
             'LAYER_INTENT_MATRIX': self.layer_bonus.intent_matrix,
@@ -1289,9 +1410,13 @@ class AgroConfigRoot(BaseModel):
             'AGRO_RERANKER_RELOAD_PERIOD_SEC': self.reranking.agro_reranker_reload_period_sec,
             'COHERE_RERANK_MODEL': self.reranking.cohere_rerank_model,
             'VOYAGE_RERANK_MODEL': self.reranking.voyage_rerank_model,
+            'RERANKER_ACTIVE': self.reranking.reranker_active,
+            'RERANKER_PROVIDER': self.reranking.reranker_provider,
+            'RERANKER_CLOUD_MODEL': self.reranking.reranker_cloud_model,
             'RERANKER_BACKEND': self.reranking.reranker_backend,
             'RERANKER_TIMEOUT': self.reranking.reranker_timeout,
             'RERANK_INPUT_SNIPPET_CHARS': self.reranking.rerank_input_snippet_chars,
+            'TRANSFORMERS_TRUST_REMOTE_CODE': self.reranking.transformers_trust_remote_code,
     # Generation params (12)
             'GEN_MODEL': self.generation.gen_model,
             'GEN_TEMPERATURE': self.generation.gen_temperature,
@@ -1435,6 +1560,7 @@ class AgroConfigRoot(BaseModel):
                 indexer=data.get('LAYER_BONUS_INDEXER', 0.15),
                 vendor_penalty=data.get('VENDOR_PENALTY', -0.1),
                 freshness_bonus=data.get('FRESHNESS_BONUS', 0.05),
+                intent_matrix=data.get('LAYER_INTENT_MATRIX', LayerBonusConfig().intent_matrix),
             ),
             embedding=EmbeddingConfig(
                 embedding_type=data.get('EMBEDDING_TYPE', 'openai'),
@@ -1476,20 +1602,24 @@ class AgroConfigRoot(BaseModel):
                 repos_file=data.get('REPOS_FILE', './repos.json'),
             ),
             reranking=RerankingConfig(
-                reranker_model=data.get('RERANKER_MODEL', 'cross-encoder/ms-marco-MiniLM-L-12-v2'),
-                agro_reranker_enabled=data.get('AGRO_RERANKER_ENABLED', 1),
-                agro_reranker_alpha=data.get('AGRO_RERANKER_ALPHA', 0.7),
-                agro_reranker_topn=data.get('AGRO_RERANKER_TOPN', 50),
-                agro_reranker_batch=data.get('AGRO_RERANKER_BATCH', 16),
-                agro_reranker_maxlen=data.get('AGRO_RERANKER_MAXLEN', 512),
-                agro_reranker_reload_on_change=data.get('AGRO_RERANKER_RELOAD_ON_CHANGE', 0),
-                agro_reranker_reload_period_sec=data.get('AGRO_RERANKER_RELOAD_PERIOD_SEC', 60),
-                cohere_rerank_model=data.get('COHERE_RERANK_MODEL', 'rerank-3.5'),
-                voyage_rerank_model=data.get('VOYAGE_RERANK_MODEL', 'rerank-2'),
-                reranker_backend=data.get('RERANKER_BACKEND', 'local'),
-                reranker_timeout=data.get('RERANKER_TIMEOUT', 10),
-                rerank_input_snippet_chars=data.get('RERANK_INPUT_SNIPPET_CHARS', 700),
-            ),
+            reranker_model=data.get('RERANKER_MODEL', 'cross-encoder/ms-marco-MiniLM-L-12-v2'),
+            agro_reranker_enabled=data.get('AGRO_RERANKER_ENABLED', 1),
+            agro_reranker_alpha=data.get('AGRO_RERANKER_ALPHA', 0.7),
+            agro_reranker_topn=data.get('AGRO_RERANKER_TOPN', 50),
+            agro_reranker_batch=data.get('AGRO_RERANKER_BATCH', 16),
+            agro_reranker_maxlen=data.get('AGRO_RERANKER_MAXLEN', 512),
+            agro_reranker_reload_on_change=data.get('AGRO_RERANKER_RELOAD_ON_CHANGE', 0),
+            agro_reranker_reload_period_sec=data.get('AGRO_RERANKER_RELOAD_PERIOD_SEC', 60),
+            cohere_rerank_model=data.get('COHERE_RERANK_MODEL', 'rerank-3.5'),
+            voyage_rerank_model=data.get('VOYAGE_RERANK_MODEL', 'rerank-2'),
+            reranker_active=data.get('RERANKER_ACTIVE', data.get('RERANKER_BACKEND', 'local')),
+            reranker_provider=data.get('RERANKER_PROVIDER', data.get('RERANKER_BACKEND', data.get('RERANK_BACKEND', ''))),
+            reranker_cloud_model=data.get('RERANKER_CLOUD_MODEL') or data.get('COHERE_RERANK_MODEL') or data.get('VOYAGE_RERANK_MODEL') or 'rerank-3.5',
+            reranker_backend=data.get('RERANKER_BACKEND', data.get('RERANK_BACKEND', 'local')),
+            reranker_timeout=data.get('RERANKER_TIMEOUT', 10),
+            rerank_input_snippet_chars=data.get('RERANK_INPUT_SNIPPET_CHARS', 700),
+            transformers_trust_remote_code=data.get('TRANSFORMERS_TRUST_REMOTE_CODE', 1),
+        ),
             generation=GenerationConfig(
                 gen_model=data.get('GEN_MODEL', 'gpt-4o-mini'),
                 gen_temperature=data.get('GEN_TEMPERATURE', 0.0),
@@ -1626,7 +1756,10 @@ AGRO_CONFIG_KEYS = {
     'FILENAME_BOOST_PARTIAL',
     'VENDOR_MODE',
     'PATH_BOOSTS',
-    # Layer bonus params (3 - intent matrix is a nested dict)
+    # Layer bonus params (intent matrix + per-layer bonuses)
+    'LAYER_BONUS_GUI',
+    'LAYER_BONUS_RETRIEVAL',
+    'LAYER_BONUS_INDEXER',
     'VENDOR_PENALTY',
     'FRESHNESS_BONUS',
     'LAYER_INTENT_MATRIX',
@@ -1677,9 +1810,13 @@ AGRO_CONFIG_KEYS = {
     'AGRO_RERANKER_RELOAD_PERIOD_SEC',
     'COHERE_RERANK_MODEL',
     'VOYAGE_RERANK_MODEL',
+    'RERANKER_ACTIVE',
+    'RERANKER_PROVIDER',
+    'RERANKER_CLOUD_MODEL',
     'RERANKER_BACKEND',
     'RERANKER_TIMEOUT',
     'RERANK_INPUT_SNIPPET_CHARS',
+    'TRANSFORMERS_TRUST_REMOTE_CODE',
     # Generation params (17)
     'GEN_MODEL',
     'GEN_TEMPERATURE',
@@ -1796,7 +1933,8 @@ RAG_EVAL_CONFIG_KEYS = {
     # Scoring params (5 keys) - affect result ranking
     'CARD_BONUS', 'FILENAME_BOOST_EXACT', 'FILENAME_BOOST_PARTIAL', 'VENDOR_MODE', 'PATH_BOOSTS',
 
-    # Layer bonus params (3 keys)
+    # Layer bonus params (6 keys)
+    'LAYER_BONUS_GUI', 'LAYER_BONUS_RETRIEVAL', 'LAYER_BONUS_INDEXER',
     'VENDOR_PENALTY', 'FRESHNESS_BONUS', 'LAYER_INTENT_MATRIX',
 
     # Embedding params (6 keys) - model selection affects accuracy

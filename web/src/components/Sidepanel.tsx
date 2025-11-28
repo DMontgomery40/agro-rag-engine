@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useConfigStore } from '@/stores';
 import { CostLogic } from '@/modules/cost_logic';
+import { EmbeddingMismatchWarning } from './ui/EmbeddingMismatchWarning';
 
 export function Sidepanel() {
   const { config } = useConfigStore();
@@ -258,10 +259,13 @@ export function Sidepanel() {
         }),
       });
 
-      if (response.ok) {
+      const payload = await response.json().catch(() => ({}));
+
+      if (response.ok && payload?.status !== 'error') {
         alert('Changes applied successfully');
       } else {
-        alert('Failed to apply changes');
+        const detail = payload?.detail || payload?.error || 'Failed to apply changes';
+        alert(detail);
       }
     } catch (e) {
       console.error('[Sidepanel] Apply changes error:', e);
@@ -271,6 +275,9 @@ export function Sidepanel() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '16px' }}>
+      {/* Embedding Mismatch Warning - Critical visibility */}
+      <EmbeddingMismatchWarning variant="inline" showActions={true} />
+
       {/* Live Cost Calculator Widget */}
       <div
         style={{

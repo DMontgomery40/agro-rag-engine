@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 // TypeScript interface for reranker info response
 interface RerankerInfo {
@@ -9,26 +9,122 @@ interface RerankerInfo {
   topn: number | string;
   batch: number | string;
   maxlen: number | string;
+  backend?: string;
+  provider?: string;
+  model_path?: string;
+  cloud_model?: string;
+  cohere_model?: string;
+  voyage_model?: string;
+  snippet_chars?: number | string;
+  trust_remote_code?: boolean;
+}
+
+interface PriceModelEntry {
+  provider: string;
+  model: string;
+  components?: string[];
+  unit?: string;
 }
 
 export function ExternalRerankersSubtab() {
   // State for each input field
   const [rerankBackend, setRerankBackend] = useState<string>('local');
+  const [activeChoice, setActiveChoice] = useState<'local' | 'cloud'>('local');
+  const [cloudProvider, setCloudProvider] = useState<string>('');
+  const [cloudModel, setCloudModel] = useState<string>('');
+  const [voyageModel, setVoyageModel] = useState<string>('rerank-2');
   const [rerankerModel, setRerankerModel] = useState<string>('');
   const [cohereModel, setCohereModel] = useState<string>('rerank-3.5');
   const [cohereApiKey, setCohereApiKey] = useState<string>('');
   const [trustRemoteCode, setTrustRemoteCode] = useState<string>('1');
   const [snippetChars, setSnippetChars] = useState<number>(700);
+  const [priceModels, setPriceModels] = useState<PriceModelEntry[]>([]);
+  const [savingModel, setSavingModel] = useState<boolean>(false);
+
+  const providerOptions = useMemo(() => {
+    const opts = new Set<string>();
+    priceModels.forEach((m) => {
+      if (m.provider) {
+        opts.add(m.provider);
+      }
+    });
+    if (cloudProvider) {
+      opts.add(cloudProvider);
+    }
+    if (rerankBackend && !['', 'local', 'hf', 'learning', 'none'].includes(rerankBackend)) {
+      opts.add(rerankBackend);
+    }
+    return Array.from(opts).sort();
+  }, [priceModels, cloudProvider, rerankBackend]);
+
+  const cloudModelOptions = useMemo(() => {
+    const selected = (cloudProvider || '').toLowerCase();
+    const options = priceModels
+      .filter((m) => m.provider === selected)
+      .map((m) => m.model)
+      .filter(Boolean);
+    return Array.from(new Set(options));
+  }, [priceModels, cloudProvider]);
+
+  const backendOptions = useMemo(() => {
+    const base = ['none', 'local', 'hf', 'learning'];
+    const dynamic = providerOptions.filter((opt) => opt && !base.includes(opt));
+    return [...base, ...dynamic];
+  }, [providerOptions]);
 
   // State for reranker info display
   const [rerankerInfo, setRerankerInfo] = useState<RerankerInfo | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
 
+  const addModelDisabled = savingModel || !cloudProvider || !cloudModel;
+
   // Load current config on mount
   useEffect(() => {
     loadConfig();
+    loadPrices();
   }, []);
+
+  useEffect(() => {
+    if (!cloudProvider && providerOptions.length > 0) {
+      setCloudProvider(providerOptions[0]);
+    }
+  }, [providerOptions, cloudProvider]);
+
+  useEffect(() => {
+    if (!cloudModel && cloudModelOptions.length > 0) {
+      setCloudModel(cloudModelOptions[0]);
+    }
+  }, [cloudModelOptions, cloudModel]);
+
+  const loadPrices = async () => {
+    try {
+      const response = await fetch('/api/prices');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch prices: ${response.status} ${response.statusText}`);
+      }
+      const data = await response.json();
+      const models = Array.isArray(data?.models) ? data.models : [];
+      const rerankEntries: PriceModelEntry[] = models
+        .map((m: any) => ({
+          provider: String(m.provider || '').toLowerCase(),
+          model: String(m.model || '').trim(),
+          components: Array.isArray(m.components) ? m.components : [],
+          unit: m.unit,
+        }))
+        .filter((m: PriceModelEntry) => {
+          const comps = (m.components || []).map((c) => (typeof c === 'string' ? c.toUpperCase() : ''));
+          const hasRerank = comps.includes('RERANK');
+          const name = `${m.model || ''}`.toLowerCase();
+          return m.provider && m.model && (hasRerank || name.includes('rerank'));
+        });
+      setPriceModels(rerankEntries);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to load prices.json';
+      console.error('[ExternalRerankersSubtab] Error loading prices:', err);
+      setError((prev) => prev || errorMsg);
+    }
+  };
 
   const loadConfig = async () => {
     try {
@@ -43,19 +139,41 @@ export function ExternalRerankersSubtab() {
 
       // Extract values from env object
       const env = data.env || {};
-      setRerankBackend(env.RERANKER_BACKEND || 'local');
+      const backendRaw = (env.RERANKER_BACKEND || env.RERANK_BACKEND || 'local').toString();
+      const activeRaw = (env.RERANKER_ACTIVE || backendRaw || 'local').toString().toLowerCase();
+      const providerRaw = (env.RERANKER_PROVIDER || env.RERANKER_BACKEND || env.RERANK_BACKEND || '').toString().toLowerCase();
+      const normalizedBackend = backendRaw.toLowerCase() || 'local';
+      const providerValue = providerRaw || (normalizedBackend && !['local', 'hf', 'learning', 'none'].includes(normalizedBackend) ? normalizedBackend : cloudProvider || '');
+      const activeSelection = activeRaw === 'cloud' || (!['local', 'hf', 'learning', 'none'].includes(normalizedBackend) && providerValue) ? 'cloud' : 'local';
+      setActiveChoice(activeSelection as 'local' | 'cloud');
+      setCloudProvider(providerValue);
+      setRerankBackend(normalizedBackend);
       setRerankerModel(env.RERANKER_MODEL || '');
-      setCohereModel(env.COHERE_RERANK_MODEL || 'rerank-3.5');
+      const cohere = env.COHERE_RERANK_MODEL || 'rerank-3.5';
+      const voyage = env.VOYAGE_RERANK_MODEL || 'rerank-2';
+      setCohereModel(cohere);
+      setVoyageModel(voyage);
       // Don't populate password field with masked value
       setCohereApiKey(env.COHERE_API_KEY === '••••••••••••••••' ? '' : (env.COHERE_API_KEY || ''));
       setTrustRemoteCode(env.TRANSFORMERS_TRUST_REMOTE_CODE || '1');
       setSnippetChars(parseInt(env.RERANK_INPUT_SNIPPET_CHARS || '700', 10));
+      const cloudModelVal =
+        env.RERANKER_CLOUD_MODEL ||
+        (providerValue === 'voyage' ? voyage : undefined) ||
+        (providerValue === 'cohere' ? cohere : undefined) ||
+        (cloudModelOptions.length > 0 ? cloudModelOptions[0] : '') ||
+        cloudModel ||
+        'rerank-3.5';
+      setCloudModel(cloudModelVal);
 
       // Fetch reranker info for display panel
       const infoResponse = await fetch('/api/reranker/info');
       if (infoResponse.ok) {
         const info = await infoResponse.json();
-        setRerankerInfo(info);
+        // Prefer new schema if present
+        setRerankerInfo(info?.rerank_config ? info.rerank_config : info);
+      } else {
+        setRerankerInfo(null);
       }
 
       setLoading(false);
@@ -67,19 +185,21 @@ export function ExternalRerankersSubtab() {
     }
   };
 
-  const updateConfig = async (key: string, value: any) => {
+  const updateConfigBatch = async (envUpdates: Record<string, any>) => {
     try {
       setError('');
 
       const response = await fetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ env: { [key]: value } })
+        body: JSON.stringify({ env: envUpdates })
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to update ${key}: ${response.status} ${errorText}`);
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok || payload?.status === 'error') {
+        const detail = payload?.detail || payload?.error || response.statusText;
+        throw new Error(`Failed to update config: ${detail}`);
       }
 
       // Reload config to ensure backend picks up changes
@@ -88,16 +208,135 @@ export function ExternalRerankersSubtab() {
       // Reload config after update to get latest values
       await loadConfig();
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : `Failed to update ${key}`;
-      console.error(`[ExternalRerankersSubtab] Error updating ${key}:`, err);
+      const errorMsg = err instanceof Error ? err.message : 'Failed to update configuration';
+      console.error('[ExternalRerankersSubtab] Error updating config:', err);
       setError(errorMsg);
     }
+  };
+
+  const updateConfig = async (key: string, value: any) => {
+    return updateConfigBatch({ [key]: value });
   };
 
   const handleBackendChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setRerankBackend(value);
     updateConfig('RERANKER_BACKEND', value);
+    if (value === 'local' || value === 'hf' || value === 'learning') {
+      handleActiveChange('local');
+    } else if (value === 'none') {
+      setActiveChoice('local');
+      updateConfig('RERANKER_ACTIVE', 'none');
+    } else {
+      const providerValue = value.trim().toLowerCase();
+      setCloudProvider(providerValue);
+      handleActiveChange('cloud');
+      updateConfig('RERANKER_PROVIDER', providerValue);
+      const providerModels = priceModels
+        .filter((m) => m.provider === providerValue)
+        .map((m) => m.model)
+        .filter(Boolean);
+      if (providerModels.length > 0) {
+        setCloudModel(providerModels[0]);
+        updateConfig('RERANKER_CLOUD_MODEL', providerModels[0]);
+      }
+    }
+  };
+
+  const handleActiveChange = (value: 'local' | 'cloud') => {
+    setActiveChoice(value);
+    updateConfig('RERANKER_ACTIVE', value === 'local' ? 'local' : 'cloud');
+    if (value === 'local') {
+      setRerankBackend('local');
+      updateConfig('RERANKER_BACKEND', 'local');
+    } else {
+      const providerValue = cloudProvider || providerOptions[0] || 'cloud';
+      if (!cloudProvider && providerValue) {
+        setCloudProvider(providerValue);
+      }
+      setRerankBackend(providerValue);
+      if (providerValue) {
+        updateConfig('RERANKER_PROVIDER', providerValue);
+      }
+      updateConfig('RERANKER_BACKEND', providerValue);
+      if (cloudModel) {
+        updateConfig('RERANKER_CLOUD_MODEL', cloudModel);
+      }
+    }
+  };
+
+  const handleCloudProviderChange = (value: string) => {
+    const normalized = value.trim().toLowerCase();
+    setCloudProvider(normalized);
+    const providerModels = priceModels
+      .filter((m) => m.provider === normalized)
+      .map((m) => m.model)
+      .filter(Boolean);
+    const nextModel = providerModels[0] || cloudModel || (normalized === 'voyage' ? voyageModel : normalized === 'cohere' ? cohereModel : '');
+    if (nextModel) {
+      setCloudModel(nextModel);
+    }
+    updateConfig('RERANKER_PROVIDER', normalized);
+    // Keep backend in sync when cloud is active
+    if (activeChoice === 'cloud') {
+      setRerankBackend(normalized || 'cloud');
+      updateConfig('RERANKER_BACKEND', normalized || 'cloud');
+    }
+    if (nextModel) {
+      updateConfig('RERANKER_CLOUD_MODEL', nextModel);
+      if (normalized === 'cohere') {
+        updateConfig('COHERE_RERANK_MODEL', nextModel);
+      } else if (normalized === 'voyage') {
+        updateConfig('VOYAGE_RERANK_MODEL', nextModel);
+      }
+    }
+  };
+
+  const handleCloudModelBlur = () => {
+    updateConfig('RERANKER_CLOUD_MODEL', cloudModel);
+    if (cloudProvider === 'cohere') {
+      updateConfig('COHERE_RERANK_MODEL', cloudModel);
+      setCohereModel(cloudModel);
+    } else if (cloudProvider === 'voyage') {
+      updateConfig('VOYAGE_RERANK_MODEL', cloudModel);
+      setVoyageModel(cloudModel);
+    }
+  };
+
+  const handleAddRerankModel = async () => {
+    if (addModelDisabled) return;
+    const providerInput = window.prompt('Rerank provider (matches prices.json provider id):', cloudProvider || providerOptions[0] || '');
+    if (!providerInput) return;
+    const modelInput = window.prompt('Rerank model ID to add to prices.json:', cloudModel || '');
+    if (!modelInput) return;
+    const provider = providerInput.trim().toLowerCase();
+    const model = modelInput.trim();
+    if (!provider || !model) return;
+
+    try {
+      setSavingModel(true);
+      await fetch('/api/prices/upsert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, model, components: ['RERANK'], unit: '1k_tokens' })
+      });
+      setCloudProvider(provider);
+      setCloudModel(model);
+      setActiveChoice('cloud');
+      await updateConfigBatch({
+        RERANKER_PROVIDER: provider,
+        RERANKER_BACKEND: provider,
+        RERANKER_ACTIVE: 'cloud',
+        RERANKER_CLOUD_MODEL: model,
+      });
+      await loadPrices();
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to add rerank model';
+      console.error('[ExternalRerankersSubtab] Error adding rerank model:', err);
+      setError(errorMsg);
+    } finally {
+      setSavingModel(false);
+    }
   };
 
   const handleModelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -107,12 +346,6 @@ export function ExternalRerankersSubtab() {
 
   const handleModelBlur = () => {
     updateConfig('RERANKER_MODEL', rerankerModel);
-  };
-
-  const handleCohereModelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    setCohereModel(value);
-    updateConfig('COHERE_RERANK_MODEL', value);
   };
 
   const handleCohereApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -152,6 +385,21 @@ export function ExternalRerankersSubtab() {
     );
   }
 
+  const displayInfo: Partial<RerankerInfo> & Record<string, any> = rerankerInfo || {
+    enabled: false,
+    backend: rerankBackend || 'local',
+    provider: cloudProvider || '',
+    cloud_model: cloudModel || '',
+    model_path: rerankerModel || '',
+    alpha: '—',
+    topn: '—',
+    batch: '—',
+    maxlen: '—',
+    snippet_chars: snippetChars || '—',
+    trust_remote_code: trustRemoteCode === '1',
+  };
+  const infoUnavailable = !rerankerInfo;
+
   return (
     <>
       {/* Error Display */}
@@ -178,34 +426,139 @@ export function ExternalRerankersSubtab() {
         </h3>
         <p style={{ fontSize: '13px', color: 'var(--fg-muted)', marginBottom: '20px', lineHeight: '1.6' }}>
           Choose which reranker to use for improving retrieval results. You can use the built-in AGRO Learning Reranker (recommended),
-          an alternative local model, or an external API service.
+          an alternative local model, or an external API service. Cloud providers and models are sourced live from <code style={{ background: 'var(--card-bg)', padding: '2px 6px', borderRadius: '3px' }}>prices.json</code> via <code style={{ background: 'var(--card-bg)', padding: '2px 6px', borderRadius: '3px' }}>/api/prices</code>—no hardcoded lists.
         </p>
+
+        {/* Active Choice */}
+        <div className="input-row" style={{ marginBottom: '16px' }}>
+          <div className="input-group">
+            <label>
+              Active Reranker
+              <span className="help-icon" data-tooltip="RERANKER_ACTIVE">?</span>
+            </label>
+            <div style={{ display: 'flex', gap: '16px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <input
+                  type="radio"
+                  name="active_reranker"
+                  value="local"
+                  checked={activeChoice === 'local'}
+                  onChange={() => handleActiveChange('local')}
+                />
+                <span>Local / Learning</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <input
+                  type="radio"
+                  name="active_reranker"
+                  value="cloud"
+                  checked={activeChoice === 'cloud'}
+                  onChange={() => handleActiveChange('cloud')}
+                />
+                <span>Cloud API</span>
+              </label>
+            </div>
+          </div>
+          <div className="input-group">
+            <label>
+              Cloud Provider (prices.json)
+              <span className="help-icon" data-tooltip="RERANKER_PROVIDER">?</span>
+            </label>
+            <select
+              name="RERANKER_PROVIDER"
+              value={cloudProvider || ''}
+              onChange={(e) => handleCloudProviderChange(e.target.value)}
+            >
+              {providerOptions.length === 0 ? (
+                <option value="">Add a rerank provider in prices.json</option>
+              ) : (
+                providerOptions.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
+          <div className="input-group">
+            <label>
+              Cloud Model
+              <span className="help-icon" data-tooltip="RERANKER_CLOUD_MODEL">?</span>
+            </label>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <input
+                type="text"
+                name="RERANKER_CLOUD_MODEL"
+                placeholder="e.g., rerank-3.5 or voyage-3"
+                value={cloudModel}
+                list="reranker-cloud-models"
+                onChange={(e) => setCloudModel(e.target.value)}
+                onBlur={handleCloudModelBlur}
+                autoComplete="off"
+              />
+              <button
+                type="button"
+                onClick={handleAddRerankModel}
+                disabled={addModelDisabled}
+                data-tooltip="Add this provider/model to prices.json and save it"
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: addModelDisabled ? '1px solid var(--line)' : '1px solid var(--accent)',
+                  background: addModelDisabled ? 'var(--card-bg)' : 'var(--accent)',
+                  color: addModelDisabled ? 'var(--fg-muted)' : 'var(--bg)',
+                  cursor: addModelDisabled ? 'not-allowed' : 'pointer',
+                  opacity: addModelDisabled ? 0.9 : 1,
+                }}
+              >
+                {savingModel ? 'Saving...' : 'Add Model'}
+              </button>
+            </div>
+            <datalist id="reranker-cloud-models">
+              {cloudModelOptions.map((opt) => (
+                <option key={opt} value={opt} />
+              ))}
+            </datalist>
+          </div>
+        </div>
 
         {/* Current Reranker Display - Move to top */}
         <div className="input-row" style={{ marginBottom: '24px' }}>
-          <div className="input-group full-width" style={{ background: 'var(--card-bg)', border: '1px solid var(--line)', borderRadius: '6px', padding: '12px' }}>
-            <div style={{ fontSize: '11px', color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', fontWeight: 600 }}>
-              ✓ Currently Active Reranker (Server)
-            </div>
-            <div className="mono" id="reranker-info-panel-ext" style={{ fontSize: '12px', lineHeight: '1.6' }}>
-              {rerankerInfo ? (
+            <div className="input-group full-width" style={{ background: 'var(--card-bg)', border: '1px solid var(--line)', borderRadius: '6px', padding: '12px' }}>
+              <div style={{ fontSize: '11px', color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', fontWeight: 600 }}>
+                ✓ Currently Active Reranker (Server)
+              </div>
+              <div className="mono" id="reranker-info-panel-ext" style={{ fontSize: '12px', lineHeight: '1.6' }}>
+              {displayInfo ? (
                 <>
-                  <div><strong>Enabled:</strong> <span id="reranker-info-enabled-ext">{rerankerInfo.enabled ? 'true' : 'false'}</span></div>
-                  <div><strong>Model Path:</strong> <span id="reranker-info-path-ext">{rerankerInfo.path || '—'}</span></div>
-                  <div><strong>Device:</strong> <span id="reranker-info-device-ext">{rerankerInfo.device || '—'}</span></div>
+                  <div><strong>Enabled:</strong> <span id="reranker-info-enabled-ext">{displayInfo.enabled ? 'true' : 'false'}</span></div>
+                  <div><strong>Backend:</strong> <span id="reranker-info-backend-ext">{displayInfo.backend || '—'}</span></div>
+                  <div><strong>Provider:</strong> <span id="reranker-info-provider-ext">{(displayInfo as any).provider || '—'}</span></div>
+                  <div><strong>Cloud Model:</strong> <span id="reranker-info-cloud-model-ext">{(displayInfo as any).cloud_model || '—'}</span></div>
+                  <div><strong>Model Path:</strong> <span id="reranker-info-path-ext">{(displayInfo as any).model_path || (displayInfo as any).path || '—'}</span></div>
+                  <div><strong>Device:</strong> <span id="reranker-info-device-ext">{(displayInfo as any).device || '—'}</span></div>
                   <div>
-                    <strong>Alpha:</strong> <span id="reranker-info-alpha-ext">{rerankerInfo.alpha || '—'}</span> •
-                    <strong>TopN:</strong> <span id="reranker-info-topn-ext">{rerankerInfo.topn || '—'}</span> •
-                    <strong>Batch:</strong> <span id="reranker-info-batch-ext">{rerankerInfo.batch || '—'}</span> •
-                    <strong>MaxLen:</strong> <span id="reranker-info-maxlen-ext">{rerankerInfo.maxlen || '—'}</span>
+                    <strong>Alpha:</strong> <span id="reranker-info-alpha-ext">{(displayInfo as any).alpha || '—'}</span> •
+                    <strong>TopN:</strong> <span id="reranker-info-topn-ext">{(displayInfo as any).topn || '—'}</span> •
+                    <strong>Batch:</strong> <span id="reranker-info-batch-ext">{(displayInfo as any).batch || '—'}</span> •
+                    <strong>MaxLen:</strong> <span id="reranker-info-maxlen-ext">{(displayInfo as any).maxlen || '—'}</span> •
+                    <strong>Snippet:</strong> <span id="reranker-info-snippet-ext">{(displayInfo as any).snippet_chars || '—'}</span> •
+                    <strong>Trust RC:</strong> <span id="reranker-info-trc-ext">{(displayInfo as any).trust_remote_code ? 'true' : 'false'}</span>
                   </div>
+                  {infoUnavailable && (
+                    <div style={{ marginTop: '8px', color: 'var(--fg-muted)', fontSize: '11px' }}>
+                      Live server info unavailable; showing current form values instead.
+                    </div>
+                  )}
                 </>
               ) : (
                 <>
                   <div><strong>Enabled:</strong> <span id="reranker-info-enabled-ext">—</span></div>
+                  <div><strong>Backend:</strong> <span id="reranker-info-backend-ext">—</span></div>
+                  <div><strong>Cloud Model:</strong> <span id="reranker-info-cloud-model-ext">—</span></div>
                   <div><strong>Model Path:</strong> <span id="reranker-info-path-ext">—</span></div>
                   <div><strong>Device:</strong> <span id="reranker-info-device-ext">—</span></div>
-                  <div><strong>Alpha:</strong> <span id="reranker-info-alpha-ext">—</span> • <strong>TopN:</strong> <span id="reranker-info-topn-ext">—</span> • <strong>Batch:</strong> <span id="reranker-info-batch-ext">—</span> • <strong>MaxLen:</strong> <span id="reranker-info-maxlen-ext">—</span></div>
+                  <div><strong>Alpha:</strong> <span id="reranker-info-alpha-ext">—</span> • <strong>TopN:</strong> <span id="reranker-info-topn-ext">—</span> • <strong>Batch:</strong> <span id="reranker-info-batch-ext">—</span> • <strong>MaxLen:</strong> <span id="reranker-info-maxlen-ext">—</span> • <strong>Snippet:</strong> <span id="reranker-info-snippet-ext">—</span> • <strong>Trust RC:</strong> <span id="reranker-info-trc-ext">—</span></div>
                 </>
               )}
             </div>
@@ -251,10 +604,11 @@ export function ExternalRerankersSubtab() {
               value={rerankBackend}
               onChange={handleBackendChange}
             >
-              <option value="none">none</option>
-              <option value="local">local</option>
-              <option value="hf">hf</option>
-              <option value="cohere">cohere</option>
+              {backendOptions.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
             </select>
           </div>
           <div className="input-group">
@@ -312,25 +666,38 @@ export function ExternalRerankersSubtab() {
             🌐 External API Rerankers
           </h4>
           <p style={{ fontSize: '12px', color: 'var(--fg-muted)', marginBottom: '16px', lineHeight: '1.5' }}>
-            Use cloud-based reranking APIs instead of local models. Currently supports Cohere and Voyage AI.
+            Use cloud-based reranking APIs instead of local models. Provider/model options come from <code style={{ background: 'var(--card-bg)', padding: '2px 6px', borderRadius: '3px' }}>prices.json</code>; add entries above to extend the catalog without code changes.
           </p>
 
           <div className="input-row">
           <div className="input-group">
             <label>
-              Cohere Model (COHERE_RERANK_MODEL)
-              <span className="help-icon" data-tooltip="COHERE_RERANK_MODEL">?</span>
+              Cloud Model (prices.json, provider-scoped)
+              <span className="help-icon" data-tooltip="RERANKER_CLOUD_MODEL">?</span>
             </label>
             <select
-              name="COHERE_RERANK_MODEL"
-              value={cohereModel}
-              onChange={handleCohereModelChange}
+              name="RERANKER_CLOUD_MODEL_SELECT"
+              value={cloudModel}
+              onChange={(e) => {
+                const value = e.target.value;
+                setCloudModel(value);
+                updateConfig('RERANKER_CLOUD_MODEL', value);
+                if (cloudProvider === 'cohere') {
+                  setCohereModel(value);
+                  updateConfig('COHERE_RERANK_MODEL', value);
+                } else if (cloudProvider === 'voyage') {
+                  setVoyageModel(value);
+                  updateConfig('VOYAGE_RERANK_MODEL', value);
+                }
+              }}
             >
-              <option value="">(select model)</option>
-              <option value="rerank-3.5">rerank-3.5</option>
-              <option value="rerank-english-v3.0">rerank-english-v3.0</option>
-              <option value="rerank-multilingual-v3.0">rerank-multilingual-v3.0</option>
-              <option value="rerank-english-lite-v3.0">rerank-english-lite-v3.0</option>
+              <option value="">{cloudProvider ? '(select model)' : 'Select a provider first'}</option>
+              {cloudModelOptions.map((model) => (
+                <option key={model} value={model}>{model}</option>
+              ))}
+              {cloudModel && !cloudModelOptions.includes(cloudModel) && (
+                <option value={cloudModel}>{cloudModel}</option>
+              )}
             </select>
           </div>
           <div className="input-group">

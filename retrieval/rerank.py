@@ -42,6 +42,10 @@ _RERANKER_TIMEOUT = None
 _RERANK_BACKEND = None
 _RERANK_INPUT_SNIPPET_CHARS = None
 _COHERE_RERANK_TOP_N = None
+_TRANSFORMERS_TRUST_REMOTE_CODE = None
+_RERANKER_ACTIVE = None
+_RERANKER_PROVIDER = None
+_RERANKER_CLOUD_MODEL = None
 
 def _load_cached_config():
     """Load all reranking config values into module-level cache."""
@@ -49,7 +53,7 @@ def _load_cached_config():
     global _AGRO_RERANKER_BATCH, _AGRO_RERANKER_MAXLEN, _AGRO_RERANKER_RELOAD_ON_CHANGE
     global _AGRO_RERANKER_RELOAD_PERIOD_SEC, _COHERE_RERANK_MODEL, _VOYAGE_RERANK_MODEL
     global _RERANKER_BACKEND, _RERANKER_TIMEOUT, _RERANK_BACKEND, _RERANK_INPUT_SNIPPET_CHARS
-    global _COHERE_RERANK_TOP_N
+    global _COHERE_RERANK_TOP_N, _TRANSFORMERS_TRUST_REMOTE_CODE, _RERANKER_ACTIVE, _RERANKER_PROVIDER, _RERANKER_CLOUD_MODEL
 
     if _config_registry is None:
         # Fallback to env vars if registry not available
@@ -65,9 +69,13 @@ def _load_cached_config():
         _VOYAGE_RERANK_MODEL = os.getenv('VOYAGE_RERANK_MODEL', 'rerank-2')
         _RERANKER_BACKEND = os.getenv('RERANKER_BACKEND', 'local')
         _RERANKER_TIMEOUT = int(os.getenv('RERANKER_TIMEOUT', '10') or '10')
-        _RERANK_BACKEND = os.getenv('RERANK_BACKEND', 'local')
-        _RERANK_INPUT_SNIPPET_CHARS = int(os.getenv('RERANK_INPUT_SNIPPET_CHARS', '600') or '600')
+        _RERANK_BACKEND = os.getenv('RERANK_BACKEND', _RERANKER_BACKEND)
+        _RERANK_INPUT_SNIPPET_CHARS = int(os.getenv('RERANK_INPUT_SNIPPET_CHARS', '700') or '700')
         _COHERE_RERANK_TOP_N = int(os.getenv('COHERE_RERANK_TOP_N', '50') or '50')
+        _TRANSFORMERS_TRUST_REMOTE_CODE = int(os.getenv('TRANSFORMERS_TRUST_REMOTE_CODE', '1') or '1')
+        _RERANKER_ACTIVE = os.getenv('RERANKER_ACTIVE', _RERANKER_BACKEND)
+        _RERANKER_PROVIDER = os.getenv('RERANKER_PROVIDER', '')
+        _RERANKER_CLOUD_MODEL = os.getenv('RERANKER_CLOUD_MODEL', _COHERE_RERANK_MODEL)
     else:
         _RERANKER_MODEL = _config_registry.get_str('RERANKER_MODEL', 'cross-encoder/ms-marco-MiniLM-L-12-v2')
         _AGRO_RERANKER_ENABLED = _config_registry.get_int('AGRO_RERANKER_ENABLED', 1)
@@ -81,9 +89,19 @@ def _load_cached_config():
         _VOYAGE_RERANK_MODEL = _config_registry.get_str('VOYAGE_RERANK_MODEL', 'rerank-2')
         _RERANKER_BACKEND = _config_registry.get_str('RERANKER_BACKEND', 'local')
         _RERANKER_TIMEOUT = _config_registry.get_int('RERANKER_TIMEOUT', 10)
-        _RERANK_BACKEND = _config_registry.get_str('RERANK_BACKEND', 'local')
-        _RERANK_INPUT_SNIPPET_CHARS = _config_registry.get_int('RERANK_INPUT_SNIPPET_CHARS', 600)
+        _RERANK_BACKEND = _config_registry.get_str('RERANKER_BACKEND', _RERANKER_BACKEND)
+        _RERANK_INPUT_SNIPPET_CHARS = _config_registry.get_int('RERANK_INPUT_SNIPPET_CHARS', 700)
         _COHERE_RERANK_TOP_N = _config_registry.get_int('COHERE_RERANK_TOP_N', 50)
+        _TRANSFORMERS_TRUST_REMOTE_CODE = _config_registry.get_int('TRANSFORMERS_TRUST_REMOTE_CODE', 1)
+        _RERANKER_ACTIVE = _config_registry.get_str('RERANKER_ACTIVE', _RERANKER_BACKEND)
+        _RERANKER_PROVIDER = _config_registry.get_str('RERANKER_PROVIDER', '')
+        _RERANKER_CLOUD_MODEL = _config_registry.get_str('RERANKER_CLOUD_MODEL', _COHERE_RERANK_MODEL)
+
+    # Ensure transformers respects config for remote code
+    try:
+        os.environ['TRANSFORMERS_TRUST_REMOTE_CODE'] = str(_TRANSFORMERS_TRUST_REMOTE_CODE)
+    except Exception:
+        pass
 
 def reload_config():
     """Reload all cached config values from registry."""
@@ -144,6 +162,127 @@ def _load_settings_if_enabled() -> Optional[RerankerSettings]:
         return None
     return load_settings()
 
+_DISABLED_ALIASES = {'off', 'none', 'disabled'}
+_LOCALISH = {'local', 'hf'}
+
+
+def _normalize_backend(value: Optional[str]) -> str:
+    """Normalize backend aliases to canonical values."""
+    if value is None:
+        return ''
+    v = str(value).strip().lower()
+    if not v:
+        return ''
+    if v in _DISABLED_ALIASES:
+        return 'none'
+    if v == 'hf':
+        return 'local'
+    return v
+
+
+def _normalize_provider(value: Optional[str]) -> str:
+    if value is None:
+        return ''
+    v = str(value).strip().lower()
+    if not v:
+        return ''
+    if v in _DISABLED_ALIASES:
+        return 'none'
+    return v
+
+
+def _normalize_active_choice(value: Optional[str]) -> str:
+    """Normalize active selector, defaulting to local when unspecified."""
+    v = _normalize_backend(value)
+    if not v:
+        return 'local'
+    if v in _DISABLED_ALIASES:
+        return 'none'
+    if v in {'learning'}:
+        return 'learning'
+    if v == 'hf':
+        return 'local'
+    return v
+
+
+def _resolve_env_strategy() -> Dict[str, Any]:
+    """Resolve reranker backend/provider/model choices from cached config."""
+    _load_cached_config()
+    active_raw = _RERANKER_ACTIVE or _RERANKER_BACKEND or _RERANK_BACKEND or 'local'
+    provider_raw = _RERANKER_PROVIDER or _RERANKER_BACKEND or _RERANK_BACKEND
+    backend_raw = _RERANKER_BACKEND or _RERANK_BACKEND
+
+    active = _normalize_active_choice(active_raw)
+    provider_hint = _normalize_provider(provider_raw)
+    backend_hint = _normalize_backend(backend_raw)
+
+    if active == 'none':
+        backend = 'none'
+    elif active == 'cloud':
+        backend = provider_hint or backend_hint or 'cloud'
+    elif active in _LOCALISH:
+        backend = 'local'
+    elif active == 'learning':
+        backend = 'learning'
+    else:
+        backend = active
+
+    if not backend or backend == 'cloud':
+        backend = provider_hint or backend_hint or 'local'
+
+    provider = provider_hint or (backend if backend not in (_LOCALISH | {'learning', 'none'}) else '')
+    cloud_model = _RERANKER_CLOUD_MODEL or (_COHERE_RERANK_MODEL if provider == 'cohere' else _VOYAGE_RERANK_MODEL if provider == 'voyage' else None)
+
+    model_name = _RERANKER_MODEL or DEFAULT_MODEL
+    snippet_local = _RERANK_INPUT_SNIPPET_CHARS or 700
+    snippet_cloud = min(snippet_local + 100, 700)
+    metrics_label = f"{backend}:{cloud_model or model_name}" if backend and backend != 'none' else "none"
+    enabled = backend not in {'none'} and bool(_AGRO_RERANKER_ENABLED if _AGRO_RERANKER_ENABLED is not None else 1)
+
+    return {
+        "active": active,
+        "backend": backend,
+        "provider": provider,
+        "cloud_model": cloud_model,
+        "model_name": model_name,
+        "snippet_local": snippet_local,
+        "snippet_cloud": snippet_cloud,
+        "cohere_top_n": _COHERE_RERANK_TOP_N or 50,
+        "metrics_label": metrics_label,
+        "trust_remote_code": bool(_TRANSFORMERS_TRUST_REMOTE_CODE),
+        "timeout": _RERANKER_TIMEOUT or 10,
+        "alpha": _AGRO_RERANKER_ALPHA or 0.7,
+        "topn": _AGRO_RERANKER_TOPN or 50,
+        "batch": _AGRO_RERANKER_BATCH or 16,
+        "maxlen": _AGRO_RERANKER_MAXLEN or 512,
+    }
+
+
+def get_rerank_config_info() -> Dict[str, Any]:
+    """Expose current rerank configuration snapshot."""
+    cfg = _resolve_env_strategy()
+    provider = cfg.get("provider")
+    cloud_model = cfg.get("cloud_model") or (_COHERE_RERANK_MODEL if provider == 'cohere' else _VOYAGE_RERANK_MODEL if provider == 'voyage' else None)
+    model_name = cfg.get("model_name")
+    return {
+        "backend": cfg.get("backend"),
+        "enabled": cfg.get("enabled"),
+        "model": model_name,
+        "model_path": model_name,
+        "snippet_chars": cfg.get("snippet_local"),
+        "timeout": cfg.get("timeout"),
+        "trust_remote_code": cfg.get("trust_remote_code"),
+        "alpha": cfg.get("alpha"),
+        "topn": cfg.get("topn"),
+        "batch": cfg.get("batch"),
+        "maxlen": cfg.get("maxlen"),
+        "cohere_model": _COHERE_RERANK_MODEL or COHERE_MODEL,
+        "voyage_model": _VOYAGE_RERANK_MODEL,
+        "cohere_top_n": _COHERE_RERANK_TOP_N or 50,
+        "active": cfg.get("active"),
+        "provider": provider,
+        "cloud_model": cloud_model,
+    }
 
 def get_reranker() -> Optional[Reranker]:
     global _RERANKER, _RERANKER_MODEL_ID
@@ -178,7 +317,8 @@ def rerank_results(query: str, results: List[Dict[str, Any]], top_k: int = 10, t
 
     if settings:
         backend = settings.backend
-        enabled = settings.enabled and backend not in ("none", "off", "disabled")
+        backend = _normalize_backend(backend) or 'local'
+        enabled = settings.enabled and backend != "none"
         model_name = resolve_model_target(settings)
         metrics_label = settings.metrics_label
         snippet_local = settings.snippet_chars
@@ -188,15 +328,17 @@ def rerank_results(query: str, results: List[Dict[str, Any]], top_k: int = 10, t
         cohere_key_present = settings.cohere_api_key_present
     else:
         # Use cached config values instead of os.getenv
-        backend = (_RERANK_BACKEND or 'local').lower()
-        enabled = backend not in ('none', 'off', 'disabled')
-        model_name = _RERANKER_MODEL or DEFAULT_MODEL
-        metrics_label = f"cohere:{COHERE_MODEL}" if backend == 'cohere' else f"local:{model_name}"
-        snippet_local = _RERANK_INPUT_SNIPPET_CHARS or 600
-        # Cohere typically needs slightly longer snippets
-        snippet_cohere = min(_RERANK_INPUT_SNIPPET_CHARS + 100, 700) if _RERANK_INPUT_SNIPPET_CHARS else 700
-        cohere_model = _COHERE_RERANK_MODEL or COHERE_MODEL
-        cohere_top_n = _COHERE_RERANK_TOP_N or 50
+        cfg = _resolve_env_strategy()
+        backend = cfg.get("backend")
+        provider = cfg.get("provider")
+        enabled = bool(cfg.get("enabled"))
+        model_name = cfg.get("model_name")
+        cloud_model = cfg.get("cloud_model")
+        metrics_label = cfg.get("metrics_label") or "none"
+        snippet_local = cfg.get("snippet_local") or 600
+        snippet_cohere = cfg.get("snippet_cloud") or 700
+        cohere_model = cloud_model if backend == 'cohere' else (_COHERE_RERANK_MODEL or COHERE_MODEL)
+        cohere_top_n = cfg.get("cohere_top_n") or 50
         cohere_key_present = bool(os.getenv('COHERE_API_KEY'))
 
     if not enabled:
@@ -294,6 +436,66 @@ def rerank_results(query: str, results: List[Dict[str, Any]], top_k: int = 10, t
             except Exception:
                 pass
             return top
+        except Exception:
+            pass
+    elif backend == 'voyage':
+        try:
+            import requests as req
+            import time
+            from server.api_tracker import track_api_call, APIProvider
+
+            api_key = os.getenv('VOYAGE_API_KEY')
+            if not api_key:
+                raise RuntimeError('VOYAGE_API_KEY not set')
+
+            docs = []
+            for r in results:
+                file_ctx = r.get('file_path', '')
+                snip_len = snippet_cohere
+                code_snip = (r.get('code') or r.get('text') or '')[:snip_len]
+                docs.append(f"{file_ctx}\n\n{code_snip}")
+            rerank_top_n = min(len(docs), cohere_top_n)
+
+            start = time.time()
+            model_id = cloud_model or "rerank-2"
+            resp = req.post(
+                "https://api.voyageai.com/v1/rerank",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": model_id,
+                    "query": query,
+                    "documents": docs,
+                    "top_k": rerank_top_n,
+                },
+                timeout=10
+            )
+            resp.raise_for_status()
+            rr = resp.json()
+            duration_ms = (time.time() - start) * 1000
+
+            track_api_call(
+                provider=APIProvider.VOYAGE,
+                endpoint="https://api.voyageai.com/v1/rerank",
+                method="POST",
+                duration_ms=duration_ms,
+                status_code=resp.status_code,
+                tokens_estimated=len(docs) * 100,
+                cost_usd=0.0
+            )
+
+            rr_results = rr.get("data") or rr.get("results") or []
+            scores = [item.get('relevance_score') or item.get('score') or 0.0 for item in rr_results]
+            max_s = max(scores) if scores else 1.0
+            for item in rr_results:
+                idx = int(item.get('index') or item.get('document') or item.get('id') or 0)
+                score = float(item.get('relevance_score') or item.get('score') or 0.0)
+                if idx < len(results):
+                    results[idx]['rerank_score'] = (score / max_s) if max_s else 0.0
+            results.sort(key=lambda x: x.get('rerank_score', 0.0), reverse=True)
+            return results[:top_k]
         except Exception:
             pass
     pipe = _maybe_init_hf_pipeline(model_name)

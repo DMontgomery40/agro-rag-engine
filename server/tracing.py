@@ -52,7 +52,10 @@ class Trace:
         self.started_at = _now_iso()
         self.events: List[Dict[str, Any]] = []
         self.path: Optional[str] = None
-        self.mode = (_TRACING_MODE.lower() or (
+        mode_val = (_TRACING_MODE or '').lower()
+        if mode_val == 'none':
+            mode_val = 'off'
+        self.mode = (mode_val or (
             'langsmith' if ((os.getenv('LANGCHAIN_TRACING_V2','0') or '0').strip().lower() in {'1','true','on'}) else 'local'))
         # Optional LangSmith client (best effort)
         self._ls_client = None
@@ -78,9 +81,12 @@ class Trace:
     # ---- control ----
     @staticmethod
     def enabled() -> bool:
-        mode = (_TRACING_MODE.lower() or (
+        mode_val = (_TRACING_MODE or '').lower()
+        if mode_val == 'none':
+            mode_val = 'off'
+        mode = (mode_val or (
             'langsmith' if (os.getenv('LANGCHAIN_TRACING_V2','0').lower() in {'1','true','on'}) else 'local'))
-        if mode == 'off' or not mode:
+        if mode in {'off', 'none'} or not mode:
             return False
         return True
 

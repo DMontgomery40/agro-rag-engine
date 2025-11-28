@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { EmbeddingMismatchWarning } from '@/components/ui/EmbeddingMismatchWarning';
 
 // RetrievalSubtab: Main retrieval and RAG configuration component
 // Converted from legacy HTML to proper TypeScript React
@@ -195,15 +196,25 @@ export function RetrievalSubtab() {
         body: JSON.stringify({ env: { [key]: value } })
       });
 
+      const payload = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        throw new Error(`Failed to update ${key}`);
+        const detail = (payload && (payload.detail || payload.error)) || `Failed to update ${key}`;
+        throw new Error(detail);
+      }
+
+      if (payload?.status === 'error') {
+        const detail = payload.error || `Failed to update ${key}`;
+        throw new Error(detail);
       }
 
       // Reload config to ensure backend picks up changes
       await fetch('/api/env/reload', { method: 'POST' });
+      await loadConfig();
     } catch (error) {
       console.error(`Error updating ${key}:`, error);
-      alert(`Failed to update ${key}`);
+      const message = error instanceof Error ? error.message : `Failed to update ${key}`;
+      alert(message);
     }
   };
 
@@ -213,6 +224,9 @@ export function RetrievalSubtab() {
 
   return (
     <>
+      {/* Embedding Mismatch Warning - Critical for retrieval config */}
+      <EmbeddingMismatchWarning variant="inline" showActions={true} />
+
       {/* Generation Models and Retrieval Parameters */}
 
       <div className="settings-section">

@@ -332,12 +332,62 @@ export function useTooltips() {
         ['Cohere Docs: Rerank', 'https://docs.cohere.com/reference/rerank'],
         ['Cohere Python (GitHub)', 'https://github.com/cohere-ai/cohere-python']
       ]),
+      // Alias for React data-tooltip usage
+      RERANKER_BACKEND: L(
+        'Rerank Backend',
+        'Where reranking runs and what it costs.\n• Cloud (cohere/voyage/openai/etc.) — best quality; needs provider/model in prices.json and API key; per-call cost + latency.\n• Local/HF/Learning — on-host models (AGRO learning reranker or HF cross-encoder); no API cost; uses local GPU/CPU.\n• none/off — skip reranking, just hybrid fusion ordering.\nChoose cloud for highest quality when keys are available; choose local/hf/learning to avoid cost or stay offline.',
+        [
+          ['prices.json catalog (API)', '/api/prices'],
+          ['AGRO Learning Reranker', '/docs/LEARNING_RERANKER.md']
+        ],
+        [['Rerank quality', 'info'], ['Cost impact', 'warn']]
+      ),
+      RERANKER_ACTIVE: L(
+        'Active Reranker',
+        'Route reranking to local vs cloud.\n• local/learning — on-host (includes AGRO learning reranker)\n• cloud — uses provider/model from prices.json\n• none/off — disables rerank. If cloud is selected but provider/model are empty, rerank is effectively disabled.',
+        [],
+        [['Required', 'info']]
+      ),
+      RERANKER_PROVIDER: L(
+        'Cloud Provider (prices.json)',
+        'Provider id for cloud reranking, loaded dynamically from prices.json via /api/prices. Examples: cohere, voyage, openai, or any custom provider you add. No hardcoded lists; extend prices.json to expose more providers.',
+        [
+          ['prices.json catalog (API)', '/api/prices']
+        ],
+        [['prices.json-driven', 'info']]
+      ),
+      RERANKER_CLOUD_MODEL: L(
+        'Cloud Model',
+        'Provider-scoped rerank model id from prices.json. Examples: rerank-3.5 (cohere), rerank-2 (voyage), or any custom id you add. Model list comes from prices.json; add entries there to surface more options in this picker.',
+        [
+          ['prices.json catalog (API)', '/api/prices']
+        ],
+        [['Provider-scoped', 'info']]
+      ),
       COHERE_API_KEY: L('Cohere API Key', 'API key for Cohere reranking when RERANK_BACKEND=cohere.', [
         ['Cohere Dashboard: API Keys', 'https://dashboard.cohere.com/api-keys']
       ]),
       COHERE_RERANK_MODEL: L('Cohere Rerank Model', 'Cohere rerank model name (e.g., rerank-3.5). Check the provider docs for the latest list and pricing.', [
         ['Cohere Docs: Models', 'https://docs.cohere.com/docs/models']
       ]),
+      RERANKER_TIMEOUT: L(
+        'Reranker Timeout',
+        'Timeout (seconds) for cloud reranker HTTP calls. Larger timeouts reduce false failures on slow providers; smaller timeouts fail fast when endpoints are slow or unreachable. Applies only to cloud backends.',
+        [],
+        [['Reliability', 'info']]
+      ),
+      RERANK_INPUT_SNIPPET_CHARS: L(
+        'Rerank Input Snippet Chars',
+        'Max characters per candidate chunk sent to the reranker. Smaller = cheaper/faster; larger = more context but higher cost/latency (and possible truncation). Applies to both local and cloud rerank. Tune upward for long code blocks; tune downward to save tokens/cost.',
+        [],
+        [['Affects cost/latency', 'warn']]
+      ),
+      TRANSFORMERS_TRUST_REMOTE_CODE: L(
+        'Transformers Trust Remote Code',
+        'Enable trust_remote_code when loading HF reranker models that ship custom code. Required for some community models (e.g., jinaai rerankers). Set to 0 if you only use vetted models and want stricter security.',
+        [],
+        [['Security-sensitive', 'warn']]
+      ),
       RERANKER_MODEL: L(
         'Local Reranker (HF)',
         'HuggingFace model name or path for local reranking when RERANK_BACKEND=local or hf. Common options: "cross-encoder/ms-marco-MiniLM-L-6-v2" (fast, good quality), "BAAI/bge-reranker-base" (higher quality, slower), or path to your fine-tuned model like "models/cross-encoder-agro". Local reranking is free but slower than Cohere. Ensure model is downloaded before use.',
@@ -503,6 +553,29 @@ export function useTooltips() {
           ['Grafana Loki (GitHub)', 'https://github.com/grafana/loki']
         ],
         [['Infrastructure', 'info'], ['Log storage', 'info']]
+      ),
+
+      // Embedding Mismatch Warning
+      EMBEDDING_MISMATCH: L(
+        'Embedding Type Mismatch',
+        'Your current embedding configuration differs from what was used to create your index. This is a CRITICAL issue that will cause search to return completely irrelevant results. Embeddings are mathematical representations of text in high-dimensional vector space - when you use different embedding models, these vectors exist in incompatible spaces and cannot be meaningfully compared. Think of it like trying to search a French dictionary using Spanish words - the dimensions and meaning of the numbers don\'t align. You must either: (1) Re-index your code with the current embedding type, or (2) Change your embedding configuration back to match what the index was built with.',
+        [
+          ['What are Embeddings?', 'https://platform.openai.com/docs/guides/embeddings'],
+          ['Vector Space Explained', 'https://en.wikipedia.org/wiki/Vector_space'],
+          ['Semantic Search', 'https://www.pinecone.io/learn/semantic-search/'],
+          ['Embedding Model Comparison', 'https://huggingface.co/spaces/mteb/leaderboard']
+        ],
+        [['Critical', 'err'], ['Requires Action', 'warn']]
+      ),
+
+      EMBEDDING_MATCH: L(
+        'Embedding Configuration Valid',
+        'Your current embedding configuration matches what was used to create the index. Search results will be accurate and relevant. The vectors in your index are compatible with queries generated using your current embedding model.',
+        [
+          ['Embedding Guide', '/docs/EMBEDDING.md'],
+          ['Retrieval Configuration', '/docs/RETRIEVAL.md']
+        ],
+        [['Valid', 'info']]
       ),
     };
   }, [buildTooltipHTML]);

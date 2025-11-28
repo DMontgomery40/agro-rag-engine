@@ -21,3 +21,7 @@ export { useUIHelpers } from './useUIHelpers';
 export { useNavigation } from './useNavigation';
 export { useTabs } from './useTabs';
 export { useVSCodeEmbed } from './useVSCodeEmbed';
+
+// Embedding status (critical mismatch detection)
+export { useEmbeddingStatus } from './useEmbeddingStatus';
+export type { EmbeddingStatus } from './useEmbeddingStatus';

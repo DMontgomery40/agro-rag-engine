@@ -173,10 +173,17 @@ def get_embedding_func():
     else:  # openai (default)
         from openai import OpenAI
         client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+        
+        # OpenAI text-embedding-3-large has 8192 token limit
+        # Truncate texts to ~30000 chars (~7500 tokens) to stay safely under limit
+        MAX_CHARS = 30000
+        
         def embed(texts: List[str]) -> List[List[float]]:
             all_embs = []
             for i in range(0, len(texts), 64):
                 batch = texts[i:i+64]
+                # Truncate any texts that are too long
+                batch = [t[:MAX_CHARS] if len(t) > MAX_CHARS else t for t in batch]
                 r = client.embeddings.create(input=batch, model=EMBEDDING_MODEL)
                 all_embs.extend([d.embedding for d in r.data])
             return all_embs

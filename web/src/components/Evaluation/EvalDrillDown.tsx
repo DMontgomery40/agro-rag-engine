@@ -235,18 +235,35 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
     }
 
     const allKeys = new Set([...Object.keys(currentConfig), ...Object.keys(previousConfig)]);
-    const diffs: Array<{ key: string; current: any; previous: any; changed: boolean }> = [];
+    const diffs: Array<{ key: string; current: any; previous: any; changed: boolean; isEmbedding?: boolean }> = [];
+
+    // Keys that indicate embedding configuration
+    const embeddingKeys = ['EMBEDDING_TYPE', 'EMBEDDING_DIM', 'EMBEDDING_MODEL', 'EMBEDDING_TYPE_AT_INDEX', 'EMBED_TYPE'];
 
     allKeys.forEach(key => {
       const current = currentConfig[key];
       const previous = previousConfig[key];
       const changed = JSON.stringify(current) !== JSON.stringify(previous);
       if (changed) {
-        diffs.push({ key, current, previous, changed });
+        const isEmbedding = embeddingKeys.some(ek => key.toUpperCase().includes(ek));
+        diffs.push({ key, current, previous, changed, isEmbedding });
       }
     });
 
+    // Sort to put embedding diffs first (critical)
+    diffs.sort((a, b) => {
+      if (a.isEmbedding && !b.isEmbedding) return -1;
+      if (!a.isEmbedding && b.isEmbedding) return 1;
+      return 0;
+    });
+
     return diffs;
+  };
+
+  // Check if there's an embedding difference in the config diffs
+  const hasEmbeddingDiff = (diffs: ReturnType<typeof getConfigDiff>) => {
+    if (!diffs) return false;
+    return diffs.some(d => d.isEmbedding);
   };
 
   const getRegressionStatus = (questionIdx: number) => {
@@ -605,7 +622,8 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
             marginBottom: '8px',
             display: 'flex',
             alignItems: 'center',
-            gap: '12px'
+            gap: '12px',
+            flexWrap: 'wrap'
           }}>
             <span style={{ fontSize: '24px' }}>🔍</span>
             CONFIGURATION CHANGES — ONLY WHAT'S DIFFERENT
@@ -619,6 +637,27 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
             }}>
               {configDiffs.length} params changed
             </span>
+            {/* Embedding difference badge - highlighted prominently */}
+            {hasEmbeddingDiff(configDiffs) && (
+              <span 
+                data-tooltip="EMBEDDING_MISMATCH"
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  background: 'linear-gradient(135deg, var(--warn), var(--err))',
+                  color: '#000',
+                  padding: '6px 14px',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 2px 8px rgba(255,170,0,0.3)'
+                }}
+              >
+                <span>⚠️</span>
+                EMBEDDING DIFFERS
+              </span>
+            )}
           </h2>
           <div style={{ fontSize: '12px', color: 'var(--fg-muted)', marginBottom: '20px' }}>
             Comparing: <span style={{ fontFamily: 'monospace', color: 'var(--err)' }}>{compareRun?.run_id || 'baseline'}</span>
@@ -713,6 +752,10 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
                 if (str && str.length > 20) return str.slice(0, 17) + '...';
                 return str || '(empty)';
               };
+
+              // Check if this is an embedding-related key
+              const embeddingKeyPattern = /EMBED|embedding/i;
+              const isEmbeddingKey = embeddingKeyPattern.test(key);
               
               return (
                 <div key={key} style={{
@@ -720,10 +763,15 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
                   alignItems: 'center',
                   gap: '12px',
                   padding: '10px 16px',
-                  background: 'var(--card-bg)',
-                  border: '1px solid var(--line)',
+                  background: isEmbeddingKey 
+                    ? 'linear-gradient(135deg, rgba(255, 170, 0, 0.15), rgba(255, 107, 107, 0.1))' 
+                    : 'var(--card-bg)',
+                  border: isEmbeddingKey 
+                    ? '2px solid var(--warn)' 
+                    : '1px solid var(--line)',
                   borderRadius: '8px',
-                  flexWrap: 'wrap'
+                  flexWrap: 'wrap',
+                  position: 'relative'
                 }}>
                   <div style={{ 
                     fontWeight: 600, 

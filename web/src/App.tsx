@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useHealthStore } from '@/stores';
 
 // Navigation components
@@ -8,12 +9,16 @@ import { TabRouter } from './components/Navigation/TabRouter';
 // Sidepanel component
 import { Sidepanel } from './components/Sidepanel';
 
+// UI Components
+import { EmbeddingMismatchWarning } from './components/ui/EmbeddingMismatchWarning';
+
 // Hooks
 import { useAppInit, useModuleLoader, useApplyButton } from '@/hooks';
 
 function App() {
   const [healthDisplay, setHealthDisplay] = useState('—');
   const { status, checkHealth } = useHealthStore();
+  const navigate = useNavigate();
 
   // Initialize hooks
   const { isInitialized, initError } = useAppInit();
@@ -182,9 +187,9 @@ function App() {
         <div className="top-actions">
           <button
             id="btn-learn"
-            title="Open Help & Glossary"
+            title="Open Parameter Glossary"
             style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-            onClick={() => window.location.hash = '#/dashboard?subtab=help'}
+            onClick={() => navigate('/dashboard?subtab=glossary')}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="10"></circle>
@@ -234,7 +239,10 @@ function App() {
             background: 'var(--bg)',
             padding: '12px 24px',
             borderTop: '1px solid var(--accent)',
-            flexShrink: 0
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
           }}>
             <button
               id="save-btn"
@@ -253,6 +261,8 @@ function App() {
                 Error: {saveError}
               </span>
             )}
+            {/* Global embedding mismatch warning - appears next to Apply button */}
+            <EmbeddingMismatchWarning variant="compact" />
           </div>
         </div>
 

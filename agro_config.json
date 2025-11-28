@@ -32,8 +32,8 @@
     "path_boosts": "/gui,/server,/indexer,/retrieval"
   },
   "layer_bonus": {
-    "vendor_penalty": 0.9,
-    "freshness_bonus": 1.05,
+    "vendor_penalty": -0.1,
+    "freshness_bonus": 0.1,
     "intent_matrix": {
       "gui": {
         "gui": 1.2,
@@ -126,14 +126,14 @@
     "agro_reranker_maxlen": 512,
     "agro_reranker_reload_on_change": 0,
     "agro_reranker_reload_period_sec": 60,
-    "cohere_rerank_model": "rerank-v3.5",
+    "cohere_rerank_model": "rerank-3.5",
     "voyage_rerank_model": "rerank-2",
     "reranker_backend": "local",
     "reranker_timeout": 10,
     "rerank_input_snippet_chars": 700
   },
   "generation": {
-    "gen_model": "gpt-5.1",
+    "gen_model": "gpt-5.1-mini",
     "gen_temperature": 0.1,
     "gen_max_tokens": 2048,
     "gen_top_p": 1.0,
@@ -180,7 +180,7 @@
   "training": {
     "reranker_train_epochs": 2,
     "reranker_train_batch": 16,
-    "reranker_train_lr": 0.00002,
+    "reranker_train_lr": 2e-05,
     "reranker_warmup_ratio": 0.1,
     "triplets_min_count": 100,
     "triplets_mine_mode": "replace",

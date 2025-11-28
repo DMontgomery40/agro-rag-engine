@@ -6,6 +6,10 @@ import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAPI } from '@/hooks';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { RepoSelector } from '@/components/ui/RepoSelector';
+import { EmbeddingMismatchWarning } from '@/components/ui/EmbeddingMismatchWarning';
+import { useEmbeddingStatus } from '@/hooks/useEmbeddingStatus';
+import { useRepoStore } from '@/stores/useRepoStore';
 
 // Useful tips shown during response generation
 // Each tip has content and optional category for styling
@@ -154,8 +158,14 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
   const [sending, setSending] = useState(false);
   const [streaming, setStreaming] = useState(false);
   const [typing, setTyping] = useState(false);
-  const [selectedRepo, setSelectedRepo] = useState('');
-  const [repositories, setRepositories] = useState<string[]>([]);
+  // Per-query repo override - empty string means use the global activeRepo
+  const [queryRepoOverride, setQueryRepoOverride] = useState('');
+  
+  // Use centralized repo store for repo list and default
+  const { repos, activeRepo, loadRepos } = useRepoStore();
+  
+  // Check if index exists for "no index" warning
+  const { status: embeddingStatus } = useEmbeddingStatus();
   const [tracePreference, setTracePreference] = useState<boolean>(() => Boolean(traceOpen));
   const [currentTrace, setCurrentTrace] = useState<TraceStep[]>([]);
   const [showSettings, setShowSettings] = useState(false);
@@ -328,30 +338,19 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
     return () => window.removeEventListener('agro-chat-config-updated', handler as EventListener);
   }, [notifyTrace, onTracePreferenceChange]);
 
-  // Load repositories
+  // Load repositories via store
   useEffect(() => {
-    loadRepositories();
+    if (repos.length === 0) {
+      loadRepos();
+    }
     // Load chat history from localStorage
     loadChatHistory();
-  }, []);
+  }, [repos.length, loadRepos]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-
-  const loadRepositories = async () => {
-    try {
-      const response = await fetch(api('repos/list'));
-      if (response.ok) {
-        const data = await response.json();
-        setRepositories(data.repos || ['agro']);
-      }
-    } catch (error) {
-      console.error('[ChatInterface] Failed to load repositories:', error);
-      setRepositories(['agro']);
-    }
-  };
 
   const loadChatHistory = () => {
     try {
@@ -451,7 +450,7 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         question: userMessage.content,
-        repo: selectedRepo || null,
+        repo: queryRepoOverride || activeRepo || null,
         model,
         temperature,
         max_tokens: maxTokens,
@@ -609,7 +608,7 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         question: userMessage.content,
-        repo: selectedRepo || null,
+        repo: queryRepoOverride || activeRepo || null,
         model,
         temperature,
         max_tokens: maxTokens,
@@ -792,24 +791,13 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
             <input id="chat-fast-mode" type="checkbox" checked={fastMode} onChange={(e) => setFastMode(e.target.checked)} style={{ width: '14px', height: '14px', cursor: 'pointer' }} />
             Fast
           </label>
-          <select id="chat-repo-select"
-            value={selectedRepo}
-            onChange={(e) => setSelectedRepo(e.target.value)}
-            style={{
-              background: 'var(--input-bg)',
-              border: '1px solid var(--line)',
-              color: 'var(--fg)',
-              padding: '6px 12px',
-              borderRadius: '4px',
-              fontSize: '12px'
-            }}
-            aria-label="Auto-detect repo"
-          >
-            <option value="">Auto-detect repo</option>
-            {repositories.map(repo => (
-              <option key={repo} value={repo}>{repo}</option>
-            ))}
-          </select>
+          <RepoSelector
+            id="chat-repo-select"
+            value={queryRepoOverride}
+            onChange={setQueryRepoOverride}
+            showAutoDetect={true}
+            compact={true}
+          />
 
           <button
             onClick={handleExport}
@@ -884,6 +872,46 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
           </button>
         </div>
       </div>
+
+      {/* Embedding Mismatch Warning - Critical for chat results */}
+      <EmbeddingMismatchWarning variant="inline" showActions={true} />
+      
+      {/* No Index Warning - Show when user hasn't indexed yet */}
+      {embeddingStatus && !embeddingStatus.hasIndex && embeddingStatus.totalChunks === 0 && (
+        <div
+          role="alert"
+          style={{
+            background: 'linear-gradient(135deg, rgba(255, 170, 0, 0.1) 0%, rgba(255, 170, 0, 0.05) 100%)',
+            border: '1px solid var(--warn)',
+            borderRadius: '8px',
+            padding: '12px 16px',
+            marginBottom: '0',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+            <span style={{ fontSize: '20px', flexShrink: 0 }}>📑</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ 
+                fontWeight: 600, 
+                color: 'var(--warn)', 
+                fontSize: '13px',
+                marginBottom: '4px',
+              }}>
+                No Index Found
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--fg-muted)', lineHeight: 1.5 }}>
+                You need to index your codebase before chat can search it. 
+                Go to <a 
+                  href="/#/rag?subtab=indexing" 
+                  style={{ color: 'var(--link)', textDecoration: 'underline' }}
+                >
+                  RAG → Indexing
+                </a> and click "INDEX NOW" to get started.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main content area with messages and optional sidebars */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>

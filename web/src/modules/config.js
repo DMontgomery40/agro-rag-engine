@@ -515,7 +515,12 @@
             });
 
             if (!r.ok) {
-                alert('Save failed');
+                let detail = 'Save failed';
+                try {
+                    const err = await r.json();
+                    detail = err?.detail || err?.error || detail;
+                } catch (e) {}
+                alert(detail);
                 return;
             }
 
@@ -523,6 +528,8 @@
             if (result.status === 'success') {
                 alert('Configuration updated successfully!');
                 await loadConfig(); // Reload to confirm
+            } else if (result.status === 'error') {
+                alert(result.error || 'Save failed');
             }
         } catch (e) {
             const msg = window.ErrorHelpers ? window.ErrorHelpers.createAlertError('Failed to save configuration', {

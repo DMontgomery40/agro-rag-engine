@@ -50,6 +50,49 @@ def _last_index_timestamp_for_repo(base: Path, repo_name: str) -> str | None:
     return None
 
 
+def _get_index_embedding_metadata(repo_name: str) -> Dict[str, Any] | None:
+    """Read embedding metadata from last_index.json for a specific repo.
+    
+    Searches across all index profiles (out, out.noindex-shared, etc.)
+    to find the most recent index for this repo and returns its embedding config.
+    
+    Returns dict with: embedding_type, embedding_dim, timestamp, index_path
+    Returns None if no index found for this repo.
+    """
+    base_paths = ["out", "out.noindex-shared", "out.noindex-gui", "out.noindex-devclean"]
+    best_meta = None
+    best_ts = None
+    
+    for base in base_paths:
+        base_path = repo_root() / base
+        repo_dir = base_path / repo_name
+        meta_file = repo_dir / "last_index.json"
+        
+        if not meta_file.exists():
+            continue
+            
+        meta = _read_json(meta_file, {})
+        if not meta:
+            continue
+            
+        # Get timestamp for comparison
+        ts = meta.get("timestamp", "")
+        
+        # Track the most recent index
+        if best_ts is None or (ts and ts > best_ts):
+            best_ts = ts
+            best_meta = {
+                "embedding_type": meta.get("embedding_type"),
+                "embedding_dim": meta.get("embedding_dim"),
+                "timestamp": ts,
+                "index_path": str(repo_dir),
+                "collection": meta.get("collection"),
+                "chunk_count": meta.get("chunk_count"),
+            }
+    
+    return best_meta
+
+
 def get_index_stats() -> Dict[str, Any]:
     """Gather comprehensive indexing statistics with storage calculator integration.
 
@@ -201,6 +244,52 @@ def get_index_stats() -> Dict[str, Any]:
     # Set a better global timestamp if any per-repo timestamp found
     if discovered_ts:
         stats["timestamp"] = sorted(discovered_ts)[-1]
+
+    # Get index embedding metadata for current repo to detect mismatches
+    current_repo = stats.get("current_repo", "agro")
+    index_meta = _get_index_embedding_metadata(current_repo)
+    
+    # Check if there are ACTUAL chunks (not just metadata from a stale last_index.json)
+    has_actual_chunks = total_chunks > 0
+    
+    if index_meta and index_meta.get("embedding_type") and has_actual_chunks:
+        stats["index_embedding_config"] = {
+            "provider": index_meta["embedding_type"],
+            "dimensions": index_meta["embedding_dim"],
+            "indexed_at": index_meta["timestamp"],
+            "index_path": index_meta["index_path"],
+            "chunk_count": index_meta.get("chunk_count"),
+        }
+        
+        # Detect mismatch between current config and index
+        config_type = embedding_type.lower()
+        index_type = (index_meta["embedding_type"] or "").lower()
+        config_dim = embedding_dim
+        index_dim = index_meta["embedding_dim"]
+        
+        # Types must match, and if both have dimensions, those must match too
+        type_match = config_type == index_type
+        dim_match = (index_dim is None) or (config_dim == index_dim)
+        
+        stats["embedding_mismatch"] = not (type_match and dim_match)
+        stats["embedding_mismatch_details"] = {
+            "config_type": config_type,
+            "index_type": index_type,
+            "config_dim": config_dim,
+            "index_dim": index_dim,
+            "type_match": type_match,
+            "dim_match": dim_match,
+        }
+    else:
+        # No index found or no actual chunks - no mismatch possible
+        # (but also no index to search - user needs to run indexing!)
+        stats["index_embedding_config"] = None
+        stats["embedding_mismatch"] = False
+        stats["embedding_mismatch_details"] = None
+        stats["has_index"] = False  # Explicit flag for frontend
+
+    # Add explicit has_index flag for clarity
+    stats["has_index"] = has_actual_chunks and (index_meta is not None)
 
     return stats
 

@@ -1,8 +1,9 @@
 // AGRO - Glossary Subtab
 // Searchable glossary of all RAG configuration parameters
-// Dynamically reads from tooltips module
+// Merges tooltips from both React hook AND legacy window.Tooltips for full coverage
 
 import { useState, useEffect, useMemo } from 'react';
+import { useTooltips } from '@/hooks/useTooltips';
 import './HelpGlossary.css';
 
 // Category definitions for organizing tooltips
@@ -104,41 +105,63 @@ function categorizeTooltip(paramName: string): string {
 export function GlossarySubtab() {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentFilter, setCurrentFilter] = useState('all');
-  const [allItems, setAllItems] = useState<GlossaryItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [legacyTooltips, setLegacyTooltips] = useState<Record<string, string>>({});
+  const [legacyLoaded, setLegacyLoaded] = useState(false);
+  
+  // Use React useTooltips hook (primary source - newer, preferred)
+  const { tooltips: reactTooltips, loading: reactLoading } = useTooltips();
 
-  // Load glossary items from tooltips
+  // Also load legacy window.Tooltips for backwards compatibility
   useEffect(() => {
-    // Access window.Tooltips from legacy module
-    const tooltips = (window as any).Tooltips;
-    if (!tooltips || !tooltips.buildTooltipMap) {
-      console.warn('[GlossarySubtab] window.Tooltips not available yet');
-      // Retry after a short delay
-      const timeout = setTimeout(() => {
-        const retryTooltips = (window as any).Tooltips;
-        if (retryTooltips && retryTooltips.buildTooltipMap) {
-          loadGlossary();
-        } else {
-          setLoading(false);
+    const loadLegacy = () => {
+      const legacyModule = (window as any).Tooltips;
+      if (legacyModule && legacyModule.buildTooltipMap) {
+        try {
+          const map = legacyModule.buildTooltipMap();
+          setLegacyTooltips(map || {});
+        } catch (e) {
+          console.warn('[GlossarySubtab] Failed to load legacy tooltips:', e);
         }
-      }, 1000);
+      }
+      setLegacyLoaded(true);
+    };
+
+    // Try immediately
+    loadLegacy();
+    
+    // Retry after delay if not available yet
+    if (!(window as any).Tooltips) {
+      const timeout = setTimeout(loadLegacy, 1000);
       return () => clearTimeout(timeout);
     }
-
-    loadGlossary();
   }, []);
 
-  const loadGlossary = () => {
-    const tooltips = (window as any).Tooltips;
-    if (!tooltips || !tooltips.buildTooltipMap) {
-      setLoading(false);
-      return;
+  // Merge tooltips: React takes priority, legacy fills gaps
+  const mergedTooltips = useMemo(() => {
+    const merged: Record<string, string> = {};
+    
+    // First add all legacy tooltips
+    for (const [key, value] of Object.entries(legacyTooltips)) {
+      merged[key] = value;
+    }
+    
+    // Then overlay React tooltips (priority - overwrites duplicates)
+    for (const [key, value] of Object.entries(reactTooltips || {})) {
+      merged[key] = value;
+    }
+    
+    return merged;
+  }, [reactTooltips, legacyTooltips]);
+
+  // Build glossary items from merged tooltips
+  const allItems = useMemo(() => {
+    if (Object.keys(mergedTooltips).length === 0) {
+      return [];
     }
 
-    const tooltipMap = tooltips.buildTooltipMap();
     const items: GlossaryItem[] = [];
 
-    for (const [paramName, html] of Object.entries(tooltipMap)) {
+    for (const [paramName, html] of Object.entries(mergedTooltips)) {
       const parsed = parseTooltipHTML(html as string);
       const category = categorizeTooltip(paramName);
 
@@ -158,9 +181,10 @@ export function GlossarySubtab() {
       return a.title.localeCompare(b.title);
     });
 
-    setAllItems(items);
-    setLoading(false);
-  };
+    return items;
+  }, [mergedTooltips]);
+  
+  const loading = reactLoading && !legacyLoaded;
 
   // Filter items
   const filteredItems = useMemo(() => {

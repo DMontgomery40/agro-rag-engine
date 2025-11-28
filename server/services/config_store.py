@@ -4,6 +4,7 @@ import os
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from pydantic import ValidationError
 
 from common.config_loader import load_repos
 from common.paths import repo_root, gui_dir
@@ -140,13 +141,27 @@ def _effective_rerank_backend() -> Dict[str, Any]:
             return {}
     import time
     registry = get_config_registry()
-    backend_env = (registry.get_str("RERANK_BACKEND", "").strip().lower() or "")
+    backend_env_raw = (
+        registry.get_str("RERANKER_BACKEND", "").strip().lower()
+        or registry.get_str("RERANK_BACKEND", "").strip().lower()
+        or ""
+    )
+    def _norm_backend(val: str) -> str:
+        if not val:
+            return ""
+        if val in {"off", "none", "disabled"}:
+            return "none"
+        if val == "hf":
+            return "local"
+        return val
+
+    backend_env = _norm_backend(backend_env_raw)
     now = time.time()
     try:
         info = get_reranker_info()
     except Exception:
         info = {}
-    explicit = backend_env in {"cohere", "local", "hf", "none"}
+    explicit = bool(backend_env)
     mtime = float(info.get("model_dir_mtime") or 0.0)
     recent = (now - mtime) <= (7 * 24 * 3600) if mtime > 0 else False
     # COHERE_API_KEY is a secret, keep os.getenv
@@ -259,6 +274,7 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
     # Split env_updates into agro_config and .env based on AGRO_CONFIG_KEYS
     agro_config_updates = {k: v for k, v in env_updates.items() if k in AGRO_CONFIG_KEYS}
     env_file_updates = {k: v for k, v in env_updates.items() if k not in AGRO_CONFIG_KEYS}
+    validation_error: Optional[str] = None
 
     # Update agro_config.json if there are relevant updates
     if agro_config_updates:
@@ -266,9 +282,21 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
             registry = get_config_registry()
             registry.update_agro_config(agro_config_updates)
             logger.info(f"Updated agro_config.json with keys: {sorted(agro_config_updates.keys())}")
+        except ValidationError as e:
+            logger.error(f"Failed to update agro_config.json: {e}")
+            validation_error = str(e)
         except Exception as e:
             logger.error(f"Failed to update agro_config.json: {e}")
-            # Don't fail the whole operation, continue with .env updates
+            validation_error = str(e)
+
+    if validation_error:
+        return {
+            "status": "error",
+            "error": validation_error,
+            "applied_env_keys": [],
+            "applied_agro_config_keys": [],
+            "repos_count": 0
+        }
 
     # Backup .env
     env_path = root / ".env"
