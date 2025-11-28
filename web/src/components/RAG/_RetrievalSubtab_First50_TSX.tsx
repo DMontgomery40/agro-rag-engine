@@ -396,10 +396,10 @@
       </label>
       <input
         type="number"
-        name="MQ_REWRITES"
+        name="MAX_QUERY_REWRITES"
         value={mqRewrites}
         onChange={(e) => setMqRewrites(parseInt(e.target.value, 10) || 2)}
-        onBlur={() => updateConfig('MQ_REWRITES', mqRewrites)}
+        onBlur={() => updateConfig('MAX_QUERY_REWRITES', mqRewrites)}
         min={1}
       />
     </div>

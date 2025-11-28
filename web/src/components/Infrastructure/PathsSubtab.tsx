@@ -295,7 +295,7 @@ export function PathsSubtab() {
             type="text"
             value={config.GUI_DIR || ''}
             onChange={(e) => updateConfig('GUI_DIR', e.target.value)}
-            placeholder="./gui"
+            placeholder="./web/public"
             style={{
               width: '100%',
               padding: '8px',

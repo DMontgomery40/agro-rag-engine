@@ -1,0 +1,105 @@
+name: Docs Autopilot (LLM)
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_ref:
+        description: 'Base ref to diff against'
+        required: false
+        default: 'origin/main'
+      provider:
+        description: 'LLM provider (agro, openai, or anthropic)'
+        required: false
+        default: 'openai'
+      apply:
+        description: 'Attempt to apply returned patch and open PR'
+        required: false
+        default: 'false'
+  push:
+    branches: [development]
+    paths:
+      - 'server/**'
+      - 'retrieval/**'
+      - 'indexer/**'
+      - 'reranker/**'
+      - 'cli/**'
+      - 'eval/**'
+      - 'infra/**'
+
+jobs:
+  propose-docs:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Generate plan (no LLM)
+        run: |
+          python scripts/docs_ai/generate_docs_from_diff.py --base origin/main
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mkdocs-docs-plan
+          path: mkdocs-docs-plan.md
+
+  apply-llm:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.apply == 'true'
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Run LLM to produce patch
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          python scripts/docs_ai/generate_docs_from_diff.py --base ${{ inputs.base_ref }} --llm ${{ inputs.provider }}
+
+      - name: Apply patch
+        run: |
+          git apply --index mkdocs-docs-llm.patch || echo "No patch applied or patch failed"
+          git diff --cached --stat
+
+      - name: Create PR with changes
+        if: success()
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: docs/ai-update-${{ github.run_id }}
+          base: development
+          title: "docs(ai): proposed updates from LLM"
+          body: |
+            Automated proposal from Docs Autopilot.
+
+            **Review carefully** - LLM output can be wrong.
+
+            Provider: ${{ inputs.provider }}
+            Base ref: ${{ inputs.base_ref }}
+          commit-message: "docs(ai): apply LLM-suggested updates"

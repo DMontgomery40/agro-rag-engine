@@ -42,7 +42,7 @@ export function useTooltips() {
   const buildTooltipMap = useCallback((): TooltipMap => {
     const L = buildTooltipHTML;
 
-    return {
+    const tooltipMap: TooltipMap = {
       // Infrastructure & routing
       QDRANT_URL: L('Qdrant URL', 'HTTP URL for your Qdrant vector database. Used for dense vector queries during retrieval. If unavailable, retrieval still works via BM25 (sparse).', [
         ['Qdrant Docs: Collections', 'https://qdrant.tech/documentation/concepts/collections/'],
@@ -91,14 +91,14 @@ export function useTooltips() {
         ['Local repos.json', '/files/repos.json']
       ]),
       GUI_DIR: L(
-        'GUI Directory',
-        'Path to the legacy JavaScript GUI directory. This is the static file directory containing the original JavaScript-based web interface (index.html, js/, css/). Used by the FastAPI server to serve the legacy GUI at the root path when the React app is not available. Most users should leave this at the default ./gui. Only change if you have moved the GUI files to a custom location or are using a custom build directory.',
+        'UI Public Directory',
+        'Directory for shared UI assets (prices.json, profile checkpoints) used by /api/prices and /api/profiles. Defaults to ./web/public. Point this to a writable volume if you keep pricing catalogs or profiles in sync at runtime; the React app reads from the same source.',
         [
-          ['Legacy GUI Structure', '/gui/README.md'],
           ['Static Files (FastAPI)', 'https://fastapi.tiangolo.com/tutorial/static-files/'],
-          ['Migration to React', '/docs/REACT_MIGRATION.md']
+          ['Prices catalog', '/web/prices.json'],
+          ['Profiles API', '/api/profiles']
         ],
-        [['Legacy', 'warn'], ['Optional', 'info']]
+        [['Recommended', 'info']]
       ),
       DOCS_DIR: L(
         'Documentation Directory',
@@ -401,7 +401,7 @@ export function useTooltips() {
       ),
 
       // Retrieval tuning
-      MQ_REWRITES: L(
+      MAX_QUERY_REWRITES: L(
         'Multi‑Query Rewrites',
         'Number of query variations to generate for improved recall. Each rewrite searches independently, then results are fused and reranked. For example, query "auth flow" might expand to "authentication flow", "login process", "user authentication". Higher values (4-6) improve recall for vague questions like "Where is X implemented?" but increase API calls and latency. Start at 2-3 for general use.',
         [
@@ -578,6 +578,11 @@ export function useTooltips() {
         [['Valid', 'info']]
       ),
     };
+
+    // Legacy aliases for backward compatibility
+    tooltipMap.MQ_REWRITES = tooltipMap.MAX_QUERY_REWRITES;
+
+    return tooltipMap;
   }, [buildTooltipHTML]);
 
   // Load tooltips on mount

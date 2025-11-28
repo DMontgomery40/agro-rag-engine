@@ -24,7 +24,10 @@ def files_root() -> Path:
 
 def gui_dir() -> Path:
     env = os.getenv("GUI_DIR")
-    return _as_dir(env) if env else (repo_root() / "gui")
+    if env:
+        return _as_dir(env)
+    # Legacy GUI assets have been fully removed; default to the React web public assets
+    return repo_root() / "web" / "public"
 
 
 def docs_dir() -> Path:
@@ -35,4 +38,3 @@ def docs_dir() -> Path:
 def data_dir() -> Path:
     env = os.getenv("DATA_DIR")
     return _as_dir(env) if env else (repo_root() / "data")
-

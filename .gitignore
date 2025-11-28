@@ -230,4 +230,4 @@ out/**
 *.png
 
 # Large Qdrant snapshots
-data/snapshots/
+data/snapshots/site/

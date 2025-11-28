@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
-from common.paths import repo_root, gui_dir, docs_dir, files_root
+from common.paths import repo_root, docs_dir, files_root
 from common.config_loader import load_repos
 from server.api_interceptor import setup_interceptor
 from server.frequency_limiter import FrequencyAnomalyMiddleware
@@ -54,7 +54,7 @@ def create_app() -> FastAPI:
     """Application factory for FastAPI app.
 
     - Installs HTTP interceptor, metrics, and frequency limiter middleware
-    - Mounts static content: /gui, /docs, /files, and /web when built
+    - Mounts static content: /web (built React), /docs, /files
     - Includes existing routers: feedback, reranker info, alerts, monitoring
     - Provides minimal core routes to preserve compatibility
     """
@@ -180,13 +180,10 @@ def create_app() -> FastAPI:
             return await call_next(request)
 
     ROOT = repo_root()
-    GUI_DIR = gui_dir()
     DOCS_DIR = docs_dir()
     WEB_DIST = ROOT / "web" / "dist"
 
     # Static mounts
-    if GUI_DIR.exists():
-        app.mount("/gui", StaticFiles(directory=str(GUI_DIR), html=True), name="gui")
     if WEB_DIST.exists():
         from fastapi import APIRouter
         web_router = APIRouter()
@@ -212,6 +209,9 @@ def create_app() -> FastAPI:
         # Catch-all fallback to index.html for SPA routes
         @web_router.get("/{rest_of_path:path}", include_in_schema=False)
         def web_spa_router_catchall(rest_of_path: str):  # type: ignore[unused-ignore]
+            target = WEB_DIST / rest_of_path
+            if target.is_file():
+                return FileResponse(str(target))
             return web_index()
 
         app.include_router(web_router, prefix="/web")
@@ -236,19 +236,11 @@ def create_app() -> FastAPI:
     # Core index + health
     @app.get("/", include_in_schema=False)
     def index():  # type: ignore[unused-ignore]
-        # Optional cutover to /web
-        if os.getenv("GUI_CUTOVER", "0").strip().lower() in {"1", "true", "yes", "on"} and WEB_DIST.exists():
+        if WEB_DIST.exists():
             return RedirectResponse(url="/web")
-        idx = GUI_DIR / "index.html"
-        if idx.exists():
-            resp = FileResponse(str(idx))
-            resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-            resp.headers["Pragma"] = "no-cache"
-            resp.headers["Expires"] = "0"
-            return resp
         if DOCS_DIR.exists():
             return RedirectResponse(url="/docs")
-        return JSONResponse({"error": "No GUI available"}, status_code=404)
+        return JSONResponse({"error": "No Web UI available"}, status_code=404)
 
     @app.get("/health")
     def health():  # type: ignore[unused-ignore]

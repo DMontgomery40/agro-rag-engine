@@ -140,7 +140,7 @@
     "transformers_trust_remote_code": 1
   },
   "generation": {
-    "gen_model": "gpt-5.1",
+    "gen_model": "gpt-4o-mini",
     "gen_temperature": 0.1,
     "gen_max_tokens": 2048,
     "gen_top_p": 1.0,
@@ -226,7 +226,7 @@
     "editor_embed_enabled": 1,
     "editor_enabled": 1,
     "editor_image": "agro-openvscode",
-    "theme_mode": "light",
+    "theme_mode": "dark",
     "open_browser": 1,
     "runtime_mode": "development"
   },

@@ -35,7 +35,7 @@ const CATEGORIES = {
   advanced: {
     title: 'Advanced',
     icon: '⚙️',
-    keywords: ['CUSTOM', 'BOOST', 'LAYER', 'CONTEXT', 'STOP_WORDS', 'MQ_REWRITES']
+    keywords: ['CUSTOM', 'BOOST', 'LAYER', 'CONTEXT', 'STOP_WORDS', 'MAX_QUERY_REWRITES']
   }
 };
 

@@ -1,0 +1,84 @@
+site_name: AGRO Docs
+repo_url: https://github.com/DMontgomery40/agro-rag-engine
+edit_uri: edit/development/mkdocs/docs/
+
+docs_dir: mkdocs/docs
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.instant
+    - navigation.tabs
+    - navigation.top
+    - navigation.sections
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+  palette:
+    - scheme: slate
+      primary: deep purple
+      accent: cyan
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - scheme: default
+      primary: deep purple
+      accent: cyan
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+  - mike:
+      version_selector: true
+      canonical_version: latest
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Quick Start: getting-started/quickstart.md
+      - Installation: getting-started/installation.md
+      - First Steps: getting-started/first-steps.md
+  - Features:
+      - Hybrid Search: features/rag.md
+      - MCP Integration: features/mcp.md
+      - CLI Chat: features/cli-chat.md
+      - Learning Reranker: features/learning-reranker.md
+      - Evaluation: features/evaluation.md
+  - Configuration:
+      - Models: configuration/models.md
+      - Profiles: configuration/profiles.md
+      - Settings: configuration/settings.md
+  - API:
+      - Endpoints: api/endpoints.md
+      - OpenAPI: api/openapi.md
+  - Operations:
+      - Monitoring: operations/monitoring.md
+      - Troubleshooting: operations/troubleshooting.md

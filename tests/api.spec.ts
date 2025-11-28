@@ -46,7 +46,7 @@ test.describe('HTTP API', () => {
     expect(save.ok()).toBeTruthy();
     const list1 = await (await request.get('/api/profiles')).json();
     expect((list1.profiles as string[]).includes('pw-test')).toBeTruthy();
-    const apply = await request.post('/api/profiles/apply', { data: { profile: { MQ_REWRITES: '3' } } });
+    const apply = await request.post('/api/profiles/apply', { data: { profile: { MAX_QUERY_REWRITES: '3' } } });
     expect(apply.ok()).toBeTruthy();
   });
 

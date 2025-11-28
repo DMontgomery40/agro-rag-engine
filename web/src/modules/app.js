@@ -324,7 +324,7 @@
             GEN_MODEL: hasLocal && Number(budget) === 0 ? 'qwen3-coder:14b' : 'gpt-4o-mini',
             EMBEDDING_TYPE: (Number(budget) === 0) ? (hasLocal ? 'local' : 'mxbai') : 'openai',
             RERANK_BACKEND: rprov,
-            MQ_REWRITES: Number(budget) > 50 ? '6' : '3',
+            MAX_QUERY_REWRITES: Number(budget) > 50 ? '6' : '3',
             TOPK_SPARSE: '75',
             TOPK_DENSE: '75',
             FINAL_K: Number(budget) > 50 ? '20' : '10',
@@ -348,7 +348,7 @@
             'Generation': ['GEN_MODEL', 'ENRICH_MODEL', 'ENRICH_MODEL_OLLAMA'],
             'Embeddings': ['EMBEDDING_TYPE', 'VOYAGE_EMBED_DIM', 'EMBEDDING_DIM'],
             'Reranking': ['RERANK_BACKEND', 'COHERE_RERANK_MODEL', 'RERANKER_MODEL'],
-            'Retrieval': ['MQ_REWRITES', 'FINAL_K', 'TOPK_SPARSE', 'TOPK_DENSE', 'HYDRATION_MODE'],
+            'Retrieval': ['MAX_QUERY_REWRITES', 'FINAL_K', 'TOPK_SPARSE', 'TOPK_DENSE', 'HYDRATION_MODE'],
         };
 
         for (const [group, keys] of Object.entries(keyGroups)) {
@@ -449,7 +449,7 @@
                 GEN_MODEL: hasLocal ? 'qwen3-coder:14b' : 'gpt-4o-mini',
                 EMBEDDING_TYPE: hasLocal ? 'local' : 'mxbai',
                 RERANK_BACKEND: hasLocal ? 'local' : 'none',
-                MQ_REWRITES: mem >= 32 ? '4' : '3',
+                MAX_QUERY_REWRITES: mem >= 32 ? '4' : '3',
                 FINAL_K: mem >= 32 ? '10' : '8',
                 TOPK_DENSE: '60', TOPK_SPARSE: '60', HYDRATION_MODE: 'lazy'
             }
@@ -458,7 +458,7 @@
             name: 'cheap_cloud',
             env: {
                 GEN_MODEL: 'gpt-4o-mini', EMBEDDING_TYPE: 'openai', RERANK_BACKEND: 'local',
-                MQ_REWRITES: budgetNum > 25 ? '4' : '3',
+                MAX_QUERY_REWRITES: budgetNum > 25 ? '4' : '3',
                 FINAL_K: budgetNum > 25 ? '10' : '8',
                 TOPK_DENSE: '75', TOPK_SPARSE: '75', HYDRATION_MODE: 'lazy'
             }
@@ -467,7 +467,7 @@
             name: 'premium',
             env: {
                 GEN_MODEL: 'gpt-4o-mini', EMBEDDING_TYPE: 'openai', RERANK_BACKEND: 'cohere',
-                MQ_REWRITES: budgetNum > 100 ? '6' : '4',
+                MAX_QUERY_REWRITES: budgetNum > 100 ? '6' : '4',
                 FINAL_K: budgetNum > 100 ? '20' : '12',
                 TOPK_DENSE: '120', TOPK_SPARSE: '120', HYDRATION_MODE: 'lazy'
             }
@@ -547,7 +547,7 @@
                 lines.push(`  Inference:  ${r.env.GEN_MODEL || '—'}`);
                 lines.push(`  Embedding:  ${r.env.EMBEDDING_TYPE || '—'}`);
                 lines.push(`  Rerank:     ${r.env.RERANK_BACKEND || 'none'}`);
-                lines.push(`  MQ:${r.env.MQ_REWRITES||'3'}  Final-K:${r.env.FINAL_K||'10'}  Sparse:${r.env.TOPK_SPARSE||'75'}  Dense:${r.env.TOPK_DENSE||'75'}`);
+                lines.push(`  MQ:${r.env.MAX_QUERY_REWRITES||'3'}  Final-K:${r.env.FINAL_K||'10'}  Sparse:${r.env.TOPK_SPARSE||'75'}  Dense:${r.env.TOPK_DENSE||'75'}`);
                 lines.push('');
             });
             triOut.textContent = lines.join('\n').trim();
@@ -688,7 +688,7 @@
             GEN_MODEL: defaultGen,
             EMBEDDING_TYPE: defaultEmb,
             RERANK_BACKEND: defaultRprov,
-            MQ_REWRITES: budgetNum > 50 ? '6' : '3',
+            MAX_QUERY_REWRITES: budgetNum > 50 ? '6' : '3',
             FINAL_K: budgetNum > 50 ? '20' : '10',
             TOPK_SPARSE: budgetNum > 50 ? '120' : '75',
             TOPK_DENSE: budgetNum > 50 ? '120' : '75',
@@ -1656,7 +1656,7 @@
             RERANK_INPUT_SNIPPET_CHARS: 'Max code/text characters sent to the reranker per candidate.\nCohere typical: 700. HF/local typical: 600.\nIncrease for more context (potentially higher latency); decrease for speed.',
 
             // Retrieval
-            MQ_REWRITES: 'Multi-query expansion count (more rewrites → better recall, more cost).',
+            MAX_QUERY_REWRITES: 'Multi-query expansion count (more rewrites → better recall, more cost).',
             FINAL_K: 'Final top-K after fusion + rerank (downstream consumers use these).',
             TOPK_DENSE: 'Number of dense candidates (Qdrant) to fuse.',
             TOPK_SPARSE: 'Number of sparse candidates (BM25) to fuse.',
@@ -1680,7 +1680,7 @@
             REPO_PATH: 'Fallback path when repos.json is absent.',
             REPO_ROOT: 'Override project root. Affects GUI/docs/files mounts.',
             FILES_ROOT: 'Root directory served at /files.',
-            GUI_DIR: 'Directory of GUI assets served at /gui.',
+            GUI_DIR: 'Directory for shared UI assets (pricing/profile data). Defaults to ./web/public.',
             DOCS_DIR: 'Directory of docs served at /docs.',
             DATA_DIR: 'Directory for local data files (excludes, keywords).',
             REPOS_FILE: 'Path to repos.json configuration file.',

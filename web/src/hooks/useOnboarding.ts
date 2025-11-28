@@ -264,7 +264,7 @@ export function useOnboarding() {
       name: projectName.trim(),
       sources: state.projectDraft,
       settings: {
-        MQ_REWRITES: speed,
+        MAX_QUERY_REWRITES: speed,
         LANGGRAPH_FINAL_K: 10 + speed * 5,
         RERANK_BACKEND: quality === 1 ? 'none' : quality === 2 ? 'local' : 'cohere',
         GEN_MODEL: quality === 1 ? 'local' : 'gpt-4o-mini',

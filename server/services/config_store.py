@@ -10,6 +10,7 @@ from common.config_loader import load_repos
 from common.paths import repo_root, gui_dir
 from server.services.config_registry import get_config_registry
 from server.models.agro_config_model import AGRO_CONFIG_KEYS
+from server.models.prices_config import PricesConfig, PriceEntry
 
 logger = logging.getLogger("agro.api")
 
@@ -457,36 +458,46 @@ def _classify_components(m: Dict[str, Any]) -> list[str]:
 
 def _normalize_prices(data: Dict[str, Any]) -> Dict[str, Any]:
     try:
-        models = list(data.get("models", [])) if isinstance(data, dict) else []
-        out: list[Dict[str, Any]] = []
-        for m in models:
-            if not isinstance(m, dict):
-                continue
-            mm = dict(m)
-            if "provider" in mm and isinstance(mm["provider"], str):
-                mm["provider"] = mm["provider"].strip().lower()
-            if "model" in mm and isinstance(mm["model"], str):
-                mm["model"] = mm["model"].strip()
-            if not isinstance(mm.get("components"), list) or not mm.get("components"):
-                mm["components"] = _classify_components(mm)
-            out.append(mm)
-        new = dict(data)
-        new["models"] = out
-        return new
-    except Exception:
-        return _default_prices()
+        cfg = PricesConfig.model_validate(data)
+    except ValidationError as exc:
+        logger.warning("prices.json validation failed, using defaults: %s", exc)
+        cfg = PricesConfig.model_validate(_default_prices())
+    except Exception as exc:
+        logger.warning("prices.json load error, using defaults: %s", exc)
+        cfg = PricesConfig.model_validate(_default_prices())
+
+    out: list[Dict[str, Any]] = []
+    for entry in cfg.models:
+        # Normalize provider/model casing and ensure components set
+        mm = entry.model_dump()
+        if isinstance(mm.get("provider"), str):
+            mm["provider"] = mm["provider"].strip().lower()
+        if isinstance(mm.get("model"), str):
+            mm["model"] = mm["model"].strip()
+        if not isinstance(mm.get("components"), list) or not mm.get("components"):
+            mm["components"] = _classify_components(mm)
+        out.append(mm)
+
+    new = cfg.model_dump()
+    new["models"] = out
+    return new
 
 
 def prices_get() -> Dict[str, Any]:
     raw = _read_json(gui_dir() / "prices.json", {"models": []})
-    data = raw if (raw and isinstance(raw, dict) and raw.get("models")) else _default_prices()
+    data = raw if (raw and isinstance(raw, dict) and raw.get("models") is not None) else _default_prices()
     return _normalize_prices(data)
 
 
 def prices_upsert(item: Dict[str, Any]) -> Dict[str, Any]:
     prices_path = gui_dir() / "prices.json"
     data = _read_json(prices_path, {"models": []})
-    models: List[Dict[str, Any]] = list(data.get("models", []))
+    try:
+        cfg = PricesConfig.model_validate(data)
+    except ValidationError as exc:
+        logger.warning("prices.json validation failed on upsert, starting fresh: %s", exc)
+        cfg = PricesConfig()
+    models: List[Dict[str, Any]] = [m.model_dump() for m in cfg.models]
     key = (str(item.get("provider")), str(item.get("model")))
     idx = next((i for i, m in enumerate(models) if (str(m.get("provider")), str(m.get("model"))) == key), None)
     if idx is None:
@@ -497,9 +508,12 @@ def prices_upsert(item: Dict[str, Any]) -> Dict[str, Any]:
     for i in range(len(models)):
         if not isinstance(models[i].get("components"), list):
             models[i]["components"] = _classify_components(models[i])
-    data["models"] = models
-    data["last_updated"] = __import__('datetime').datetime.now().strftime('%Y-%m-%d')
-    _write_json(prices_path, data)
+    cfg = PricesConfig(
+        models=[PriceEntry.model_validate(m) for m in models],
+        currency=cfg.currency,
+        last_updated=__import__('datetime').datetime.now().strftime('%Y-%m-%d')
+    )
+    _write_json(prices_path, cfg.model_dump())
     return {"ok": True, "count": len(models)}
 
 
@@ -573,7 +587,7 @@ def config_schema() -> Dict[str, Any]:
                 "properties": {
                     "FINAL_K": {"type": "integer", "title": "Top-K", "minimum": 1},
                     "LANGGRAPH_FINAL_K": {"type": "integer", "title": "LangGraph Top-K", "minimum": 1},
-                    "MQ_REWRITES": {"type": "integer", "title": "Multi-Query Rewrites", "minimum": 1, "maximum": 10},
+                    "MAX_QUERY_REWRITES": {"type": "integer", "title": "Multi-Query Rewrites", "minimum": 1, "maximum": 10},
                     "SKIP_DENSE": {"type": "boolean", "title": "Skip Dense Embeddings"},
                 },
             },
@@ -666,7 +680,7 @@ def config_schema() -> Dict[str, Any]:
         "retrieval": {
             "FINAL_K": registry.get_int("FINAL_K", registry.get_int("LANGGRAPH_FINAL_K", 10)),
             "LANGGRAPH_FINAL_K": registry.get_int("LANGGRAPH_FINAL_K", registry.get_int("FINAL_K", 10)),
-            "MQ_REWRITES": registry.get_int("MQ_REWRITES", 2),
+            "MAX_QUERY_REWRITES": registry.get_int("MAX_QUERY_REWRITES", registry.get_int("MQ_REWRITES", 2)),
             "SKIP_DENSE": registry.get_bool("SKIP_DENSE", False),
         },
         "reranker": {
@@ -705,6 +719,9 @@ def config_schema() -> Dict[str, Any]:
             "default_repo": default_repo,
         },
     }
+
+    # Legacy aliases for downstream consumers expecting old keys
+    values["retrieval"]["MQ_REWRITES"] = values["retrieval"]["MAX_QUERY_REWRITES"]
 
     for k in list(os.environ.keys()):
         if k in SECRET_FIELDS and os.environ.get(k):

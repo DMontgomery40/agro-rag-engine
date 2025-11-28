@@ -1433,6 +1433,7 @@ class AgroConfigRoot(BaseModel):
             'RRF_K_DIV': self.retrieval.rrf_k_div,
             'LANGGRAPH_FINAL_K': self.retrieval.langgraph_final_k,
             'MAX_QUERY_REWRITES': self.retrieval.max_query_rewrites,
+            'MQ_REWRITES': self.retrieval.max_query_rewrites,  # Legacy alias
             'FALLBACK_CONFIDENCE': self.retrieval.fallback_confidence,
             'FINAL_K': self.retrieval.final_k,
             'EVAL_FINAL_K': self.retrieval.eval_final_k,
@@ -1641,7 +1642,7 @@ class AgroConfigRoot(BaseModel):
             retrieval=RetrievalConfig(
                 rrf_k_div=data.get('RRF_K_DIV', 60),
                 langgraph_final_k=data.get('LANGGRAPH_FINAL_K', 20),
-                max_query_rewrites=data.get('MAX_QUERY_REWRITES', 2),
+                max_query_rewrites=data.get('MAX_QUERY_REWRITES', data.get('MQ_REWRITES', 2)),
                 fallback_confidence=data.get('FALLBACK_CONFIDENCE', 0.55),
                 final_k=data.get('FINAL_K', 10),
                 eval_final_k=data.get('EVAL_FINAL_K', 5),

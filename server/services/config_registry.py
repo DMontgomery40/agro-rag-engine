@@ -35,6 +35,11 @@ from server.models.agro_config_model import AgroConfigRoot, AGRO_CONFIG_KEYS
 logger = logging.getLogger("agro.config")
 
 
+LEGACY_KEY_ALIASES = {
+    'MQ_REWRITES': 'MAX_QUERY_REWRITES',
+}
+
+
 class ConfigRegistry:
     """Centralized configuration registry with multi-source merging."""
 
@@ -274,8 +279,14 @@ class ConfigRegistry:
             if not self._loaded:
                 self.load()
 
+            # Normalize legacy aliases (e.g., MQ_REWRITES -> MAX_QUERY_REWRITES)
+            normalized_updates = {
+                LEGACY_KEY_ALIASES.get(k, k): v
+                for k, v in updates.items()
+            }
+
             # Filter to only AGRO_CONFIG_KEYS
-            agro_updates = {k: v for k, v in updates.items() if k in AGRO_CONFIG_KEYS}
+            agro_updates = {k: v for k, v in normalized_updates.items() if k in AGRO_CONFIG_KEYS}
             if not agro_updates:
                 logger.debug("No AGRO config keys to update")
                 return

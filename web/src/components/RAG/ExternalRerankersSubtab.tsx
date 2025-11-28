@@ -440,7 +440,7 @@ export function ExternalRerankersSubtab() {
               <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <input
                   type="radio"
-                  name="active_reranker"
+                  name="RERANKER_ACTIVE"
                   value="local"
                   checked={activeChoice === 'local'}
                   onChange={() => handleActiveChange('local')}
@@ -450,7 +450,7 @@ export function ExternalRerankersSubtab() {
               <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <input
                   type="radio"
-                  name="active_reranker"
+                  name="RERANKER_ACTIVE"
                   value="cloud"
                   checked={activeChoice === 'cloud'}
                   onChange={() => handleActiveChange('cloud')}
@@ -676,7 +676,7 @@ export function ExternalRerankersSubtab() {
               <span className="help-icon" data-tooltip="RERANKER_CLOUD_MODEL">?</span>
             </label>
             <select
-              name="RERANKER_CLOUD_MODEL_SELECT"
+              name="RERANKER_CLOUD_MODEL"
               value={cloudModel}
               onChange={(e) => {
                 const value = e.target.value;

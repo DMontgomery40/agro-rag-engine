@@ -30,7 +30,7 @@ def test_prices_have_components():
     # At least one generative model must be tagged GEN
     assert any(isinstance(m.get("components"), list) and ("GEN" in m.get("components", [])) for m in models), "no GEN models tagged"
 
-    # Common known examples from gui/prices.json should classify
+    # Common known examples from web/public/prices.json should classify
     # Embedding
     emb = next((m for m in models if m.get("model") == "text-embedding-3-small"), None)
     if emb:
@@ -40,4 +40,3 @@ def test_prices_have_components():
     rr = next((m for m in models if m.get("model") in {"voyage-rerank-2", "rerank-english-v3.0"}), None)
     if rr:
         assert "RERANK" in rr.get("components", []), "rerank model missing RERANK component"
-

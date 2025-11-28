@@ -132,7 +132,7 @@
   function updateSettingsSummary(){
     const summary = $('#onboard-summary-content'); if (!summary) return;
     const { speed, quality, cloud } = onboardingState.settings;
-    const speedMap = { 1:'MQ_REWRITES=1, LANGGRAPH_FINAL_K=10', 2:'MQ_REWRITES=2, LANGGRAPH_FINAL_K=15', 3:'MQ_REWRITES=3, LANGGRAPH_FINAL_K=20', 4:'MQ_REWRITES=4, LANGGRAPH_FINAL_K=25' };
+    const speedMap = { 1:'MAX_QUERY_REWRITES=1, LANGGRAPH_FINAL_K=10', 2:'MAX_QUERY_REWRITES=2, LANGGRAPH_FINAL_K=15', 3:'MAX_QUERY_REWRITES=3, LANGGRAPH_FINAL_K=20', 4:'MAX_QUERY_REWRITES=4, LANGGRAPH_FINAL_K=25' };
     const qualityMap = { 1:'RERANK_BACKEND=none, GEN_MODEL=local', 2:'RERANK_BACKEND=local, GEN_MODEL=gpt-4o-mini', 3:'RERANK_BACKEND=cohere, GEN_MODEL=gpt-4o, CONF_TOP1=0.55' };
     const cloudMap = { 1:'EMBEDDING_TYPE=local, VECTOR_BACKEND=qdrant (local)', 2:'EMBEDDING_TYPE=openai, VECTOR_BACKEND=qdrant (cloud)' };
     summary.innerHTML = `<div>Speed: ${speedMap[speed]||'default'}</div><div>Quality: ${qualityMap[quality]||'default'}</div><div>Cloud: ${cloudMap[cloud]||'default'}</div>`;
@@ -141,7 +141,7 @@
   async function saveAsProject(){
     const name = prompt('Enter a name for this project:'); if (!name || !name.trim()) return;
     const { speed, quality, cloud } = onboardingState.settings;
-    const profile = { name: name.trim(), sources: onboardingState.projectDraft, settings: { MQ_REWRITES: speed, LANGGRAPH_FINAL_K: 10 + (speed*5), RERANK_BACKEND: quality===1?'none':(quality===2?'local':'cohere'), GEN_MODEL: quality===1?'local':'gpt-4o-mini', EMBEDDING_TYPE: cloud===1?'local':'openai' }, golden: onboardingState.questions.map(q=>q.text) };
+    const profile = { name: name.trim(), sources: onboardingState.projectDraft, settings: { MAX_QUERY_REWRITES: speed, LANGGRAPH_FINAL_K: 10 + (speed*5), RERANK_BACKEND: quality===1?'none':(quality===2?'local':'cohere'), GEN_MODEL: quality===1?'local':'gpt-4o-mini', EMBEDDING_TYPE: cloud===1?'local':'openai' }, golden: onboardingState.questions.map(q=>q.text) };
     try{ const res = await fetch(api('/api/profiles/save'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(profile) }); if (!res.ok) throw new Error('Failed to save project'); alert('Project saved successfully!'); await fetch(api('/api/profiles/apply'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ profile_name: name.trim() }) }); }
     catch(err){ console.error('Save project error:', err); alert('Error saving project: ' + err.message); }
   }
@@ -197,8 +197,33 @@
   }
 
   function initOnboarding(){
-    try{ const savedStep = localStorage.getItem('onboarding_step'); if(savedStep){ const step=parseInt(savedStep,10); if(step>=1 && step<=onboardingState.maxStep){ onboardingState.step = step; } } }catch{}
+    try{
+      let stepOverride;
+      if (typeof window.__onboardingFallbackStep === 'number') {
+        stepOverride = window.__onboardingFallbackStep;
+      } else {
+        const savedStep = localStorage.getItem('onboarding_step');
+        if(savedStep){
+          const parsed = parseInt(savedStep,10);
+          if(parsed>=1 && parsed<=onboardingState.maxStep){
+            stepOverride = parsed;
+          }
+        }
+      }
+      if (stepOverride && stepOverride >=1 && stepOverride <= onboardingState.maxStep) {
+        onboardingState.step = stepOverride;
+      }
+    }catch{}
     $$('.ob-card').forEach(card=>{ card.addEventListener('click', ()=>{ const choice = card.getAttribute('data-choice'); onboardingState.projectDraft.sourceType = choice; nextOnboard(); }); });
+    $$('.ob-dot').forEach(dot => {
+      dot.addEventListener('click', () => {
+        const stepAttr = dot.getAttribute('data-step');
+        const stepNum = stepAttr ? parseInt(stepAttr, 10) : NaN;
+        if (!Number.isNaN(stepNum)) {
+          showOnboardStep(stepNum);
+        }
+      });
+    });
     $$('.ob-mode-tab').forEach(tab=>{ tab.addEventListener('click', ()=>{ const mode = tab.getAttribute('data-mode'); onboardingState.projectDraft.sourceType = mode; $$('.ob-mode-tab').forEach(t=>t.classList.remove('active')); tab.classList.add('active'); $$('.ob-mode-content').forEach(c=>c.classList.remove('active')); const tgt=$(`#onboard-${mode}-mode`); if(tgt) tgt.classList.add('active'); }); });
     const folderBtn=$('#onboard-folder-btn'), folderPicker=$('#onboard-folder-picker'), folderDisplay=$('#onboard-folder-display'), folderPath=$('#onboard-folder-path');
     if (folderBtn && folderPicker){ folderBtn.addEventListener('click', ()=>folderPicker.click()); folderPicker.addEventListener('change',(e)=>{ if(e.target.files && e.target.files.length>0){ const path=e.target.files[0].webkitRelativePath || e.target.files[0].path || ''; const folderName = path.split('/')[0] || 'Selected folder'; if (folderDisplay) folderDisplay.textContent = folderName; if (folderPath) folderPath.value = folderName; } }); }
@@ -213,6 +238,10 @@
     const openChat=$('#onboard-open-chat'); if (openChat){ openChat.addEventListener('click',(e)=>{ e.preventDefault(); if (window.Navigation && window.Navigation.navigateTo) { window.Navigation.navigateTo('chat'); } else if (window.Tabs && window.Tabs.switchTab) { window.Tabs.switchTab('chat'); } }); }
     const backBtn=$('#onboard-back'), nextBtn=$('#onboard-next'); if (backBtn) backBtn.addEventListener('click', backOnboard); if (nextBtn) nextBtn.addEventListener('click', nextOnboard);
     showOnboardStep(onboardingState.step);
+    try {
+      window.__onboardingReady = true;
+      delete window.__onboardingFallbackStep;
+    } catch {}
   }
 
   function ensureOnboardingInit(){ if (!onboardingState._initialized){ initOnboarding(); onboardingState._initialized = true; } }

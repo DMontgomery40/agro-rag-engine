@@ -1,7 +1,7 @@
 
 /**
  * Cost logic for AGRO GUI (browser-only, no bundler).
- * - Loads gui/prices.json (same origin).
+ * - Loads prices.json from the API (same origin) to match backend normalization.
  * - Supports chat/completions, embeddings, and rerankers.
  * - Returns per-request cost breakdown.
  */
@@ -27,7 +27,8 @@ async function loadPrices() {
   if (PRICE_CACHE.json && now - PRICE_CACHE.loadedAt < PRICE_TTL_MS) {
     return PRICE_CACHE.json;
   }
-  const res = await fetch('./prices.json', { cache: 'no-store' });
+  const api = (window.CoreUtils && window.CoreUtils.api) ? window.CoreUtils.api : (path) => path;
+  const res = await fetch(api('/api/prices'), { cache: 'no-store' });
   if (!res.ok) throw new Error(`Failed to load prices.json: ${res.status}`);
   const json = await res.json();
   PRICE_CACHE.json = json;

@@ -122,7 +122,7 @@
     if (adv.workload.rerank_tokens_per_req === undefined && costRR !== undefined) adv.workload.rerank_tokens_per_req = costRR;
     // MQ default from current env if not provided
     if (adv.workload.mq_rewrites === undefined) {
-      const mq = parseInt(env.MQ_REWRITES || '');
+      const mq = parseInt(env.MAX_QUERY_REWRITES || '');
       adv.workload.mq_rewrites = Number.isFinite(mq) && mq>0 ? mq : undefined; // leave undefined so server can recommend
     }
     const payload = {

@@ -1,13 +1,12 @@
 from typing import Dict, Any, Optional
 from fastapi import APIRouter
-from server.utils import read_json
-from common.paths import gui_dir
+from server.services.config_store import prices_get
 
 router = APIRouter()
 
 def _find_price_kind(provider: str, model: Optional[str], kind: str) -> Optional[Dict[str, Any]]:
     """Find a price row constrained by kind: 'gen' | 'embed' | 'rerank'."""
-    data = read_json(gui_dir() / "prices.json", {"models": []})
+    data = prices_get()
     models = data.get("models", [])
     prov = str(provider or '').lower()
     mdl = str(model or '').lower()
@@ -54,7 +53,7 @@ def _estimate_cost(
     rerank_provider: Optional[str] = None,
     rerank_model: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Estimate daily and monthly costs using gui/prices.json."""
+    """Estimate daily and monthly costs using web/public/prices.json."""
     rpd = max(1, int(requests_per_day or 0))
 
     # Generation

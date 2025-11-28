@@ -119,7 +119,7 @@ def test_api_tracker_module():
 
 def test_pricing_data():
     """Verify pricing data includes all providers"""
-    prices_file = Path(__file__).parent.parent.parent / "gui" / "prices.json"
+    prices_file = Path(__file__).parent.parent.parent / "web" / "public" / "prices.json"
     assert prices_file.exists(), "prices.json not found"
 
     with open(prices_file) as f:

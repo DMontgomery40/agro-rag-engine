@@ -13,10 +13,10 @@ export const TuneStep: React.FC = () => {
     const { speed, quality, cloud } = settings;
 
     const speedMap: Record<number, string> = {
-      1: 'MQ_REWRITES=1, LANGGRAPH_FINAL_K=10',
-      2: 'MQ_REWRITES=2, LANGGRAPH_FINAL_K=15',
-      3: 'MQ_REWRITES=3, LANGGRAPH_FINAL_K=20',
-      4: 'MQ_REWRITES=4, LANGGRAPH_FINAL_K=25',
+      1: 'MAX_QUERY_REWRITES=1, LANGGRAPH_FINAL_K=10',
+      2: 'MAX_QUERY_REWRITES=2, LANGGRAPH_FINAL_K=15',
+      3: 'MAX_QUERY_REWRITES=3, LANGGRAPH_FINAL_K=20',
+      4: 'MAX_QUERY_REWRITES=4, LANGGRAPH_FINAL_K=25',
     };
 
     const qualityMap: Record<number, string> = {

@@ -48,7 +48,7 @@ const SETTING_INFO: Record<string, {
     category: 'Retrieval',
     icon: '⚙️'
   },
-  MQ_REWRITES: {
+  MAX_QUERY_REWRITES: {
     name: 'Multi-Query Expansion',
     description: 'Number of query variations generated to cast a wider search net. More rewrites = better recall but higher cost.',
     category: 'Search Strategy',

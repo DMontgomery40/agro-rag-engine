@@ -1,7 +1,166 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+
+declare global {
+  interface Window {
+    ensureOnboardingInit?: () => void;
+    Onboarding?: {
+      initOnboarding?: () => void;
+      ensureOnboardingInit?: () => void;
+    };
+  }
+}
 
 // Exact legacy onboarding tab (Get Started) rendered via innerHTML for 1:1 parity
 export default function StartTab() {
+  useEffect(() => {
+    const w = window as any;
+    const root = document.getElementById('tab-start');
+    if (!root) {
+      return;
+    }
+    const steps = Array.from(root.querySelectorAll('.ob-step'));
+    const dots = Array.from(root.querySelectorAll('.ob-dot'));
+    const backBtn = root.querySelector<HTMLButtonElement>('#onboard-back');
+    const nextBtn = root.querySelector<HTMLButtonElement>('#onboard-next');
+    const maxStep = dots.length || steps.length || 5;
+
+    const fallbackState = {
+      active: true,
+      step: 1,
+    };
+
+    const applyFallbackStep = (target: number) => {
+      if (!fallbackState.active) {
+        return;
+      }
+      const step = Math.max(1, Math.min(maxStep, target));
+      fallbackState.step = step;
+      w.__onboardingFallbackStep = step;
+      dots.forEach((dot, idx) => {
+        dot.classList.toggle('active', idx + 1 === step);
+        dot.classList.toggle('completed', idx + 1 < step);
+      });
+      steps.forEach((section, idx) => {
+        section.classList.toggle('active', idx + 1 === step);
+      });
+      if (backBtn) {
+        backBtn.style.display = step === 1 ? 'none' : 'block';
+      }
+      if (nextBtn) {
+        nextBtn.textContent = step === maxStep ? 'Done' : 'Next →';
+      }
+    };
+
+    const fallbackNext = (event: Event) => {
+      if (!fallbackState.active || w.__onboardingReady) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      applyFallbackStep(fallbackState.step + 1);
+    };
+
+    const fallbackBack = (event: Event) => {
+      if (!fallbackState.active || w.__onboardingReady) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      applyFallbackStep(fallbackState.step - 1);
+    };
+
+    const fallbackDot = (event: Event) => {
+      if (!fallbackState.active || w.__onboardingReady) {
+        return;
+      }
+      const target = Number((event.currentTarget as HTMLElement).dataset.step);
+      if (!Number.isNaN(target)) {
+        event.preventDefault();
+        event.stopPropagation();
+        applyFallbackStep(target);
+      }
+    };
+
+    if (nextBtn) {
+      nextBtn.addEventListener('click', fallbackNext, true);
+    }
+    if (backBtn) {
+      backBtn.addEventListener('click', fallbackBack, true);
+    }
+    dots.forEach((dot) => {
+      dot.addEventListener('click', fallbackDot, true);
+    });
+
+    applyFallbackStep(1);
+
+    const disableFallback = () => {
+      if (!fallbackState.active) {
+        return;
+      }
+      fallbackState.active = false;
+      if (nextBtn) {
+        nextBtn.removeEventListener('click', fallbackNext, true);
+      }
+      if (backBtn) {
+        backBtn.removeEventListener('click', fallbackBack, true);
+      }
+      dots.forEach((dot) => {
+        dot.removeEventListener('click', fallbackDot, true);
+      });
+    };
+
+    let initialized = false;
+    const tryInvoke = () => {
+      if (initialized) {
+        return true;
+      }
+      if (window.Onboarding?.ensureOnboardingInit) {
+        window.Onboarding.ensureOnboardingInit();
+        disableFallback();
+        initialized = true;
+        return true;
+      }
+      if (window.Onboarding?.initOnboarding) {
+        window.Onboarding.initOnboarding();
+        disableFallback();
+        initialized = true;
+        return true;
+      }
+      if (window.ensureOnboardingInit) {
+        window.ensureOnboardingInit();
+        disableFallback();
+        initialized = true;
+        return true;
+      }
+      return false;
+    };
+
+    const ready = tryInvoke();
+
+    const handler = () => {
+      tryInvoke();
+    };
+    window.addEventListener('react-ready', handler);
+
+    let poll: number | undefined;
+    if (!ready) {
+      poll = window.setInterval(() => {
+        if (tryInvoke() && poll) {
+          window.clearInterval(poll);
+          poll = undefined;
+        }
+      }, 200);
+    }
+
+    return () => {
+      window.removeEventListener('react-ready', handler);
+      if (poll) {
+        window.clearInterval(poll);
+      }
+      disableFallback();
+    };
+  }, []);
+
   const inner = `
             <div class="ob-container">
                 <!-- Progress indicator -->
