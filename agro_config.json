@@ -32,6 +32,9 @@
     "path_boosts": "/gui,/server,/indexer,/retrieval"
   },
   "layer_bonus": {
+    "gui": 0.15,
+    "retrieval": 0.15,
+    "indexer": 0.15,
     "vendor_penalty": -0.1,
     "freshness_bonus": 0.1,
     "intent_matrix": {
@@ -118,6 +121,9 @@
     "repos_file": "./repos.json"
   },
   "reranking": {
+    "reranker_active": "cloud",
+    "reranker_provider": "cohere",
+    "reranker_cloud_model": "rerank-3.5",
     "reranker_model": "models/cross-encoder-agro",
     "agro_reranker_enabled": 1,
     "agro_reranker_alpha": 0.7,
@@ -128,22 +134,23 @@
     "agro_reranker_reload_period_sec": 60,
     "cohere_rerank_model": "rerank-3.5",
     "voyage_rerank_model": "rerank-2",
-    "reranker_backend": "local",
+    "reranker_backend": "cohere",
     "reranker_timeout": 10,
-    "rerank_input_snippet_chars": 700
+    "rerank_input_snippet_chars": 700,
+    "transformers_trust_remote_code": 1
   },
   "generation": {
-    "gen_model": "gpt-5.1-mini",
+    "gen_model": "gpt-5.1",
     "gen_temperature": 0.1,
     "gen_max_tokens": 2048,
     "gen_top_p": 1.0,
     "gen_timeout": 60,
     "gen_retry_max": 2,
-    "enrich_model": "gpt-5.1-mini",
+    "enrich_model": "gpt-5-mini",
     "enrich_backend": "openai",
     "enrich_disabled": 0,
     "ollama_num_ctx": 8192,
-    "gen_model_cli": "gpt-4o-mini",
+    "gen_model_cli": "gpt-5",
     "gen_model_ollama": "gpt-4o-mini",
     "ollama_request_timeout": 300,
     "ollama_stream_idle_timeout": 60
@@ -180,7 +187,7 @@
   "training": {
     "reranker_train_epochs": 2,
     "reranker_train_batch": 16,
-    "reranker_train_lr": 2e-05,
+    "reranker_train_lr": 0.00002,
     "reranker_warmup_ratio": 0.1,
     "triplets_min_count": 100,
     "triplets_mine_mode": "replace",
@@ -209,7 +216,7 @@
     "editor_embed_enabled": 1,
     "editor_enabled": 1,
     "editor_image": "agro-openvscode",
-    "theme_mode": "dark",
+    "theme_mode": "light",
     "open_browser": 1,
     "runtime_mode": "development"
   },

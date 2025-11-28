@@ -20,6 +20,8 @@ interface EvalRun {
   top1_accuracy: number;
   topk_accuracy: number;
   duration_secs: number;
+  use_multi?: boolean;
+  final_k?: number;
   config: Record<string, any>;
   results: QuestionResult[];
 }
@@ -222,17 +224,27 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
     );
   }
 
+  // Normalize config by merging snapshot with runtime fields so diffs always reflect actual run params
+  const normalizeConfig = (run: EvalRun | null) => {
+    if (!run) return {};
+    const cfg = { ...(run.config || {}) };
+    if (run.use_multi !== undefined) {
+      cfg['use_multi'] = run.use_multi;
+      cfg['eval_multi'] = run.use_multi ? 1 : 0;
+    }
+    if (run.final_k !== undefined) {
+      cfg['final_k'] = run.final_k;
+      cfg['eval_final_k'] = run.final_k;
+    }
+    return cfg;
+  };
+
   const getConfigDiff = () => {
-    if (!compareRun) return null;
+    if (!compareRun) return [];
 
     // Handle case where one or both runs don't have config
-    const currentConfig = evalRun.config || {};
-    const previousConfig = compareRun.config || {};
-
-    // If NEITHER run has config, return null
-    if (Object.keys(currentConfig).length === 0 && Object.keys(previousConfig).length === 0) {
-      return null;
-    }
+    const currentConfig = normalizeConfig(evalRun);
+    const previousConfig = normalizeConfig(compareRun);
 
     const allKeys = new Set([...Object.keys(currentConfig), ...Object.keys(previousConfig)]);
     const diffs: Array<{ key: string; current: any; previous: any; changed: boolean; isEmbedding?: boolean }> = [];
@@ -606,7 +618,7 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
       </div>
 
       {/* 🔥 CONFIG DIFF - THE MOST IMPORTANT SECTION 🔥 */}
-      {configDiffs && configDiffs.length > 0 && (
+      {compareRun && (
         <div style={{
           background: 'linear-gradient(135deg, rgba(var(--accent-rgb), 0.05), rgba(var(--link-rgb), 0.05))',
           border: '3px solid var(--accent)',
@@ -672,6 +684,11 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
             }}>
               {((evalRun.topk_accuracy - (compareRun?.topk_accuracy ?? 0)) * 100).toFixed(1)}%
             </span>
+            {configDiffs.length === 0 && (
+              <span style={{ marginLeft: '12px', color: 'var(--fg-muted)', fontStyle: 'italic' }}>
+                No config deltas captured; AI analysis is still available.
+              </span>
+            )}
           </div>
 
           <div style={{ display: 'grid', gap: '12px', fontSize: '13px' }}>
@@ -830,6 +847,18 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
                 </div>
               );
             })}
+            {configDiffs.length === 0 && (
+              <div style={{
+                padding: '12px 16px',
+                background: 'var(--card-bg)',
+                border: '1px dashed var(--line)',
+                borderRadius: '8px',
+                color: 'var(--fg-muted)',
+                fontSize: '12px'
+              }}>
+                No configuration differences detected between runs. If you expected changes, verify that eval config keys are captured via Pydantic and rerun.
+              </div>
+            )}
           </div>
 
           {/* Regression/Improvement Correlation Summary */}
@@ -866,11 +895,11 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '16px'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '20px' }}>🤖</span>
+            alignItems: 'center',
+            marginBottom: '16px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '20px' }}>🤖</span>
                 <h4 style={{
                   margin: 0,
                   fontSize: '15px',

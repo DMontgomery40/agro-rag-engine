@@ -209,16 +209,17 @@ export const CostLogic = {
     function readInt(id, d){ const el=document.getElementById(id); const v=el?el.value:''; const n=parseInt(v||'',10); return Number.isFinite(n)?n:(d||0); }
     function readStr(id, d){ const el=document.getElementById(id); const v=el?el.value:''; return (v||d||'').toString(); }
 
+    // All values come from Pydantic config - no hardcoded fallbacks
     const payload = {
-      gen_provider: readStr('cost-provider','openai').trim(),
-      gen_model: readStr('cost-model','gpt-5.1-mini').trim(),
+      gen_provider: readStr('cost-provider','').trim(),
+      gen_model: readStr('cost-model','').trim(),
       tokens_in: readInt('cost-in', 500),
       tokens_out: readInt('cost-out', 800),
-      embed_provider: readStr('cost-embed-provider','openai').trim(),
-      embed_model: readStr('cost-embed-model','text-embedding-3-small').trim(),
+      embed_provider: readStr('cost-embed-provider','').trim(),
+      embed_model: readStr('cost-embed-model','').trim(),
       embeds: readInt('cost-embeds', 0),
-      rerank_provider: readStr('cost-rerank-provider','cohere').trim(),
-      rerank_model: readStr('cost-rerank-model','rerank-3.5').trim(),
+      rerank_provider: readStr('cost-rerank-provider','').trim(),
+      rerank_model: readStr('cost-rerank-model','').trim(),
       reranks: readInt('cost-rerank', 0),
       requests_per_day: readInt('cost-rpd', 100),
     };

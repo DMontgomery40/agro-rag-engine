@@ -31,7 +31,7 @@ export function DataQualitySubtab() {
   const [excludeDirs, setExcludeDirs] = useState('');
   const [excludePatterns, setExcludePatterns] = useState('');
   const [excludeKeywords, setExcludeKeywords] = useState('');
-  const [cardsMax, setCardsMax] = useState(0);
+  const [cardsMax, setCardsMax] = useState(100);  // Pydantic default: 100, min: 10
   const [enrichEnabled, setEnrichEnabled] = useState(true);
   const [buildInProgress, setBuildInProgress] = useState(false);
   const [currentStage, setCurrentStage] = useState('');
@@ -145,6 +145,25 @@ export function DataQualitySubtab() {
       }
     };
     loadExcludeKeywords();
+  }, [api]);
+
+  // Load CARDS_MAX from config on mount (Pydantic: min=10, default=100)
+  useEffect(() => {
+    const loadCardsMax = async () => {
+      try {
+        const response = await fetch(api('config'));
+        const data = await response.json();
+        const env = data.env || {};
+        // Parse as int, fallback to 100 (Pydantic default)
+        const val = parseInt(env.CARDS_MAX, 10);
+        if (!isNaN(val) && val >= 10) {
+          setCardsMax(val);
+        }
+      } catch (e) {
+        console.error('Failed to load CARDS_MAX from config:', e);
+      }
+    };
+    loadCardsMax();
   }, [api]);
 
   // Load keywords config on mount
@@ -614,13 +633,17 @@ export function DataQualitySubtab() {
               id="cards-max"
               name="CARDS_MAX"
               value={cardsMax}
-              onChange={(e) => setCardsMax(Number(e.target.value))}
-              min="0"
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                // Enforce Pydantic constraint: ge=10
+                setCardsMax(Math.max(10, val));
+              }}
+              min="10"
               step="10"
               style={{ maxWidth: '160px' }}
             />
             <p className="small" style={{ color: 'var(--fg-muted)' }}>
-              Limit chunks (0 = all)
+              Max chunks to process (min: 10, default: 100)
             </p>
           </div>
           <div className="input-group">

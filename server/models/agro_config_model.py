@@ -734,6 +734,31 @@ class GenerationConfig(BaseModel):
         description="Ollama generation model"
     )
 
+    gen_model_http: str = Field(
+        default="",
+        description="HTTP transport generation model override"
+    )
+
+    gen_model_mcp: str = Field(
+        default="",
+        description="MCP transport generation model override"
+    )
+
+    enrich_model_ollama: str = Field(
+        default="",
+        description="Ollama enrichment model"
+    )
+
+    ollama_url: str = Field(
+        default="http://127.0.0.1:11434/api",
+        description="Ollama API URL"
+    )
+
+    openai_base_url: str = Field(
+        default="",
+        description="OpenAI API base URL override (for proxies)"
+    )
+
     # Local (Ollama) HTTP timeouts — clear, user-friendly naming
     ollama_request_timeout: int = Field(
         default=300,
@@ -913,6 +938,33 @@ class TracingConfig(BaseModel):
     alert_notify_severities: str = Field(
         default="critical,warning",
         description="Alert severities to notify"
+    )
+
+    langchain_endpoint: str = Field(
+        default="https://api.smith.langchain.com",
+        description="LangChain/LangSmith API endpoint"
+    )
+
+    langchain_project: str = Field(
+        default="agro",
+        description="LangChain project name"
+    )
+
+    langchain_tracing_v2: int = Field(
+        default=0,
+        ge=0,
+        le=1,
+        description="Enable LangChain v2 tracing"
+    )
+
+    langtrace_api_host: str = Field(
+        default="",
+        description="LangTrace API host"
+    )
+
+    langtrace_project_id: str = Field(
+        default="",
+        description="LangTrace project ID"
     )
 
     @field_validator('tracing_mode', mode='before')
@@ -1278,6 +1330,11 @@ Format your response with clear sections using markdown headers.''',
         description="Analyze eval regressions with skeptical approach - avoid false explanations"
     )
 
+    lightweight_cards: str = Field(
+        default='''Extract key information from this code: symbols (function/class names), purpose (one sentence), keywords (technical terms). Return JSON only.''',
+        description="Lightweight card generation prompt for faster indexing"
+    )
+
 
 class AgroConfigRoot(BaseModel):
     """Root configuration model for agro_config.json.
@@ -1432,6 +1489,11 @@ class AgroConfigRoot(BaseModel):
             'OLLAMA_STREAM_IDLE_TIMEOUT': self.generation.ollama_stream_idle_timeout,
             'GEN_MODEL_CLI': self.generation.gen_model_cli,
             'GEN_MODEL_OLLAMA': self.generation.gen_model_ollama,
+            'GEN_MODEL_HTTP': self.generation.gen_model_http,
+            'GEN_MODEL_MCP': self.generation.gen_model_mcp,
+            'ENRICH_MODEL_OLLAMA': self.generation.enrich_model_ollama,
+            'OLLAMA_URL': self.generation.ollama_url,
+            'OPENAI_BASE_URL': self.generation.openai_base_url,
             # Enrichment params (6)
             'CARDS_ENRICH_DEFAULT': self.enrichment.cards_enrich_default,
             'CARDS_MAX': self.enrichment.cards_max,
@@ -1458,6 +1520,11 @@ class AgroConfigRoot(BaseModel):
             'TRACE_RETENTION': self.tracing.trace_retention,
             'AGRO_LOG_PATH': self.tracing.agro_log_path,
             'ALERT_NOTIFY_SEVERITIES': self.tracing.alert_notify_severities,
+            'LANGCHAIN_ENDPOINT': self.tracing.langchain_endpoint,
+            'LANGCHAIN_PROJECT': self.tracing.langchain_project,
+            'LANGCHAIN_TRACING_V2': self.tracing.langchain_tracing_v2,
+            'LANGTRACE_API_HOST': self.tracing.langtrace_api_host,
+            'LANGTRACE_PROJECT_ID': self.tracing.langtrace_project_id,
     # Training params (10)
             'RERANKER_TRAIN_EPOCHS': self.training.reranker_train_epochs,
             'RERANKER_TRAIN_BATCH': self.training.reranker_train_batch,
@@ -1506,6 +1573,7 @@ class AgroConfigRoot(BaseModel):
             'PROMPT_SEMANTIC_CARDS': self.system_prompts.semantic_cards,
             'PROMPT_CODE_ENRICHMENT': self.system_prompts.code_enrichment,
             'PROMPT_EVAL_ANALYSIS': self.system_prompts.eval_analysis,
+            'PROMPT_LIGHTWEIGHT_CARDS': self.system_prompts.lightweight_cards,
         }
 
     @classmethod
@@ -1635,6 +1703,11 @@ class AgroConfigRoot(BaseModel):
                 ollama_stream_idle_timeout=data.get('OLLAMA_STREAM_IDLE_TIMEOUT', 60),
                 gen_model_cli=data.get('GEN_MODEL_CLI', 'qwen3-coder:14b'),
                 gen_model_ollama=data.get('GEN_MODEL_OLLAMA', 'qwen3-coder:30b'),
+                gen_model_http=data.get('GEN_MODEL_HTTP', ''),
+                gen_model_mcp=data.get('GEN_MODEL_MCP', ''),
+                enrich_model_ollama=data.get('ENRICH_MODEL_OLLAMA', ''),
+                ollama_url=data.get('OLLAMA_URL', 'http://127.0.0.1:11434/api'),
+                openai_base_url=data.get('OPENAI_BASE_URL', ''),
             ),
             enrichment=EnrichmentConfig(
                 cards_enrich_default=data.get('CARDS_ENRICH_DEFAULT', 1),
@@ -1664,6 +1737,11 @@ class AgroConfigRoot(BaseModel):
                 trace_retention=data.get('TRACE_RETENTION', 50),
                 agro_log_path=data.get('AGRO_LOG_PATH', 'data/logs/queries.jsonl'),
                 alert_notify_severities=data.get('ALERT_NOTIFY_SEVERITIES', 'critical,warning'),
+                langchain_endpoint=data.get('LANGCHAIN_ENDPOINT', 'https://api.smith.langchain.com'),
+                langchain_project=data.get('LANGCHAIN_PROJECT', 'agro'),
+                langchain_tracing_v2=data.get('LANGCHAIN_TRACING_V2', 0),
+                langtrace_api_host=data.get('LANGTRACE_API_HOST', ''),
+                langtrace_project_id=data.get('LANGTRACE_PROJECT_ID', ''),
             ),
             training=TrainingConfig(
                 reranker_train_epochs=data.get('RERANKER_TRAIN_EPOCHS', 2),
@@ -1717,6 +1795,7 @@ class AgroConfigRoot(BaseModel):
                 semantic_cards=data.get('PROMPT_SEMANTIC_CARDS', SystemPromptsConfig().semantic_cards),
                 code_enrichment=data.get('PROMPT_CODE_ENRICHMENT', SystemPromptsConfig().code_enrichment),
                 eval_analysis=data.get('PROMPT_EVAL_ANALYSIS', SystemPromptsConfig().eval_analysis),
+                lightweight_cards=data.get('PROMPT_LIGHTWEIGHT_CARDS', SystemPromptsConfig().lightweight_cards),
             ),
         )
 

@@ -14,8 +14,8 @@
     },
     {
       "provider": "openai",
-      "family": "gpt-5.1-mini",
-      "model": "gpt-5.1-mini",
+      "family": "gpt-5-mini",
+      "model": "gpt-5-mini",
       "unit": "1k_tokens",
       "input_per_1k": 0.30,
       "output_per_1k": 2.5,

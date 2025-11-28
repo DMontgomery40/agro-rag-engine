@@ -23,7 +23,7 @@
   async function addGenModelFlow(){
     const provider = promptStr('Provider (openai, anthropic, google, local)', 'openai');
     if (!provider) return;
-    const model = promptStr('Model ID (e.g., gpt-4o-mini or qwen3-coder:14b)', 'gpt-4o-mini');
+    const model = promptStr('Model ID (from agro_config.json GEN_MODEL)', '');
     if (!model) return;
     const baseUrl = promptStr('Base URL (optional; for proxies or local, e.g., http://127.0.0.1:11434)', '');
     let apiKey = '';
@@ -92,7 +92,7 @@
   async function addCostModelFlow(){
     const provider = promptStr('Provider', 'openai');
     if (!provider) return;
-    const model = promptStr('Model ID', 'gpt-4o-mini');
+    const model = promptStr('Model ID (from config)', '');
     if (!model) return;
     const baseUrl = promptStr('Base URL (optional)', '');
     const unit = promptStr('Unit (1k_tokens or request)', provider === 'local' ? 'request' : '1k_tokens') || '1k_tokens';

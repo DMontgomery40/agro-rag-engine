@@ -78,6 +78,27 @@ USE_MULTI = _eval_cfg['USE_MULTI']
 FINAL_K = _eval_cfg['FINAL_K']
 MULTI_M = _eval_cfg['MULTI_M']
 
+def stamp_eval_runtime_config(
+    config_snapshot: dict,
+    use_multi_val: bool,
+    final_k_val: int,
+    multi_m_val: int | None = None,
+) -> dict:
+    """Return a copy of the config snapshot with the actual run-time values stamped in.
+
+    Without stamping, per-run overrides (use_multi/final_k/multi_m) never reach
+    the saved eval JSON, so the UI shows no config diff or AI analysis.
+    """
+    cfg = dict(config_snapshot or {})
+    cfg['eval_multi'] = int(bool(use_multi_val))
+    cfg['use_multi'] = bool(use_multi_val)
+    cfg['eval_final_k'] = int(final_k_val)
+    cfg['final_k'] = int(final_k_val)
+    if multi_m_val is not None:
+        cfg['eval_multi_m'] = int(multi_m_val)
+        cfg['multi_m'] = int(multi_m_val)
+    return cfg
+
 """
 Golden file format (golden.json):
 [

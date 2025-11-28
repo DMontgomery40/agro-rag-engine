@@ -10,7 +10,15 @@ import argparse
 from typing import Dict, Any, Optional
 from dotenv import load_dotenv
 from pathlib import Path
-from eval.eval_rag import hit, _resolve_golden_path, USE_MULTI, FINAL_K, MULTI_M, capture_eval_config  # type: ignore[import]
+from eval.eval_rag import (
+    hit,
+    _resolve_golden_path,
+    USE_MULTI,
+    FINAL_K,
+    MULTI_M,
+    capture_eval_config,
+    stamp_eval_runtime_config,  # type: ignore[import]
+)
 from retrieval.hybrid_search import search_routed, search_routed_multi
 
 load_dotenv()
@@ -109,8 +117,14 @@ def run_eval_with_results(
         })
     dt = time.time() - t0
 
-    # Capture config using the centralized whitelist
+    # Capture config using the centralized whitelist and stamp actual run overrides
     eval_config = capture_eval_config()
+    eval_config = stamp_eval_runtime_config(
+        eval_config,
+        use_multi_val=use_multi_val,
+        final_k_val=final_k_val,
+        multi_m_val=MULTI_M,
+    )
 
     return {
         "total": total,

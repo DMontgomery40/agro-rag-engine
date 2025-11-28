@@ -3,7 +3,7 @@
   "currency": "USD",
   "models": [
     {"provider":"openai","family":"GPT-5.1","model":"gpt-5.1","unit":"1k_tokens","input_per_1k":1.50,"output_per_1k":12.0,"context":256000,"notes":"Latest GPT-5.1 - enhanced coding & agentic tasks"},
-    {"provider":"openai","family":"GPT-5.1 Mini","model":"gpt-5.1-mini","unit":"1k_tokens","input_per_1k":0.30,"output_per_1k":2.5,"context":256000,"notes":"GPT-5.1 mini - fast & economical"},
+    {"provider":"openai","family":"GPT-5.1 Mini","model":"gpt-5-mini","unit":"1k_tokens","input_per_1k":0.30,"output_per_1k":2.5,"context":256000,"notes":"GPT-5.1 mini - fast & economical"},
     {"provider":"openai","family":"GPT-5.1 Nano","model":"gpt-5.1-nano","unit":"1k_tokens","input_per_1k":0.06,"output_per_1k":0.5,"context":256000,"notes":"GPT-5.1 nano - ultra-budget"},
     {"provider":"openai","family":"GPT-5","model":"gpt-5","unit":"1k_tokens","input_per_1k":1.25,"output_per_1k":10.0,"context":200000,"notes":"GPT-5 base model"},
     {"provider":"openai","family":"GPT-5 Mini","model":"gpt-5-mini","unit":"1k_tokens","input_per_1k":0.25,"output_per_1k":2.0,"context":200000,"notes":"GPT-5 mini"},

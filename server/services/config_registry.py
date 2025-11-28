@@ -90,14 +90,9 @@ class ConfigRegistry:
                 self._config[key] = value
                 self._sources[key] = "agro_config.json"
 
-            # Step 3: Override with .env values (precedence)
-            for key in AGRO_CONFIG_KEYS:
-                env_value = os.getenv(key)
-                if env_value is not None:
-                    # .env takes precedence
-                    self._config[key] = env_value
-                    self._sources[key] = ".env"
-                    logger.debug(f"Config key {key} overridden by .env")
+            # NOTE: .env is for SECRETS ONLY per CLAUDE.md rules
+            # AGRO_CONFIG_KEYS should ONLY come from agro_config.json
+            # Do NOT override agro_config values with .env values
 
             # Also include other env vars for backward compatibility
             # This allows existing code to read non-AGRO config from registry

@@ -2,11 +2,27 @@
 
 **Date:** 2025-11-28
 **Priority:** CRITICAL
-**Status:** Planning Complete, Implementation Required
+**Status:** ⚠️ SUPERSEDED BY IMPLEMENTATION PLAN
 
 ---
 
-## Executive Summary
+## ⚠️ CRITICAL: USE THE CORRECTED PLAN
+
+**This document has been research-validated and corrected.**
+
+**👉 SEE: `ENTERPRISE_INDEXING_IMPLEMENTATION_PLAN.md` for the corrected implementation plan.**
+
+Key corrections from research:
+- Overlap should be 10-20% (NOT 6.7%)
+- tiktoken ONLY works for OpenAI (use provider-specific tokenizers)
+- Voyage limit is 32,000 (NOT 16,000)
+- Cohere/mxbai/bge limits are 512 (NOT 8,192)
+- Qdrant has NO rollback (points persist on failure)
+- Both BM25 AND Qdrant should index sub-chunks
+
+---
+
+## Executive Summary (Original - See Corrected Plan)
 
 The current indexing system fails when any code chunk exceeds OpenAI's 8192 token limit. This happened during a real indexing run with error:
 

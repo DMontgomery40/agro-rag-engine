@@ -10,6 +10,7 @@ import { RepoSelector } from '@/components/ui/RepoSelector';
 import { EmbeddingMismatchWarning } from '@/components/ui/EmbeddingMismatchWarning';
 import { useEmbeddingStatus } from '@/hooks/useEmbeddingStatus';
 import { useRepoStore } from '@/stores/useRepoStore';
+import { useConfigStore } from '@/stores';
 
 // Useful tips shown during response generation
 // Each tip has content and optional category for styling
@@ -256,8 +257,9 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
     };
   }, [streaming, typing]);
 
-  // Chat settings state
-  const [model, setModel] = useState('gpt-4o-mini');
+  // Chat settings state - model loaded from Pydantic config
+  const { config } = useConfigStore();
+  const [model, setModel] = useState('');  // Loaded from GEN_MODEL
   const [temperature, setTemperature] = useState(0);
   const [maxTokens, setMaxTokens] = useState(1000);
   const [topP, setTopP] = useState(1);
@@ -265,6 +267,13 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
   const [streamPref, setStreamPref] = useState<boolean>(true);
   const [showConfidence, setShowConfidence] = useState<boolean>(false);
   const [showCitations, setShowCitations] = useState<boolean>(true);
+
+  // Load model from Pydantic config on mount
+  useEffect(() => {
+    if (config?.env?.GEN_MODEL && !model) {
+      setModel(config.env.GEN_MODEL);
+    }
+  }, [config?.env?.GEN_MODEL, model]);
   const traceRef = useRef<TraceStep[]>([]);
   const [modelOptions, setModelOptions] = useState<string[]>([]);
   const [fastMode, setFastMode] = useState<boolean>(() => {

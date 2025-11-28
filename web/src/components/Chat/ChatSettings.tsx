@@ -22,7 +22,7 @@ interface ChatConfig {
 
 const DEFAULT_CONFIG: ChatConfig = {
   systemPrompt: 'You are a helpful AI assistant that answers questions about codebases using RAG (Retrieval-Augmented Generation). Provide accurate, concise answers with citations.',
-  model: 'gpt-5.1-mini',
+  model: '',  // Will be loaded from agro_config.json GEN_MODEL
   temperature: 0,
   maxTokens: 1000,
   topP: 1,
@@ -54,7 +54,19 @@ export function ChatSettings() {
 
   const loadConfig = async () => {
     try {
-      // Try to load from API
+      // First, get GEN_MODEL from agro_config.json via /api/config
+      let genModel = '';
+      try {
+        const mainConfigResp = await fetch(api('config'));
+        if (mainConfigResp.ok) {
+          const mainConfig = await mainConfigResp.json();
+          genModel = mainConfig.env?.GEN_MODEL || '';
+        }
+      } catch (e) {
+        console.warn('[ChatSettings] Could not load GEN_MODEL from config:', e);
+      }
+
+      // Try to load chat-specific config from API
       const response = await fetch(api('chat/config'));
       if (response.ok) {
         const data = await response.json();
@@ -64,6 +76,10 @@ export function ChatSettings() {
           normalized.finalK = normalized.topK;
           delete normalized.topK;
         }
+        // Use GEN_MODEL from agro_config if no model in chat config
+        if (!normalized.model && genModel) {
+          normalized.model = genModel;
+        }
         setConfig({ ...DEFAULT_CONFIG, ...normalized });
       } else {
         // Fall back to localStorage
@@ -71,7 +87,14 @@ export function ChatSettings() {
         if (saved) {
           const parsed = JSON.parse(saved);
           if (parsed.topK && !parsed.finalK) { parsed.finalK = parsed.topK; delete parsed.topK; }
+          // Use GEN_MODEL from agro_config if no model in localStorage
+          if (!parsed.model && genModel) {
+            parsed.model = genModel;
+          }
           setConfig({ ...DEFAULT_CONFIG, ...parsed });
+        } else if (genModel) {
+          // No chat config saved, use GEN_MODEL from agro_config
+          setConfig({ ...DEFAULT_CONFIG, model: genModel });
         }
       }
     } catch (error) {
@@ -326,7 +349,7 @@ export function ChatSettings() {
                   borderRadius: '4px',
                   fontSize: '13px'
                 }}
-                placeholder="gpt-5.1-mini"
+                placeholder=""
               />
             )}
           </div>

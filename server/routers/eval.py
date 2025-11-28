@@ -14,7 +14,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from server.utils import atomic_write_json, read_json
 from server.services.config_registry import get_config_registry
-from eval.eval_rag import capture_eval_config
+from eval.eval_rag import capture_eval_config, stamp_eval_runtime_config
 
 router = APIRouter()
 _config = get_config_registry()
@@ -26,6 +26,29 @@ _EVAL_STATUS: Dict[str, Any] = {
     "total": 0,
     "results": None
 }
+
+
+def _hydrate_config_with_runtime(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Ensure eval results include the actual runtime params even if older runs missed stamping."""
+    cfg = dict(data.get("config") or {})
+    # Prefer recorded values, otherwise fall back to config snapshot
+    use_multi_val = data.get("use_multi")
+    if use_multi_val is None:
+        use_multi_val = cfg.get("use_multi", cfg.get("eval_multi"))
+    final_k_val = data.get("final_k")
+    if final_k_val is None:
+        final_k_val = cfg.get("final_k", cfg.get("eval_final_k", _config.get_int("EVAL_FINAL_K", 5)))
+    multi_m_val = cfg.get("eval_multi_m") or cfg.get("multi_m") or _config.get_int("EVAL_MULTI_M", 10)
+
+    cfg = stamp_eval_runtime_config(
+        cfg,
+        use_multi_val=bool(use_multi_val),
+        final_k_val=int(final_k_val),
+        multi_m_val=int(multi_m_val) if multi_m_val is not None else None,
+    )
+    data = dict(data)
+    data["config"] = cfg
+    return data
 
 @router.post("/api/eval/run")
 def eval_run(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
@@ -95,15 +118,22 @@ def eval_run_instrumented(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
             # Generate run ID
             run_id = datetime.now().strftime('%Y%m%d_%H%M%S')
 
-            # Use centralized config capture with whitelist
-            config_snapshot = capture_eval_config()
+            # Use centralized config capture with whitelist and stamp actual run params
+            use_multi_val = _config.get_int('EVAL_MULTI', 1) == 1
+            final_k = _config.get_int('EVAL_FINAL_K', 5)
+            multi_m_val = _config.get_int('EVAL_MULTI_M', 10)
+            config_snapshot = stamp_eval_runtime_config(
+                capture_eval_config(),
+                use_multi_val=use_multi_val,
+                final_k_val=final_k,
+                multi_m_val=multi_m_val,
+            )
 
             # Run eval
             hits_top1 = 0
             hits_topk = 0
             results = []
             t0 = time.time()
-            final_k = _config.get_int('EVAL_FINAL_K', 5)
 
             for i, row in enumerate(gold, 1):
                 q = row['q']
@@ -328,8 +358,14 @@ async def eval_run_stream(
             # Generate run_id for persistence and traceability
             run_id = time.strftime("%Y%m%d_%H%M%S")
 
-            # Capture config using the centralized whitelist
+            # Capture config using the centralized whitelist and stamp run overrides
             eval_config = capture_eval_config()
+            eval_config = stamp_eval_runtime_config(
+                eval_config,
+                use_multi_val=use_multi_val,
+                final_k_val=final_k_val,
+                multi_m_val=MULTI_M,
+            )
 
             summary = {
                 "run_id": run_id,
@@ -383,7 +419,13 @@ def eval_status() -> Dict[str, Any]:
 
 @router.get("/api/eval/results")
 def eval_results() -> Dict[str, Any]:
-    return _EVAL_STATUS["results"] or {"ok": False, "message": "No results"}
+    res = _EVAL_STATUS["results"]
+    if not res:
+        return {"ok": False, "message": "No results"}
+    try:
+        return _hydrate_config_with_runtime(res)
+    except Exception:
+        return res
 
 @router.get("/api/eval/results/{run_id}")
 def eval_results_by_run(run_id: str) -> Dict[str, Any]:
@@ -395,7 +437,8 @@ def eval_results_by_run(run_id: str) -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail=f"Eval run {run_id} not found")
 
     try:
-        return read_json(eval_file, {})
+        data = read_json(eval_file, {})
+        return _hydrate_config_with_runtime(data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error reading eval: {str(e)}")
 

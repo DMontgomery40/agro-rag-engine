@@ -95,7 +95,7 @@ export default function ChatTab() {
                                 Chat Model (GEN_MODEL_CHAT)
                                 <span className="help-icon" data-tooltip="GEN_MODEL_CHAT">?</span>
                             </label>
-                            <input type="text" id="chat-model" placeholder="e.g., gpt-4o-mini (leave empty for default)" />
+                            <input type="text" id="chat-model" placeholder="(uses GEN_MODEL from config)" />
                         </div>
                         <div className="input-group">
                             <label>

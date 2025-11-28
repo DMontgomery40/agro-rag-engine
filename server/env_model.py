@@ -1,9 +1,23 @@
 import os
 from typing import Optional, Dict, Any, Tuple
+from importlib import import_module
+from packaging.version import Version
+
+# Enforce modern OpenAI SDK (>=1.x) because Responses API requires it
+OpenAI = None  # type: ignore
+_OPENAI_SDK: Optional[Any] = None
+_OPENAI_VERSION: Optional[Version] = None
 
 try:
-    from openai import OpenAI
+    _OPENAI_SDK = import_module("openai")
+    _OPENAI_VERSION = Version(getattr(_OPENAI_SDK, "__version__", "0.0.0"))
+    if _OPENAI_VERSION < Version("1.0.0"):
+        raise RuntimeError(f"openai>={Version('1.0.0')} is required; found { _OPENAI_VERSION}")
+    OpenAI = getattr(_OPENAI_SDK, "OpenAI", None)
+    if OpenAI is None:
+        raise RuntimeError("openai>=1.x is required for Responses API (OpenAI client missing)")
 except Exception as e:
+    # Fail fast with a clear error; UI should surface this
     raise RuntimeError("openai>=1.x is required for Responses API") from e
 
 # Module-level cached configuration
@@ -87,6 +101,8 @@ def _get_mlx_model():
 def client() -> OpenAI:
     global _client
     if _client is None:
+        if OpenAI is None:
+            raise RuntimeError("openai>=1.x client not available; install openai>=1.0.0")
         _client = OpenAI()
     return _client
 
@@ -290,6 +306,9 @@ def generate_text(
 
     try:
         # OpenAI Responses API (supports temperature)
+        if _OPENAI_SDK is None or not hasattr(_OPENAI_SDK, "OpenAI"):
+            raise RuntimeError("OpenAI client not available")
+
         start = timer.time()
         resp = client().responses.create(**kwargs)
         duration_ms = (timer.time() - start) * 1000
@@ -342,10 +361,28 @@ def generate_text(
                 ckwargs["response_format"] = response_format
 
             start = timer.time()
-            cc = client().chat.completions.create(**ckwargs)
+            cc = None
+            if _OPENAI_SDK is not None and hasattr(_OPENAI_SDK, "OpenAI"):
+                cc = client().chat.completions.create(**ckwargs)
+            elif _OPENAI_LEGACY is not None:
+                # Legacy SDK path (<=0.x) - best-effort compatibility
+                _OPENAI_LEGACY.api_key = os.getenv("OPENAI_API_KEY")
+                # Legacy library expects "messages" to be a list of dicts under ChatCompletion
+                cc = _OPENAI_LEGACY.ChatCompletion.create(**ckwargs)  # type: ignore
+            else:
+                raise RuntimeError("OpenAI SDK not installed")
+
             duration_ms = (timer.time() - start) * 1000
 
-            text = (cc.choices[0].message.content if getattr(cc, "choices", []) else "") or ""
+            text = ""
+            if cc:
+                if hasattr(cc, "choices"):
+                    text = (cc.choices[0].message.content if getattr(cc, "choices", []) else "") or ""
+                elif isinstance(cc, dict):
+                    choices = cc.get("choices") or []
+                    if choices:
+                        msg = (choices[0].get("message") or {})
+                        text = msg.get("content") or choices[0].get("text") or ""
 
             # Track API call
             tokens_used = getattr(getattr(cc, 'usage', None), 'total_tokens', 0) or 0
