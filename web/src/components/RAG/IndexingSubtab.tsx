@@ -57,7 +57,6 @@ export function IndexingSubtab() {
   const [collectionName, setCollectionName] = useState<string>('');
   const [chunkSize, setChunkSize] = useState<number>(1000);
   const [chunkOverlap, setChunkOverlap] = useState<number>(200);
-  const [maxWorkers, setMaxWorkers] = useState<number>(4);
   const [astOverlapLines, setAstOverlapLines] = useState<number>(20);
   const [maxChunkSize, setMaxChunkSize] = useState<number>(2000000);
   const [minChunkChars, setMinChunkChars] = useState<number>(50);
@@ -165,7 +164,6 @@ export function IndexingSubtab() {
       setCollectionName(env.COLLECTION_NAME || '');
       setIndexingBatchSize(parseInt(env.INDEXING_BATCH_SIZE || '100', 10));
       setIndexingWorkers(parseInt(env.INDEXING_WORKERS || '4', 10));
-      setMaxWorkers(parseInt(env.INDEX_MAX_WORKERS || '4', 10));
       setBm25Tokenizer(env.BM25_TOKENIZER || 'stemmer');
       setBm25StemmerLang(env.BM25_STEMMER_LANG || 'english');
       setIndexExcludedExts(env.INDEX_EXCLUDED_EXTS || '.png,.jpg,.gif,.ico,.svg,.woff,.ttf');
@@ -322,7 +320,6 @@ export function IndexingSubtab() {
           COLLECTION_NAME: collectionName,
           INDEXING_BATCH_SIZE: indexingBatchSize,
           INDEXING_WORKERS: indexingWorkers,
-          INDEX_MAX_WORKERS: maxWorkers,
           BM25_TOKENIZER: bm25Tokenizer,
           BM25_STEMMER_LANG: bm25StemmerLang,
           INDEX_EXCLUDED_EXTS: indexExcludedExts,
@@ -926,20 +923,6 @@ export function IndexingSubtab() {
               min={0}
               max={1000}
               step={50}
-            />
-          </div>
-          <div className="input-group">
-            <label>
-              Max Workers
-              <span className="help-icon" data-tooltip="INDEX_MAX_WORKERS">?</span>
-            </label>
-            <input
-              type="number"
-              name="INDEX_MAX_WORKERS"
-              value={maxWorkers}
-              onChange={(e) => setMaxWorkers(parseInt(e.target.value, 10))}
-              min={1}
-              max={16}
             />
           </div>
         </div>

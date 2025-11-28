@@ -192,14 +192,9 @@ useEffect(() => {
 
 ### Fix 3: Fix INDEXING_WORKERS Name (Line 534)
 
-**Issue:** GUI uses `INDEX_MAX_WORKERS`, backend expects `INDEXING_WORKERS`
+**Issue (resolved 2025-11-28):** GUI now uses the canonical `INDEXING_WORKERS` key instead of the deprecated alias.
 
 **Current:**
-```tsx
-<input name="INDEX_MAX_WORKERS" defaultValue="4" />
-```
-
-**Change To:**
 ```tsx
 const [indexingWorkers, setIndexingWorkers] = useState(4);
 
@@ -211,14 +206,14 @@ useEffect(() => {
 
 <input
   type="number"
-  name="INDEXING_WORKERS"  // CHANGED
+  name="INDEXING_WORKERS"
   value={indexingWorkers}
   min="1"
   max="16"
   onChange={(e) => {
     const val = Number(e.target.value);
     setIndexingWorkers(val);
-    updateEnv('INDEXING_WORKERS', val);  // CHANGED
+    updateEnv('INDEXING_WORKERS', val);
   }}
 />
 ```

@@ -147,7 +147,7 @@ test.describe('GUI Help Icons Verification (Lines 2500-4500)', () => {
       'CHUNK_SIZE',
       'CHUNK_OVERLAP',
       'COLLECTION_NAME',
-      'INDEX_MAX_WORKERS',
+      'INDEXING_WORKERS',
       'AST_OVERLAP_LINES',
       'MAX_CHUNK_SIZE',
       'MIN_CHUNK_CHARS',

@@ -4286,10 +4286,6 @@
                             <label>Chunk Overlap (tokens)</label>
                             <input type="number" name="CHUNK_OVERLAP" value="200" min="0" max="1000" step="50">
                         </div>
-                        <div class="input-group">
-                            <label>Max Workers</label>
-                            <input type="number" name="INDEX_MAX_WORKERS" value="4" min="1" max="16">
-                        </div>
                     </div>
 
                     <button class="small-button" id="btn-save-index-settings" style="background: var(--link); color: var(--accent-contrast); font-weight: 600;">

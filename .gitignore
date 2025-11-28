@@ -5,7 +5,7 @@ out/editor/
 api_calls.jsonl
 
 
- Python
+# Python
 __pycache__/
 *.py[codz]
 *.pyc
@@ -70,9 +70,6 @@ out.noindex-*/
 data/qdrant/
 data/qdrant.bak.*
 data/redis/
-data/evals/eval_*.json
-data/logs/
-data/tracking/
 
 # Local config with secrets (never commit)
 .mcp.json
@@ -234,9 +231,3 @@ out/**
 
 # Large Qdrant snapshots
 data/snapshots/
-
-# Temporary eval/baseline files
-baseline_eval.txt
-*.baseline.txt
-*_eval.txt
-eval_*.txt

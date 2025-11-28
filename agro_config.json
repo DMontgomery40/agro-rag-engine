@@ -116,7 +116,7 @@
     "index_excluded_exts": ".png,.jpg,.gif,.ico,.svg,.woff,.ttf",
     "index_max_file_size_mb": 10,
     "skip_dense": 0,
-    "out_dir_base": "./out.noindex-shared",
+    "out_dir_base": "./out",
     "rag_out_base": "",
     "repos_file": "./repos.json"
   },
@@ -169,7 +169,7 @@
     "enrich_timeout": 30
   },
   "keywords": {
-    "keywords_max_per_repo": 50,
+    "keywords_max_per_repo": 100,
     "keywords_min_freq": 3,
     "keywords_boost": 1.3,
     "keywords_auto_generate": 1,

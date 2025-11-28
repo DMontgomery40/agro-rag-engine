@@ -66,7 +66,7 @@
 
 **Critical Issues:**
 - CHUNK_SIZE, CHUNK_OVERLAP: Exist but no onChange handlers
-- INDEXING_WORKERS: Wrong param name (INDEX_MAX_WORKERS vs INDEXING_WORKERS)
+- INDEXING_WORKERS: Wrong param name (legacy max-worker alias) — fixed
 - EMBEDDING_DIM: GUI reads wrong key (EMBEDDING_DIMENSIONS vs EMBEDDING_DIM)
 - COLLECTION_NAME: Duplicate controls in 2 locations
 
@@ -236,9 +236,9 @@
    - Effort: 30 min
 
 3. INDEXING_WORKERS (IndexingSubtab)
-   - Wrong name: INDEX_MAX_WORKERS vs INDEXING_WORKERS
-   - File: `web/src/components/RAG/IndexingSubtab.tsx:534`
-   - Effort: 30 min
+   - Resolved: now aligned with canonical key
+   - File: `web/src/components/RAG/IndexingSubtab.tsx`
+   - Effort: 0 min remaining
 
 4. AGRO Reranker Params (5 params in LearningRankerSubtab)
    - AGRO_RERANKER_ENABLED, ALPHA, BATCH, MAXLEN, all read but don't persist

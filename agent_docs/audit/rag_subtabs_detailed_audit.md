@@ -526,7 +526,6 @@ No action buttons; all elements are configuration inputs.
 | COLLECTION_NAME | text | — | Qdrant collection name | code_chunks_{repo} |
 | CHUNK_SIZE | number | — | Chunk size in tokens | 1000 |
 | CHUNK_OVERLAP | number | — | Chunk overlap in tokens | 200 |
-| INDEX_MAX_WORKERS | number | — | Max parallel workers | 4 |
 | AST_OVERLAP_LINES | number | `AST_OVERLAP_LINES` | AST overlap lines | 20 |
 | MAX_CHUNK_SIZE | number | `MAX_CHUNK_SIZE` | Max chunk size in bytes | 2000000 |
 | MIN_CHUNK_CHARS | number | `MIN_CHUNK_CHARS` | Min chunk chars | 50 |

@@ -1,0 +1,168 @@
+Config registry accessed before load(), loading now
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     `torch_dtype` is deprecated! Use `dtype` instead!
+Loading TransformerRanker model /Users/davidmontgomery/agro-rag-engine/models/cross-encoder-agro (this message can be suppressed by setting verbose=0)
+No device set
+Using device mps
+No dtype set
+Using dtype torch.float32
+Loaded model /Users/davidmontgomery/agro-rag-engine/models/cross-encoder-agro
+Using device mps.
+Using dtype torch.float32.
+[1/50] repo=agro q=How does RRF (Reciprocal Rank Fusion) combine BM25 and vector results?
+  top1=['retrieval/hybrid_search.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [2/50] repo=agro q=Where is the tokenizer vocab loaded for BM25 queries?
+  top1=['retrieval/hybrid_search.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [3/50] repo=agro q=How are chunk IDs mapped to BM25 index positions?
+  top1=['retrieval/hybrid_search.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [4/50] repo=agro q=Where does query expansion happen in the retrieval pipeline?
+  top1=['retrieval/synonym_expander.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [5/50] repo=agro q=How is the BM25 index saved and what files does it create?
+  top1=['indexer/index_repo_v2.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [6/50] repo=agro q=Where are code language detection functions implemented?
+  top1=['web/src/modules/theme.js']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [7/50] repo=agro q=How does the system handle tree-sitter parsing errors?
+  top1=['retrieval/ast_chunker.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [8/50] repo=agro q=Where is the Redis checkpoint system configured for LangGraph?
+  top1=['ui/ALL_KNOBS.yaml']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [9/50] repo=agro q=How does multi-query retrieval generate query variants?
+  top1=['retrieval/synonym_expander.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [10/50] repo=agro q=Where are path bonuses calculated for scoring?
+  top1=['web/src/components/RAG/RepositoryConfig.tsx']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [11/50] repo=agro q=How does layer bonus scoring work for different code layers?
+  top1=['web/src/components/RAG/RetrievalSubtab.tsx']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [12/50] repo=agro q=Where is the filename boost multiplier applied?
+  top1=['ui/ALL_KNOBS.yaml']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [13/50] repo=agro q=How are vendor/third-party code penalties calculated?
+  top1=['web/src/components/RAG/RetrievalSubtab.tsx']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [14/50] repo=agro q=Where is streaming eval output implemented with SSE?
+  top1=['web/src/services/TerminalService.ts']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [15/50] repo=agro q=How does the eval compare current results to baseline?
+  top1=['eval/eval_loop.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [16/50] repo=agro q=Where are eval results stored and how are they timestamped?
+  top1=['web/src/modules/eval_runner.js']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [17/50] repo=agro q=How does the frequency limiter middleware detect anomalies?
+  top1=['server/frequency_limiter.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [18/50] repo=agro q=Where is the API request interceptor configured?
+  top1=['server/api_interceptor.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [19/50] repo=agro q=How are CORS origins validated and configured?
+  top1=['web/src/modules/config.js']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [20/50] repo=agro q=Where is the static file serving middleware setup?
+  top1=['server/asgi.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [21/50] repo=agro q=How does config hot-reload work when files change?
+  top1=['server/langgraph_app.py']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [22/50] repo=agro q=Where are environment variable overrides handled?
+  top1=['ui/ALL_KNOBS.yaml']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [23/50] repo=agro q=How does the config validation ensure weights sum to 1.0?
+  top1=['web/src/components/RAG/_RetrievalSubtab_First50_TSX.tsx']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [24/50] repo=agro q=Where are Pydantic field validators defined for config?
+  top1=['server/services/config_registry.py']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [25/50] repo=agro q=How does the reranker decide between local and Cohere backend?
+  top1=['reranker/config.py']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [26/50] repo=agro q=Where is the cross-encoder model loaded and cached?
+  top1=['server/learning_reranker.py']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [27/50] repo=agro q=How does snippet truncation work for reranker input?
+  top1=['web/src/modules/app.js']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [28/50] repo=agro q=Where is the embedding model selected based on provider?
+  top1=['web/src/modules/model_flows.js']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [29/50] repo=agro q=How does the embedding cache handle batch operations?
+  top1=['retrieval/embed_cache.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [30/50] repo=agro q=Where are chunk overlaps calculated during AST chunking?
+  top1=['web/src/components/RAG/IndexingSubtab.tsx']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [31/50] repo=agro q=How does the indexer handle binary files and large files?
+  top1=['common/filtering.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [32/50] repo=agro q=Where is the progress bar displayed during indexing?
+  top1=['web/src/modules/ux-feedback.js']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [33/50] repo=agro q=How are import statements extracted from code chunks?
+  top1=['scripts/test_token_comparison.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [34/50] repo=agro q=Where is repo routing logic that maps queries to repositories?
+  top1=['retrieval/hybrid_search.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [35/50] repo=agro q=How does intent classification determine query type?
+  top1=['web/src/modules/trace.js']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [36/50] repo=agro q=Where are document hydration limits enforced?
+  top1=['web/src/modules/app.js']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [37/50] repo=agro q=How does the terminal service handle SSE connections?
+  top1=['web/src/services/TerminalService.ts']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [38/50] repo=agro q=Where is subprocess output captured for indexing jobs?
+  top1=['server/services/indexing.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [39/50] repo=agro q=How are Qdrant collections created with proper schema?
+  top1=['common/qdrant_utils.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [40/50] repo=agro q=Where is vector search performed against Qdrant?
+  top1=['retrieval/hybrid_search.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [41/50] repo=agro q=How does the system detect if Qdrant is available?
+  top1=['web/src/modules/docker.js']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [42/50] repo=agro q=Where are triplets generated for reranker training?
+  top1=['cli/commands/reranker.py']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [43/50] repo=agro q=How does the learning reranker training loop work?
+  top1=['server/learning_reranker.py']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [44/50] repo=agro q=Where are training metrics logged during reranker training?
+  top1=['web/src/components/RAG/LearningRankerSubtab.tsx']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [45/50] repo=agro q=How are negative examples sampled for triplet mining?
+  top1=['scripts/mine_triplets.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [46/50] repo=agro q=Where is the Docker daemon status checked?
+  top1=['web/src/modules/docker.js']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [47/50] repo=agro q=How does the MCP server handle tool invocations?
+  top1=['scripts/test_token_comparison.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [48/50] repo=agro q=Where are LangSmith trace IDs generated and tracked?
+  top1=['web/src/components/RAG/RetrievalSubtab.tsx']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [49/50] repo=agro q=How does Prometheus collect RAG performance metrics?
+  top1=['server/metrics.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [50/50] repo=agro q=Where are alertmanager webhooks received and processed?
+  top1=['server/alerts.py']
+  top5 hit=True
+{
+  "total": 50,
+  "top1": 18,
+  "topk": 27,
+  "final_k": 5,
+  "use_multi": true,
+  "secs": 23.2
+}
