@@ -4,6 +4,9 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+# Default API port (host) used by FastAPI container.
+API_PORT="${API_PORT:-8012}"
+
 # Ensure index profile env is set (default: shared)
 if [ -f "$ROOT_DIR/scripts/select_index.sh" ]; then
   # shellcheck source=/dev/null
@@ -36,6 +39,24 @@ ensure_docker() {
 }
 
 ensure_docker
+
+check_host_port_conflict() {
+  if ! command -v lsof >/dev/null 2>&1; then
+    return 0
+  fi
+  local listeners
+  listeners="$(lsof -ti tcp:${API_PORT} || true)"
+  if [ -n "$listeners" ]; then
+    echo "[err] Port ${API_PORT} is already in use by host process(es) and violates AGENTS.md (#96-97)." >&2
+    lsof -nP -i tcp:${API_PORT} || true
+    echo "[err] Stop the local uvicorn (e.g. 'pkill -f \"uvicorn.*server.app:app\"') or rerun with ALLOW_HOST_API_DUP=1 if you truly intend to override docker." >&2
+    exit 1
+  fi
+}
+
+if [ "${ALLOW_HOST_API_DUP:-0}" != "1" ]; then
+  check_host_port_conflict
+fi
 
 echo "[up] Starting full stack (DB/Cache/Observability/API/Editor/MCP) ..."
 docker compose up -d

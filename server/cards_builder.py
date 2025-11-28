@@ -12,6 +12,7 @@ from typing import Dict, Any, Optional, Iterator, List
 
 from common.config_loader import out_dir
 from server.env_model import generate_text
+from server.models.agro_config_model import DEFAULT_CONFIG
 
 # Module-level cached configuration
 try:
@@ -32,12 +33,39 @@ _GEN_MODEL = None
 _RERANK_BACKEND = None
 _COHERE_RERANK_MODEL = None
 _RERANKER_MODEL = None
+_CARDS_EXCLUDE_DIRS: List[str] = []
+_CARDS_EXCLUDE_PATTERNS: List[str] = []
+_CARDS_EXCLUDE_KEYWORDS: List[str] = []
+
+_DEFAULT_CARD_FILTERS = DEFAULT_CONFIG.cards
+
+
+def _coerce_list(value: Any, fallback: Optional[List[str]] = None) -> List[str]:
+    """Normalize CSV/list inputs into a clean list of strings."""
+    if value is None:
+        return list(fallback or [])
+    if isinstance(value, (list, tuple, set)):
+        cleaned = []
+        for item in value:
+            if item is None:
+                continue
+            text = str(item).strip()
+            if text:
+                cleaned.append(text)
+        return cleaned
+    text = str(value).strip()
+    if not text:
+        return list(fallback or [])
+    parts = [part.strip() for part in text.replace('\n', ',').split(',')]
+    cleaned = [part for part in parts if part]
+    return cleaned or list(fallback or [])
 
 def _load_cached_config():
     """Load cards config values into module-level cache."""
     global _CARDS_ENRICH_DEFAULT, _CARDS_MAX, _ENRICH_CODE_CHUNKS, _ENRICH_TIMEOUT
     global _OUT_DIR_BASE, _EMBEDDING_TYPE, _ENRICH_MODEL, _GEN_MODEL
     global _RERANK_BACKEND, _COHERE_RERANK_MODEL, _RERANKER_MODEL
+    global _CARDS_EXCLUDE_DIRS, _CARDS_EXCLUDE_PATTERNS, _CARDS_EXCLUDE_KEYWORDS
 
     if _config_registry is None:
         # Fallback to os.getenv only when registry unavailable
@@ -52,6 +80,9 @@ def _load_cached_config():
         _RERANK_BACKEND = (os.getenv("RERANK_BACKEND", "local") or "local").lower()
         _COHERE_RERANK_MODEL = os.getenv("COHERE_RERANK_MODEL", "rerank-3.5")
         _RERANKER_MODEL = os.getenv("RERANKER_MODEL", "BAAI/bge-reranker-v2-m3")
+        _CARDS_EXCLUDE_DIRS = _coerce_list(os.getenv('CARDS_EXCLUDE_DIRS'), _DEFAULT_CARD_FILTERS.exclude_dirs)
+        _CARDS_EXCLUDE_PATTERNS = _coerce_list(os.getenv('CARDS_EXCLUDE_PATTERNS'), _DEFAULT_CARD_FILTERS.exclude_patterns)
+        _CARDS_EXCLUDE_KEYWORDS = _coerce_list(os.getenv('CARDS_EXCLUDE_KEYWORDS'), _DEFAULT_CARD_FILTERS.exclude_keywords)
     else:
         # Use config_registry (preferred path)
         _CARDS_ENRICH_DEFAULT = _config_registry.get_int('CARDS_ENRICH_DEFAULT', 1)
@@ -65,6 +96,12 @@ def _load_cached_config():
         _RERANK_BACKEND = _config_registry.get_str('RERANK_BACKEND', 'local').lower()
         _COHERE_RERANK_MODEL = _config_registry.get_str('COHERE_RERANK_MODEL', 'rerank-3.5')
         _RERANKER_MODEL = _config_registry.get_str('RERANKER_MODEL', 'BAAI/bge-reranker-v2-m3')
+        _CARDS_EXCLUDE_DIRS = _coerce_list(_config_registry.get('CARDS_EXCLUDE_DIRS', _DEFAULT_CARD_FILTERS.exclude_dirs),
+                                           _DEFAULT_CARD_FILTERS.exclude_dirs)
+        _CARDS_EXCLUDE_PATTERNS = _coerce_list(_config_registry.get('CARDS_EXCLUDE_PATTERNS', _DEFAULT_CARD_FILTERS.exclude_patterns),
+                                               _DEFAULT_CARD_FILTERS.exclude_patterns)
+        _CARDS_EXCLUDE_KEYWORDS = _coerce_list(_config_registry.get('CARDS_EXCLUDE_KEYWORDS', _DEFAULT_CARD_FILTERS.exclude_keywords),
+                                               _DEFAULT_CARD_FILTERS.exclude_keywords)
 
 def reload_config():
     """Reload all cached config values from registry."""
@@ -471,9 +508,9 @@ class _Registry:
             job = CardsBuildJob(
                 repo=repo, 
                 enrich=enrich,
-                exclude_dirs=exclude_dirs or [],
-                exclude_patterns=exclude_patterns or [],
-                exclude_keywords=exclude_keywords or []
+                exclude_dirs=list(exclude_dirs) if exclude_dirs is not None else list(_CARDS_EXCLUDE_DIRS),
+                exclude_patterns=list(exclude_patterns) if exclude_patterns is not None else list(_CARDS_EXCLUDE_PATTERNS),
+                exclude_keywords=list(exclude_keywords) if exclude_keywords is not None else list(_CARDS_EXCLUDE_KEYWORDS)
             )
             self.jobs_by_id[job.job_id] = job
             self.jobs_by_repo[repo] = job.job_id
@@ -532,3 +569,12 @@ def read_logs(tail_bytes: int = 16384) -> Dict[str, Any]:
         return {"ok": True, "content": data.decode("utf-8", errors="ignore"), "path": str(p)}
     except Exception as e:
         return {"ok": False, "error": str(e), "path": str(p)}
+
+
+def get_card_filter_defaults() -> Dict[str, List[str]]:
+    """Expose current default card filters for API/UI consumption."""
+    return {
+        "exclude_dirs": list(_CARDS_EXCLUDE_DIRS),
+        "exclude_patterns": list(_CARDS_EXCLUDE_PATTERNS),
+        "exclude_keywords": list(_CARDS_EXCLUDE_KEYWORDS),
+    }

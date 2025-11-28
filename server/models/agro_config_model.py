@@ -10,7 +10,7 @@ Using Pydantic provides:
 """
 
 from pydantic import BaseModel, Field, field_validator, model_validator
-from typing import Dict, Literal
+from typing import Dict, List, Literal
 
 
 class RetrievalConfig(BaseModel):
@@ -820,6 +820,49 @@ class EnrichmentConfig(BaseModel):
     )
 
 
+class CardsConfig(BaseModel):
+    """Cards builder filtering configuration."""
+
+    exclude_dirs: List[str] = Field(
+        default_factory=lambda: [
+            "docs", "agent_docs", "website", "tests", "assets",
+            "internal_docs.md", "out", "checkpoints", "models",
+            "data", "telemetry", "node_mcp", "public", "examples",
+            "bin", "reports", "screenshots", "web/dist", "gui"
+        ],
+        description="Directories to skip when building cards"
+    )
+
+    exclude_patterns: List[str] = Field(
+        default_factory=list,
+        description="File patterns/extensions to skip"
+    )
+
+    exclude_keywords: List[str] = Field(
+        default_factory=list,
+        description="Keywords that, when present in code, skip the chunk"
+    )
+
+    @field_validator('exclude_dirs', 'exclude_patterns', 'exclude_keywords', mode='before')
+    @classmethod
+    def _parse_list(cls, v):
+        if v is None:
+            return []
+        if isinstance(v, str):
+            return [item.strip() for item in v.replace('\n', ',').split(',') if item.strip()]
+        if isinstance(v, (list, tuple, set)):
+            cleaned = []
+            for item in v:
+                if item is None:
+                    continue
+                text = str(item).strip()
+                if text:
+                    cleaned.append(text)
+            return cleaned
+        text = str(v).strip()
+        return [text] if text else []
+
+
 class KeywordsConfig(BaseModel):
     """Discriminative keywords configuration."""
 
@@ -1352,6 +1395,7 @@ class AgroConfigRoot(BaseModel):
     reranking: RerankingConfig = Field(default_factory=RerankingConfig)
     generation: GenerationConfig = Field(default_factory=GenerationConfig)
     enrichment: EnrichmentConfig = Field(default_factory=EnrichmentConfig)
+    cards: CardsConfig = Field(default_factory=CardsConfig)
     keywords: KeywordsConfig = Field(default_factory=KeywordsConfig)
     tracing: TracingConfig = Field(default_factory=TracingConfig)
     training: TrainingConfig = Field(default_factory=TrainingConfig)
@@ -1501,6 +1545,10 @@ class AgroConfigRoot(BaseModel):
             'ENRICH_MIN_CHARS': self.enrichment.enrich_min_chars,
             'ENRICH_MAX_CHARS': self.enrichment.enrich_max_chars,
             'ENRICH_TIMEOUT': self.enrichment.enrich_timeout,
+            # Cards filter params (3)
+            'CARDS_EXCLUDE_DIRS': ', '.join(self.cards.exclude_dirs),
+            'CARDS_EXCLUDE_PATTERNS': ', '.join(self.cards.exclude_patterns),
+            'CARDS_EXCLUDE_KEYWORDS': ', '.join(self.cards.exclude_keywords),
             # Keywords params (5)
             'KEYWORDS_MAX_PER_REPO': self.keywords.keywords_max_per_repo,
             'KEYWORDS_MIN_FREQ': self.keywords.keywords_min_freq,
@@ -1717,6 +1765,11 @@ class AgroConfigRoot(BaseModel):
                 enrich_max_chars=data.get('ENRICH_MAX_CHARS', 1000),
                 enrich_timeout=data.get('ENRICH_TIMEOUT', 30),
             ),
+            cards=CardsConfig(
+                exclude_dirs=data.get('CARDS_EXCLUDE_DIRS', CardsConfig().exclude_dirs),
+                exclude_patterns=data.get('CARDS_EXCLUDE_PATTERNS', []),
+                exclude_keywords=data.get('CARDS_EXCLUDE_KEYWORDS', []),
+            ),
             keywords=KeywordsConfig(
                 keywords_max_per_repo=data.get('KEYWORDS_MAX_PER_REPO', 50),
                 keywords_min_freq=data.get('KEYWORDS_MIN_FREQ', 3),
@@ -1923,6 +1976,10 @@ AGRO_CONFIG_KEYS = {
     'ENRICH_MIN_CHARS',
     'ENRICH_MAX_CHARS',
     'ENRICH_TIMEOUT',
+    # Cards filter params (3)
+    'CARDS_EXCLUDE_DIRS',
+    'CARDS_EXCLUDE_PATTERNS',
+    'CARDS_EXCLUDE_KEYWORDS',
     # Keywords params (5)
     'KEYWORDS_MAX_PER_REPO',
     'KEYWORDS_MIN_FREQ',

@@ -10,16 +10,6 @@ import { LiveTerminal } from '../LiveTerminal/LiveTerminal';
 import { TerminalService } from '@/services/TerminalService';
 import { useRepoStore } from '@/stores/useRepoStore';
 
-interface RepoData {
-  name: string;
-  slug?: string;
-  path?: string;
-  exclude_paths?: string[];
-  keywords?: string[];
-  path_boosts?: string[];
-  layer_bonuses?: Record<string, Record<string, number>>;
-}
-
 export function DataQualitySubtab() {
   const { api } = useAPI();
   
@@ -27,7 +17,6 @@ export function DataQualitySubtab() {
   const { repos: storeRepos, activeRepo, loadRepos: storeLoadRepos } = useRepoStore();
   const repos = storeRepos.map(r => r.name);
   const [selectedRepo, setSelectedRepo] = useState('');
-  const [repoData, setRepoData] = useState<RepoData | null>(null);
   const [excludeDirs, setExcludeDirs] = useState('');
   const [excludePatterns, setExcludePatterns] = useState('');
   const [excludeKeywords, setExcludeKeywords] = useState('');
@@ -68,107 +57,9 @@ export function DataQualitySubtab() {
     }
   }, [repos, activeRepo, selectedRepo]);
 
-  // Load selected repo's data from repos.json
+  // Load cards filters + keywords config from backend
   useEffect(() => {
-    if (!selectedRepo) return;
-
-    const loadRepoData = async () => {
-      try {
-        const response = await fetch(api(`repos/${selectedRepo}`));
-        const data = await response.json();
-        if (data.ok && data.repo) {
-          setRepoData(data.repo);
-          // Pre-fill exclude_paths from repos.json into Cards Builder field
-          const excludePaths = data.repo.exclude_paths || [];
-          setExcludeDirs(excludePaths.join(', '));
-        }
-      } catch (e) {
-        console.error('Failed to load repo data:', e);
-      }
-    };
-    loadRepoData();
-  }, [selectedRepo, api]);
-
-  // Sync excludeDirs changes back to repos.json (debounced)
-  // This keeps Cards Builder exclude directories in sync with repos.json
-  useEffect(() => {
-    if (!selectedRepo || !repoData) return;
-
-    const timeoutId = setTimeout(async () => {
-      try {
-        const excludePaths = excludeDirs
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean);
-
-        // Only save if changed
-        const currentPaths = (repoData.exclude_paths || []).sort().join(',');
-        const newPaths = excludePaths.sort().join(',');
-        if (currentPaths === newPaths) return;
-
-        const response = await fetch(api(`repos/${selectedRepo}`), {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ exclude_paths: excludePaths })
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.ok) {
-            console.log('[DataQuality] Updated exclude_paths in repos.json from Cards Builder');
-            // Update local repoData
-            setRepoData((prev: RepoData | null) => ({
-              ...prev!,
-              exclude_paths: excludePaths
-            }));
-          }
-        }
-      } catch (e) {
-        console.error('Failed to update repos.json:', e);
-      }
-    }, 1000); // Debounce 1 second
-
-    return () => clearTimeout(timeoutId);
-  }, [excludeDirs, selectedRepo, api, repoData]);
-
-  // Load exclude keywords (separate from repos.json)
-  useEffect(() => {
-    const loadExcludeKeywords = async () => {
-      try {
-        const response = await fetch(api('data-quality/exclude-keywords'));
-        const data = await response.json();
-        if (data.keywords) {
-          setExcludeKeywords(data.keywords);
-        }
-      } catch (e) {
-        console.error('Failed to load exclude keywords:', e);
-      }
-    };
-    loadExcludeKeywords();
-  }, [api]);
-
-  // Load CARDS_MAX from config on mount (Pydantic: min=10, default=100)
-  useEffect(() => {
-    const loadCardsMax = async () => {
-      try {
-        const response = await fetch(api('config'));
-        const data = await response.json();
-        const env = data.env || {};
-        // Parse as int, fallback to 100 (Pydantic default)
-        const val = parseInt(env.CARDS_MAX, 10);
-        if (!isNaN(val) && val >= 10) {
-          setCardsMax(val);
-        }
-      } catch (e) {
-        console.error('Failed to load CARDS_MAX from config:', e);
-      }
-    };
-    loadCardsMax();
-  }, [api]);
-
-  // Load keywords config on mount
-  useEffect(() => {
-    const loadKeywordsConfig = async () => {
+    const loadCardsConfig = async () => {
       try {
         const response = await fetch(api('config'));
         if (!response.ok) {
@@ -177,19 +68,25 @@ export function DataQualitySubtab() {
         }
         const data = await response.json();
         const env = data.env || {};
-
+        const cardsMaxValue = parseInt(env.CARDS_MAX ?? '100', 10);
+        if (!isNaN(cardsMaxValue) && cardsMaxValue >= 10) {
+          setCardsMax(cardsMaxValue);
+        }
+        setExcludeDirs(env.CARDS_EXCLUDE_DIRS || '');
+        setExcludePatterns(env.CARDS_EXCLUDE_PATTERNS || '');
+        setExcludeKeywords(env.CARDS_EXCLUDE_KEYWORDS || '');
         setKeywordsMaxPerRepo(parseInt(env.KEYWORDS_MAX_PER_REPO || '50', 10));
         setKeywordsMinFreq(parseInt(env.KEYWORDS_MIN_FREQ || '3', 10));
         setKeywordsBoost(parseFloat(env.KEYWORDS_BOOST || '1.3'));
         setKeywordsAutoGenerate(parseInt(env.KEYWORDS_AUTO_GENERATE || '1', 10));
         setKeywordsRefreshHours(parseInt(env.KEYWORDS_REFRESH_HOURS || '24', 10));
       } catch (err) {
-        // Don't show error banner for config load failures - just use defaults
-        console.warn('[DataQualitySubtab] Could not load keywords config, using defaults:', err);
+        console.warn('[DataQualitySubtab] Could not load cards config, using defaults:', err);
       }
     };
-    loadKeywordsConfig();
+    loadCardsConfig();
   }, [api]);
+
 
   const updateConfig = async (key: string, value: any) => {
     try {
@@ -571,7 +468,7 @@ export function DataQualitySubtab() {
           <div className="input-group">
             <label>
               Exclude Directories (comma-separated)
-              <span className="help-icon" data-tooltip="EXCLUDE_PATHS">?</span>
+              <span className="help-icon" data-tooltip="CARDS_EXCLUDE_DIRS">?</span>
             </label>
             <input
               type="text"
@@ -580,17 +477,21 @@ export function DataQualitySubtab() {
               placeholder="e.g., node_modules, vendor, dist"
               value={excludeDirs}
               onChange={(e) => setExcludeDirs(e.target.value)}
+              onBlur={() => updateConfig('CARDS_EXCLUDE_DIRS', excludeDirs)}
               style={{ width: '100%' }}
             />
             <p className="small" style={{ color: 'var(--fg-muted)' }}>
-              Directories to skip when building cards. Synced with repos.json exclude_paths.
+              Directories skipped during cards builds. Stored in agro_config.json (CARDS_EXCLUDE_DIRS).
             </p>
           </div>
         </div>
 
         <div className="input-row" style={{ marginBottom: '12px' }}>
           <div className="input-group">
-            <label>Exclude Patterns (comma-separated)</label>
+            <label>
+              Exclude Patterns (comma-separated)
+              <span className="help-icon" data-tooltip="CARDS_EXCLUDE_PATTERNS">?</span>
+            </label>
             <input
               type="text"
               id="cards-exclude-patterns"
@@ -598,17 +499,21 @@ export function DataQualitySubtab() {
               placeholder="e.g., .test.js, .spec.ts, .min.js"
               value={excludePatterns}
               onChange={(e) => setExcludePatterns(e.target.value)}
+              onBlur={() => updateConfig('CARDS_EXCLUDE_PATTERNS', excludePatterns)}
               style={{ width: '100%' }}
             />
             <p className="small" style={{ color: 'var(--fg-muted)' }}>
-              File patterns to skip
+              File patterns to skip (CARDS_EXCLUDE_PATTERNS).
             </p>
           </div>
         </div>
 
         <div className="input-row" style={{ marginBottom: '16px' }}>
           <div className="input-group">
-            <label>Exclude Keywords (comma-separated)</label>
+            <label>
+              Exclude Keywords (comma-separated)
+              <span className="help-icon" data-tooltip="CARDS_EXCLUDE_KEYWORDS">?</span>
+            </label>
             <input
               type="text"
               id="cards-exclude-keywords"
@@ -616,10 +521,11 @@ export function DataQualitySubtab() {
               placeholder="e.g., deprecated, legacy, TODO"
               value={excludeKeywords}
               onChange={(e) => setExcludeKeywords(e.target.value)}
+              onBlur={() => updateConfig('CARDS_EXCLUDE_KEYWORDS', excludeKeywords)}
               style={{ width: '100%' }}
             />
             <p className="small" style={{ color: 'var(--fg-muted)' }}>
-              Skip chunks containing these keywords. These are saved and will be used by the Apply All Changes button.
+              Skip chunks containing these keywords (CARDS_EXCLUDE_KEYWORDS).
             </p>
           </div>
         </div>
@@ -638,6 +544,7 @@ export function DataQualitySubtab() {
                 // Enforce Pydantic constraint: ge=10
                 setCardsMax(Math.max(10, val));
               }}
+              onBlur={() => updateConfig('CARDS_MAX', cardsMax)}
               min="10"
               step="10"
               style={{ maxWidth: '160px' }}

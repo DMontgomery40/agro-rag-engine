@@ -20,6 +20,26 @@ export function Builder({ onBuildComplete, repos = ['agro'], defaultRepo = 'agro
   const [progress, setProgress] = useState<CardsBuildStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    const loadDefaults = async () => {
+      try {
+        const response = await fetch(api('config'));
+        if (!response.ok) {
+          console.warn('[Cards.Builder] Config fetch returned', response.status);
+          return;
+        }
+        const data = await response.json();
+        const env = data.env || {};
+        setExcludeDirs(env.CARDS_EXCLUDE_DIRS || '');
+        setExcludePatterns(env.CARDS_EXCLUDE_PATTERNS || '');
+        setExcludeKeywords(env.CARDS_EXCLUDE_KEYWORDS || '');
+      } catch (err) {
+        console.warn('[Cards.Builder] Failed to load defaults:', err);
+      }
+    };
+    loadDefaults();
+  }, [api]);
+
   const startBuild = useCallback(async () => {
     try {
       setIsBuilding(true);

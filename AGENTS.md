@@ -93,7 +93,8 @@ This update does not reduce the bar for functionality. It clarifies that Playwri
 - There are up to 12 docker containers running when fully fired up, they live in /infra , and can be started up with different commands based on use case, all are in /scripts : ./dev_up.sh ; ./up.sh ; ./api_up.shared
 - everything runs through /server and /web
 - this program uses Pydantic configs with the model in /server/models and agro_config.json ; .env is for secrets only.  
-  - any new parameter, variable, knob, lever, or setting, or anything else that can be configured MUST go to agro_config.json and be registered with the Pydantic model in /server/models and the registry in /server/services/config_registry.py and /server/services/config_store.py
+# CRITICAL AND MANDATORY
+  - ***any new parameter, variable, knob, lever, or setting, or anything else that can be configured MUST go to agro_config.json and be registered with the Pydantic model in /server/models and the registry in /server/services/config_registry.py and /server/services/config_store.py***
 
 agro-rag-engine/
 │
