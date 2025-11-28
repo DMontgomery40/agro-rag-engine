@@ -14,6 +14,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from server.utils import atomic_write_json, read_json
 from server.services.config_registry import get_config_registry
+from eval.eval_rag import capture_eval_config
 
 router = APIRouter()
 _config = get_config_registry()
@@ -94,57 +95,8 @@ def eval_run_instrumented(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
             # Generate run ID
             run_id = datetime.now().strftime('%Y%m%d_%H%M%S')
 
-            # Extract config snapshot - COMPREHENSIVE capture of all RAG params
-            # Parse string configs into arrays for proper diffing
-            path_boosts_str = _config.get_str('PATH_BOOSTS', '/gui,/server,/indexer,/retrieval')
-            path_boosts = [x.strip() for x in path_boosts_str.split(',') if x.strip()] if path_boosts_str else []
-
-            exclude_globs_str = _config.get_str('EXCLUDE_GLOBS', '')
-            exclude_globs = [x.strip() for x in exclude_globs_str.split(',') if x.strip()] if exclude_globs_str else []
-
-            cards_exclude_dirs = _config.get_str('CARDS_EXCLUDE_DIRS', '')
-            exclude_dirs = [x.strip() for x in cards_exclude_dirs.split(',') if x.strip()] if cards_exclude_dirs else []
-
-            index_excluded_exts_str = _config.get_str('INDEX_EXCLUDED_EXTS', '.png,.jpg,.gif,.ico,.svg,.woff,.ttf')
-            index_excluded_exts = [x.strip() for x in index_excluded_exts_str.split(',') if x.strip()] if index_excluded_exts_str else []
-
-            config_snapshot = {
-                # Core retrieval
-                'rrf_k_div': _config.get_int('RRF_K_DIV', 60),
-                'bm25_weight': _config.get_float('BM25_WEIGHT', 0.3),
-                'vector_weight': _config.get_float('VECTOR_WEIGHT', 0.7),
-                'topk_dense': _config.get_int('TOPK_DENSE', 75),
-                'topk_sparse': _config.get_int('TOPK_SPARSE', 75),
-                'disable_rerank': _config.get_int('DISABLE_RERANK', 0),
-                'eval_final_k': _config.get_int('EVAL_FINAL_K', 5),
-
-                # Layer bonuses
-                'layer_bonus_keyword': _config.get_float('LAYER_BONUS_KEYWORD', 0.0),
-                'layer_bonus_summary': _config.get_float('LAYER_BONUS_SUMMARY', 0.0),
-                'layer_bonus_tree': _config.get_float('LAYER_BONUS_TREE', 0.0),
-                'layer_bonus_card': _config.get_float('LAYER_BONUS_CARD', 0.0),
-                'layer_bonus_code': _config.get_float('LAYER_BONUS_CODE', 0.0),
-
-                # Embedding & chunking
-                'embed_model': _config.get_str('EMBED_MODEL', ''),
-                'chunk_size': _config.get_int('CHUNK_SIZE', 0),
-                'chunk_overlap': _config.get_int('CHUNK_OVERLAP', 0),
-
-                # Reranking
-                'rerank_provider': _config.get_str('RERANK_PROVIDER', ''),
-                'rerank_model': _config.get_str('RERANK_MODEL', ''),
-                'rerank_topk': _config.get_int('RERANK_TOPK', 0),
-
-                # Scoring & weighting
-                'keyword_boost': _config.get_float('KEYWORD_BOOST', 0.0),
-                'recency_weight': _config.get_float('RECENCY_WEIGHT', 0.0),
-
-                # Path boosts & exclusions (as arrays for proper diffing)
-                'path_boosts': path_boosts,
-                'exclude_globs': exclude_globs,
-                'exclude_dirs': exclude_dirs,
-                'index_excluded_exts': index_excluded_exts,
-            }
+            # Use centralized config capture with whitelist
+            config_snapshot = capture_eval_config()
 
             # Run eval
             hits_top1 = 0
@@ -376,6 +328,9 @@ async def eval_run_stream(
             # Generate run_id for persistence and traceability
             run_id = time.strftime("%Y%m%d_%H%M%S")
 
+            # Capture config using the centralized whitelist
+            eval_config = capture_eval_config()
+
             summary = {
                 "run_id": run_id,
                 "total": total,
@@ -387,6 +342,7 @@ async def eval_run_stream(
                 "use_multi": use_multi_val,
                 "duration_secs": round(duration, 2),
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "config": eval_config,
                 "results": results
             }
 
@@ -611,8 +567,8 @@ def analyze_eval_comparison(payload: Dict[str, Any]) -> Dict[str, Any]:
         top1_regressions_count = payload.get("top1_regressions_count", 0)
         top1_improvements_count = payload.get("top1_improvements_count", 0)
         
-        # Build the prompt for LLM analysis
-        system_prompt = """You are an expert RAG (Retrieval-Augmented Generation) system analyst.
+        # Get eval analysis prompt from config (or use default)
+        default_system_prompt = """You are an expert RAG (Retrieval-Augmented Generation) system analyst.
 Your job is to analyze evaluation comparisons and provide HONEST, SKEPTICAL insights.
 
 CRITICAL: Do NOT force explanations that don't make sense. If the data is contradictory or confusing:
@@ -628,6 +584,7 @@ Be rigorous:
 4. Provide actionable suggestions only when you have reasonable confidence
 
 Format your response with clear sections using markdown headers."""
+        system_prompt = _config.get_str('PROMPT_EVAL_ANALYSIS', default_system_prompt)
 
         # Build user prompt with eval data
         current_metrics = f"""Top-1 Accuracy: {current_run.get('top1_accuracy', 0) * 100:.1f}%

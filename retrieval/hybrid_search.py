@@ -734,7 +734,8 @@ def expand_queries(query: str, m: int = 4) -> List[str]:
     try:
         from server.env_model import generate_text
 
-        sys_prompt = """You are a code search query expander. Given a developer's question,
+        # Get query expansion prompt from config (or use default)
+        default_prompt = """You are a code search query expander. Given a developer's question,
 generate alternative search queries that might find the same code using different terminology.
 
 Rules:
@@ -743,6 +744,7 @@ Rules:
 - Use technical synonyms (auth/authentication, config/configuration, etc.)
 - Include both abstract and specific phrasings
 - Do NOT include explanations, just the queries"""
+        sys_prompt = _cfg.get_str('PROMPT_QUERY_EXPANSION', default_prompt)
 
         user_prompt = f"Generate {m-1} search query variants for: {query}"
 

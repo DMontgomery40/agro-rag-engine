@@ -145,6 +145,22 @@ export function useTooltips() {
         ],
         [['Optional', 'info'], ['Enables AI Analysis', 'success']]
       ),
+      EVAL_ANALYSIS_SUBTAB: L(
+        'Eval Analysis',
+        'View and compare RAG evaluation runs. Analyze retrieval accuracy metrics, see question-by-question results, compare configuration changes between runs, and get AI-powered insights on performance regressions and recommendations.',
+        [
+          ['Evaluation Guide', '/docs/EVALUATION.md']
+        ],
+        [['Deep-dive analysis', 'info']]
+      ),
+      SYSTEM_PROMPTS_SUBTAB: L(
+        'System Prompts',
+        'Edit LLM system prompts that control RAG pipeline behavior. These prompts are used for query expansion, chat responses, semantic card generation, code enrichment, and eval analysis. Changes are saved to agro_config.json and take effect immediately.',
+        [
+          ['Prompt Engineering', 'https://www.anthropic.com/news/prompt-engineering']
+        ],
+        [['Live reload', 'success']]
+      ),
       RUN_EVAL_ANALYSIS: L(
         'Run RAG Evaluation',
         'Execute the full RAG evaluation suite using your current configuration settings. This runs all golden questions through the retrieval pipeline and measures Top-1 and Top-K accuracy. A live terminal will slide down showing real-time progress, and results will automatically appear in the Eval Analysis view when complete.',
@@ -253,6 +269,24 @@ export function useTooltips() {
         ['Server-Sent Events', 'https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events'],
         ['Streaming Chat', '/docs/CHAT.md']
       ], [['UX', 'info']]),
+
+      CHAT_STREAM_INCLUDE_THINKING: L('Include Thinking in Stream', 'When enabled and using a thinking/reasoning model (like Anthropic Claude with extended thinking or OpenAI o-series), the model\'s reasoning process will be streamed to the UI before the final answer. This provides transparency into how the model arrived at its conclusion but increases response length. Disable if you only want final answers without reasoning traces.', [
+        ['Anthropic Extended Thinking', 'https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking'],
+        ['OpenAI Reasoning Models', 'https://platform.openai.com/docs/guides/reasoning']
+      ], [['Advanced', 'info']]),
+
+      CHAT_DEFAULT_MODEL: L('Default Chat Model', 'Default LLM model used for chat when not overridden per-request. Common options: gpt-4o-mini (fast/cheap), gpt-4o (balanced), claude-3-5-sonnet (high quality), or local Ollama models. Per-request model overrides take precedence.', [
+        ['OpenAI Models', 'https://platform.openai.com/docs/models'],
+        ['Anthropic Models', 'https://docs.anthropic.com/en/docs/about-claude/models']
+      ]),
+
+      CHAT_STREAM_TIMEOUT: L('Stream Timeout (seconds)', 'Maximum time in seconds to wait for a streaming chat response to complete. If the stream doesn\'t finish within this time, the connection will be closed. Increase for complex queries that require longer generation times. Default: 120 seconds (2 minutes). Range: 30-600 seconds.', [
+        ['HTTP Timeouts', 'https://developer.mozilla.org/en-US/docs/Web/API/fetch#options']
+      ], [['Affects reliability', 'info']]),
+
+      CHAT_THINKING_BUDGET_TOKENS: L('Thinking Budget Tokens', 'Maximum number of tokens allocated for the model\'s internal reasoning/thinking process when using thinking-enabled models like Anthropic Claude with extended thinking. Higher budgets allow deeper reasoning but increase latency and cost. Only applies when using models that support extended thinking. Default: 10,000 tokens. Range: 1,000-100,000.', [
+        ['Anthropic Thinking Budget', 'https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#budget-tokens']
+      ], [['Cost', 'warning']]),
 
       // Models / Providers
       GEN_MODEL: L('Generation Model', 'Answer model. Local: qwen3-coder:14b via Ollama. Cloud: gpt-4o-mini, etc. Larger models cost more and can be slower; smaller ones are faster/cheaper.', [

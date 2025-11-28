@@ -10,7 +10,7 @@ export default defineConfig({
   workers: 1,
   reporter: [['list']],
   use: {
-    baseURL: 'http://127.0.0.1:5175',
+    baseURL: 'http://127.0.0.1:5173',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'off',
@@ -27,9 +27,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npm --prefix web run dev -- --port 5175 --strictPort",
-    url: 'http://127.0.0.1:5175/',
-    reuseExistingServer: true,
+    command: "npm --prefix web run dev -- --port 5173",
+    url: 'http://127.0.0.1:5173/',
+    reuseExistingServer: !process.env.CI,
     timeout: 60 * 1000,
   },
 });

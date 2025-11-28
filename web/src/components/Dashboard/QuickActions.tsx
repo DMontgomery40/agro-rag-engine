@@ -36,10 +36,12 @@ export function QuickActions() {
       const data = await response.json();
       
       if (response.ok) {
-        setStatusMessage('✓ Keywords generated');
+        // Support both new format (count/keywords) and legacy format (total_count)
+        const total = data.count ?? data.total_count ?? 0;
+        setStatusMessage(`✓ Loaded ${total} keywords from repos.json`);
         setProgress(100);
         if (terminal) {
-          terminal.appendLine(`✓ Generated ${data.count || 0} keywords\n`);
+          terminal.appendLine(`✓ Loaded ${total} keywords from repos.json\n`);
           terminal.updateProgress(100, 'Complete');
         }
       } else {

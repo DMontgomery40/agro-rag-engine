@@ -296,11 +296,30 @@ class CardsBuildJob:
                     code = (ch.get("code") or "")[:2000]
                     fp = ch.get("file_path", "")
                     if self.enrich:
-                        prompt = (
-                            "Summarize this code chunk for retrieval as a JSON object with keys: "
-                            "symbols (array of names: functions/classes/components/routes), purpose (short sentence), routes (array of route paths if any). "
-                            "Respond with only the JSON.\n\n"
+                        # Get semantic cards prompt from config (or use default)
+                        # Using same prompt as indexer/build_cards.py for consistency
+                        default_prompt = (
+                            "Analyze this code chunk and create a comprehensive JSON summary for code search. "
+                            "Focus on WHAT the code does (business purpose) and HOW it works (technical details). "
+                            "Include all important symbols, patterns, and domain concepts.\n\n"
+                            "JSON format:\n"
+                            "{\n"
+                            "  \"symbols\": [\"function_name\", \"class_name\", \"variable_name\"],\n"
+                            "  \"purpose\": \"Clear business purpose - what problem this solves\",\n"
+                            "  \"technical_details\": \"Key technical implementation details\",\n"
+                            "  \"domain_concepts\": [\"business_term1\", \"business_term2\"],\n"
+                            "  \"routes\": [\"api/endpoint\", \"webhook/path\"],\n"
+                            "  \"dependencies\": [\"external_service\", \"library\"],\n"
+                            "  \"patterns\": [\"design_pattern\", \"architectural_concept\"]\n"
+                            "}\n\n"
+                            "Focus on:\n"
+                            "- Domain-specific terminology and concepts from this codebase\n"
+                            "- Technical patterns and architectural decisions\n"
+                            "- Business logic and problem being solved\n"
+                            "- Integration points, APIs, and external services\n"
+                            "- Key algorithms, data structures, and workflows\n\n"
                         )
+                        prompt = _config_registry.get_str('PROMPT_SEMANTIC_CARDS', default_prompt) if _config_registry else default_prompt
                         user = prompt + code
                         try:
                             text, _meta = generate_text(user_input=user, system_instructions=None, reasoning_effort=None, response_format={"type": "json_object"})
@@ -355,7 +374,18 @@ class CardsBuildJob:
                         syml = card.get("symbols") or []
                         card["purpose"] = (f"Defines {'/'.join(syml[:2])} in {base}" if syml else f"High-level summary for {base}")
                     out_json.write(json.dumps(card, ensure_ascii=False) + "\n")
-                    text_out = " ".join(card.get("symbols", [])) + "\n" + card.get("purpose", "") + "\n" + " ".join(card.get("routes", [])) + "\n" + fp
+                    # Create rich text representation for BM25 indexing (matching indexer/build_cards.py format)
+                    text_parts = [
+                        ' '.join(card.get('symbols', [])),
+                        card.get('purpose', ''),
+                        card.get('technical_details', ''),
+                        ' '.join(card.get('domain_concepts', [])),
+                        ' '.join(card.get('routes', [])),
+                        ' '.join(card.get('dependencies', [])),
+                        ' '.join(card.get('patterns', [])),
+                        fp
+                    ]
+                    text_out = ' '.join(filter(None, text_parts))
                     out_txt.write(text_out.replace("\n", " ") + "\n")
                     written += 1
                     self.done = idx + 1

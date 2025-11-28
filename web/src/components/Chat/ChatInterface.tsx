@@ -7,6 +7,122 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAPI } from '@/hooks';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
+// Useful tips shown during response generation
+// Each tip has content and optional category for styling
+const AGRO_TIPS = [
+  // RAG & Search Tips
+  { tip: "Use specific file paths like 'server/app.py' to narrow your search to specific areas of the codebase.", category: "search" },
+  { tip: "Try asking 'Where is X implemented?' rather than 'What is X?' for more precise code locations.", category: "search" },
+  { tip: "Multi-query expansion rewrites your question multiple ways to find more relevant results.", category: "rag" },
+  { tip: "The reranker scores results by semantic similarity - higher confidence means better matches.", category: "rag" },
+  { tip: "BM25 finds keyword matches while dense search finds semantic meaning - AGRO uses both.", category: "rag" },
+  { tip: "Click any citation to open the file directly in VS Code at the exact line number.", category: "ux" },
+  { tip: "Fast mode skips reranking for quicker results when you need speed over precision.", category: "rag" },
+  { tip: "The confidence score reflects how well the retrieved documents match your query.", category: "rag" },
+  
+  // Learning Reranker
+  { tip: "Every thumbs up/down you give trains the Learning Reranker to better understand your codebase.", category: "feedback" },
+  { tip: "The cross-encoder reranker learns from your feedback to improve result ordering over time.", category: "feedback" },
+  { tip: "Consistent feedback helps AGRO learn your codebase's unique terminology and patterns.", category: "feedback" },
+  { tip: "The reranker model checkpoints are saved automatically - your feedback is never lost.", category: "feedback" },
+  
+  // Prompts & Models
+  { tip: "Custom system prompts let you tailor AGRO's response style to your team's preferences.", category: "config" },
+  { tip: "Lower temperature (0.0-0.3) gives more focused answers; higher (0.7+) allows more creativity.", category: "config" },
+  { tip: "You can use local models via Ollama for air-gapped environments or cost savings.", category: "config" },
+  { tip: "The model automatically fails over to cloud APIs if local inference isn't available.", category: "config" },
+  
+  // Indexing
+  { tip: "Re-index after major refactors to keep AGRO's understanding of your code current.", category: "indexing" },
+  { tip: "The AST chunker preserves function boundaries - results always show complete code blocks.", category: "indexing" },
+  { tip: "Semantic cards summarize files and classes for better high-level understanding.", category: "indexing" },
+  { tip: "Index stats show when your codebase was last indexed - check Dashboard for details.", category: "indexing" },
+  
+  // Evaluation & Quality
+  { tip: "Run evals regularly to track retrieval quality as your codebase evolves.", category: "eval" },
+  { tip: "Golden questions are your benchmark - add questions that matter to your team.", category: "eval" },
+  { tip: "MRR (Mean Reciprocal Rank) measures how quickly AGRO finds the right answer.", category: "eval" },
+  { tip: "Compare eval runs to see if config changes improved or regressed retrieval quality.", category: "eval" },
+  
+  // Tracing & Debugging
+  { tip: "Enable the Routing Trace to see exactly how AGRO found and ranked your results.", category: "debug" },
+  { tip: "Trace steps show timing for each stage: retrieval, reranking, and generation.", category: "debug" },
+  { tip: "The provider failover trace shows when AGRO switched between local and cloud models.", category: "debug" },
+  { tip: "Use LangSmith integration for detailed traces of the full RAG pipeline.", category: "debug" },
+  
+  // Keyboard & UX
+  { tip: "Press Ctrl+Enter to send messages without clicking the button.", category: "ux" },
+  { tip: "Use Ctrl+K anywhere to quickly search settings and jump to any configuration.", category: "ux" },
+  { tip: "Export your conversation to JSON for documentation or sharing with teammates.", category: "ux" },
+  { tip: "Toggle the side panel to access quick settings without leaving the chat.", category: "ux" },
+  
+  // Infrastructure
+  { tip: "Qdrant stores your vectors locally - no data leaves your machine unless you use cloud models.", category: "infra" },
+  { tip: "Redis caches embeddings and checkpoints for faster repeated queries.", category: "infra" },
+  { tip: "The embedded Grafana dashboard shows real-time metrics and query patterns.", category: "infra" },
+  { tip: "Docker containers can be configured for different deployment scenarios.", category: "infra" },
+  
+  // Best Practices
+  { tip: "Ask follow-up questions - AGRO maintains context from your conversation history.", category: "best" },
+  { tip: "Be specific about what you're looking for: 'error handling in auth' beats 'auth code'.", category: "best" },
+  { tip: "If results seem off, try rephrasing - different words can surface different code.", category: "best" },
+  { tip: "Check citations to verify the answer - AGRO shows exactly where information came from.", category: "best" },
+  { tip: "Use the repo selector to focus on specific repositories in multi-repo setups.", category: "best" },
+  
+  // Advanced
+  { tip: "Profiles let you save and switch between different AGRO configurations instantly.", category: "advanced" },
+  { tip: "The MCP server enables IDE integrations - ask your editor about your code.", category: "advanced" },
+  { tip: "Webhooks can trigger re-indexing automatically when you push code changes.", category: "advanced" },
+  { tip: "The CLI supports all chat features for terminal-first workflows.", category: "advanced" },
+];
+
+// Shuffle array using Fisher-Yates
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+// Calculate display duration based on tip length (min 3s, ~150 chars/sec reading speed)
+function getTipDuration(tip: string): number {
+  const wordsPerMinute = 200;
+  const words = tip.split(' ').length;
+  const readingTimeMs = (words / wordsPerMinute) * 60 * 1000;
+  return Math.max(3000, Math.min(readingTimeMs + 1500, 8000)); // 3-8 seconds
+}
+
+// Category colors for visual variety
+const CATEGORY_COLORS: Record<string, string> = {
+  search: 'var(--link)',
+  rag: 'var(--accent)',
+  feedback: 'var(--success)',
+  config: 'var(--warn)',
+  indexing: 'var(--info)',
+  eval: 'var(--accent)',
+  debug: 'var(--fg-muted)',
+  ux: 'var(--link)',
+  infra: 'var(--info)',
+  best: 'var(--success)',
+  advanced: 'var(--warn)',
+};
+
+const CATEGORY_ICONS: Record<string, string> = {
+  search: '🔍',
+  rag: '🧠',
+  feedback: '👍',
+  config: '⚙️',
+  indexing: '📑',
+  eval: '📊',
+  debug: '🔬',
+  ux: '✨',
+  infra: '🏗️',
+  best: '💡',
+  advanced: '🚀',
+};
+
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -16,6 +132,7 @@ interface Message {
   confidence?: number;
   traceData?: any;
   meta?: any; // provider/backend/failover transparency
+  eventId?: string; // For feedback correlation
 }
 
 export interface TraceStep {
@@ -47,6 +164,87 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const typingStartedAtRef = useRef<number | null>(null);
   const streamingSupportedRef = useRef<boolean | null>(null);
+  
+  // Tip rotation state for streaming indicator
+  const [currentTip, setCurrentTip] = useState<typeof AGRO_TIPS[0] | null>(null);
+  const [tipFade, setTipFade] = useState(true);
+  const shuffledTipsRef = useRef<typeof AGRO_TIPS>([]);
+  const tipIndexRef = useRef(0);
+  
+  // Feedback state: track which messages have received feedback
+  const [messageFeedback, setMessageFeedback] = useState<Record<string, { type: string; rating?: number }>>({});
+  
+  // Send feedback to API
+  const sendFeedback = async (eventId: string | undefined, messageId: string, signal: string) => {
+    if (!eventId) return;
+    
+    try {
+      const response = await fetch(api('feedback'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event_id: eventId, signal })
+      });
+      
+      if (response.ok) {
+        setMessageFeedback(prev => ({
+          ...prev,
+          [messageId]: { type: signal, rating: signal.startsWith('star') ? parseInt(signal.slice(4)) : undefined }
+        }));
+      }
+    } catch (error) {
+      console.error('[ChatInterface] Feedback error:', error);
+    }
+  };
+  
+  // Rotate tips during streaming/typing
+  useEffect(() => {
+    if (!streaming && !typing) {
+      setCurrentTip(null);
+      return;
+    }
+    
+    // Shuffle tips on first activation
+    if (shuffledTipsRef.current.length === 0) {
+      shuffledTipsRef.current = shuffleArray(AGRO_TIPS);
+      tipIndexRef.current = 0;
+    }
+    
+    // Show first tip immediately
+    const showNextTip = () => {
+      setTipFade(false);
+      setTimeout(() => {
+        const tip = shuffledTipsRef.current[tipIndexRef.current];
+        setCurrentTip(tip);
+        tipIndexRef.current = (tipIndexRef.current + 1) % shuffledTipsRef.current.length;
+        // Re-shuffle when we've shown all tips
+        if (tipIndexRef.current === 0) {
+          shuffledTipsRef.current = shuffleArray(AGRO_TIPS);
+        }
+        setTipFade(true);
+      }, 150);
+    };
+    
+    showNextTip();
+    
+    // Set up interval for tip rotation
+    const getNextInterval = () => {
+      const tip = shuffledTipsRef.current[tipIndexRef.current];
+      return getTipDuration(tip?.tip || '');
+    };
+    
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const scheduleNext = () => {
+      timeoutId = setTimeout(() => {
+        showNextTip();
+        scheduleNext();
+      }, getNextInterval());
+    };
+    scheduleNext();
+    
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [streaming, typing]);
 
   // Chat settings state
   const [model, setModel] = useState('gpt-4o-mini');
@@ -244,16 +442,25 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
   const handleStreamingResponse = async (userMessage: Message) => {
     setStreaming(true);
 
-    const response = await fetch(api('/chat/stream'), {
+    const params = new URLSearchParams(window.location.search || '');
+    const fast = fastMode || params.get('fast') === '1' || params.get('smoke') === '1';
+
+    // Use unified /api/chat endpoint with stream: true
+    const response = await fetch(api('chat'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        message: userMessage.content,
-        repo: selectedRepo || undefined,
+        question: userMessage.content,
+        repo: selectedRepo || null,
         model,
         temperature,
         max_tokens: maxTokens,
-        top_p: topP,
+        multi_query: 1,
+        final_k: topK,
+        system_prompt: '',
+        fast_mode: fast,
+        stream: true,
+        include_reasoning: false,
         history: messages.map(m => ({ role: m.role, content: m.content }))
       })
     });
@@ -265,10 +472,13 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
     const reader = response.body?.getReader();
     const decoder = new TextDecoder();
     let accumulatedContent = '';
+    let thinkingContent = '';
     let assistantMessageId = `assistant-${Date.now()}`;
     let citations: string[] = [];
     let traceData: any = null;
     let confidence: number | undefined;
+    let meta: any = undefined;
+    let eventId: string | undefined;
 
     if (!reader) {
       throw new Error('Response body is not readable');
@@ -283,23 +493,81 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
 
       for (const line of lines) {
         if (line.startsWith('data: ')) {
-          const data = line.slice(6);
-          if (data === '[DONE]') continue;
+          const data = line.slice(6).trim();
+          if (!data || data === '[DONE]') continue;
 
           try {
             const parsed = JSON.parse(data);
-            if (parsed.content) {
-              accumulatedContent += parsed.content;
-            }
-            if (parsed.citations) {
-              citations = parsed.citations;
-            }
-            if (typeof parsed.confidence === 'number') {
-              confidence = parsed.confidence;
-            }
-            if (parsed.trace) {
-              traceData = parsed.trace;
-              notifyTrace(parsed.trace.steps || [], tracePreference, 'response');
+            const chunkType = parsed.type;
+
+            switch (chunkType) {
+              case 'thinking':
+                // Accumulate thinking/reasoning content
+                if (parsed.content) {
+                  thinkingContent += parsed.content;
+                }
+                break;
+
+              case 'content':
+                // Main answer content
+                if (parsed.content) {
+                  accumulatedContent += parsed.content;
+                }
+                break;
+
+              case 'citations':
+                // Citations with optional confidence
+                if (parsed.data?.citations) {
+                  citations = parsed.data.citations;
+                }
+                if (typeof parsed.data?.confidence === 'number') {
+                  confidence = parsed.data.confidence;
+                }
+                break;
+
+              case 'trace':
+                // Trace data
+                if (parsed.data) {
+                  traceData = parsed.data;
+                  const steps = parsed.data.steps || [];
+                  notifyTrace(steps, tracePreference, 'response');
+                }
+                break;
+
+              case 'meta':
+                // Provider metadata
+                if (parsed.data) {
+                  meta = parsed.data;
+                }
+                break;
+
+              case 'done':
+                // Stream complete
+                if (parsed.data?.event_id) {
+                  eventId = parsed.data.event_id;
+                }
+                if (typeof parsed.data?.confidence === 'number') {
+                  confidence = parsed.data.confidence;
+                }
+                break;
+
+              case 'error':
+                // Error occurred
+                console.error('[ChatInterface] Stream error:', parsed.data?.message);
+                accumulatedContent = `Error: ${parsed.data?.message || 'Unknown error'}`;
+                break;
+
+              default:
+                // Legacy format fallback
+                if (parsed.content) {
+                  accumulatedContent += parsed.content;
+                }
+                if (parsed.citations) {
+                  citations = parsed.citations;
+                }
+                if (typeof parsed.confidence === 'number') {
+                  confidence = parsed.confidence;
+                }
             }
 
             // Update message in real-time
@@ -310,7 +578,9 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
               timestamp: Date.now(),
               citations,
               traceData,
-              confidence
+              confidence,
+              meta,
+              eventId // For feedback correlation
             };
 
             setMessages(prev => {
@@ -318,7 +588,7 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
               return [...withoutLast, assistantMessage];
             });
           } catch (error) {
-            console.error('[ChatInterface] Failed to parse SSE data:', error);
+            console.error('[ChatInterface] Failed to parse SSE data:', error, data);
           }
         }
       }
@@ -329,14 +599,6 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
       saveChatHistory(prev);
       return prev;
     });
-    // DISABLED: Legacy trace loader causes DOM conflicts
-    // if (tracePreference) {
-    //   requestAnimationFrame(() => {
-    //     try {
-    //       (window as any).Trace?.loadLatestTrace?.('chat-trace-output');
-    //     } catch {}
-    //   });
-    // }
   };
 
   const handleRegularResponse = async (userMessage: Message) => {
@@ -402,7 +664,8 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
       timestamp: Date.now(),
       meta,
       citations,
-      confidence: confidenceValue
+      confidence: confidenceValue,
+      eventId: data.event_id // For feedback correlation
     };
 
     const updatedMessages = [...messages, userMessage, assistantMessage];
@@ -490,15 +753,18 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
   };
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: '70vh',
-      border: '1px solid var(--line)',
-      borderRadius: '6px',
-      overflow: 'hidden',
-      background: 'var(--card-bg)'
-    }}>
+    <div
+      data-react-chat="true"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '70vh',
+        border: '1px solid var(--line)',
+        borderRadius: '6px',
+        overflow: 'hidden',
+        background: 'var(--card-bg)'
+      }}
+    >
       {/* Header */}
       <div style={{
         padding: '16px',
@@ -711,15 +977,16 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
                       </div>
                     )}
 
+                    {/* Message footer with copy and feedback */}
                     <div style={{
                       marginTop: '8px',
                       fontSize: '10px',
-                      opacity: 0.6,
                       display: 'flex',
                       justifyContent: 'space-between',
-                      alignItems: 'center'
+                      alignItems: 'center',
+                      gap: '8px',
+                      opacity: 0.75
                     }}>
-                      <span>{new Date(message.timestamp).toLocaleTimeString()}</span>
                       <button
                         onClick={() => handleCopy(message.content)}
                         style={{
@@ -727,27 +994,114 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
                           border: 'none',
                           color: 'inherit',
                           cursor: 'pointer',
-                          padding: '2px 4px',
-                          fontSize: '10px'
+                          padding: '2px 6px',
+                          fontSize: '10px',
+                          borderRadius: '4px',
+                          transition: 'background 0.15s'
                         }}
                         aria-label="Copy message"
+                        title="Copy to clipboard"
                       >
-                        Copy
+                        📋
                       </button>
+                      
+                      {/* Feedback controls for assistant messages */}
+                      {message.role === 'assistant' && (
+                        <div style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '4px',
+                          marginLeft: 'auto'
+                        }}>
+                          {/* Show submitted feedback state OR the feedback buttons */}
+                          {messageFeedback[message.id] ? (
+                            <span style={{ 
+                              fontSize: '10px', 
+                              color: messageFeedback[message.id].type === 'thumbsup' ? 'var(--success)' : 
+                                     messageFeedback[message.id].type === 'thumbsdown' ? 'var(--warn)' : 'var(--accent)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '3px'
+                            }}>
+                              {messageFeedback[message.id].type === 'thumbsup' && '👍'}
+                              {messageFeedback[message.id].type === 'thumbsdown' && '👎'}
+                              {messageFeedback[message.id].rating && '⭐'.repeat(messageFeedback[message.id].rating!)}
+                              <span style={{ opacity: 0.7, marginLeft: '2px' }}>Thanks!</span>
+                            </span>
+                          ) : (
+                            <>
+                              {/* Thumbs up/down */}
+                              <button
+                                onClick={() => sendFeedback(message.eventId, message.id, 'thumbsup')}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  padding: '2px 4px',
+                                  fontSize: '12px',
+                                  borderRadius: '4px',
+                                  transition: 'all 0.15s',
+                                  opacity: 0.6
+                                }}
+                                aria-label="Helpful"
+                                title="This was helpful - trains the reranker"
+                              >
+                                👍
+                              </button>
+                              <button
+                                onClick={() => sendFeedback(message.eventId, message.id, 'thumbsdown')}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  padding: '2px 4px',
+                                  fontSize: '12px',
+                                  borderRadius: '4px',
+                                  transition: 'all 0.15s',
+                                  opacity: 0.6
+                                }}
+                                aria-label="Not helpful"
+                                title="Not helpful - trains the reranker"
+                              >
+                                👎
+                              </button>
+                              
+                              {/* Star rating - compact row */}
+                              <span style={{ 
+                                borderLeft: '1px solid var(--line)', 
+                                paddingLeft: '6px', 
+                                marginLeft: '2px',
+                                display: 'flex',
+                                gap: '1px'
+                              }}>
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <button
+                                    key={star}
+                                    onClick={() => sendFeedback(message.eventId, message.id, `star${star}`)}
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                      padding: '1px 2px',
+                                      fontSize: '11px',
+                                      borderRadius: '2px',
+                                      transition: 'all 0.15s',
+                                      opacity: 0.4,
+                                      lineHeight: 1
+                                    }}
+                                    aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
+                                    title={`Rate ${star}/5 - trains the reranker`}
+                                  >
+                                    ⭐
+                                  </button>
+                                ))}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
-                  {/* DISABLED: Legacy feedback slot causes DOM conflicts with React */}
-                  {/* {message.role === 'assistant' && (
-                    <div
-                      id={`feedback-${message.id}`}
-                      className="chat-feedback-slot"
-                      style={{
-                        marginTop: '6px',
-                        paddingLeft: '4px',
-                        maxWidth: '78%'
-                      }}
-                    />
-                  )} */}
                 </div>
               ))
             )}
@@ -776,33 +1130,152 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
 
             {streaming && (
               <div style={{
-                color: 'var(--fg-muted)',
-                fontSize: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
+                background: 'linear-gradient(135deg, var(--bg-elev1) 0%, var(--bg-elev2) 100%)',
+                border: '1px solid var(--line)',
+                borderRadius: '12px',
+                padding: '16px 20px',
+                marginBottom: '12px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
               }}>
+                {/* Status indicator */}
                 <div style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  background: 'var(--accent)',
-                  animation: 'pulse 1.5s ease-in-out infinite'
-                }} />
-                Streaming response...
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  marginBottom: currentTip ? '12px' : '0'
+                }}>
+                  <div style={{
+                    width: '10px',
+                    height: '10px',
+                    borderRadius: '50%',
+                    background: 'var(--accent)',
+                    animation: 'pulse 1.5s ease-in-out infinite',
+                    boxShadow: '0 0 8px var(--accent)'
+                  }} />
+                  <span style={{
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: 'var(--fg)',
+                    letterSpacing: '0.3px'
+                  }}>
+                    Generating response...
+                  </span>
+                </div>
+                
+                {/* Tip display */}
+                {currentTip && (
+                  <div style={{
+                    opacity: tipFade ? 1 : 0,
+                    transition: 'opacity 0.15s ease-in-out',
+                    borderTop: '1px solid var(--line)',
+                    paddingTop: '12px',
+                    marginTop: '4px'
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '10px'
+                    }}>
+                      <span style={{
+                        fontSize: '16px',
+                        lineHeight: '1.4'
+                      }}>
+                        {CATEGORY_ICONS[currentTip.category] || '💡'}
+                      </span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.8px',
+                          color: CATEGORY_COLORS[currentTip.category] || 'var(--fg-muted)',
+                          marginBottom: '4px'
+                        }}>
+                          {currentTip.category === 'rag' ? 'RAG' : currentTip.category === 'ux' ? 'UX' : currentTip.category}
+                        </div>
+                        <div style={{
+                          fontSize: '12px',
+                          lineHeight: '1.5',
+                          color: 'var(--fg)'
+                        }}>
+                          {currentTip.tip}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
             {!streaming && typing && (
               <div style={{
-                color: 'var(--fg-muted)',
-                fontSize: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }} aria-live="polite" aria-label="Assistant is typing">
-                <LoadingSpinner variant="dots" size="md" color="accent" />
-                <span>Assistant is thinking…</span>
+                background: 'linear-gradient(135deg, var(--bg-elev1) 0%, var(--bg-elev2) 100%)',
+                border: '1px solid var(--line)',
+                borderRadius: '12px',
+                padding: '16px 20px',
+                marginBottom: '12px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              }} aria-live="polite" aria-label="Assistant is thinking">
+                {/* Status indicator */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  marginBottom: currentTip ? '12px' : '0'
+                }}>
+                  <LoadingSpinner variant="dots" size="md" color="accent" />
+                  <span style={{
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: 'var(--fg)',
+                    letterSpacing: '0.3px'
+                  }}>
+                    Thinking...
+                  </span>
+                </div>
+                
+                {/* Tip display */}
+                {currentTip && (
+                  <div style={{
+                    opacity: tipFade ? 1 : 0,
+                    transition: 'opacity 0.15s ease-in-out',
+                    borderTop: '1px solid var(--line)',
+                    paddingTop: '12px',
+                    marginTop: '4px'
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '10px'
+                    }}>
+                      <span style={{
+                        fontSize: '16px',
+                        lineHeight: '1.4'
+                      }}>
+                        {CATEGORY_ICONS[currentTip.category] || '💡'}
+                      </span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.8px',
+                          color: CATEGORY_COLORS[currentTip.category] || 'var(--fg-muted)',
+                          marginBottom: '4px'
+                        }}>
+                          {currentTip.category === 'rag' ? 'RAG' : currentTip.category === 'ux' ? 'UX' : currentTip.category}
+                        </div>
+                        <div style={{
+                          fontSize: '12px',
+                          lineHeight: '1.5',
+                          color: 'var(--fg)'
+                        }}>
+                          {currentTip.tip}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

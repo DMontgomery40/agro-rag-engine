@@ -1138,24 +1138,18 @@
                 const result = await createResponse.json();
 
                 if (result.ok) {
-                    const discr = result.discriminative?.count || 0;
-                    const sema = result.semantic?.count || 0;
-                    const total = result.total_count || 0;
+                    // Support both new format (count/keywords) and legacy format (discriminative/semantic/total_count)
+                    const total = result.count ?? result.total_count ?? 0;
+                    const keywords = result.keywords || [];
                     const duration = result.duration_seconds || 0;
 
-                    // Build detailed status message
+                    // Build detailed status message - simplified for repos.json single source
                     const status = `
                         <div style="font-size:14px;font-weight:600;color:var(--accent);margin-bottom:8px;">
-                            ✓ Generated ${total} keywords for repo: ${repo}
+                            ✓ Loaded ${total} keywords for repo: ${repo}
                         </div>
                         <div style="font-size:12px;color:var(--fg);margin-bottom:4px;">
-                            <span style="color:var(--link);">Discriminative:</span> ${discr} keywords
-                        </div>
-                        <div style="font-size:12px;color:var(--fg);margin-bottom:4px;">
-                            <span style="color:var(--link);">Semantic:</span> ${sema} keywords
-                        </div>
-                        <div style="font-size:12px;color:var(--fg);margin-bottom:4px;">
-                            <span style="color:var(--link);">LLM:</span> ${result.llm?.count || 0} keywords
+                            Keywords sourced from <span style="color:var(--link);">repos.json</span>
                         </div>
                         <div style="font-size:11px;color:var(--fg-muted);margin-top:8px;">
                             Completed in ${duration}s

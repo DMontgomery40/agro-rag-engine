@@ -4,8 +4,11 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { EvalDrillDown } from '@/components/Evaluation/EvalDrillDown';
+import { SystemPromptsSubtab } from '@/components/Evaluation/SystemPromptsSubtab';
 import { LiveTerminal, LiveTerminalHandle } from '@/components/LiveTerminal/LiveTerminal';
 import { TerminalService } from '@/services/TerminalService';
+
+type EvalSubtab = 'analysis' | 'prompts';
 
 interface EvalRunMeta {
   run_id: string;
@@ -16,6 +19,7 @@ interface EvalRunMeta {
 }
 
 export const EvalAnalysisTab: React.FC = () => {
+  const [activeSubtab, setActiveSubtab] = useState<EvalSubtab>('analysis');
   const [runs, setRuns] = useState<EvalRunMeta[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [compareRunId, setCompareRunId] = useState<string | null>(null);
@@ -183,98 +187,96 @@ export const EvalAnalysisTab: React.FC = () => {
     return `${date} — ${accuracy}% (${run.total} questions)`;
   };
 
-  if (loading) {
-    return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100%',
-        color: 'var(--fg-muted)'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            border: '3px solid var(--line)',
-            borderTopColor: 'var(--accent)',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 16px'
-          }} />
-          Loading evaluation runs...
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        </div>
+  // Helper components for analysis subtab states
+  const AnalysisLoadingState = () => (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: '100%',
+      color: 'var(--fg-muted)'
+    }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{
+          width: '40px',
+          height: '40px',
+          border: '3px solid var(--line)',
+          borderTopColor: 'var(--accent)',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          margin: '0 auto 16px'
+        }} />
+        Loading evaluation runs...
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
-    );
-  }
+    </div>
+  );
 
-  if (error) {
-    return (
-      <div style={{
-        padding: '24px',
-        textAlign: 'center',
-        color: 'var(--err)'
-      }}>
-        <div style={{ fontSize: '24px', marginBottom: '12px' }}>⚠️</div>
-        <div>Error loading evaluation runs: {error}</div>
-        <button
-          onClick={() => window.location.reload()}
-          style={{
-            marginTop: '16px',
-            padding: '8px 16px',
-            background: 'var(--accent)',
-            color: '#000',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer'
-          }}
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
+  const AnalysisErrorState = () => (
+    <div style={{
+      padding: '24px',
+      textAlign: 'center',
+      color: 'var(--err)'
+    }}>
+      <div style={{ fontSize: '24px', marginBottom: '12px' }}>⚠️</div>
+      <div>Error loading evaluation runs: {error}</div>
+      <button
+        onClick={() => window.location.reload()}
+        style={{
+          marginTop: '16px',
+          padding: '8px 16px',
+          background: 'var(--accent)',
+          color: '#000',
+          border: 'none',
+          borderRadius: '6px',
+          cursor: 'pointer'
+        }}
+      >
+        Retry
+      </button>
+    </div>
+  );
 
-  if (runs.length === 0) {
-    return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100%',
-        padding: '48px',
-        textAlign: 'center'
-      }}>
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>📊</div>
-        <h2 style={{ color: 'var(--fg)', marginBottom: '8px' }}>No Evaluation Runs Yet</h2>
-        <p style={{ color: 'var(--fg-muted)', maxWidth: '400px', marginBottom: '24px' }}>
-          Run your first evaluation to see detailed analysis and comparisons here.
-          Go to RAG → Evaluate to create your first eval run.
-        </p>
-        <button
-          onClick={() => window.location.hash = '#/rag?subtab=evaluate'}
-          style={{
-            padding: '12px 24px',
-            background: 'var(--accent)',
-            color: '#000',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}
-        >
-          <span>🧪</span>
-          Run First Evaluation
-        </button>
-      </div>
-    );
-  }
+  const AnalysisEmptyState = () => (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: '100%',
+      padding: '48px',
+      textAlign: 'center'
+    }}>
+      <div style={{ fontSize: '48px', marginBottom: '16px' }}>📊</div>
+      <h2 style={{ color: 'var(--fg)', marginBottom: '8px' }}>No Evaluation Runs Yet</h2>
+      <p style={{ color: 'var(--fg-muted)', maxWidth: '400px', marginBottom: '24px' }}>
+        Run your first evaluation to see detailed analysis and comparisons here.
+      </p>
+      <button
+        onClick={runFullEvaluation}
+        disabled={evalRunning}
+        style={{
+          padding: '12px 24px',
+          background: evalRunning ? 'var(--bg-elev2)' : 'var(--accent)',
+          color: evalRunning ? 'var(--fg-muted)' : '#000',
+          border: 'none',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: 600,
+          cursor: evalRunning ? 'not-allowed' : 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}
+      >
+        <span>🧪</span>
+        {evalRunning ? 'Running...' : 'Run First Evaluation'}
+      </button>
+    </div>
+  );
+
+  // Determine if header should be shown (only for analysis subtab with runs)
+  const showHeader = activeSubtab === 'analysis' && !loading && !error && runs.length > 0;
 
   return (
     <div style={{
@@ -283,7 +285,60 @@ export const EvalAnalysisTab: React.FC = () => {
       flexDirection: 'column',
       overflow: 'hidden'
     }}>
-      {/* Header with Run Selectors */}
+      {/* Subtab Navigation - ALWAYS AT TOP */}
+      <div style={{
+        display: 'flex',
+        gap: '2px',
+        padding: '0 24px',
+        borderBottom: '1px solid var(--line)',
+        background: 'var(--bg-elev1)'
+      }}>
+        <button
+          onClick={() => setActiveSubtab('analysis')}
+          data-tooltip="EVAL_ANALYSIS_SUBTAB"
+          style={{
+            padding: '12px 20px',
+            background: activeSubtab === 'analysis' ? 'var(--bg)' : 'transparent',
+            color: activeSubtab === 'analysis' ? 'var(--accent)' : 'var(--fg-muted)',
+            border: 'none',
+            borderBottom: activeSubtab === 'analysis' ? '2px solid var(--accent)' : '2px solid transparent',
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          <span style={{ fontSize: '14px' }}>&#x1F4CA;</span>
+          Eval Analysis
+        </button>
+        <button
+          onClick={() => setActiveSubtab('prompts')}
+          data-tooltip="SYSTEM_PROMPTS_SUBTAB"
+          style={{
+            padding: '12px 20px',
+            background: activeSubtab === 'prompts' ? 'var(--bg)' : 'transparent',
+            color: activeSubtab === 'prompts' ? 'var(--accent)' : 'var(--fg-muted)',
+            border: 'none',
+            borderBottom: activeSubtab === 'prompts' ? '2px solid var(--accent)' : '2px solid transparent',
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          <span style={{ fontSize: '14px' }}>&#x1F4DD;</span>
+          System Prompts
+        </button>
+      </div>
+
+      {/* Header with Run Selectors - only show for analysis subtab when runs exist */}
+      {showHeader && (
       <div style={{
         padding: '20px 24px',
         borderBottom: '1px solid var(--line)',
@@ -559,26 +614,39 @@ export const EvalAnalysisTab: React.FC = () => {
           </div>
         )}
       </div>
+      )}
 
-      {/* Drill Down Content */}
+      {/* Content Area */}
       <div style={{
         flex: 1,
         overflow: 'auto'
       }}>
-        {selectedRunId ? (
-          <EvalDrillDown
-            key={`${selectedRunId}-${compareRunId || 'none'}`}
-            runId={selectedRunId}
-            compareWithRunId={compareRunId || undefined}
-          />
+        {activeSubtab === 'analysis' ? (
+          // Analysis subtab: handle loading/error/empty/data states
+          loading ? (
+            <AnalysisLoadingState />
+          ) : error ? (
+            <AnalysisErrorState />
+          ) : runs.length === 0 ? (
+            <AnalysisEmptyState />
+          ) : selectedRunId ? (
+            <EvalDrillDown
+              key={`${selectedRunId}-${compareRunId || 'none'}`}
+              runId={selectedRunId}
+              compareWithRunId={compareRunId || undefined}
+            />
+          ) : (
+            <div style={{
+              padding: '48px',
+              textAlign: 'center',
+              color: 'var(--fg-muted)'
+            }}>
+              Select an evaluation run to view details
+            </div>
+          )
         ) : (
-          <div style={{
-            padding: '48px',
-            textAlign: 'center',
-            color: 'var(--fg-muted)'
-          }}>
-            Select an evaluation run to view details
-          </div>
+          // System Prompts subtab - always accessible
+          <SystemPromptsSubtab />
         )}
       </div>
     </div>

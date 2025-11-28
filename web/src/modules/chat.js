@@ -629,6 +629,13 @@ function autoResizeTextarea(textarea) {
 
 // Initialize chat UI and event listeners
 function initChatUI() {
+    // Skip initialization if React ChatInterface is managing the chat
+    // React component sets data-react-chat="true" on its container
+    if (document.querySelector('[data-react-chat="true"]')) {
+        console.log('[chat.js] React ChatInterface detected, skipping legacy initialization');
+        return;
+    }
+
     const input = document.getElementById('chat-input');
     const sendBtn = document.getElementById('chat-send');
     const clearBtn = document.getElementById('chat-clear');

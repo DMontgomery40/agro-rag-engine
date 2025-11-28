@@ -357,6 +357,237 @@ def do_chat(payload: Dict[str, Any], request: Optional[Request] = None) -> JSONR
                 _lg.reload_config()
         except Exception:
             pass
+async def do_chat_stream(payload: Dict[str, Any], request: Optional[Request] = None):
+    """Stream chat response with SSE format.
+
+    Yields JSON chunks with types: thinking, content, citations, trace, meta, done, error.
+    Supports thinking/reasoning for compatible models (Anthropic extended thinking, OpenAI o-series).
+
+    Args:
+        payload: Chat request dict (question, repo, model, etc.)
+        request: Optional FastAPI request for context
+
+    Yields:
+        str: SSE formatted data lines ("data: {...}\\n\\n")
+    """
+    import json
+    import time as _t
+
+    # Helper to format SSE chunk
+    def _sse(chunk_type: str, content: Optional[str] = None, data: Optional[Dict] = None) -> str:
+        chunk = {"type": chunk_type}
+        if content is not None:
+            chunk["content"] = content
+        if data is not None:
+            chunk["data"] = data
+        return f"data: {json.dumps(chunk)}\n\n"
+
+    # Apply overrides like do_chat
+    overrides = {
+        'GEN_MODEL': payload.get('model'),
+        'GEN_TEMPERATURE': payload.get('temperature'),
+        'GEN_MAX_TOKENS': payload.get('max_tokens'),
+        'MQ_REWRITES': payload.get('multi_query'),
+        'LANGGRAPH_FINAL_K': payload.get('final_k'),
+        'SYSTEM_PROMPT': payload.get('system_prompt'),
+    }
+    saved = {k: os.environ.get(k) for k in overrides.keys()}
+
+    trace_obj = None
+    try:
+        from server.tracing import get_trace as _gt
+        trace_obj = _gt()
+    except Exception:
+        pass
+
+    try:
+        for k, v in overrides.items():
+            if v is not None:
+                os.environ[k] = str(v)
+
+        # Reload configs
+        try:
+            from server import env_model as _envm
+            _envm.reload_config()
+        except Exception:
+            pass
+
+        # Check fast mode
+        fast = bool(payload.get('fast_mode')) or (
+            bool(request) and (request.query_params.get('fast') in {'1', 'true', 'on'})
+        )
+
+        question = payload.get('question', '')
+        repo = payload.get('repo')
+        include_reasoning = payload.get('include_reasoning', False)
+
+        # Get graph
+        g = _get_graph()
+
+        if fast or g is None:
+            # Fast/fallback mode: retrieval only, no streaming LLM
+            t0 = _t.time()
+            if fast:
+                os.environ['DISABLE_RERANK'] = '1'
+                from retrieval.hybrid_search import search_routed
+                sr = search_routed(question, repo_override=repo, trace=trace_obj)
+            else:
+                sr_result = do_search(question, repo, None, request)
+                sr = sr_result.get('results', [])
+
+            # Build response
+            lines = []
+            citations = []
+            for d in sr[:5]:
+                fp = d.get('file_path', '')
+                sl = int(d.get('start_line', 0) or 0)
+                el = int(d.get('end_line', 0) or 0)
+                lines.append(f"- {fp}:{sl}-{el}")
+                if fp:
+                    citations.append(f"{fp}:{sl}-{el}")
+
+            mode_label = "fast mode" if fast else "no model available"
+            answer_text = f"Retrieval-only ({mode_label})\n" + "\n".join(lines)
+
+            # Stream the content in one chunk (no actual streaming in fallback)
+            yield _sse("content", content=answer_text)
+
+            # Send citations
+            yield _sse("citations", data={"citations": citations})
+
+            # Send trace
+            dur = int((_t.time() - t0) * 1000)
+            trace = {"steps": [{"step": "retrieve", "duration": dur, "details": {"results": len(sr)}}]}
+            yield _sse("trace", data=trace)
+
+            # Send meta
+            yield _sse("meta", data={"backend": "retrieval-only", "provider": None, "model": None})
+
+            # Log event
+            retrieved = []
+            for d in sr[:5]:
+                fp = d.get('file_path', '')
+                sl = int(d.get('start_line', 0) or 0)
+                el = int(d.get('end_line', 0) or 0)
+                doc_id = f"{fp}:{sl}-{el}" if fp else ''
+                if doc_id:
+                    retrieved.append({"doc_id": doc_id, "score": float(d.get('rerank_score', 0.0) or 0.0)})
+
+            event_id = uuid.uuid4().hex if _is_test_request(request) else log_query_event(
+                query_raw=question,
+                query_rewritten=None,
+                retrieved=retrieved,
+                answer_text=answer_text,
+                route='chat/stream/fallback',
+                client_ip=(request.client.host if request and request.client else None),
+                user_agent=(request.headers.get('user-agent') if request else None),
+            )
+
+            # Done with event_id
+            yield _sse("done", data={"event_id": event_id})
+            return
+
+        # Full graph pipeline
+        t0 = _t.time()
+        state = {
+            "question": question,
+            "documents": [],
+            "generation": "",
+            "iteration": 0,
+            "confidence": 0.0,
+            "repo": ((repo or '').strip() or None),
+        }
+
+        # TODO: When we add true streaming LLM support, we'd use astream_events here
+        # For now, invoke and stream the result
+        res = g.invoke(state, CFG)
+        answer_text = res.get("generation", "")
+        confidence = res.get("confidence", 0.0)
+        docs = res.get('documents') or state.get('documents') or []
+
+        # If include_reasoning and model produced thinking, yield it first
+        # (This would come from res.get('thinking') when we support streaming thinking models)
+        thinking = res.get('thinking')
+        if include_reasoning and thinking:
+            yield _sse("thinking", content=thinking)
+
+        # Stream content - for now as single chunk, later could be word-by-word
+        yield _sse("content", content=answer_text)
+
+        # Build citations
+        citations = []
+        for d in docs[:5]:
+            fp = d.get('file_path') or d.get('path') or ''
+            sl = int(d.get('start_line', 0) or 0)
+            el = int(d.get('end_line', 0) or 0)
+            if fp:
+                citations.append(f"{fp}:{sl}-{el}")
+        yield _sse("citations", data={"citations": citations, "confidence": confidence})
+
+        # Build trace
+        dur = int((_t.time() - t0) * 1000)
+        trace_steps = []
+        try:
+            _tr = trace_obj
+            if _tr is None:
+                from server.tracing import get_trace as _gt
+                _tr = _gt()
+            if _tr and isinstance(getattr(_tr, 'events', None), list) and _tr.events:
+                for ev in _tr.events[-200:]:
+                    kind = str(ev.get('kind') or '')
+                    data = ev.get('data') if isinstance(ev.get('data'), dict) else {}
+                    trace_steps.append({"step": kind, "duration": data.get('duration_ms'), "details": data})
+        except Exception:
+            pass
+        if not trace_steps:
+            trace_steps = [{"step": "graph.invoke", "duration": dur, "details": {}}]
+        yield _sse("trace", data={"steps": trace_steps})
+
+        # Send meta
+        meta = res.get('gen_meta') if isinstance(res, dict) else None
+        yield _sse("meta", data=meta or {})
+
+        # Log event
+        retrieved = []
+        for d in docs[:10]:
+            fp = d.get('file_path') or d.get('path') or ''
+            sl = int(d.get('start_line', 0) or 0)
+            el = int(d.get('end_line', 0) or 0)
+            doc_id = f"{fp}:{sl}-{el}" if fp else ''
+            if doc_id:
+                retrieved.append({"doc_id": doc_id, "score": float(d.get('rerank_score', 0.0) or 0.0)})
+
+        event_id = uuid.uuid4().hex if _is_test_request(request) else log_query_event(
+            query_raw=question,
+            query_rewritten=None,
+            retrieved=retrieved,
+            answer_text=answer_text,
+            route='chat/stream/graph',
+            client_ip=(request.client.host if request and request.client else None),
+            user_agent=(request.headers.get('user-agent') if request else None),
+        )
+
+        # Done
+        yield _sse("done", data={"event_id": event_id, "confidence": confidence})
+
+    except Exception as e:
+        logger.error(f"do_chat_stream error: {e}")
+        yield _sse("error", data={"message": str(e)})
+
+    finally:
+        # Restore env
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+        try:
+            from server import env_model as _envm
+            _envm.reload_config()
+        except Exception:
+            pass
+
+
 def _is_test_request(request: Optional[Request]) -> bool:
     try:
         if not request:

@@ -10,7 +10,7 @@
 
 import { test, expect } from '@playwright/test';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = 'http://localhost:8012';
 
 test.describe('Runtime Mode Save Functionality', () => {
   test.beforeAll(async ({ request }) => {

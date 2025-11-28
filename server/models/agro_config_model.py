@@ -905,6 +905,32 @@ class UIConfig(BaseModel):
         description="Max chat history messages"
     )
 
+    chat_stream_include_thinking: int = Field(
+        default=1,
+        ge=0,
+        le=1,
+        description="Include reasoning/thinking in streamed responses when supported by model"
+    )
+
+    chat_default_model: str = Field(
+        default="gpt-4o-mini",
+        description="Default model for chat if not specified in request"
+    )
+
+    chat_stream_timeout: int = Field(
+        default=120,
+        ge=30,
+        le=600,
+        description="Streaming response timeout in seconds"
+    )
+
+    chat_thinking_budget_tokens: int = Field(
+        default=10000,
+        ge=1000,
+        le=100000,
+        description="Max thinking tokens for Anthropic extended thinking"
+    )
+
     editor_port: int = Field(
         default=4440,
         ge=1024,
@@ -1035,6 +1061,106 @@ class EvaluationConfig(BaseModel):
     )
 
 
+class SystemPromptsConfig(BaseModel):
+    """System prompts for LLM interactions - affects RAG pipeline behavior.
+
+    These prompts control how LLMs behave during query processing, code analysis,
+    and result generation. Changes here can significantly impact RAG accuracy.
+    """
+
+    main_rag_chat: str = Field(
+        default='''You are an expert software engineer and code analysis assistant.
+
+## Your Role:
+- Answer questions about the indexed codebase with precision and accuracy
+- Always cite specific file paths and line ranges from the provided code context
+- Provide clear explanations of how code works, what it does, and why design decisions were made
+- Offer practical, actionable insights based on the actual implementation
+
+## Guidelines:
+- **Be Evidence-Based**: Ground every answer in the provided code context
+- **Be Specific**: Include file paths, line numbers, function/class names, and relevant code snippets
+- **Be Clear**: Explain technical concepts in an accessible way
+- **Be Honest**: If the context doesn't contain enough information, say so
+- **Be Helpful**: Consider edge cases, error handling, and best practices when relevant
+
+## Response Format:
+- Start with a direct answer to the question
+- Support with specific citations: `file_path:start_line-end_line`
+- Include relevant code snippets when they add clarity
+- Explain the "why" behind implementation choices when apparent
+
+You answer strictly from the provided code context. Always cite file paths and line ranges you used.''',
+        description="Main conversational AI system prompt for answering codebase questions"
+    )
+
+    query_expansion: str = Field(
+        default='''You are a code search query expander. Given a developer's question,
+generate alternative search queries that might find the same code using different terminology.
+
+Rules:
+- Output one query variant per line
+- Keep variants concise (3-8 words each)
+- Use technical synonyms (auth/authentication, config/configuration, etc.)
+- Include both abstract and specific phrasings
+- Do NOT include explanations, just the queries''',
+        description="Generate query variants for better recall in hybrid search"
+    )
+
+    query_rewrite: str = Field(
+        default="You rewrite developer questions into search-optimized queries without changing meaning.",
+        description="Optimize user query for code search - expand CamelCase, include API nouns"
+    )
+
+    semantic_cards: str = Field(
+        default='''Analyze this code chunk and create a comprehensive JSON summary for code search. Focus on WHAT the code does (business purpose) and HOW it works (technical details). Include all important symbols, patterns, and domain concepts.
+
+JSON format:
+{
+  "symbols": ["function_name", "class_name", "variable_name"],
+  "purpose": "Clear business purpose - what problem this solves",
+  "technical_details": "Key technical implementation details",
+  "domain_concepts": ["business_term1", "business_term2"],
+  "routes": ["api/endpoint", "webhook/path"],
+  "dependencies": ["external_service", "library"],
+  "patterns": ["design_pattern", "architectural_concept"]
+}
+
+Focus on:
+- Domain-specific terminology and concepts from this codebase
+- Technical patterns and architectural decisions
+- Business logic and problem being solved
+- Integration points, APIs, and external services
+- Key algorithms, data structures, and workflows''',
+        description="Generate JSON summaries for code chunks during indexing"
+    )
+
+    code_enrichment: str = Field(
+        default='''Analyze this code and return a JSON object with: symbols (array of function/class/component names), purpose (one sentence description), keywords (array of technical terms). Be concise. Return ONLY valid JSON.''',
+        description="Extract metadata from code chunks during indexing"
+    )
+
+    eval_analysis: str = Field(
+        default='''You are an expert RAG (Retrieval-Augmented Generation) system analyst.
+Your job is to analyze evaluation comparisons and provide HONEST, SKEPTICAL insights.
+
+CRITICAL: Do NOT force explanations that don't make sense. If the data is contradictory or confusing:
+- Say so clearly: "This result is surprising and may indicate other factors at play"
+- Consider: index changes, data drift, golden question updates, or measurement noise
+- Acknowledge when correlation != causation
+- It's BETTER to say "I'm not sure why this happened" than to fabricate a plausible-sounding but wrong explanation
+
+Be rigorous:
+1. Question whether the config changes ACTUALLY explain the performance delta
+2. Flag when results seem counterintuitive (e.g., disabling a feature improving results)
+3. Consider confounding variables: Was the index rebuilt? Did the test set change?
+4. Provide actionable suggestions only when you have reasonable confidence
+
+Format your response with clear sections using markdown headers.''',
+        description="Analyze eval regressions with skeptical approach - avoid false explanations"
+    )
+
+
 class AgroConfigRoot(BaseModel):
     """Root configuration model for agro_config.json.
 
@@ -1057,6 +1183,7 @@ class AgroConfigRoot(BaseModel):
     ui: UIConfig = Field(default_factory=UIConfig)
     hydration: HydrationConfig = Field(default_factory=HydrationConfig)
     evaluation: EvaluationConfig = Field(default_factory=EvaluationConfig)
+    system_prompts: SystemPromptsConfig = Field(default_factory=SystemPromptsConfig)
 
     class Config:
         # Allow extra fields for forward compatibility
@@ -1217,9 +1344,13 @@ class AgroConfigRoot(BaseModel):
             'AGRO_RERANKER_MINE_MODE': self.training.agro_reranker_mine_mode,
             'AGRO_RERANKER_MINE_RESET': self.training.agro_reranker_mine_reset,
             'AGRO_TRIPLETS_PATH': self.training.agro_triplets_path,
-    # UI params (17)
+    # UI params (21)
             'CHAT_STREAMING_ENABLED': self.ui.chat_streaming_enabled,
             'CHAT_HISTORY_MAX': self.ui.chat_history_max,
+            'CHAT_STREAM_INCLUDE_THINKING': self.ui.chat_stream_include_thinking,
+            'CHAT_DEFAULT_MODEL': self.ui.chat_default_model,
+            'CHAT_STREAM_TIMEOUT': self.ui.chat_stream_timeout,
+            'CHAT_THINKING_BUDGET_TOKENS': self.ui.chat_thinking_budget_tokens,
             'EDITOR_PORT': self.ui.editor_port,
             'GRAFANA_DASHBOARD_UID': self.ui.grafana_dashboard_uid,
             'GRAFANA_DASHBOARD_SLUG': self.ui.grafana_dashboard_slug,
@@ -1243,6 +1374,13 @@ class AgroConfigRoot(BaseModel):
             'GOLDEN_PATH': self.evaluation.golden_path,
             'BASELINE_PATH': self.evaluation.baseline_path,
             'EVAL_MULTI_M': self.evaluation.eval_multi_m,
+            # System prompts (7)
+            'PROMPT_MAIN_RAG_CHAT': self.system_prompts.main_rag_chat,
+            'PROMPT_QUERY_EXPANSION': self.system_prompts.query_expansion,
+            'PROMPT_QUERY_REWRITE': self.system_prompts.query_rewrite,
+            'PROMPT_SEMANTIC_CARDS': self.system_prompts.semantic_cards,
+            'PROMPT_CODE_ENRICHMENT': self.system_prompts.code_enrichment,
+            'PROMPT_EVAL_ANALYSIS': self.system_prompts.eval_analysis,
         }
 
     @classmethod
@@ -1412,6 +1550,10 @@ class AgroConfigRoot(BaseModel):
             ui=UIConfig(
                 chat_streaming_enabled=data.get('CHAT_STREAMING_ENABLED', 1),
                 chat_history_max=data.get('CHAT_HISTORY_MAX', 50),
+                chat_stream_include_thinking=data.get('CHAT_STREAM_INCLUDE_THINKING', 1),
+                chat_default_model=data.get('CHAT_DEFAULT_MODEL', 'gpt-4o-mini'),
+                chat_stream_timeout=data.get('CHAT_STREAM_TIMEOUT', 120),
+                chat_thinking_budget_tokens=data.get('CHAT_THINKING_BUDGET_TOKENS', 10000),
                 editor_port=data.get('EDITOR_PORT', 4440),
                 grafana_dashboard_uid=data.get('GRAFANA_DASHBOARD_UID', 'agro-overview'),
                 grafana_dashboard_slug=data.get('GRAFANA_DASHBOARD_SLUG', 'agro-overview'),
@@ -1428,7 +1570,24 @@ class AgroConfigRoot(BaseModel):
                 theme_mode=data.get('THEME_MODE', 'dark'),
                 open_browser=data.get('OPEN_BROWSER', 1),
                 runtime_mode=data.get('RUNTIME_MODE', 'development'),
-            )
+            ),
+            hydration=HydrationConfig(
+                hydration_mode=data.get('HYDRATION_MODE', 'lazy'),
+                hydration_max_chars=data.get('HYDRATION_MAX_CHARS', 2000),
+            ),
+            evaluation=EvaluationConfig(
+                golden_path=data.get('GOLDEN_PATH', 'data/evaluation_dataset.json'),
+                baseline_path=data.get('BASELINE_PATH', 'data/evals/eval_baseline.json'),
+                eval_multi_m=data.get('EVAL_MULTI_M', 10),
+            ),
+            system_prompts=SystemPromptsConfig(
+                main_rag_chat=data.get('PROMPT_MAIN_RAG_CHAT', SystemPromptsConfig().main_rag_chat),
+                query_expansion=data.get('PROMPT_QUERY_EXPANSION', SystemPromptsConfig().query_expansion),
+                query_rewrite=data.get('PROMPT_QUERY_REWRITE', SystemPromptsConfig().query_rewrite),
+                semantic_cards=data.get('PROMPT_SEMANTIC_CARDS', SystemPromptsConfig().semantic_cards),
+                code_enrichment=data.get('PROMPT_CODE_ENRICHMENT', SystemPromptsConfig().code_enrichment),
+                eval_analysis=data.get('PROMPT_EVAL_ANALYSIS', SystemPromptsConfig().eval_analysis),
+            ),
         )
 
 
@@ -1583,9 +1742,13 @@ AGRO_CONFIG_KEYS = {
     'AGRO_RERANKER_MINE_MODE',
     'AGRO_RERANKER_MINE_RESET',
     'AGRO_TRIPLETS_PATH',
-    # UI params (18)
+    # UI params (22)
     'CHAT_STREAMING_ENABLED',
     'CHAT_HISTORY_MAX',
+    'CHAT_STREAM_INCLUDE_THINKING',
+    'CHAT_DEFAULT_MODEL',
+    'CHAT_STREAM_TIMEOUT',
+    'CHAT_THINKING_BUDGET_TOKENS',
     'EDITOR_PORT',
     'GRAFANA_DASHBOARD_UID',
     'GRAFANA_DASHBOARD_SLUG',
@@ -1609,4 +1772,54 @@ AGRO_CONFIG_KEYS = {
     'GOLDEN_PATH',
     'BASELINE_PATH',
     'EVAL_MULTI_M',
+    # System prompts (7 active)
+    'PROMPT_MAIN_RAG_CHAT',
+    'PROMPT_QUERY_EXPANSION',
+    'PROMPT_QUERY_REWRITE',
+    'PROMPT_SEMANTIC_CARDS',
+    'PROMPT_LIGHTWEIGHT_CARDS',
+    'PROMPT_CODE_ENRICHMENT',
+    'PROMPT_EVAL_ANALYSIS',
+}
+
+
+# Keys that affect RAG retrieval accuracy - shown in EvalAnalysis
+# Filtered from AGRO_CONFIG_KEYS to exclude UI/infrastructure settings
+RAG_EVAL_CONFIG_KEYS = {
+    # Retrieval params (24 keys) - CORE RAG behavior
+    'RRF_K_DIV', 'LANGGRAPH_FINAL_K', 'MAX_QUERY_REWRITES', 'FALLBACK_CONFIDENCE',
+    'FINAL_K', 'EVAL_FINAL_K', 'CONF_TOP1', 'CONF_AVG5', 'CONF_ANY', 'EVAL_MULTI',
+    'QUERY_EXPANSION_ENABLED', 'BM25_WEIGHT', 'BM25_K1', 'BM25_B', 'VECTOR_WEIGHT',
+    'CARD_SEARCH_ENABLED', 'MULTI_QUERY_M', 'USE_SEMANTIC_SYNONYMS',
+    'TOPK_DENSE', 'TOPK_SPARSE', 'HYDRATION_MODE', 'HYDRATION_MAX_CHARS', 'DISABLE_RERANK',
+
+    # Scoring params (5 keys) - affect result ranking
+    'CARD_BONUS', 'FILENAME_BOOST_EXACT', 'FILENAME_BOOST_PARTIAL', 'VENDOR_MODE', 'PATH_BOOSTS',
+
+    # Layer bonus params (3 keys)
+    'VENDOR_PENALTY', 'FRESHNESS_BONUS', 'LAYER_INTENT_MATRIX',
+
+    # Embedding params (6 keys) - model selection affects accuracy
+    'EMBEDDING_TYPE', 'EMBEDDING_MODEL', 'EMBEDDING_DIM', 'VOYAGE_MODEL',
+    'EMBEDDING_MODEL_LOCAL', 'EMBEDDING_BATCH_SIZE',
+
+    # Chunking params (8 keys) - affects how code is split for retrieval
+    'CHUNK_SIZE', 'CHUNK_OVERLAP', 'AST_OVERLAP_LINES', 'MAX_CHUNK_SIZE',
+    'MIN_CHUNK_CHARS', 'GREEDY_FALLBACK_TARGET', 'CHUNKING_STRATEGY', 'PRESERVE_IMPORTS',
+
+    # Reranking params (10 keys) - directly affects result quality
+    'RERANKER_MODEL', 'AGRO_RERANKER_ENABLED', 'AGRO_RERANKER_ALPHA', 'AGRO_RERANKER_TOPN',
+    'AGRO_RERANKER_BATCH', 'AGRO_RERANKER_MAXLEN', 'COHERE_RERANK_MODEL',
+    'VOYAGE_RERANK_MODEL', 'RERANKER_BACKEND', 'RERANK_INPUT_SNIPPET_CHARS',
+
+    # Keywords params (3 keys) - affects keyword boosting
+    'KEYWORDS_BOOST', 'KEYWORDS_MAX_PER_REPO', 'KEYWORDS_MIN_FREQ',
+
+    # Eval params (3 keys)
+    'GOLDEN_PATH', 'BASELINE_PATH', 'EVAL_MULTI_M',
+
+    # System prompts (7 keys) - LLM behavior
+    'PROMPT_MAIN_RAG_CHAT', 'PROMPT_QUERY_EXPANSION', 'PROMPT_QUERY_REWRITE',
+    'PROMPT_SEMANTIC_CARDS', 'PROMPT_LIGHTWEIGHT_CARDS', 'PROMPT_CODE_ENRICHMENT',
+    'PROMPT_EVAL_ANALYSIS',
 }

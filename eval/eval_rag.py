@@ -2,6 +2,7 @@
 import os
 import json
 import time
+import logging
 from typing import List
 from dotenv import load_dotenv
 from pathlib import Path
@@ -9,12 +10,23 @@ from retrieval.hybrid_search import search_routed, search_routed_multi
 
 load_dotenv(override=True)  # Override shell env vars with .env values
 
+logger = logging.getLogger("agro.eval")
+
 # Module-level cached configuration
-try:
-    from server.services.config_registry import get_config_registry
-    _config_registry = get_config_registry()
-except ImportError:
-    _config_registry = None
+_config_registry = None
+
+def _get_config_registry():
+    """Get config registry with lazy initialization and retry on failure."""
+    global _config_registry
+    if _config_registry is None:
+        try:
+            from server.services.config_registry import get_config_registry
+            _config_registry = get_config_registry()
+        except ImportError as e:
+            logger.warning("Config registry import failed: %s", e)
+        except Exception as e:
+            logger.warning("Config registry initialization failed: %s", e)
+    return _config_registry
 
 def _resolve_golden_path() -> str:
     """Resolve the golden questions path robustly.
@@ -24,8 +36,9 @@ def _resolve_golden_path() -> str:
       2) If path is relative and doesn't exist, try under data/
       3) Fallback to repo-standard 'data/golden.json'
     """
-    if _config_registry is not None:
-        env_val = _config_registry.get_str('GOLDEN_PATH', 'data/evaluation_dataset.json')
+    registry = _get_config_registry()
+    if registry is not None:
+        env_val = registry.get_str('GOLDEN_PATH', 'data/evaluation_dataset.json')
     else:
         env_val = os.getenv('GOLDEN_PATH', 'data/evaluation_dataset.json')
 
@@ -43,15 +56,27 @@ def _resolve_golden_path() -> str:
 
 GOLDEN_PATH = _resolve_golden_path()
 
-# Load eval config from registry
-if _config_registry is not None:
-    USE_MULTI = _config_registry.get_int('EVAL_MULTI', 1) == 1
-    FINAL_K = _config_registry.get_int('EVAL_FINAL_K', 5)
-    MULTI_M = _config_registry.get_int('EVAL_MULTI_M', 10)
-else:
-    USE_MULTI = os.getenv('EVAL_MULTI','1') == '1'
-    FINAL_K = int(os.getenv('EVAL_FINAL_K','5'))
-    MULTI_M = int(os.getenv('EVAL_MULTI_M', '10'))
+# Load eval config from registry (lazy initialization)
+def _get_eval_config():
+    """Get eval configuration with fallback to env vars."""
+    registry = _get_config_registry()
+    if registry is not None:
+        return {
+            'USE_MULTI': registry.get_int('EVAL_MULTI', 1) == 1,
+            'FINAL_K': registry.get_int('EVAL_FINAL_K', 5),
+            'MULTI_M': registry.get_int('EVAL_MULTI_M', 10)
+        }
+    return {
+        'USE_MULTI': os.getenv('EVAL_MULTI', '1') == '1',
+        'FINAL_K': int(os.getenv('EVAL_FINAL_K', '5')),
+        'MULTI_M': int(os.getenv('EVAL_MULTI_M', '10'))
+    }
+
+# Module-level defaults (can be overridden at call time)
+_eval_cfg = _get_eval_config()
+USE_MULTI = _eval_cfg['USE_MULTI']
+FINAL_K = _eval_cfg['FINAL_K']
+MULTI_M = _eval_cfg['MULTI_M']
 
 """
 Golden file format (golden.json):
@@ -62,30 +87,63 @@ Golden file format (golden.json):
 """
 
 def capture_eval_config() -> dict:
-    """Capture ALL current RAG config settings for eval tracking.
+    """Capture RAG-relevant config settings for eval tracking.
+
+    Only captures keys that affect retrieval accuracy (RAG_EVAL_CONFIG_KEYS),
+    not UI/infrastructure settings like Grafana theme, editor port, etc.
 
     This allows the EvalAnalysis UI to show which settings were used
     and diff between runs to identify what changes improved/degraded accuracy.
 
-    We capture ALL config keys (not just a subset) because any setting
-    could potentially affect retrieval accuracy.
+    Uses lazy initialization with retry - if the config registry wasn't available
+    at module import time, we try again here. This handles cases where the
+    module was imported before the server was fully initialized.
     """
-    if _config_registry is None:
+    registry = _get_config_registry()
+
+    if registry is None:
+        logger.warning(
+            "Config registry unavailable in capture_eval_config() - "
+            "eval config will be empty. This may indicate a server initialization issue."
+        )
         return {}
 
-    # Get ALL config values from the registry
-    all_config = _config_registry.get_all_with_sources()
+    try:
+        from server.models.agro_config_model import RAG_EVAL_CONFIG_KEYS
+    except ImportError as e:
+        logger.error("Failed to import RAG_EVAL_CONFIG_KEYS: %s", e)
+        return {}
+
+    # Get all config values from the registry
+    try:
+        all_config = registry.get_all_with_sources()
+    except Exception as e:
+        logger.error("Failed to get config from registry: %s", e)
+        return {}
 
     # Exclude secrets (API keys, tokens, etc.) from eval tracking
     secret_patterns = ['API_KEY', 'SECRET', 'TOKEN', 'PASSWORD', 'CREDENTIAL']
 
     config = {}
     for key, info in all_config.items():
-        # Skip secrets
-        if any(pattern in key.upper() for pattern in secret_patterns):
+        key_upper = key.upper()
+
+        # Only include RAG-relevant keys from the whitelist
+        if key_upper not in RAG_EVAL_CONFIG_KEYS:
             continue
+
+        # Skip secrets
+        if any(pattern in key_upper for pattern in secret_patterns):
+            continue
+
         # Store with lowercase key for consistency
         config[key.lower()] = info['value']
+
+    if not config:
+        logger.warning(
+            "capture_eval_config() returned empty config - "
+            "RAG_EVAL_CONFIG_KEYS whitelist may not match registry keys"
+        )
 
     return config
 

@@ -29,8 +29,43 @@ interface EvalDrillDownProps {
   compareWithRunId?: string;
 }
 
+// Collapsible component for long values (especially prompts)
+const CollapsibleValue: React.FC<{ value: string; maxLen?: number }> = ({ value, maxLen = 80 }) => {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = value.length > maxLen;
+
+  if (!isLong) {
+    return <span style={{ wordBreak: 'break-word' }}>{value}</span>;
+  }
+
+  return (
+    <span>
+      <span style={{ wordBreak: 'break-word' }}>
+        {expanded ? value : `${value.slice(0, maxLen)}...`}
+      </span>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          marginLeft: '6px',
+          padding: '2px 6px',
+          fontSize: '10px',
+          background: 'var(--bg-elev2)',
+          color: 'var(--fg-muted)',
+          border: '1px solid var(--line)',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          verticalAlign: 'middle'
+        }}
+        title={expanded ? 'Collapse' : `Expand (${value.length} chars)`}
+      >
+        {expanded ? 'Collapse' : 'Expand'}
+      </button>
+    </span>
+  );
+};
+
 // Helper to format config values with proper wrapping
-const formatConfigValue = (value: any): React.ReactNode => {
+const formatConfigValue = (value: any, key?: string): React.ReactNode => {
   if (Array.isArray(value)) {
     if (value.length === 0) return <span style={{ color: 'var(--fg-muted)' }}>[]</span>;
     if (value.length <= 3) {
@@ -43,7 +78,7 @@ const formatConfigValue = (value: any): React.ReactNode => {
     // For long arrays, show truncated with count
     return (
       <span title={JSON.stringify(value)} style={{ cursor: 'help' }}>
-        [{value.slice(0, 2).map(v => JSON.stringify(v)).join(', ')}...] 
+        [{value.slice(0, 2).map(v => JSON.stringify(v)).join(', ')}...]
         <span style={{ color: 'var(--fg-muted)', fontSize: '10px', marginLeft: '4px' }}>
           ({value.length} items)
         </span>
@@ -53,15 +88,11 @@ const formatConfigValue = (value: any): React.ReactNode => {
   if (typeof value === 'boolean') {
     return value ? '✓' : '✗';
   }
+  // Handle long strings - especially prompts
   if (typeof value === 'string' && value.length > 50) {
-    return (
-      <span title={value} style={{ cursor: 'help' }}>
-        {value.slice(0, 40)}...
-        <span style={{ color: 'var(--fg-muted)', fontSize: '10px', marginLeft: '4px' }}>
-          ({value.length} chars)
-        </span>
-      </span>
-    );
+    // For prompt keys, use collapsible with smaller threshold
+    const isPrompt = key?.toLowerCase().includes('prompt');
+    return <CollapsibleValue value={value} maxLen={isPrompt ? 60 : 80} />;
   }
   return JSON.stringify(value);
 };
@@ -485,7 +516,7 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
                             maxWidth: '140px',
                             fontSize: '10px'
                           }}>
-                            {formatConfigValue(value)}
+                            {formatConfigValue(value, key)}
                           </span>
                         </div>
                       ))}
@@ -495,13 +526,18 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
               })}
             </div>
 
-            {/* "Other" items dispersed across 4 columns below */}
+            {/* "Other" items - consistent styling with main categories */}
             {groupedConfig['Other'] && groupedConfig['Other'].length > 0 && (
-              <div style={{ marginTop: '16px' }}>
+              <div style={{
+                background: 'var(--bg-elev2)',
+                borderRadius: '6px',
+                padding: '10px',
+                marginTop: '12px'
+              }}>
                 <div style={{
                   fontSize: '10px',
                   fontWeight: 600,
-                  color: 'var(--fg-muted)',
+                  color: 'var(--accent)',
                   textTransform: 'uppercase',
                   marginBottom: '8px',
                   letterSpacing: '0.5px'
@@ -510,11 +546,8 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
                 </div>
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(4, 1fr)',
-                  gap: '6px',
-                  background: 'var(--bg-elev2)',
-                  borderRadius: '6px',
-                  padding: '10px'
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                  gap: '4px'
                 }}>
                   {groupedConfig['Other'].map(([key, value]) => (
                     <div key={key} style={{
@@ -532,11 +565,7 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
                         color: 'var(--fg)',
                         fontFamily: 'monospace',
                         flexShrink: 0,
-                        fontSize: '10px',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        maxWidth: '120px'
+                        fontSize: '10px'
                       }} title={key}>{key}</span>
                       <span style={{
                         color: 'var(--link)',
@@ -545,10 +574,10 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
                         textAlign: 'right',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
-                        maxWidth: '80px',
+                        maxWidth: '140px',
                         fontSize: '10px'
                       }}>
-                        {formatConfigValue(value)}
+                        {formatConfigValue(value, key)}
                       </span>
                     </div>
                   ))}

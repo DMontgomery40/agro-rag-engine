@@ -1,6 +1,5 @@
 import json
 import os
-import subprocess
 import time
 from pathlib import Path
 from typing import Any, Dict, List
@@ -98,39 +97,32 @@ def add_keyword(body: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def generate_keywords(body: Dict[str, Any]) -> Dict[str, Any]:
-    import sys
+    """Generate/refresh keywords for a repo.
+
+    Keywords are stored in repos.json as the single source of truth.
+    This function returns the current keywords from repos.json.
+    """
+    from common.config_loader import get_repo_keywords, clear_cache
+
     repo = body.get("repo") or os.getenv("REPO", "agro")
     mode = (body.get("mode") or "heuristic").strip().lower()
-    max_files = int(body.get("max_files", 200) or 200)
+    start_time = time.time()
 
     results: Dict[str, Any] = {"ok": True, "repo": repo, "mode": mode}
 
-    def run_heuristic():
-        base = repo_root()
-        subprocess.check_call([sys.executable, str(base / "scripts" / "analyze_keywords.py"), "--repo", repo, "--max_files", str(max_files)])
-        subprocess.check_call([sys.executable, str(base / "scripts" / "analyze_keywords_v2.py"), "--repo", repo, "--max_files", str(max_files)])
-        results["discriminative"] = {"ok": True, "count": len(_read_json(base / "discriminative_keywords.json", {}).get("manual", []))}
-        results["semantic"] = {"ok": True, "count": len(_read_json(base / "semantic_keywords.json", {}).get("manual", []))}
-
     try:
-        start_time = time.time()
-        if mode == "llm":
-            # Heuristic first, then llm
-            run_heuristic()
-            # Placeholder for llm mode wiring if present in repo (kept safe)
-            results["llm"] = {"ok": True, "count": len(_read_json(repo_root() / "llm_keywords.json", {}).get("agro", []))}
-        else:
-            run_heuristic()
-        results["total_count"] = (
-            (results.get("discriminative", {}).get("count") or 0)
-            + (results.get("semantic", {}).get("count") or 0)
-            + (results.get("llm", {}).get("count") or 0)
-        )
+        # Clear cache to get fresh data from repos.json
+        clear_cache()
+
+        # Get keywords from repos.json (single source of truth)
+        keywords = get_repo_keywords(repo)
+
+        results["count"] = len(keywords)
+        results["keywords"] = keywords
         results["duration_seconds"] = round(time.time() - start_time, 2)
-    except subprocess.TimeoutExpired:
-        results["ok"] = False
-        results["error"] = "Keyword generation timed out"
+
     except Exception as e:
         results["ok"] = False
         results["error"] = str(e)
+
     return results

@@ -29,7 +29,8 @@ CARDS = os.path.join(BASE, 'cards.jsonl')
 CARDS_TXT = os.path.join(BASE, 'cards.txt')
 INDEX_DIR = os.path.join(BASE, 'bm25_cards')
 
-PROMPT = (
+# Default semantic cards prompt
+_DEFAULT_SEMANTIC_CARDS_PROMPT = (
     "Analyze this code chunk and create a comprehensive JSON summary for code search. "
     "Focus on WHAT the code does (business purpose) and HOW it works (technical details). "
     "Include all important symbols, patterns, and domain concepts.\n\n"
@@ -44,11 +45,18 @@ PROMPT = (
     "  \"patterns\": [\"design_pattern\", \"architectural_concept\"]\n"
     "}\n\n"
     "Focus on:\n"
-    "- Domain-specific terms (camera, plugin, device, homekit, etc.)\n"
-    "- Technical patterns (streaming, detection, automation)\n"
-    "- Business logic (what problem does this solve?)\n"
-    "- Integration points (APIs, protocols, services)\n\n"
+    "- Domain-specific terminology and concepts from this codebase\n"
+    "- Technical patterns and architectural decisions\n"
+    "- Business logic and problem being solved\n"
+    "- Integration points, APIs, and external services\n"
+    "- Key algorithms, data structures, and workflows\n\n"
 )
+
+# Get semantic cards prompt from config (or use default)
+if _config_registry is not None:
+    PROMPT = _config_registry.get_str('PROMPT_SEMANTIC_CARDS', _DEFAULT_SEMANTIC_CARDS_PROMPT)
+else:
+    PROMPT = _DEFAULT_SEMANTIC_CARDS_PROMPT
 
 def iter_chunks() -> Iterator[Dict]:
     with open(CHUNKS, 'r', encoding='utf-8') as f:
@@ -59,20 +67,14 @@ def iter_chunks() -> Iterator[Dict]:
 def main() -> None:
     os.makedirs(BASE, exist_ok=True)
     
-    # Add domain context based on repo
-    domain_context = ""
-    if REPO == '':
-        domain_context = "\nDOMAIN CONTEXT: This is  - a smart home automation platform. Focus on:\n- Plugin architecture (device plugins, automation plugins)\n- Camera/streaming functionality (RTSP, ONVIF, FFmpeg)\n- HomeKit integration and device bridging\n- Motion detection and AI analysis\n- Webhook notifications and automation rules\n- Device management and discovery\n\n"
-    elif REPO == 'agro':
-        domain_context = "\nDOMAIN CONTEXT: This is AGRO - a RAG (Retrieval Augmented Generation) system. Focus on:\n- Vector search and embedding models\n- Hybrid retrieval (BM25 + dense vectors)\n- Code chunking and semantic analysis\n- MCP (Model Context Protocol) integration\n- Evaluation and performance optimization\n- Multi-repository routing and indexing\n\n"
-    
+    # Domain context is now generic - the prompt itself is sufficient
     n = 0
     with open(CARDS, 'w', encoding='utf-8') as out_json, open(CARDS_TXT, 'w', encoding='utf-8') as out_txt:
         for ch in iter_chunks():
             code = ch.get('code','')
             fp = ch.get('file_path','')
             snippet = code[:2000]
-            msg = PROMPT + domain_context + snippet
+            msg = PROMPT + snippet
             try:
                 text, _ = generate_text(user_input=msg, system_instructions=None, reasoning_effort=None, response_format={"type": "json_object"})
                 content = (text or '').strip()

@@ -39,45 +39,26 @@ _CONF_AVG5 = _config_registry.get_float('CONF_AVG5', 0.55)
 _CONF_ANY = _config_registry.get_float('CONF_ANY', 0.55)
 _PACK_BUDGET_TOKENS = _config_registry.get_int('PACK_BUDGET_TOKENS', 4096)
 _HYDRATION_MODE = _config_registry.get_str('HYDRATION_MODE', 'lazy')
-_SYSTEM_PROMPT = _config_registry.get_str('SYSTEM_PROMPT', '''You are an expert software engineer and smart home automation specialist with deep knowledge of both AGRO (Retrieval-Augmented Generation) systems and  plugin development.
-
-## Your Expertise:
-
-###  Plugin Development:
-- **Plugin Architecture**: Expert in creating device plugins, automation plugins, and integration plugins for the  smart home platform
-- **Device Interfaces**: Deep understanding of Interface types (Camera, MotionSensor, BinarySensor, Switch, Lock, Thermostat, etc.)
-- **Protocols & Communication**:
-  - **WebRTC**: Real-time video streaming, peer connections, data channels
-  - **RTSP**: Real-Time Streaming Protocol for IP cameras
-  - **ONVIF**: Network video interface standard
-  - **HTTP/HTTPS**: REST APIs, webhooks, authentication
-  - **MQTT**: Message queuing for IoT devices
-  - **WebSockets**: Real-time bidirectional communication
-  - **FFmpeg**: Video processing, transcoding, streaming
-- **Smart Home Integration**: HomeKit, Alexa, Google Assistant, Home Assistant
-- **AI & Computer Vision**: Motion detection, object recognition, face detection
-- **Device Management**: Discovery, pairing, state management, event handling
-
-### AGRO RAG System:
-- **Hybrid Search**: BM25 + dense vector retrieval with reranking
-- **Vector Databases**: Qdrant, embeddings, semantic search
-- **Code Analysis**: AST chunking, semantic cards, keyword generation
-- **Multi-Repository**: Routing, indexing, evaluation systems
-- **MCP Integration**: Model Context Protocol for AI agents
+_SYSTEM_PROMPT = _config_registry.get_str('SYSTEM_PROMPT', '''You are an expert software engineer and code analysis assistant.
 
 ## Your Role:
-- Answer questions about both AGRO and  codebases with expert precision
-- Help developers create robust, efficient  plugins for any device type
-- Provide guidance on protocol implementation, interface design, and best practices
+- Answer questions about the indexed codebase with precision and accuracy
 - Always cite specific file paths and line ranges from the provided code context
-- Offer practical, production-ready solutions with error handling and edge cases
+- Provide clear explanations of how code works, what it does, and why design decisions were made
+- Offer practical, actionable insights based on the actual implementation
 
-## Response Style:
-- Be direct and technical, but accessible
-- Include relevant code examples when helpful
-- Explain the "why" behind recommendations
-- Consider performance, security, and maintainability
-- Always ground answers in the actual codebase when available
+## Guidelines:
+- **Be Evidence-Based**: Ground every answer in the provided code context
+- **Be Specific**: Include file paths, line numbers, function/class names, and relevant code snippets
+- **Be Clear**: Explain technical concepts in an accessible way
+- **Be Honest**: If the context doesn't contain enough information, say so
+- **Be Helpful**: Consider edge cases, error handling, and best practices when relevant
+
+## Response Format:
+- Start with a direct answer to the question
+- Support with specific citations: `file_path:start_line-end_line`
+- Include relevant code snippets when they add clarity
+- Explain the "why" behind implementation choices when apparent
 
 You answer strictly from the provided code context. Always cite file paths and line ranges you used.''')
 
@@ -98,45 +79,26 @@ def reload_config():
     _CONF_ANY = _config_registry.get_float('CONF_ANY', 0.55)
     _PACK_BUDGET_TOKENS = _config_registry.get_int('PACK_BUDGET_TOKENS', 4096)
     _HYDRATION_MODE = _config_registry.get_str('HYDRATION_MODE', 'lazy')
-    _SYSTEM_PROMPT = _config_registry.get_str('SYSTEM_PROMPT', '''You are an expert software engineer and smart home automation specialist with deep knowledge of both AGRO (Retrieval-Augmented Generation) systems and  plugin development.
-
-## Your Expertise:
-
-###  Plugin Development:
-- **Plugin Architecture**: Expert in creating device plugins, automation plugins, and integration plugins for the  smart home platform
-- **Device Interfaces**: Deep understanding of Interface types (Camera, MotionSensor, BinarySensor, Switch, Lock, Thermostat, etc.)
-- **Protocols & Communication**:
-  - **WebRTC**: Real-time video streaming, peer connections, data channels
-  - **RTSP**: Real-Time Streaming Protocol for IP cameras
-  - **ONVIF**: Network video interface standard
-  - **HTTP/HTTPS**: REST APIs, webhooks, authentication
-  - **MQTT**: Message queuing for IoT devices
-  - **WebSockets**: Real-time bidirectional communication
-  - **FFmpeg**: Video processing, transcoding, streaming
-- **Smart Home Integration**: HomeKit, Alexa, Google Assistant, Home Assistant
-- **AI & Computer Vision**: Motion detection, object recognition, face detection
-- **Device Management**: Discovery, pairing, state management, event handling
-
-### AGRO RAG System:
-- **Hybrid Search**: BM25 + dense vector retrieval with reranking
-- **Vector Databases**: Qdrant, embeddings, semantic search
-- **Code Analysis**: AST chunking, semantic cards, keyword generation
-- **Multi-Repository**: Routing, indexing, evaluation systems
-- **MCP Integration**: Model Context Protocol for AI agents
+    _SYSTEM_PROMPT = _config_registry.get_str('SYSTEM_PROMPT', '''You are an expert software engineer and code analysis assistant.
 
 ## Your Role:
-- Answer questions about both AGRO and  codebases with expert precision
-- Help developers create robust, efficient  plugins for any device type
-- Provide guidance on protocol implementation, interface design, and best practices
+- Answer questions about the indexed codebase with precision and accuracy
 - Always cite specific file paths and line ranges from the provided code context
-- Offer practical, production-ready solutions with error handling and edge cases
+- Provide clear explanations of how code works, what it does, and why design decisions were made
+- Offer practical, actionable insights based on the actual implementation
 
-## Response Style:
-- Be direct and technical, but accessible
-- Include relevant code examples when helpful
-- Explain the "why" behind recommendations
-- Consider performance, security, and maintainability
-- Always ground answers in the actual codebase when available
+## Guidelines:
+- **Be Evidence-Based**: Ground every answer in the provided code context
+- **Be Specific**: Include file paths, line numbers, function/class names, and relevant code snippets
+- **Be Clear**: Explain technical concepts in an accessible way
+- **Be Honest**: If the context doesn't contain enough information, say so
+- **Be Helpful**: Consider edge cases, error handling, and best practices when relevant
+
+## Response Format:
+- Start with a direct answer to the question
+- Support with specific citations: `file_path:start_line-end_line`
+- Include relevant code snippets when they add clarity
+- Explain the "why" behind implementation choices when apparent
 
 You answer strictly from the provided code context. Always cite file paths and line ranges you used.''')
 
@@ -223,7 +185,9 @@ def route_after_retrieval(state:RAGState)->str:
 
 def rewrite_query(state: RAGState) -> Dict:
     q = state['question']
-    sys = "You rewrite developer questions into search-optimized queries without changing meaning."
+    # Get query rewrite prompt from config (or use default)
+    default_prompt = "You rewrite developer questions into search-optimized queries without changing meaning."
+    sys = _config_registry.get_str('PROMPT_QUERY_REWRITE', default_prompt)
     user = f"Rewrite this for code search (expand CamelCase, include API nouns), one line.\n\n{q}"
     newq, _ = generate_text(user_input=user, system_instructions=sys, reasoning_effort=None)
     newq = (newq or '').strip()

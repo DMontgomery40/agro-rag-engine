@@ -44,6 +44,7 @@ from server.routers.chat import router as chat_router
 from server.routers.stream_logs import router as stream_logs_router
 from server.routers.grafana import router as grafana_router
 from server.routers.webhooks import router as webhooks_router
+from server.routers.prompts import router as prompts_router
 
 # Module-level config registry cache
 _config_registry = get_config_registry()
@@ -105,7 +106,8 @@ def create_app() -> FastAPI:
             pass
         return response
 
-    # Tracing middleware: start/end trace around /answer and /api/chat
+    # Tracing middleware: start/end trace around /api/chat
+    # Note: /answer is deprecated - all new integrations should use /api/chat
     @app.middleware("http")
     async def tracing_middleware(request: Request, call_next):  # type: ignore[unused-ignore]
         try:
@@ -123,7 +125,9 @@ def create_app() -> FastAPI:
                     return await call_next(request)
 
             path = request.url.path or ""
-            if path not in {"/answer", "/api/chat"}:
+            # Only trace /api/chat - the unified chat endpoint
+            # /answer is deprecated and will be removed in future version
+            if path not in {"/api/chat"}:
                 return await call_next(request)
 
             # Import lazily to avoid cycles at import time
@@ -134,25 +138,6 @@ def create_app() -> FastAPI:
 
             repo = _config_registry.get_str("REPO", "agro")
             question = ""
-
-            if path == "/answer":
-                try:
-                    question = request.query_params.get("q") or ""
-                    repo = request.query_params.get("repo") or repo
-                except Exception:
-                    pass
-                try:
-                    start_trace(repo=repo, question=question)
-                except Exception:
-                    pass
-                try:
-                    response = await call_next(request)
-                finally:
-                    try:
-                        end_trace()
-                    except Exception:
-                        pass
-                return response
 
             # /api/chat: we need to read and re-inject the body for downstream
             try:
@@ -299,6 +284,7 @@ def create_app() -> FastAPI:
     app.include_router(stream_logs_router)
     app.include_router(grafana_router)
     app.include_router(webhooks_router)
+    app.include_router(prompts_router)
 
     # Include existing routers
     app.include_router(feedback_router)

@@ -10,7 +10,7 @@ import argparse
 from typing import Dict, Any, Optional
 from dotenv import load_dotenv
 from pathlib import Path
-from eval.eval_rag import hit, _resolve_golden_path, USE_MULTI, FINAL_K, MULTI_M  # type: ignore[import]
+from eval.eval_rag import hit, _resolve_golden_path, USE_MULTI, FINAL_K, MULTI_M, capture_eval_config  # type: ignore[import]
 from retrieval.hybrid_search import search_routed, search_routed_multi
 
 load_dotenv()
@@ -108,6 +108,10 @@ def run_eval_with_results(
             "top_paths": paths[:final_k_val]
         })
     dt = time.time() - t0
+
+    # Capture config using the centralized whitelist
+    eval_config = capture_eval_config()
+
     return {
         "total": total,
         "top1_hits": hits_top1,
@@ -118,6 +122,7 @@ def run_eval_with_results(
         "use_multi": use_multi_val,
         "duration_secs": round(dt, 2),
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "config": eval_config,
         "results": results
     }
 
