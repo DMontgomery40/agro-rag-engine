@@ -38,6 +38,7 @@ def _load_env_file(env_path: Path) -> bool:
 _load_env_file(Path(__file__).resolve().parents[1] / ".env")
 
 from server.langgraph_app import build_graph
+from server.services.config_registry import get_config_registry
 from common.config_loader import list_repos
 from rich.console import Console
 from rich.markdown import Markdown
@@ -47,9 +48,11 @@ from rich.prompt import Prompt
 console = Console()
 
 # Configuration
-REPO = os.getenv('REPO', 'agro')
-THREAD_ID = os.getenv('THREAD_ID', 'cli-chat')
-PORT = int(os.getenv('PORT', '8012'))
+_config_registry = get_config_registry()
+_config_registry.load()
+REPO = _config_registry.get_str('REPO', 'agro')
+THREAD_ID = _config_registry.get_str('THREAD_ID', 'cli-chat')
+PORT = _config_registry.get_int('PORT', 8012)
 API_BASE = f"http://127.0.0.1:{PORT}"
 
 class ChatCLI:
@@ -327,9 +330,9 @@ def main():
         print("Error: Missing 'rich' library. Install with: pip install rich")
         sys.exit(1)
 
-    # Get config from environment
-    repo = os.getenv('REPO', 'agro')
-    thread_id = os.getenv('THREAD_ID', 'cli-chat')
+    # Get config from registry
+    repo = _config_registry.get_str('REPO', 'agro')
+    thread_id = _config_registry.get_str('THREAD_ID', 'cli-chat')
 
     # Create and run chat
     chat = ChatCLI(repo=repo, thread_id=thread_id)

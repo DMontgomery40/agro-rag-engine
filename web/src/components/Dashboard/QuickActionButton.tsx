@@ -9,9 +9,10 @@ interface QuickActionButtonProps {
   label: string;
   onClick: () => void;
   dataAction?: string;
+  disabled?: boolean;
 }
 
-export function QuickActionButton({ id, icon, label, onClick, dataAction }: QuickActionButtonProps) {
+export function QuickActionButton({ id, icon, label, onClick, dataAction, disabled = false }: QuickActionButtonProps) {
   const [isActive, setIsActive] = React.useState(false);
 
   return (
@@ -19,12 +20,14 @@ export function QuickActionButton({ id, icon, label, onClick, dataAction }: Quic
       id={id}
       className="action-btn"
       data-action={dataAction}
+      disabled={disabled}
       onClick={(e) => {
+        if (disabled) return;
         setIsActive(true);
         onClick();
         setTimeout(() => setIsActive(false), 600);
       }}
-      onMouseDown={() => setIsActive(true)}
+      onMouseDown={() => !disabled && setIsActive(true)}
       onMouseUp={() => setIsActive(false)}
       style={{
         display: 'flex',
@@ -37,7 +40,7 @@ export function QuickActionButton({ id, icon, label, onClick, dataAction }: Quic
         border: '1px solid var(--line)',
         borderRadius: '8px',
         color: 'var(--fg-muted)',
-        cursor: 'pointer',
+        cursor: disabled ? 'not-allowed' : 'pointer',
         fontSize: '14px',
         fontWeight: 500,
         textTransform: 'uppercase',
@@ -45,6 +48,7 @@ export function QuickActionButton({ id, icon, label, onClick, dataAction }: Quic
         position: 'relative',
         overflow: 'hidden',
         transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        opacity: disabled ? 0.5 : 1,
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.background = 'var(--panel)';

@@ -3,6 +3,7 @@
   'use strict';
   const api = (window.CoreUtils && window.CoreUtils.api) ? window.CoreUtils.api : (p=>p);
   let indexPoll = null;
+  let backgroundPoll = null;  // Persistent background poll for index display
 
   function formatBytes(bytes){
     if (!bytes || bytes === 0) return '0 B';
@@ -100,5 +101,60 @@
     }catch(e){ if (window.showStatus) window.showStatus('Failed to start indexer: ' + e.message, 'error'); throw e; }
   }
 
-  window.IndexStatus = { formatIndexStatus, pollIndexStatus, startIndexing };
+  // Start persistent background poll to keep index display updated
+  // This runs every 30 seconds and ensures the display is always populated
+  function startBackgroundPoll() {
+    if (backgroundPoll) return; // Already running
+
+    // Initial poll
+    pollIndexStatus();
+
+    // Poll every 30 seconds to keep display fresh
+    backgroundPoll = setInterval(() => {
+      // Only poll if target elements exist (Dashboard is visible)
+      const box1 = document.getElementById('index-status');
+      const box2 = document.getElementById('dash-index-status');
+      if (box1 || box2) {
+        pollIndexStatus();
+      }
+    }, 30000);
+  }
+
+  // Watch for DOM changes to detect when dashboard elements appear
+  // This ensures the display is populated when navigating back to dashboard
+  function setupDOMWatcher() {
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            // Check if the added node is or contains our target elements
+            const hasTarget = node.id === 'dash-index-status' ||
+                            node.id === 'index-status' ||
+                            (node.querySelector && (node.querySelector('#dash-index-status') || node.querySelector('#index-status')));
+            if (hasTarget) {
+              // Element appeared - trigger poll to populate it
+              setTimeout(pollIndexStatus, 100);
+              return;
+            }
+          }
+        }
+      }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+
+  // Initialize on DOMContentLoaded
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      startBackgroundPoll();
+      setupDOMWatcher();
+    });
+  } else {
+    // DOM already ready
+    startBackgroundPoll();
+    setupDOMWatcher();
+  }
+
+  window.IndexStatus = { formatIndexStatus, pollIndexStatus, startIndexing, startBackgroundPoll };
 })();

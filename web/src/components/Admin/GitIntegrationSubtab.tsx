@@ -16,13 +16,6 @@ export function GitIntegrationSubtab() {
   const [installHook, setInstallHook] = useState(true);
   const [hooksStatus, setHooksStatus] = useState('Not checked');
 
-  const [repoUrl, setRepoUrl] = useState('');
-  const [branch, setBranch] = useState('main');
-  const [commitHooks, setCommitHooks] = useState({
-    preCommit: false,
-    postCommit: false,
-    prePush: false
-  });
 
   useEffect(() => {
     loadStatus();
@@ -104,15 +97,6 @@ export function GitIntegrationSubtab() {
     }
   }
 
-  async function handlePull() {
-    alert('Git pull would be executed here');
-  }
-
-  async function handlePush() {
-    if (confirm('Are you sure you want to push to the remote repository?')) {
-      alert('Git push would be executed here');
-    }
-  }
 
   return (
     <div className="settings-section">
@@ -345,118 +329,6 @@ export function GitIntegrationSubtab() {
         >
           Save Commit Metadata
         </button>
-      </div>
-
-      {/* Repository Management */}
-      <div
-        style={{
-          background: 'var(--bg-elev2)',
-          border: '1px solid var(--line)',
-          borderRadius: '6px',
-          padding: '20px',
-          marginBottom: '20px'
-        }}
-      >
-        <h3 style={{ marginTop: 0 }}>Repository Management</h3>
-
-        <div className="input-row">
-          <div className="input-group">
-            <label>Repository URL</label>
-            <input
-              type="text"
-              value={repoUrl}
-              onChange={(e) => setRepoUrl(e.target.value)}
-              placeholder="https://github.com/user/repo.git"
-              style={{
-                width: '100%',
-                padding: '8px',
-                background: 'var(--input-bg)',
-                border: '1px solid var(--line)',
-                borderRadius: '4px',
-                color: 'var(--fg)'
-              }}
-            />
-          </div>
-          <div className="input-group">
-            <label>Branch</label>
-            <select
-              value={branch}
-              onChange={(e) => setBranch(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px',
-                background: 'var(--input-bg)',
-                border: '1px solid var(--line)',
-                borderRadius: '4px',
-                color: 'var(--fg)'
-              }}
-            >
-              <option value="main">main</option>
-              <option value="master">master</option>
-              <option value="development">development</option>
-              <option value="staging">staging</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="input-row">
-          <div className="input-group">
-            <label>Commit Hooks</label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <input
-                  type="checkbox"
-                  checked={commitHooks.preCommit}
-                  onChange={(e) => setCommitHooks(prev => ({ ...prev, preCommit: e.target.checked }))}
-                />
-                <span>Pre-commit hook</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <input
-                  type="checkbox"
-                  checked={commitHooks.postCommit}
-                  onChange={(e) => setCommitHooks(prev => ({ ...prev, postCommit: e.target.checked }))}
-                />
-                <span>Post-commit hook</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <input
-                  type="checkbox"
-                  checked={commitHooks.prePush}
-                  onChange={(e) => setCommitHooks(prev => ({ ...prev, prePush: e.target.checked }))}
-                />
-                <span>Pre-push hook</span>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-          <button
-            className="small-button"
-            onClick={handlePull}
-            style={{
-              flex: '1',
-              background: 'var(--link)',
-              color: 'var(--accent-contrast)',
-              fontWeight: '600'
-            }}
-          >
-            Pull
-          </button>
-          <button
-            className="small-button"
-            onClick={handlePush}
-            style={{
-              flex: '1',
-              background: 'var(--warn)',
-              color: 'var(--accent-contrast)',
-              fontWeight: '600'
-            }}
-          >
-            Push
-          </button>
-        </div>
       </div>
     </div>
   );

@@ -22,7 +22,9 @@ services:
     ports:
       - "6379:6379"
     environment:
-      - REDIS_ARGS=--save ""
+      - REDIS_ARGS=--save 60 1000
+    volumes:
+      - redis_data:/data
 
   # ----------- Observability -----------
   alertmanager:
@@ -111,6 +113,8 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: rag-service-api
+    env_file:
+      - .env
     environment:
       - QDRANT_URL=${QDRANT_URL:-http://qdrant:6333}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
@@ -119,13 +123,31 @@ services:
       - OLLAMA_URL=${OLLAMA_URL:-}
       - OAUTH_ENABLED=${OAUTH_ENABLED:-false}
       - OAUTH_TOKEN=${OAUTH_TOKEN:-}
+      - GIT_BRANCH=${GIT_BRANCH}
     depends_on:
       - qdrant
       - redis
     ports:
       - "8012:8012"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./data:/app/data
+      - ./out:/app/out
+      - ./out.noindex-shared:/app/out.noindex-shared
+      - ./out.noindex-gui:/app/out.noindex-gui
+      - ./out.noindex-devclean:/app/out.noindex-devclean
+      - ./models:/app/models
+      - ./checkpoints:/app/checkpoints
+      - ./agro_config.json:/app/agro_config.json
+      - ./repos.json:/app/repos.json
+      - ./.env:/app/.env
+      - ./server:/app/server
+      - ./web:/app/web
+      - ./gui:/app/gui
+      - ./scripts:/app/scripts
+      - ./reranker:/app/reranker
+      - /var/run/docker.sock:/var/run/docker.sock
 
   mcp-http:
     build:
@@ -140,6 +162,13 @@ services:
       - "8013:8013"
     depends_on:
       - api
+    volumes:
+      - ./data:/app/data
+      - ./out:/app/out
+      - ./models:/app/models
+      - ./checkpoints:/app/checkpoints
+      - ./agro_config.json:/app/agro_config.json
+      - ./repos.json:/app/repos.json
 
   mcp-node:
     build:
@@ -176,3 +205,4 @@ volumes:
   alertmanager_data:
   grafana_data:
   loki_data:
+  redis_data:

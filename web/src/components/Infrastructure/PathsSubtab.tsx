@@ -2,6 +2,8 @@
 // Directory paths and storage configuration
 
 import { useState, useEffect } from 'react';
+import { configApi } from '@/api/config';
+import { useTooltips } from '@/hooks/useTooltips';
 
 interface PathConfig {
   QDRANT_URL: string;
@@ -27,21 +29,37 @@ export function PathsSubtab() {
   const [config, setConfig] = useState<Partial<PathConfig>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const tooltips = useTooltips();
 
   useEffect(() => {
     loadConfig();
   }, []);
 
-  const api = (path: string) => {
-    const base = (window as any).API_BASE_URL || '';
-    return `${base}${path}`;
-  };
-
   async function loadConfig() {
     try {
-      const response = await fetch(api('/api/config'));
-      const data = await response.json();
-      setConfig(data);
+      const data = await configApi.load();
+      // Extract relevant fields from env
+      const pathConfig: Partial<PathConfig> = {
+        QDRANT_URL: data.env?.QDRANT_URL || '',
+        REDIS_URL: data.env?.REDIS_URL || '',
+        REPO_ROOT: data.env?.REPO_ROOT || '',
+        FILES_ROOT: data.env?.FILES_ROOT || '',
+        REPO: data.env?.REPO || '',
+        COLLECTION_SUFFIX: data.env?.COLLECTION_SUFFIX || '',
+        COLLECTION_NAME: data.env?.COLLECTION_NAME || '',
+        REPO_PATH: data.env?.REPO_PATH || '',
+        GUI_DIR: data.env?.GUI_DIR || '',
+        DOCS_DIR: data.env?.DOCS_DIR || '',
+        DATA_DIR: data.env?.DATA_DIR || '',
+        REPOS_FILE: data.env?.REPOS_FILE || '',
+        OUT_DIR_BASE: data.env?.OUT_DIR_BASE || '',
+        RAG_OUT_BASE: data.env?.RAG_OUT_BASE || '',
+        MCP_HTTP_HOST: data.env?.MCP_HTTP_HOST || '',
+        MCP_HTTP_PORT: data.env?.MCP_HTTP_PORT || '',
+        MCP_HTTP_PATH: data.env?.MCP_HTTP_PATH || '',
+      };
+      setConfig(pathConfig);
       setLoading(false);
     } catch (error) {
       console.error('Failed to load config:', error);
@@ -51,22 +69,28 @@ export function PathsSubtab() {
 
   async function saveConfig() {
     setSaving(true);
+    setActionMessage('Saving configuration...');
+
     try {
-      const response = await fetch(api('/api/config'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config)
-      });
-      const data = await response.json();
-      if (data.ok) {
-        alert('Configuration saved successfully!');
-      } else {
-        alert(`Failed to save configuration: ${data.error}`);
+      // Build env update object with only non-empty values
+      const envUpdate: Record<string, string> = {};
+      for (const [key, value] of Object.entries(config)) {
+        if (value !== undefined && value !== null) {
+          envUpdate[key] = String(value);
+        }
       }
+
+      await configApi.saveConfig({ env: envUpdate });
+      setActionMessage('Configuration saved successfully!');
+
+      // Reload config to show updated values
+      setTimeout(() => loadConfig(), 500);
     } catch (error: any) {
-      alert(`Error saving configuration: ${error.message}`);
+      console.error('[PathsSubtab] Failed to save config:', error);
+      setActionMessage(`Failed to save configuration: ${error.message || error}`);
     } finally {
       setSaving(false);
+      setTimeout(() => setActionMessage(null), 3000);
     }
   }
 
@@ -84,6 +108,21 @@ export function PathsSubtab() {
 
   return (
     <div className="settings-section">
+      {/* Action message */}
+      {actionMessage && (
+        <div style={{
+          padding: '12px',
+          background: 'var(--bg-elev2)',
+          border: '1px solid var(--line)',
+          borderRadius: '6px',
+          marginBottom: '16px',
+          fontSize: '12px',
+          color: 'var(--fg)'
+        }}>
+          {actionMessage}
+        </div>
+      )}
+
       <h2>Infrastructure Configuration</h2>
       <p className="small" style={{ marginBottom: '24px' }}>
         Configure database endpoints, file paths, and storage locations.
@@ -93,7 +132,7 @@ export function PathsSubtab() {
       <h3>Database Endpoints</h3>
       <div className="input-row">
         <div className="input-group">
-          <label>Qdrant URL</label>
+          <label dangerouslySetInnerHTML={{ __html: tooltips.QDRANT_URL }} />
           <input
             type="text"
             value={config.QDRANT_URL || ''}
@@ -113,7 +152,7 @@ export function PathsSubtab() {
           </p>
         </div>
         <div className="input-group">
-          <label>Redis URL</label>
+          <label dangerouslySetInnerHTML={{ __html: tooltips.REDIS_URL }} />
           <input
             type="text"
             value={config.REDIS_URL || ''}
@@ -138,7 +177,7 @@ export function PathsSubtab() {
       <h3 style={{ marginTop: '32px' }}>Repository Configuration</h3>
       <div className="input-row">
         <div className="input-group">
-          <label>Repo Root</label>
+          <label dangerouslySetInnerHTML={{ __html: tooltips.REPO_ROOT }} />
           <input
             type="text"
             value={config.REPO_ROOT || ''}
@@ -155,7 +194,7 @@ export function PathsSubtab() {
           />
         </div>
         <div className="input-group">
-          <label>Files Root</label>
+          <label dangerouslySetInnerHTML={{ __html: tooltips.FILES_ROOT }} />
           <input
             type="text"
             value={config.FILES_ROOT || ''}
@@ -175,7 +214,7 @@ export function PathsSubtab() {
 
       <div className="input-row">
         <div className="input-group">
-          <label>Active Repository</label>
+          <label dangerouslySetInnerHTML={{ __html: tooltips.REPO }} />
           <input
             type="text"
             value={config.REPO || ''}
@@ -192,7 +231,7 @@ export function PathsSubtab() {
           />
         </div>
         <div className="input-group">
-          <label>Collection Suffix</label>
+          <label dangerouslySetInnerHTML={{ __html: tooltips.COLLECTION_SUFFIX }} />
           <input
             type="text"
             value={config.COLLECTION_SUFFIX || ''}
@@ -212,7 +251,7 @@ export function PathsSubtab() {
 
       <div className="input-row">
         <div className="input-group">
-          <label>Collection Name</label>
+          <label dangerouslySetInnerHTML={{ __html: tooltips.COLLECTION_NAME }} />
           <input
             type="text"
             value={config.COLLECTION_NAME || ''}
@@ -229,7 +268,7 @@ export function PathsSubtab() {
           />
         </div>
         <div className="input-group">
-          <label>Repo Path (fallback)</label>
+          <label dangerouslySetInnerHTML={{ __html: tooltips.REPO_PATH }} />
           <input
             type="text"
             value={config.REPO_PATH || ''}
@@ -251,7 +290,7 @@ export function PathsSubtab() {
       <h3 style={{ marginTop: '32px' }}>Directory Paths</h3>
       <div className="input-row">
         <div className="input-group">
-          <label>GUI Directory</label>
+          <label dangerouslySetInnerHTML={{ __html: tooltips.GUI_DIR }} />
           <input
             type="text"
             value={config.GUI_DIR || ''}
@@ -268,7 +307,7 @@ export function PathsSubtab() {
           />
         </div>
         <div className="input-group">
-          <label>Docs Directory</label>
+          <label dangerouslySetInnerHTML={{ __html: tooltips.DOCS_DIR }} />
           <input
             type="text"
             value={config.DOCS_DIR || ''}
@@ -288,7 +327,7 @@ export function PathsSubtab() {
 
       <div className="input-row">
         <div className="input-group">
-          <label>Data Directory</label>
+          <label dangerouslySetInnerHTML={{ __html: tooltips.DATA_DIR }} />
           <input
             type="text"
             value={config.DATA_DIR || ''}
@@ -305,7 +344,7 @@ export function PathsSubtab() {
           />
         </div>
         <div className="input-group">
-          <label>Repos File</label>
+          <label dangerouslySetInnerHTML={{ __html: tooltips.REPOS_FILE }} />
           <input
             type="text"
             value={config.REPOS_FILE || ''}
@@ -327,7 +366,7 @@ export function PathsSubtab() {
       <h3 style={{ marginTop: '32px' }}>Storage Configuration</h3>
       <div className="input-row">
         <div className="input-group">
-          <label>Out Dir Base</label>
+          <label dangerouslySetInnerHTML={{ __html: tooltips.OUT_DIR_BASE }} />
           <input
             type="text"
             value={config.OUT_DIR_BASE || ''}
@@ -347,7 +386,7 @@ export function PathsSubtab() {
           </p>
         </div>
         <div className="input-group">
-          <label>RAG Out Base</label>
+          <label dangerouslySetInnerHTML={{ __html: tooltips.RAG_OUT_BASE }} />
           <input
             type="text"
             value={config.RAG_OUT_BASE || ''}
@@ -369,7 +408,7 @@ export function PathsSubtab() {
       <h3 style={{ marginTop: '32px' }}>MCP HTTP Configuration</h3>
       <div className="input-row">
         <div className="input-group">
-          <label>MCP HTTP Host</label>
+          <label dangerouslySetInnerHTML={{ __html: tooltips.MCP_HTTP_HOST }} />
           <input
             type="text"
             value={config.MCP_HTTP_HOST || ''}
@@ -386,7 +425,7 @@ export function PathsSubtab() {
           />
         </div>
         <div className="input-group">
-          <label>MCP HTTP Port</label>
+          <label dangerouslySetInnerHTML={{ __html: tooltips.MCP_HTTP_PORT }} />
           <input
             type="number"
             value={config.MCP_HTTP_PORT || ''}
@@ -406,7 +445,7 @@ export function PathsSubtab() {
 
       <div className="input-row">
         <div className="input-group">
-          <label>MCP HTTP Path</label>
+          <label dangerouslySetInnerHTML={{ __html: tooltips.MCP_HTTP_PATH }} />
           <input
             type="text"
             value={config.MCP_HTTP_PATH || ''}
@@ -436,7 +475,9 @@ export function PathsSubtab() {
             background: 'var(--accent)',
             color: 'var(--accent-contrast)',
             fontWeight: '600',
-            padding: '12px'
+            padding: '12px',
+            opacity: saving ? 0.5 : 1,
+            cursor: saving ? 'not-allowed' : 'pointer'
           }}
         >
           {saving ? 'Saving...' : 'Save Configuration'}

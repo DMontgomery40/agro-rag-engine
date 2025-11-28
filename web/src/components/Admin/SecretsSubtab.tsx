@@ -2,6 +2,7 @@
 // API keys and environment variables management
 
 import { useState } from 'react';
+import { configApi } from '@/api/config';
 
 interface EnvVariable {
   key: string;
@@ -17,35 +18,24 @@ export function SecretsSubtab() {
   const [envVariables, setEnvVariables] = useState<EnvVariable[]>([]);
   const [newVarKey, setNewVarKey] = useState('');
   const [newVarValue, setNewVarValue] = useState('');
-
-  const api = (path: string) => {
-    const base = (window as any).API_BASE_URL || '';
-    return `${base}${path}`;
-  };
+  const [saveStatus, setSaveStatus] = useState<string>('');
+  const [uploadStatus, setUploadStatus] = useState<string>('');
 
   async function saveApiKeys() {
-    const keys = {
-      OPENAI_API_KEY: openaiKey,
-      ANTHROPIC_API_KEY: anthropicKey,
-      COHERE_API_KEY: cohereKey,
-      VOYAGE_API_KEY: voyageKey,
-      JINA_API_KEY: jinaKey
-    };
+    setSaveStatus('');
+    const keys: Record<string, string> = {};
+    if (openaiKey) keys.OPENAI_API_KEY = openaiKey;
+    if (anthropicKey) keys.ANTHROPIC_API_KEY = anthropicKey;
+    if (cohereKey) keys.COHERE_API_KEY = cohereKey;
+    if (voyageKey) keys.VOYAGE_API_KEY = voyageKey;
+    if (jinaKey) keys.JINA_API_KEY = jinaKey;
 
     try {
-      const response = await fetch(api('/api/config'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ env: keys })
-      });
-      const data = await response.json();
-      if (data.status === 'success') {
-        alert('API keys saved successfully!');
-      } else {
-        alert(`Failed to save API keys: ${data.error}`);
-      }
+      const result = await configApi.saveEnv(keys);
+      setSaveStatus('API keys saved successfully!');
+      setTimeout(() => setSaveStatus(''), 3000);
     } catch (error: any) {
-      alert(`Error saving API keys: ${error.message}`);
+      setSaveStatus(`Error saving API keys: ${error.message}`);
     }
   }
 
@@ -70,6 +60,7 @@ export function SecretsSubtab() {
   }
 
   async function saveEnvVariables() {
+    setSaveStatus('');
     const envObj: Record<string, string> = {};
     envVariables.forEach(item => {
       if (item.key.trim()) {
@@ -78,19 +69,11 @@ export function SecretsSubtab() {
     });
 
     try {
-      const response = await fetch(api('/api/config'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ env: envObj })
-      });
-      const data = await response.json();
-      if (data.status === 'success') {
-        alert('Environment variables saved successfully!');
-      } else {
-        alert(`Failed to save environment variables: ${data.error}`);
-      }
+      await configApi.saveEnv(envObj);
+      setSaveStatus('Environment variables saved successfully!');
+      setTimeout(() => setSaveStatus(''), 3000);
     } catch (error: any) {
-      alert(`Error saving environment variables: ${error.message}`);
+      setSaveStatus(`Error saving environment variables: ${error.message}`);
     }
   }
 
@@ -98,22 +81,18 @@ export function SecretsSubtab() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const formData = new FormData();
-    formData.append('file', file);
-
+    setUploadStatus('');
     try {
-      const response = await fetch(api('/api/secrets/ingest'), {
-        method: 'POST',
-        body: formData
-      });
-      const data = await response.json();
-      if (data.ok) {
-        alert(`Successfully imported ${data.count} secrets from ${file.name}`);
+      const result = await configApi.uploadSecrets(file);
+      if (result.ok) {
+        const count = result.applied?.length || 0;
+        setUploadStatus(`Successfully imported ${count} secrets from ${file.name}`);
+        setTimeout(() => setUploadStatus(''), 5000);
       } else {
-        alert(`Failed to import .env file: ${data.error}`);
+        setUploadStatus(`Failed to import .env file: ${result.error || 'Unknown error'}`);
       }
     } catch (error: any) {
-      alert(`Error uploading .env file: ${error.message}`);
+      setUploadStatus(`Error uploading .env file: ${error.message}`);
     }
   }
 
@@ -123,6 +102,38 @@ export function SecretsSubtab() {
       <p className="small" style={{ marginBottom: '24px' }}>
         Manage API keys and environment variables. Values are encrypted and stored securely.
       </p>
+
+      {/* Status Messages */}
+      {saveStatus && (
+        <div
+          data-testid="secrets-save-status"
+          style={{
+            padding: '12px',
+            marginBottom: '16px',
+            borderRadius: '6px',
+            background: saveStatus.includes('Error') ? 'var(--err)' : 'var(--ok)',
+            color: 'var(--accent-contrast)',
+            fontWeight: '500'
+          }}
+        >
+          {saveStatus}
+        </div>
+      )}
+      {uploadStatus && (
+        <div
+          data-testid="secrets-upload-status"
+          style={{
+            padding: '12px',
+            marginBottom: '16px',
+            borderRadius: '6px',
+            background: uploadStatus.includes('Error') || uploadStatus.includes('Failed') ? 'var(--err)' : 'var(--ok)',
+            color: 'var(--accent-contrast)',
+            fontWeight: '500'
+          }}
+        >
+          {uploadStatus}
+        </div>
+      )}
 
       {/* API Keys */}
       <div
@@ -234,6 +245,7 @@ export function SecretsSubtab() {
         <button
           className="small-button"
           onClick={saveApiKeys}
+          data-testid="save-api-keys-btn"
           style={{
             width: '100%',
             background: 'var(--accent)',
@@ -367,6 +379,7 @@ export function SecretsSubtab() {
           <button
             className="small-button"
             onClick={saveEnvVariables}
+            data-testid="save-env-vars-btn"
             style={{
               width: '100%',
               background: 'var(--link)',
@@ -397,6 +410,7 @@ export function SecretsSubtab() {
           type="file"
           accept=".env,.txt"
           onChange={handleFileUpload}
+          data-testid="env-file-upload"
           style={{
             width: '100%',
             padding: '8px',

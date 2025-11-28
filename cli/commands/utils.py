@@ -4,10 +4,12 @@ import requests
 from rich.console import Console
 from rich.panel import Panel
 from rich.markdown import Markdown
+from server.services.config_registry import get_config_registry
 
 console = Console()
+_config_registry = get_config_registry()
 
-PORT = int(os.getenv('PORT', '8012'))
+PORT = _config_registry.get_int('PORT', 8012)
 API_BASE = f"http://127.0.0.1:{PORT}"
 
 def get(path: str):

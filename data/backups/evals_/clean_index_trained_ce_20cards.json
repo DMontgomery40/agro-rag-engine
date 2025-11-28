@@ -1,0 +1,10 @@
+{
+  "total": 52,
+  "top1": 29,
+  "topk": 47,
+  "final_k": 5,
+  "use_multi": true,
+  "secs": 579.68,
+  "config": "BM25 + Trained CE + 20 Cards (Clean Index)",
+  "notes": "Clean reindex with .editor_data/.code-server/tests excluded. 920 chunks total. CARDS_MAX=20."
+}

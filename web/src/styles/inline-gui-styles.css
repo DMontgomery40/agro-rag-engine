@@ -321,16 +321,17 @@
         }
 
         .tab-content {
-            /* Fixed: Display none for inactive tabs (simple, reliable) */
-            display: none;
-            padding: 24px;
+            /* React Router only renders active route, so tab-content is always visible */
+            display: flex;
+            flex-direction: column;
+            flex: 1;
             overflow-y: auto;
-            width: 100%;
-            min-height: 0; /* allow flex shrinking */
+            padding: 24px;
+            min-height: 0; /* allow nested fullscreen sections to size correctly */
         }
 
         .tab-content.active {
-            /* Active tab visible and fills available space */
+            /* Keep for backward compatibility with legacy JS */
             display: flex;
             flex-direction: column;
             flex: 1;

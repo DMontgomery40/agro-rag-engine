@@ -16,7 +16,7 @@ interface ConfigStore {
   saveConfig: (update: ConfigUpdate) => Promise<void>;
   reloadEnv: () => Promise<void>;
   updateEnv: (key: string, value: string | number | boolean) => void;
-  updateRepo: (repoName: string, updates: Partial<Repository>) => void;
+  updateRepo: (repoName: string, updates: Partial<Repository>) => Promise<void>;
 
   // Keyword actions
   loadKeywords: () => Promise<void>;
@@ -105,20 +105,49 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     });
   },
 
-  updateRepo: (repoName: string, updates: Partial<Repository>) => {
+  updateRepo: async (repoName: string, updates: Partial<Repository>) => {
     const { config } = get();
     if (!config) return;
 
-    const updatedRepos = config.repos.map(repo =>
-      repo.name === repoName ? { ...repo, ...updates } : repo
-    );
+    // Save to repos.json via API first
+    try {
+      // Determine API base URL
+      let apiBase = '/api';
+      try {
+        const u = new URL(window.location.href);
+        if (u.port === '5173') apiBase = 'http://127.0.0.1:8012/api';
+        else if (u.protocol.startsWith('http')) apiBase = u.origin + '/api';
+      } catch {}
 
-    set({
-      config: {
-        ...config,
-        repos: updatedRepos,
-      },
-    });
+      const response = await fetch(`${apiBase}/repos/${repoName}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to save repo updates');
+      }
+
+      // Update local state after successful save
+      const updatedRepos = config.repos.map(repo =>
+        repo.name === repoName ? { ...repo, ...updates } : repo
+      );
+
+      set({
+        config: {
+          ...config,
+          repos: updatedRepos,
+        },
+      });
+
+      // Dispatch event so RepositoryConfig can refresh
+      window.dispatchEvent(new CustomEvent('repo-updated', { detail: { repoName } }));
+    } catch (error) {
+      console.error('Error saving repo updates:', error);
+      throw error; // Re-throw so caller can handle
+    }
   },
 
   loadKeywords: async () => {

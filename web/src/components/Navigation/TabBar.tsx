@@ -151,6 +151,31 @@ export function TabBar() {
       </NavLink>
 
       <NavLink
+        to="/eval"
+        className={({ isActive }) => `${isActive ? 'active' : ''} keystone-tab`}
+        style={{
+          background: 'var(--bg-elev2)',
+          color: 'var(--fg-muted)',
+          border: '1px solid var(--line)',
+          padding: '9px 16px',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          fontSize: '13px',
+          fontWeight: 500,
+          whiteSpace: 'nowrap',
+          transition: 'all 0.15s',
+          minHeight: '44px',
+          textDecoration: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+        }}
+        title="Deep-dive into evaluation runs with AI-powered analysis"
+      >
+        🔬 Eval Analysis
+      </NavLink>
+
+      <NavLink
         to="/profiles"
         className={({ isActive }) => isActive ? 'active' : ''}
         style={{

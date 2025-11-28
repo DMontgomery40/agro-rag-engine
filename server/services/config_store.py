@@ -4,6 +4,7 @@ import os
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from pydantic import ValidationError
 
 from common.config_loader import load_repos
 from common.paths import repo_root, gui_dir
@@ -17,7 +18,8 @@ SECRET_FIELDS = {
     'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GOOGLE_API_KEY',
     'COHERE_API_KEY', 'VOYAGE_API_KEY', 'LANGSMITH_API_KEY',
     'LANGCHAIN_API_KEY', 'LANGTRACE_API_KEY', 'NETLIFY_API_KEY',
-    'OAUTH_TOKEN', 'GRAFANA_API_KEY'
+    'OAUTH_TOKEN', 'GRAFANA_API_KEY', 'GRAFANA_AUTH_TOKEN',
+    'MCP_API_KEY'
 }
 
 
@@ -88,6 +90,49 @@ def secrets_ingest(text: str, persist: bool) -> Dict[str, Any]:
     return {"ok": True, "applied": sorted(applied.keys()), "persisted": saved}
 
 
+def save_mcp_key(key: str) -> Dict[str, Any]:
+    """Save MCP API key to .env file.
+
+    Args:
+        key: MCP API key value
+
+    Returns:
+        Success status
+
+    Security:
+        - Key is written to .env (not logged)
+        - Updates both file and os.environ for immediate effect
+    """
+    try:
+        env_path = repo_root() / ".env"
+
+        # Read existing .env
+        existing: Dict[str, str] = {}
+        if env_path.exists():
+            for line in env_path.read_text().splitlines():
+                if not line.strip() or line.strip().startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                existing[k.strip()] = v.strip()
+
+        # Update or append MCP_API_KEY
+        key_name = "MCP_API_KEY"
+        existing[key_name] = key
+
+        # Write back atomically
+        _atomic_write_text(env_path, "\n".join(f"{k}={existing[k]}" for k in sorted(existing.keys())) + "\n")
+
+        # Update os.environ for immediate effect
+        os.environ[key_name] = key
+
+        logger.info("MCP API key saved successfully")  # Don't log the actual key!
+        return {"status": "success", "message": "MCP API key saved"}
+
+    except Exception as e:
+        logger.error(f"Failed to save MCP key: {e}")  # Don't log the actual key!
+        return {"status": "error", "message": "Failed to save API key"}
+
+
 def _effective_rerank_backend() -> Dict[str, Any]:
     try:
         from server.learning_reranker import get_reranker_info
@@ -95,17 +140,33 @@ def _effective_rerank_backend() -> Dict[str, Any]:
         def get_reranker_info():
             return {}
     import time
-    backend_env = (os.getenv("RERANK_BACKEND", "").strip().lower() or "")
+    registry = get_config_registry()
+    backend_env_raw = (
+        registry.get_str("RERANKER_BACKEND", "").strip().lower()
+        or registry.get_str("RERANK_BACKEND", "").strip().lower()
+        or ""
+    )
+    def _norm_backend(val: str) -> str:
+        if not val:
+            return ""
+        if val in {"off", "none", "disabled"}:
+            return "none"
+        if val == "hf":
+            return "local"
+        return val
+
+    backend_env = _norm_backend(backend_env_raw)
     now = time.time()
     try:
         info = get_reranker_info()
     except Exception:
         info = {}
-    explicit = backend_env in {"cohere", "local", "hf", "none"}
+    explicit = bool(backend_env)
     mtime = float(info.get("model_dir_mtime") or 0.0)
     recent = (now - mtime) <= (7 * 24 * 3600) if mtime > 0 else False
+    # COHERE_API_KEY is a secret, keep os.getenv
     cohere = bool((os.getenv("COHERE_API_KEY", "") or "").strip())
-    path = info.get("resolved_path") or info.get("path") or os.getenv("AGRO_RERANKER_MODEL_PATH", "models/cross-encoder-agro")
+    path = info.get("resolved_path") or info.get("path") or registry.get_str("AGRO_RERANKER_MODEL_PATH", "models/cross-encoder-agro")
     local_present = bool(str(path)) and os.path.exists(str(path))
     if explicit:
         return {"backend": backend_env, "reason": "explicit_env"}
@@ -144,6 +205,22 @@ def get_config(unmask: bool = False) -> Dict[str, Any]:
     except Exception:
         # Fallback if os.environ iteration fails (should not happen)
         env = {}
+
+    # Add infrastructure path defaults from common/paths.py if not in env
+    try:
+        from common.paths import files_root, docs_dir, data_dir
+        if 'REPO_ROOT' not in env:
+            env['REPO_ROOT'] = str(repo_root())
+        if 'FILES_ROOT' not in env:
+            env['FILES_ROOT'] = str(files_root())
+        if 'GUI_DIR' not in env:
+            env['GUI_DIR'] = str(gui_dir())
+        if 'DOCS_DIR' not in env:
+            env['DOCS_DIR'] = str(docs_dir())
+        if 'DATA_DIR' not in env:
+            env['DATA_DIR'] = str(data_dir())
+    except Exception as e:
+        logger.warning(f"Failed to add infrastructure path defaults: {e}")
 
     # Merge in agro_config.json values from registry
     # Only if not already in env (env takes precedence)
@@ -197,6 +274,7 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
     # Split env_updates into agro_config and .env based on AGRO_CONFIG_KEYS
     agro_config_updates = {k: v for k, v in env_updates.items() if k in AGRO_CONFIG_KEYS}
     env_file_updates = {k: v for k, v in env_updates.items() if k not in AGRO_CONFIG_KEYS}
+    validation_error: Optional[str] = None
 
     # Update agro_config.json if there are relevant updates
     if agro_config_updates:
@@ -204,9 +282,21 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
             registry = get_config_registry()
             registry.update_agro_config(agro_config_updates)
             logger.info(f"Updated agro_config.json with keys: {sorted(agro_config_updates.keys())}")
+        except ValidationError as e:
+            logger.error(f"Failed to update agro_config.json: {e}")
+            validation_error = str(e)
         except Exception as e:
             logger.error(f"Failed to update agro_config.json: {e}")
-            # Don't fail the whole operation, continue with .env updates
+            validation_error = str(e)
+
+    if validation_error:
+        return {
+            "status": "error",
+            "error": validation_error,
+            "applied_env_keys": [],
+            "applied_agro_config_keys": [],
+            "repos_count": 0
+        }
 
     # Backup .env
     env_path = root / ".env"
@@ -295,6 +385,7 @@ def repos_get(repo_name: str) -> Optional[Dict[str, Any]]:
 
 
 def repos_patch(repo_name: str, payload: Dict[str, Any]) -> bool:
+    """Update repository configuration in repos.json (not Pydantic - repos.json is separate from agro_config.json)."""
     repos_path = repo_root() / "repos.json"
     cfg = _read_json(repos_path, {"default_repo": None, "repos": []})
     for repo in cfg.get("repos", []):
@@ -436,18 +527,26 @@ def config_schema() -> Dict[str, Any]:
     import os
     from pathlib import Path
 
-    def _bool_env(name: str, default: str = "0") -> bool:
-        v = (os.getenv(name, default) or default).strip().lower()
-        return v in {"1", "true", "yes", "on"}
-
     def _read_editor_settings() -> Dict[str, Any]:
+        """Prefer registry-backed editor settings, with legacy file fallback for host."""
+        reg = get_config_registry()
+        data = {
+            "port": reg.get_int("EDITOR_PORT", 4440),
+            "enabled": reg.get_bool("EDITOR_ENABLED", True),
+            "embed_enabled": reg.get_bool("EDITOR_EMBED_ENABLED", True),
+            "bind": reg.get_str("EDITOR_BIND", "local"),
+            "image": reg.get_str("EDITOR_IMAGE", "agro-vscode:latest"),
+            "host": "127.0.0.1",
+        }
         try:
             p = Path(__file__).parent.parent / "out" / "editor" / "settings.json"
             if p.exists():
-                return json.loads(p.read_text())
+                file_data = json.loads(p.read_text())
+                if isinstance(file_data, dict):
+                    data.update({k: v for k, v in file_data.items() if v is not None})
         except Exception:
             pass
-        return {"port": 4440, "enabled": True, "host": "127.0.0.1"}
+        return data
 
     repos_cfg = load_repos()
     default_repo = repos_cfg.get("default_repo")
@@ -463,6 +562,10 @@ def config_schema() -> Dict[str, Any]:
                     "GEN_MODEL": {"type": "string", "title": "Generative Model"},
                     "GEN_TEMPERATURE": {"type": "number", "title": "Temperature", "minimum": 0, "maximum": 2},
                     "GEN_MAX_TOKENS": {"type": "integer", "title": "Max Tokens", "minimum": 1},
+                    "GEN_TIMEOUT": {"type": "integer", "title": "Generation Timeout (s)", "minimum": 10},
+                    "GEN_RETRY_MAX": {"type": "integer", "title": "Generation Retries", "minimum": 0, "maximum": 10},
+                    "OLLAMA_REQUEST_TIMEOUT": {"type": "integer", "title": "Local Request Timeout (s)", "minimum": 30},
+                    "OLLAMA_STREAM_IDLE_TIMEOUT": {"type": "integer", "title": "Local Stream Idle Timeout (s)", "minimum": 5},
                 },
             },
             "retrieval": {
@@ -498,6 +601,7 @@ def config_schema() -> Dict[str, Any]:
                 "type": "object",
                 "properties": {
                     "ENABLED": {"type": "boolean", "title": "Enable Inline VSCode"},
+                    "EDITOR_EMBED_ENABLED": {"type": "boolean", "title": "Show VSCode iframe"},
                     "HOST": {"type": "string", "title": "Host"},
                     "PORT": {"type": "integer", "title": "Port", "minimum": 1},
                 },
@@ -507,6 +611,11 @@ def config_schema() -> Dict[str, Any]:
                 "properties": {
                     "GRAFANA_BASE_URL": {"type": "string", "title": "Base URL"},
                     "GRAFANA_DASHBOARD_UID": {"type": "string", "title": "Dashboard UID"},
+                    "GRAFANA_DASHBOARD_SLUG": {"type": "string", "title": "Dashboard Slug"},
+                    "GRAFANA_REFRESH": {"type": "string", "title": "Refresh Interval"},
+                    "GRAFANA_KIOSK": {"type": "string", "title": "Kiosk Mode"},
+                    "GRAFANA_AUTH_MODE": {"type": "string", "title": "Auth Mode"},
+                    "GRAFANA_ORG_ID": {"type": "integer", "title": "Org ID", "minimum": 1},
                     "GRAFANA_EMBED_ENABLED": {"type": "boolean", "title": "Enable Embed"},
                 },
             },
@@ -538,49 +647,61 @@ def config_schema() -> Dict[str, Any]:
         'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GOOGLE_API_KEY',
         'COHERE_API_KEY', 'VOYAGE_API_KEY', 'LANGSMITH_API_KEY',
         'LANGCHAIN_API_KEY', 'LANGTRACE_API_KEY', 'NETLIFY_API_KEY',
-        'OAUTH_TOKEN', 'GRAFANA_API_KEY'
+        'OAUTH_TOKEN', 'GRAFANA_API_KEY', 'GRAFANA_AUTH_TOKEN',
+        'MCP_API_KEY'
     }
 
     ed = _read_editor_settings()
+    registry = get_config_registry()
     values: Dict[str, Any] = {
         "generation": {
-            "GEN_MODEL": os.getenv("GEN_MODEL"),
-            "GEN_TEMPERATURE": float(os.getenv("GEN_TEMPERATURE", "0.2") or 0.2),
-            "GEN_MAX_TOKENS": int(os.getenv("GEN_MAX_TOKENS", "2048") or 2048),
+            "GEN_MODEL": registry.get_str("GEN_MODEL", ""),
+            "GEN_TEMPERATURE": registry.get_float("GEN_TEMPERATURE", 0.2),
+            "GEN_MAX_TOKENS": registry.get_int("GEN_MAX_TOKENS", 2048),
+            "GEN_TIMEOUT": registry.get_int("GEN_TIMEOUT", 60),
+            "GEN_RETRY_MAX": registry.get_int("GEN_RETRY_MAX", 2),
+            "OLLAMA_REQUEST_TIMEOUT": registry.get_int("OLLAMA_REQUEST_TIMEOUT", 300),
+            "OLLAMA_STREAM_IDLE_TIMEOUT": registry.get_int("OLLAMA_STREAM_IDLE_TIMEOUT", 60),
         },
         "retrieval": {
-            "FINAL_K": int(os.getenv("FINAL_K", os.getenv("LANGGRAPH_FINAL_K", "10") or 10)),
-            "LANGGRAPH_FINAL_K": int(os.getenv("LANGGRAPH_FINAL_K", os.getenv("FINAL_K", "10") or 10)),
-            "MQ_REWRITES": int(os.getenv("MQ_REWRITES", "2") or 2),
-            "SKIP_DENSE": _bool_env("SKIP_DENSE", "0"),
+            "FINAL_K": registry.get_int("FINAL_K", registry.get_int("LANGGRAPH_FINAL_K", 10)),
+            "LANGGRAPH_FINAL_K": registry.get_int("LANGGRAPH_FINAL_K", registry.get_int("FINAL_K", 10)),
+            "MQ_REWRITES": registry.get_int("MQ_REWRITES", 2),
+            "SKIP_DENSE": registry.get_bool("SKIP_DENSE", False),
         },
         "reranker": {
-            "AGRO_RERANKER_ENABLED": _bool_env("AGRO_RERANKER_ENABLED", "0"),
-            "RERANK_BACKEND": os.getenv("RERANK_BACKEND", ""),
-            "RERANK_MODEL": os.getenv("RERANK_MODEL"),
-            "COHERE_RERANK_MODEL": os.getenv("COHERE_RERANK_MODEL"),
-            "VOYAGE_RERANK_MODEL": os.getenv("VOYAGE_RERANK_MODEL"),
-            "RERANK_TOP_K": int(os.getenv("RERANK_TOP_K", "0") or 0) or None,
+            "AGRO_RERANKER_ENABLED": registry.get_bool("AGRO_RERANKER_ENABLED", False),
+            "RERANK_BACKEND": registry.get_str("RERANK_BACKEND", ""),
+            "RERANK_MODEL": registry.get_str("RERANK_MODEL", ""),
+            "COHERE_RERANK_MODEL": registry.get_str("COHERE_RERANK_MODEL", ""),
+            "VOYAGE_RERANK_MODEL": registry.get_str("VOYAGE_RERANK_MODEL", ""),
+            "RERANK_TOP_K": registry.get_int("RERANK_TOP_K", 0) or None,
         },
         "enrichment": {
-            "ENRICH_CODE_CHUNKS": _bool_env("ENRICH_CODE_CHUNKS", "0"),
-            "ENRICH_BACKEND": os.getenv("ENRICH_BACKEND", ""),
-            "ENRICH_MODEL": os.getenv("ENRICH_MODEL"),
-            "ENRICH_MODEL_OLLAMA": os.getenv("ENRICH_MODEL_OLLAMA"),
+            "ENRICH_CODE_CHUNKS": registry.get_bool("ENRICH_CODE_CHUNKS", False),
+            "ENRICH_BACKEND": registry.get_str("ENRICH_BACKEND", ""),
+            "ENRICH_MODEL": registry.get_str("ENRICH_MODEL", ""),
+            "ENRICH_MODEL_OLLAMA": registry.get_str("ENRICH_MODEL_OLLAMA", ""),
         },
         "vscode": {
             "ENABLED": bool(ed.get("enabled", True)),
+            "EDITOR_EMBED_ENABLED": bool(ed.get("embed_enabled", True)),
             "HOST": ed.get("host", "127.0.0.1"),
             "PORT": int(ed.get("port", 4440)),
         },
         "grafana": {
-            "GRAFANA_BASE_URL": os.getenv("GRAFANA_BASE_URL", "http://127.0.0.1:3000"),
-            "GRAFANA_DASHBOARD_UID": os.getenv("GRAFANA_DASHBOARD_UID", "agro-overview"),
-            "GRAFANA_EMBED_ENABLED": os.getenv("GRAFANA_EMBED_ENABLED", "true").lower() in {"1","true","yes","on"},
+            "GRAFANA_BASE_URL": registry.get_str("GRAFANA_BASE_URL", "http://127.0.0.1:3000"),
+            "GRAFANA_DASHBOARD_UID": registry.get_str("GRAFANA_DASHBOARD_UID", "agro-overview"),
+            "GRAFANA_DASHBOARD_SLUG": registry.get_str("GRAFANA_DASHBOARD_SLUG", registry.get_str("GRAFANA_DASHBOARD_UID", "agro-overview")),
+            "GRAFANA_REFRESH": registry.get_str("GRAFANA_REFRESH", "10s"),
+            "GRAFANA_KIOSK": registry.get_str("GRAFANA_KIOSK", "tv"),
+            "GRAFANA_AUTH_MODE": registry.get_str("GRAFANA_AUTH_MODE", "anonymous"),
+            "GRAFANA_ORG_ID": registry.get_int("GRAFANA_ORG_ID", 1),
+            "GRAFANA_EMBED_ENABLED": registry.get_bool("GRAFANA_EMBED_ENABLED", True),
         },
         "repo": {
-            "REPO": os.getenv("REPO", default_repo),
-            "GIT_BRANCH": os.getenv("GIT_BRANCH"),
+            "REPO": registry.get_str("REPO", default_repo or "agro"),
+            "GIT_BRANCH": registry.get_str("GIT_BRANCH", ""),
             "default_repo": default_repo,
         },
     }
@@ -590,9 +711,10 @@ def config_schema() -> Dict[str, Any]:
             values.setdefault("secrets", {})[k] = "••••••••••••••••"
 
     for th in ("CONF_TOP1", "CONF_AVG5", "CONF_ANY"):
-        if os.getenv(th) is not None:
+        val = registry.get(th)
+        if val is not None:
             try:
-                values.setdefault("retrieval", {})[th] = float(os.getenv(th))
+                values.setdefault("retrieval", {})[th] = float(val)
             except Exception:
                 pass
 

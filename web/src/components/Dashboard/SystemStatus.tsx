@@ -1,6 +1,6 @@
 /**
  * System Status Widget
- * Displays real-time status for health, repo, cards, MCP, and autotune
+ * Displays real-time status for health, repo, cards, and MCP
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -11,7 +11,6 @@ interface StatusData {
   repo: string;
   cards: string;
   mcp: string;
-  autotune: string;
 }
 
 export function SystemStatus() {
@@ -21,7 +20,6 @@ export function SystemStatus() {
     repo: '—',
     cards: '—',
     mcp: '—',
-    autotune: '—',
   });
 
   const refreshStatus = useCallback(async () => {
@@ -45,15 +43,6 @@ export function SystemStatus() {
       newStatus.health = `${health.status}${health.graph_loaded ? ' (graph ready)' : ''}`;
     } catch (e) {
       console.error('[SystemStatus] Failed to fetch health:', e);
-    }
-
-    // Fetch autotune
-    try {
-      const autotuneRes = await fetch(api('/api/autotune/status'));
-      const autotune = await autotuneRes.json();
-      newStatus.autotune = autotune.enabled ? (autotune.current_mode || 'enabled') : 'disabled';
-    } catch (e) {
-      newStatus.autotune = 'Pro required';
     }
 
     // Fetch cards
@@ -127,7 +116,6 @@ export function SystemStatus() {
         <StatusItem label="Repo" value={status.repo} color="var(--fg)" />
         <StatusItem label="Cards" value={status.cards} color="var(--link)" />
         <StatusItem label="MCP" value={status.mcp} color="var(--link)" />
-        <StatusItem label="Auto-Tune" value={status.autotune} color="var(--warn)" />
       </div>
     </div>
   );

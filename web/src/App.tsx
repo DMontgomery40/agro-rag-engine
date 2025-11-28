@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useHealthStore } from '@/stores';
 
 // Navigation components
@@ -8,17 +9,21 @@ import { TabRouter } from './components/Navigation/TabRouter';
 // Sidepanel component
 import { Sidepanel } from './components/Sidepanel';
 
+// UI Components
+import { EmbeddingMismatchWarning } from './components/ui/EmbeddingMismatchWarning';
+
 // Hooks
 import { useAppInit, useModuleLoader, useApplyButton } from '@/hooks';
 
 function App() {
   const [healthDisplay, setHealthDisplay] = useState('—');
   const { status, checkHealth } = useHealthStore();
+  const navigate = useNavigate();
 
   // Initialize hooks
   const { isInitialized, initError } = useAppInit();
   const { modulesLoaded, loadError, loadProgress } = useModuleLoader();
-  const { handleApply, isDirty, isSaving, saveError } = useApplyButton();
+  const { handleApply: handleSaveAllChanges, isDirty, isSaving, saveError } = useApplyButton();
 
   useEffect(() => {
     // Initial health check
@@ -68,7 +73,8 @@ function App() {
         await import('./modules/config.js');
         await import('./modules/health.js');
 
-        // 7. Feature modules (order doesn't matter as much)
+        // 7. Feature modules (ensure feedback tools load before chat)
+        await import('./modules/reranker.js');
         await Promise.all([
           import('./modules/git-hooks.js'),
           import('./modules/git-commit-meta.js'),
@@ -97,16 +103,14 @@ function App() {
           import('./modules/profile_logic.js'),
           import('./modules/profile_renderer.js'),
           import('./modules/autoprofile_v2.js'),
-          // Temporarily disabled: golden_questions.js has bindGoldenQuestions error
-          // React components in EvaluateSubtab.tsx provide full UI functionality
+          // REMOVED: Legacy JS modules - EvaluateSubtab now uses pure React/TypeScript
           // import('./modules/golden_questions.js'),
           // import('./modules/eval_runner.js'),
           import('./modules/eval_history.js'),
-          import('./modules/chat.js'),
+          // Chat is React-native now; keep legacy reranker feedback only
           import('./modules/error-helpers.js'),
           import('./modules/layout_fix.js'),
           import('./modules/live-terminal.js'),
-          import('./modules/reranker.js'),
           import('./modules/trace.js'),
           import('./modules/alerts.js'),
           import('./modules/ux-feedback.js'),
@@ -183,9 +187,9 @@ function App() {
         <div className="top-actions">
           <button
             id="btn-learn"
-            title="Open Help & Glossary"
+            title="Open Parameter Glossary"
             style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-            onClick={() => window.location.hash = '#/dashboard?subtab=help'}
+            onClick={() => navigate('/dashboard?subtab=glossary')}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="10"></circle>
@@ -220,12 +224,46 @@ function App() {
       {/* Main Layout */}
       <div className="layout">
         <div className="resize-handle"></div>
-        <div className="content">
+        <div className="content" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
           {/* Tab Bar - React Router navigation */}
           <TabBar />
 
-          {/* Routes - All tab routing */}
-          <TabRouter />
+          {/* Scrollable content wrapper */}
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            {/* Routes - All tab routing */}
+            <TabRouter />
+          </div>
+
+          {/* Apply All Changes button - Fixed footer outside scrollable area */}
+          <div className="action-buttons" style={{
+            background: 'var(--bg)',
+            padding: '12px 24px',
+            borderTop: '1px solid var(--accent)',
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+          }}>
+            <button
+              id="save-btn"
+              onClick={handleSaveAllChanges}
+              disabled={!isDirty || isSaving}
+              style={{
+                opacity: (!isDirty || isSaving) ? 0.6 : 1,
+                cursor: (!isDirty || isSaving) ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {isSaving ? 'Saving...' : 'Apply All Changes'}
+              {isDirty && !isSaving && ' *'}
+            </button>
+            {saveError && (
+              <span style={{ color: 'var(--err)', marginLeft: '12px' }}>
+                Error: {saveError}
+              </span>
+            )}
+            {/* Global embedding mismatch warning - appears next to Apply button */}
+            <EmbeddingMismatchWarning variant="compact" />
+          </div>
         </div>
 
         {/* Sidepanel */}

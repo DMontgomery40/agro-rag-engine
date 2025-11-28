@@ -65,7 +65,7 @@ def _estimate_cost(
     # tokens_in/out are per request
     gen_cost = (tokens_in/1000.0) * per_1k_in * rpd + (tokens_out/1000.0) * per_1k_out * rpd + per_req * rpd
 
-    # Embeddings (separate provider/model); "embeds" is total tokens per day
+    # Embeddings (separate provider/model); "embeds" is tokens PER REQUEST
     emb_cost = 0.0
     emb_row = None
     if embeds > 0:
@@ -74,9 +74,10 @@ def _estimate_cost(
             embed_model = embed_model or 'text-embedding-3-small'
         emb_row = _find_price_kind(embed_provider or gen_provider, embed_model, 'embed')
         if emb_row:
-            emb_cost = (embeds/1000.0) * float(emb_row.get("embed_per_1k", 0.0) or 0.0)
+            # Cost = (tokens_per_req / 1000) * rate_per_1k * requests_per_day
+            emb_cost = (embeds/1000.0) * float(emb_row.get("embed_per_1k", 0.0) or 0.0) * rpd
 
-    # Rerank; "reranks" interpreted by price row
+    # Rerank; "reranks" is rerank ops PER REQUEST
     rr_cost = 0.0
     rr_row = None
     if reranks > 0:
@@ -85,19 +86,27 @@ def _estimate_cost(
             per_1k_rr = float(rr_row.get("rerank_per_1k", 0.0) or 0.0)
             per_req_rr = float(rr_row.get("per_request", 0.0) or 0.0)
             unit = str(rr_row.get("unit") or '').lower()
+            
+            # Calculate cost PER REQUEST first
+            cost_per_req = 0.0
+            
             if unit == 'request':
-                # Treat input `reranks` as number of requests
+                # "reranks" = number of rerank requests per main request
                 if per_req_rr > 0.0:
-                    rr_cost = float(reranks) * per_req_rr
+                    cost_per_req = float(reranks) * per_req_rr
                 elif per_1k_rr > 0.0:
-                    rr_cost = (reranks/1000.0) * per_1k_rr
+                     # 1 request = 1 search step? Assume "reranks" is count of docs if price is per 1k?
+                     # But standard Cohere Rerank is per search step. 
+                     # If unit is 'request', assume "reranks" is number of search steps.
+                     # Fallback to treating per_1k as per 1000 requests
+                     cost_per_req = (reranks/1000.0) * per_1k_rr
             elif per_1k_rr > 0.0:
-                rr_cost = (reranks/1000.0) * per_1k_rr
+                # Price per 1k units (e.g. docs). "reranks" = num docs
+                cost_per_req = (reranks/1000.0) * per_1k_rr
             elif per_req_rr > 0.0:
-                # Treat "reranks" as number of rerank calls for the day
-                rr_cost = float(reranks) * per_req_rr
-            elif unit == 'request' and per_req_rr == 0.0:
-                rr_cost = 0.0
+                cost_per_req = float(reranks) * per_req_rr
+                
+            rr_cost = cost_per_req * rpd
 
     daily = float(gen_cost + emb_cost + rr_cost)
     breakdown = {

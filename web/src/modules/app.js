@@ -47,7 +47,11 @@
     const loadLatestTrace = window.Trace?.loadLatestTrace || (async ()=>{});
 
     // ---------------- Chat ----------------
+    // DISABLED: Chat is now handled by React ChatInterface component
+    // These legacy functions are retained for reference only
     function appendChatMessage(role, text){
+        // Skip if React ChatInterface is managing the chat
+        if (document.querySelector('[data-react-chat="true"]')) return;
         const box = document.getElementById('chat-messages'); if (!box) return;
         const wrap = document.createElement('div');
         wrap.style.marginBottom = '12px';
@@ -71,6 +75,8 @@
     }
 
     async function sendChat(){
+        // Skip if React ChatInterface is managing the chat
+        if (document.querySelector('[data-react-chat="true"]')) return;
         const ta = document.getElementById('chat-input'); if (!ta) return;
         const q = (ta.value || '').trim(); if (!q) return;
         appendChatMessage('user', q);
@@ -172,15 +178,18 @@
         if (embList) setOpts(embList, embModels);
 
         // Default provider only; leave model empty so datalist shows all options on first focus
-        if (!$('#cost-provider').value && providers.length) $('#cost-provider').value = providers[0];
-        if (!$('#cost-model').value) $('#cost-model').value = '';
+        const costProvider = $('#cost-provider');
+        const costModel = $('#cost-model');
+        if (costProvider && !costProvider.value && providers.length) costProvider.value = providers[0];
+        if (costModel && !costModel.value) costModel.value = '';
 
         // Filter model options when provider changes AND update the input value
         const onProv = () => {
             const modelInput = $('#cost-model');
-            if (!modelInput || !modelList) return;
+            const costProviderEl = $('#cost-provider');
+            if (!modelInput || !modelList || !costProviderEl) return;
 
-            const p = $('#cost-provider').value.trim().toLowerCase();
+            const p = costProviderEl.value.trim().toLowerCase();
             const provModels = unique(models.filter(m => (m.provider||'').toLowerCase()===p && isGen(m)).map(m => m.model));
             if (!provModels.length) {
                 // Fall back to all inference models so the dropdown is still usable
@@ -765,6 +774,10 @@
 
             const ul = $('#profiles-ul');
             const tooltip = $('#profile-tooltip');
+            if (!ul) {
+                // Element doesn't exist in React app, skip DOM manipulation
+                return;
+            }
             ul.innerHTML = '';
 
             state.profiles.forEach((name) => {
@@ -1138,24 +1151,18 @@
                 const result = await createResponse.json();
 
                 if (result.ok) {
-                    const discr = result.discriminative?.count || 0;
-                    const sema = result.semantic?.count || 0;
-                    const total = result.total_count || 0;
+                    // Support both new format (count/keywords) and legacy format (discriminative/semantic/total_count)
+                    const total = result.count ?? result.total_count ?? 0;
+                    const keywords = result.keywords || [];
                     const duration = result.duration_seconds || 0;
 
-                    // Build detailed status message
+                    // Build detailed status message - simplified for repos.json single source
                     const status = `
                         <div style="font-size:14px;font-weight:600;color:var(--accent);margin-bottom:8px;">
-                            ✓ Generated ${total} keywords for repo: ${repo}
+                            ✓ Loaded ${total} keywords for repo: ${repo}
                         </div>
                         <div style="font-size:12px;color:var(--fg);margin-bottom:4px;">
-                            <span style="color:var(--link);">Discriminative:</span> ${discr} keywords
-                        </div>
-                        <div style="font-size:12px;color:var(--fg);margin-bottom:4px;">
-                            <span style="color:var(--link);">Semantic:</span> ${sema} keywords
-                        </div>
-                        <div style="font-size:12px;color:var(--fg);margin-bottom:4px;">
-                            <span style="color:var(--link);">LLM:</span> ${result.llm?.count || 0} keywords
+                            Keywords sourced from <span style="color:var(--link);">repos.json</span>
                         </div>
                         <div style="font-size:11px;color:var(--fg-muted);margin-top:8px;">
                             Completed in ${duration}s
@@ -1257,15 +1264,17 @@
             }catch(e){ alert('Unable to open LangSmith: '+e.message); }
         });
 
-        // Chat bindings
-        const chatSend = document.getElementById('chat-send');
-        if (chatSend) chatSend.addEventListener('click', sendChat);
-        const chatInput = document.getElementById('chat-input');
-        if (chatInput) chatInput.addEventListener('keydown', (e)=>{ if ((e.ctrlKey||e.metaKey) && e.key==='Enter') { e.preventDefault(); sendChat(); }});
-        const chatClear = document.getElementById('chat-clear');
-        if (chatClear) chatClear.addEventListener('click', ()=>{ const box=document.getElementById('chat-messages'); if (box) box.innerHTML='';});
-        const chatTrace = document.getElementById('chat-trace');
-        if (chatTrace) chatTrace.addEventListener('toggle', ()=>{ if (chatTrace.open) loadLatestTrace('chat-trace-output'); });
+        // Chat bindings - DISABLED when React ChatInterface is active
+        if (!document.querySelector('[data-react-chat="true"]')) {
+            const chatSend = document.getElementById('chat-send');
+            if (chatSend) chatSend.addEventListener('click', sendChat);
+            const chatInput = document.getElementById('chat-input');
+            if (chatInput) chatInput.addEventListener('keydown', (e)=>{ if ((e.ctrlKey||e.metaKey) && e.key==='Enter') { e.preventDefault(); sendChat(); }});
+            const chatClear = document.getElementById('chat-clear');
+            if (chatClear) chatClear.addEventListener('click', ()=>{ const box=document.getElementById('chat-messages'); if (box) box.innerHTML='';});
+            const chatTrace = document.getElementById('chat-trace');
+            if (chatTrace) chatTrace.addEventListener('toggle', ()=>{ if (chatTrace.open) loadLatestTrace('chat-trace-output'); });
+        }
 
         // Dopamine-y feedback on any button click
         document.querySelectorAll('button').forEach(btn => {

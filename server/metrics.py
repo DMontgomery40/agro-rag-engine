@@ -3,7 +3,7 @@
 # Exposes /metrics and provides helpers for RAG/canary metrics you asked for.
 
 from contextlib import contextmanager
-from typing import Optional
+from typing import Optional, Dict, List
 import time
 
 from prometheus_client import (
@@ -113,6 +113,56 @@ ERRORS_TOTAL = Counter(
     labelnames=("type",),  # timeout | rate_limit | validation | provider | network | unknown
 )
 
+# ---- RAG Evaluation Metrics ----
+EVAL_RUN_ACCURACY = Gauge(
+    "agro_eval_run_accuracy",
+    "Eval run accuracy by run_id and topk",
+    labelnames=("run_id", "topk"),
+)
+
+EVAL_RUN_DURATION = Gauge(
+    "agro_eval_run_duration_seconds",
+    "Total duration of eval run in seconds",
+    labelnames=("run_id",),
+)
+
+EVAL_RUN_TOTAL_QUESTIONS = Gauge(
+    "agro_eval_run_total_questions",
+    "Total questions in eval run",
+    labelnames=("run_id",),
+)
+
+EVAL_RUN_CONFIG = Gauge(
+    "agro_eval_run_config",
+    "Configuration parameter values for eval run",
+    labelnames=("run_id", "param_name"),
+)
+
+EVAL_QUESTION_RESULT = Gauge(
+    "agro_eval_question_result",
+    "Per-question evaluation result (1=hit, 0=miss)",
+    labelnames=("run_id", "question_idx", "topk"),
+)
+
+EVAL_QUESTION_DURATION = Gauge(
+    "agro_eval_question_duration_seconds",
+    "Per-question search duration",
+    labelnames=("run_id", "question_idx"),
+)
+
+EVAL_MODALITY_TOP_RANK = Counter(
+    "agro_eval_modality_top_rank_total",
+    "How often each modality ranks #1 in final results",
+    labelnames=("run_id", "modality"),  # modality: bm25 | vector | reranker
+)
+
+EVAL_SCORE_DISTRIBUTION = Histogram(
+    "agro_eval_score_distribution",
+    "Distribution of scores by modality and run",
+    labelnames=("run_id", "modality"),  # modality: bm25 | vector | reranker
+    buckets=(0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0),
+)
+
 # ---- Outbound API calls (universal tracking) ----
 API_CALLS_TOTAL = Counter(
     "agro_api_calls_total",
@@ -208,12 +258,75 @@ def record_api_call(provider: str, status_code: int = 200, duration_seconds: flo
     if tokens > 0:
         API_CALL_TOKENS.labels(provider=provider).inc(tokens)
 
+def record_eval_run(run_id: str, total: int, top1_hits: int, topk_hits: int,
+                    duration_secs: float, config_params: Dict[str, float]):
+    """Record aggregate metrics for a complete eval run.
+
+    Args:
+        run_id: Unique identifier for this eval run (timestamp-based)
+        total: Total number of questions evaluated
+        top1_hits: Number of questions where expected file was in top-1
+        topk_hits: Number of questions where expected file was in top-k
+        duration_secs: Total eval duration in seconds
+        config_params: Dict of config parameter names -> values to record
+    """
+    EVAL_RUN_TOTAL_QUESTIONS.labels(run_id=run_id).set(total)
+    EVAL_RUN_ACCURACY.labels(run_id=run_id, topk="1").set(top1_hits / max(1, total))
+    EVAL_RUN_ACCURACY.labels(run_id=run_id, topk="k").set(topk_hits / max(1, total))
+    EVAL_RUN_DURATION.labels(run_id=run_id).set(duration_secs)
+
+    # Record all config parameters as labeled metrics
+    for param_name, value in config_params.items():
+        try:
+            EVAL_RUN_CONFIG.labels(run_id=run_id, param_name=param_name).set(float(value))
+        except (ValueError, TypeError):
+            pass  # Skip non-numeric values
+
+def record_eval_question(run_id: str, question_idx: int, top1_hit: bool,
+                         topk_hit: bool, duration_secs: float):
+    """Record metrics for a single question in an eval run.
+
+    Args:
+        run_id: Unique identifier for the parent eval run
+        question_idx: Index of this question (0-based)
+        top1_hit: Whether expected file was in top-1 results
+        topk_hit: Whether expected file was in top-k results
+        duration_secs: Search duration for this question
+    """
+    EVAL_QUESTION_RESULT.labels(run_id=run_id, question_idx=str(question_idx), topk="1").set(1.0 if top1_hit else 0.0)
+    EVAL_QUESTION_RESULT.labels(run_id=run_id, question_idx=str(question_idx), topk="k").set(1.0 if topk_hit else 0.0)
+    EVAL_QUESTION_DURATION.labels(run_id=run_id, question_idx=str(question_idx)).set(duration_secs)
+
+def record_eval_modality_contribution(run_id: str, top1_modality: str, scores: Dict[str, List[float]]):
+    """Record which modality ranked #1 and score distributions.
+
+    Args:
+        run_id: Unique identifier for the eval run
+        top1_modality: Which modality ranked #1 ("bm25", "vector", or "reranker")
+        scores: Dict mapping modality name -> list of scores for distribution tracking
+    """
+    if top1_modality:
+        EVAL_MODALITY_TOP_RANK.labels(run_id=run_id, modality=top1_modality).inc()
+
+    # Record score distributions
+    for modality, score_list in scores.items():
+        for score in score_list:
+            try:
+                EVAL_SCORE_DISTRIBUTION.labels(run_id=run_id, modality=modality).observe(float(score))
+            except (ValueError, TypeError):
+                pass
+
 # ---------- FastAPI integration ----------
 # This middleware measures end-to-end request time and increments agro_requests_total.
 # It reads provider/model from response headers that your endpoint sets: X-Provider / X-Model.
 class MetricsMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         route_path = request.url.path
+
+        # Skip metrics for SSE streaming endpoints
+        if route_path.startswith("/api/stream/") or route_path.startswith("/ws/"):
+            return await call_next(request)
+
         start = time.perf_counter()
         success = "false"
         provider = ""
@@ -232,7 +345,71 @@ class MetricsMiddleware(BaseHTTPMiddleware):
             REQUEST_DURATION.labels(stage="request").observe(time.perf_counter() - start)
             REQUESTS_TOTAL.labels(route=route_path, provider=provider, model=model, success=success).inc()
 
+def load_historical_eval_metrics(max_runs: int = 50):
+    """Load historical eval results from disk and re-export their metrics to Prometheus.
+
+    This ensures that Prometheus has metrics for all recent eval runs, even after
+    API server restarts. Without this, only the most recently completed eval would
+    have metrics exposed.
+
+    Args:
+        max_runs: Maximum number of recent eval runs to load (default 50)
+    """
+    import json
+    from pathlib import Path
+
+    eval_dir = Path('data/evals')
+    if not eval_dir.exists():
+        return
+
+    # Get all eval JSON files, sorted by modification time (newest first)
+    eval_files = sorted(eval_dir.glob('eval_*.json'), key=lambda p: p.stat().st_mtime, reverse=True)
+
+    loaded = 0
+    run_ids_loaded = []
+    for eval_file in eval_files[:max_runs]:
+        try:
+            with open(eval_file) as f:
+                data = json.load(f)
+
+            # Re-export the aggregate metrics for this run
+            run_id = data['run_id']
+            record_eval_run(
+                run_id=run_id,
+                total=data['total'],
+                top1_hits=data['top1_hits'],
+                topk_hits=data['topk_hits'],
+                duration_secs=data['duration_secs'],
+                config_params=data.get('config', {})
+            )
+            run_ids_loaded.append(run_id)
+
+            # Optionally re-export per-question metrics (disabled by default for performance)
+            # for result in data.get('results', []):
+            #     record_eval_question(
+            #         run_id=data['run_id'],
+            #         question_idx=result['question_idx'],
+            #         top1_hit=result['top1_hit'],
+            #         topk_hit=result['topk_hit'],
+            #         duration_secs=result.get('duration_secs', 0.0)
+            #     )
+
+            loaded += 1
+        except Exception as e:
+            # Log but don't fail startup on bad eval files
+            print(f"Warning: Could not load eval metrics from {eval_file}: {e}")
+            continue
+
+    print(f"Loaded metrics for {loaded} historical eval runs: {', '.join(run_ids_loaded[:5])}..." if len(run_ids_loaded) > 5 else f"Loaded metrics for {loaded} historical eval runs: {', '.join(run_ids_loaded)}")
+
 def init_metrics_fastapi(app):
+    # Load historical eval metrics before mounting /metrics endpoint
+    try:
+        load_historical_eval_metrics()
+        print("Historical eval metrics loaded during init_metrics_fastapi")
+    except Exception as e:
+        print(f"Failed to load historical eval metrics: {e}")
+
     # add middleware and mount /metrics
     app.add_middleware(MetricsMiddleware)
     app.mount("/metrics", make_asgi_app())

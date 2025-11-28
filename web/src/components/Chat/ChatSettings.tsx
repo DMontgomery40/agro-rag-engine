@@ -10,24 +10,28 @@ interface ChatConfig {
   temperature: number;
   maxTokens: number;
   topP: number;
-  topK: number;
+  finalK: number;
   frequencyPenalty: number;
   presencePenalty: number;
   streaming: boolean;
+  showConfidence: boolean;
+  showCitations: boolean;
   showTrace: boolean;
   autoSave: boolean;
 }
 
 const DEFAULT_CONFIG: ChatConfig = {
   systemPrompt: 'You are a helpful AI assistant that answers questions about codebases using RAG (Retrieval-Augmented Generation). Provide accurate, concise answers with citations.',
-  model: 'gpt-4o-mini',
+  model: 'gpt-5.1-mini',
   temperature: 0,
   maxTokens: 1000,
   topP: 1,
-  topK: 50,
+  finalK: 10,
   frequencyPenalty: 0,
   presencePenalty: 0,
   streaming: true,
+  showConfidence: false,
+  showCitations: true,
   showTrace: false,
   autoSave: true
 };
@@ -37,24 +41,37 @@ export function ChatSettings() {
   const [config, setConfig] = useState<ChatConfig>(DEFAULT_CONFIG);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string>('');
+  const [modelOptions, setModelOptions] = useState<string[]>([]);
+  const broadcastConfig = (cfg: ChatConfig) => {
+    window.dispatchEvent(new CustomEvent('agro-chat-config-updated', { detail: cfg }));
+  };
 
   // Load config on mount
   useEffect(() => {
     loadConfig();
+    loadModelOptions();
   }, []);
 
   const loadConfig = async () => {
     try {
       // Try to load from API
-      const response = await fetch(api('/chat/config'));
+      const response = await fetch(api('chat/config'));
       if (response.ok) {
         const data = await response.json();
-        setConfig({ ...DEFAULT_CONFIG, ...data });
+        // Normalize legacy topK -> finalK if present in stored config
+        const normalized = { ...data };
+        if (normalized.topK && !normalized.finalK) {
+          normalized.finalK = normalized.topK;
+          delete normalized.topK;
+        }
+        setConfig({ ...DEFAULT_CONFIG, ...normalized });
       } else {
         // Fall back to localStorage
         const saved = localStorage.getItem('agro-chat-config');
         if (saved) {
-          setConfig({ ...DEFAULT_CONFIG, ...JSON.parse(saved) });
+          const parsed = JSON.parse(saved);
+          if (parsed.topK && !parsed.finalK) { parsed.finalK = parsed.topK; delete parsed.topK; }
+          setConfig({ ...DEFAULT_CONFIG, ...parsed });
         }
       }
     } catch (error) {
@@ -63,9 +80,38 @@ export function ChatSettings() {
       const saved = localStorage.getItem('agro-chat-config');
       if (saved) {
         try {
-          setConfig({ ...DEFAULT_CONFIG, ...JSON.parse(saved) });
+          const parsed = JSON.parse(saved);
+          if (parsed.topK && !parsed.finalK) { parsed.finalK = parsed.topK; delete parsed.topK; }
+          setConfig({ ...DEFAULT_CONFIG, ...parsed });
         } catch {}
       }
+    }
+  };
+
+  const loadModelOptions = async () => {
+    try {
+      const r = await fetch(api('/api/prices'));
+      if (!r.ok) return;
+      const d = await r.json();
+      const list: string[] = (d.models || [])
+        .filter((m: any) => {
+          const comps = Array.isArray(m.components) ? m.components : [];
+          const unit = String(m.unit || '').toLowerCase();
+          return comps.includes('GEN') || unit === '1k_tokens' || unit === 'request';
+        })
+        .map((m: any) => String(m.model || '').trim())
+        .filter(Boolean);
+      const uniq = Array.from(new Set(list));
+      // Put OpenAI/GPT family first for sanity; preserve others
+      uniq.sort((a, b) => {
+        const ao = a.toLowerCase().includes('gpt') ? 0 : 1;
+        const bo = b.toLowerCase().includes('gpt') ? 0 : 1;
+        return ao - bo || a.localeCompare(b);
+      });
+      setModelOptions(uniq);
+    } catch (e) {
+      // Silent fallback to text input
+      console.debug('[ChatSettings] prices fetch failed:', e);
     }
   };
 
@@ -75,7 +121,7 @@ export function ChatSettings() {
 
     try {
       // Save to API
-      const response = await fetch(api('/chat/config'), {
+      const response = await fetch(api('chat/config'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config)
@@ -83,6 +129,7 @@ export function ChatSettings() {
 
       if (response.ok) {
         setSaveStatus('Settings saved successfully!');
+        broadcastConfig(config);
       } else {
         throw new Error('API save failed');
       }
@@ -91,6 +138,7 @@ export function ChatSettings() {
       // Fallback to localStorage
       localStorage.setItem('agro-chat-config', JSON.stringify(config));
       setSaveStatus('Settings saved locally');
+      broadcastConfig(config);
     } finally {
       setSaving(false);
       setTimeout(() => setSaveStatus(''), 3000);
@@ -102,6 +150,7 @@ export function ChatSettings() {
       setConfig(DEFAULT_CONFIG);
       localStorage.removeItem('agro-chat-config');
       setSaveStatus('Settings reset to defaults');
+      broadcastConfig(DEFAULT_CONFIG);
       setTimeout(() => setSaveStatus(''), 3000);
     }
   };
@@ -115,7 +164,7 @@ export function ChatSettings() {
     if (!templateName) return;
 
     try {
-      await fetch(api('/chat/templates'), {
+      await fetch(api('chat/templates'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -163,6 +212,7 @@ export function ChatSettings() {
         </h3>
 
         <textarea
+          id="chat-system-prompt"
           value={config.systemPrompt}
           onChange={(e) => setConfig(prev => ({ ...prev, systemPrompt: e.target.value }))}
           style={{
@@ -233,7 +283,7 @@ export function ChatSettings() {
           Model Configuration
         </h3>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <div>
             <label style={{
               display: 'block',
@@ -244,21 +294,41 @@ export function ChatSettings() {
             }}>
               Model
             </label>
-            <input
-              type="text"
-              value={config.model}
-              onChange={(e) => setConfig(prev => ({ ...prev, model: e.target.value }))}
-              style={{
-                width: '100%',
-                background: 'var(--input-bg)',
-                border: '1px solid var(--line)',
-                color: 'var(--fg)',
-                padding: '8px 12px',
-                borderRadius: '4px',
-                fontSize: '13px'
-              }}
-              placeholder="gpt-4o-mini"
-            />
+            {modelOptions.length > 0 ? (
+              <select
+                id="chat-model"
+                value={config.model}
+                onChange={(e) => setConfig(prev => ({ ...prev, model: e.target.value }))}
+                style={{
+                  width: '100%',
+                  background: 'var(--input-bg)',
+                  border: '1px solid var(--line)',
+                  color: 'var(--fg)',
+                  padding: '8px 12px',
+                  borderRadius: '4px',
+                  fontSize: '13px'
+                }}
+              >
+                {modelOptions.map(m => (<option key={m} value={m}>{m}</option>))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                id="chat-model"
+                value={config.model}
+                onChange={(e) => setConfig(prev => ({ ...prev, model: e.target.value }))}
+                style={{
+                  width: '100%',
+                  background: 'var(--input-bg)',
+                  border: '1px solid var(--line)',
+                  color: 'var(--fg)',
+                  padding: '8px 12px',
+                  borderRadius: '4px',
+                  fontSize: '13px'
+                }}
+                placeholder="gpt-5.1-mini"
+              />
+            )}
           </div>
 
           <div>
@@ -273,6 +343,7 @@ export function ChatSettings() {
             </label>
             <input
               type="number"
+              id="chat-max-tokens"
               value={config.maxTokens}
               onChange={(e) => setConfig(prev => ({ ...prev, maxTokens: parseInt(e.target.value) || 1000 }))}
               min="1"
@@ -288,6 +359,62 @@ export function ChatSettings() {
               }}
             />
           </div>
+          <div>
+            <label style={{
+              display: 'block',
+              fontSize: '12px',
+              fontWeight: '600',
+              color: 'var(--fg-muted)',
+              marginBottom: '6px'
+            }} title="Final K: number of results to keep after fusion and reranking. Higher = broader context, more latency.">
+              Final K (results)
+            </label>
+            <input
+              type="number"
+              id="chat-final-k"
+              value={config.finalK}
+              onChange={(e) => setConfig(prev => ({ ...prev, finalK: Math.max(1, parseInt(e.target.value) || 10) }))}
+              min="1"
+              max="200"
+              style={{
+                width: '100%',
+                background: 'var(--input-bg)',
+                border: '1px solid var(--line)',
+                color: 'var(--fg)',
+                padding: '8px 12px',
+                borderRadius: '4px',
+                fontSize: '13px'
+              }}
+            />
+          </div>
+          <div>
+            <label style={{
+              display: 'block',
+              fontSize: '12px',
+              fontWeight: '600',
+              color: 'var(--fg-muted)',
+              marginBottom: '6px'
+            }}>
+              Top-K (results)
+            </label>
+            <input
+              type="number"
+              id="chat-top-k"
+              value={config.topK}
+              onChange={(e) => setConfig(prev => ({ ...prev, topK: Math.max(1, parseInt(e.target.value) || DEFAULT_CONFIG.topK) }))}
+              min="1"
+              max="100"
+              style={{
+                width: '100%',
+                background: 'var(--input-bg)',
+                border: '1px solid var(--line)',
+                color: 'var(--fg)',
+                padding: '8px 12px',
+                borderRadius: '4px',
+                fontSize: '13px'
+              }}
+            />
+          </div>
 
           <div>
             <label style={{
@@ -297,17 +424,39 @@ export function ChatSettings() {
               color: 'var(--fg-muted)',
               marginBottom: '6px'
             }}>
-              Temperature: {config.temperature.toFixed(1)}
+              Temperature
             </label>
-            <input
-              type="range"
-              min="0"
-              max="2"
-              step="0.1"
-              value={config.temperature}
-              onChange={(e) => setConfig(prev => ({ ...prev, temperature: parseFloat(e.target.value) }))}
-              style={{ width: '100%' }}
-            />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px', gap: '8px', alignItems: 'center' }}>
+              <input
+                type="range"
+                min="0"
+                max="2"
+                step="0.1"
+                value={config.temperature}
+                onChange={(e) => setConfig(prev => ({ ...prev, temperature: parseFloat(e.target.value) }))}
+                style={{ width: '100%' }}
+                aria-label="Temperature"
+              />
+              <input
+                id="chat-temperature"
+                type="number"
+                min={0}
+                max={2}
+                step={0.1}
+                value={config.temperature}
+                onChange={(e) => setConfig(prev => ({ ...prev, temperature: Math.max(0, Math.min(2, parseFloat(e.target.value) || 0)) }))}
+                style={{
+                  width: '100%',
+                  background: 'var(--input-bg)',
+                  border: '1px solid var(--line)',
+                  color: 'var(--fg)',
+                  padding: '8px 12px',
+                  borderRadius: '4px',
+                  fontSize: '13px'
+                }}
+                aria-label="Temperature input"
+              />
+            </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--fg-muted)' }}>
               <span>Focused</span>
               <span>Creative</span>
@@ -335,33 +484,7 @@ export function ChatSettings() {
             />
           </div>
 
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: '12px',
-              fontWeight: '600',
-              color: 'var(--fg-muted)',
-              marginBottom: '6px'
-            }}>
-              Top-k
-            </label>
-            <input
-              type="number"
-              value={config.topK}
-              onChange={(e) => setConfig(prev => ({ ...prev, topK: parseInt(e.target.value) || 50 }))}
-              min="1"
-              max="100"
-              style={{
-                width: '100%',
-                background: 'var(--input-bg)',
-                border: '1px solid var(--line)',
-                color: 'var(--fg)',
-                padding: '8px 12px',
-                borderRadius: '4px',
-                fontSize: '13px'
-              }}
-            />
-          </div>
+          {/* Duplicate Top-K removed; single control above with id=chat-top-k */}
 
           <div>
             <label style={{
@@ -431,8 +554,9 @@ export function ChatSettings() {
             gap: '8px',
             cursor: 'pointer',
             fontSize: '13px'
-          }}>
+          }} title="Stream tokens as they generate (requires streaming backend)">
             <input
+              id="chat-streaming"
               type="checkbox"
               checked={config.streaming}
               onChange={(e) => setConfig(prev => ({ ...prev, streaming: e.target.checked }))}
@@ -450,8 +574,9 @@ export function ChatSettings() {
             gap: '8px',
             cursor: 'pointer',
             fontSize: '13px'
-          }}>
+          }} title="Show retrieval trace steps beneath chat responses">
             <input
+              id="chat-show-trace"
               type="checkbox"
               checked={config.showTrace}
               onChange={(e) => setConfig(prev => ({ ...prev, showTrace: e.target.checked }))}
@@ -460,6 +585,46 @@ export function ChatSettings() {
             Show routing trace
             <span style={{ fontSize: '11px', color: 'var(--fg-muted)', marginLeft: 'auto' }}>
               (displays retrieval steps)
+            </span>
+          </label>
+
+          <label style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            cursor: 'pointer',
+            fontSize: '13px'
+          }} title="Prefix answers with confidence when available">
+            <input
+              id="chat-show-confidence"
+              type="checkbox"
+              checked={config.showConfidence}
+              onChange={(e) => setConfig(prev => ({ ...prev, showConfidence: e.target.checked }))}
+              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+            />
+            Show confidence score
+            <span style={{ fontSize: '11px', color: 'var(--fg-muted)', marginLeft: 'auto' }}>
+              (adds [Confidence: XX%] before answers)
+            </span>
+          </label>
+
+          <label style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            cursor: 'pointer',
+            fontSize: '13px'
+          }} title="Toggle citations under each answer">
+            <input
+              id="chat-show-citations"
+              type="checkbox"
+              checked={config.showCitations}
+              onChange={(e) => setConfig(prev => ({ ...prev, showCitations: e.target.checked }))}
+              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+            />
+            Show citations
+            <span style={{ fontSize: '11px', color: 'var(--fg-muted)', marginLeft: 'auto' }}>
+              (file paths + line ranges)
             </span>
           </label>
 
@@ -491,6 +656,7 @@ export function ChatSettings() {
         justifyContent: 'flex-end'
       }}>
         <button
+          id="chat-reset-settings"
           onClick={handleReset}
           style={{
             background: 'var(--bg-elev2)',
@@ -507,6 +673,7 @@ export function ChatSettings() {
         </button>
 
         <button
+          id="chat-save-settings"
           onClick={handleSave}
           disabled={saving}
           style={{

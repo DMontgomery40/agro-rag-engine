@@ -1,0 +1,9 @@
+local	agro_alertmanager_data
+local	agro_grafana_data
+local	agro_loki_data
+local	agro_prom_data
+local	agro_redis_data
+local	infra_alertmanager_data
+local	infra_grafana_data
+local	infra_loki_data
+local	infra_prom_data

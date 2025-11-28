@@ -45,9 +45,7 @@ export function Integrations() {
     { id: 'indexing.completed', name: 'Indexing Completed' },
     { id: 'indexing.failed', name: 'Indexing Failed' },
     { id: 'query.executed', name: 'Query Executed' },
-    { id: 'reranking.completed', name: 'Reranking Completed' },
-    { id: 'autotune.started', name: 'Auto-Tune Started' },
-    { id: 'autotune.completed', name: 'Auto-Tune Completed' }
+    { id: 'reranking.completed', name: 'Reranking Completed' }
   ];
 
   useEffect(() => {

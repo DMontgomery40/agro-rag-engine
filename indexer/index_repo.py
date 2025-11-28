@@ -1,580 +1,415 @@
+"""Clean RAG Indexer - v2 Rewrite
+
+Simple, working indexer that:
+1. Chunks source files
+2. Builds BM25 index  
+3. Embeds and stores in Qdrant
+4. Ensures consistent IDs between BM25 and Qdrant
+"""
+
 import os
 import json
 import hashlib
-from typing import List, Dict
 from pathlib import Path
-from dotenv import load_dotenv, find_dotenv
-import fnmatch
-import pathlib
+from typing import List, Dict
 from datetime import datetime
-import time as _time
-import common.qdrant_utils as qdrant_recreate_fallback  # make recreate_collection 404-safe
-from common.config_loader import get_repo_paths, out_dir, exclude_paths
-from common.paths import data_dir
-from common.filtering import _prune_dirs_in_place, _should_index_file, PRUNE_DIRS
-from retrieval.ast_chunker import lang_from_path, collect_files, chunk_code
-import bm25s  # type: ignore
-from bm25s.tokenization import Tokenizer  # type: ignore
-from Stemmer import Stemmer  # type: ignore
+
+# BM25
+import bm25s
+from bm25s.tokenization import Tokenizer
+from Stemmer import Stemmer
+
+# Qdrant
 from qdrant_client import QdrantClient, models
 import uuid
-from openai import OpenAI
-from retrieval.embed_cache import EmbeddingCache
-import tiktoken
-# Lazy import heavy models only when needed (avoid memory spikes on BM25-only runs)
-def _load_st_model(model_name: str):
-    from sentence_transformers import SentenceTransformer  # type: ignore
-    return SentenceTransformer(model_name)
 
-# --- global safe filters (avoid indexing junk) ---
-# Patch os.walk to prune noisy dirs and skip junk file types
-_os_walk = os.walk
-def _filtered_os_walk(top, *args, **kwargs):
-    for root, dirs, files in _os_walk(top, *args, **kwargs):
-        _prune_dirs_in_place(dirs)
-        files[:] = [f for f in files if _should_index_file(f)]
-        yield root, dirs, files
-os.walk = _filtered_os_walk  # type: ignore
+# Local imports
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from common.config_loader import get_repo_paths, out_dir, exclude_paths
+from retrieval.ast_chunker import collect_files, chunk_code, lang_from_path
+from server.services.config_registry import get_config_registry
 
-# Patch Path.rglob as well (if code uses it)
-_Path_rglob = Path.rglob
-def _filtered_rglob(self, pattern):
-    for p in _Path_rglob(self, pattern):
-        # skip if any pruned dir appears in the path
-        if any(part in PRUNE_DIRS for part in p.parts):
-            continue
-        if not _should_index_file(p.name):
-            continue
-        yield p
-Path.rglob = _filtered_rglob  # type: ignore
-# --- end filters ---
+# Config
+_cfg = get_config_registry()
+REPO = _cfg.get_str('REPO', 'agro')
+QDRANT_URL = _cfg.get_str('QDRANT_URL', 'http://127.0.0.1:6333')
+COLLECTION = _cfg.get_str('COLLECTION_NAME', f'code_chunks_{REPO}')
+EMBEDDING_TYPE = _cfg.get_str('EMBEDDING_TYPE', 'openai').lower()
+EMBEDDING_MODEL = _cfg.get_str('EMBEDDING_MODEL', 'text-embedding-3-large')
+EMBEDDING_MODEL_LOCAL = _cfg.get_str('EMBEDDING_MODEL_LOCAL', 'BAAI/bge-small-en-v1.5')
+VOYAGE_MODEL = _cfg.get_str('VOYAGE_MODEL', 'voyage-code-3')
 
-
-# Load local env and also repo-root .env if present (no hard-coded paths)
-try:
-    load_dotenv(override=False)
-    repo_root = Path(__file__).resolve().parent
-    env_path = repo_root / ".env"
-    if env_path.exists():
-        load_dotenv(dotenv_path=env_path, override=False)
-    else:
-        alt = find_dotenv(usecwd=True)
-        if alt:
-            load_dotenv(dotenv_path=alt, override=False)
-except Exception:
-    pass
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-if OPENAI_API_KEY and OPENAI_API_KEY.strip().upper() in {"SK-REPLACE", "REPLACE"}:
-    OPENAI_API_KEY = None
-QDRANT_URL = os.getenv('QDRANT_URL','http://127.0.0.1:6333')
-# Repo scoping
-REPO = os.getenv('REPO', 'project').strip()
-# Resolve repo paths and outdir from config (repos.json or env)
-try:
-    BASES = get_repo_paths(REPO)
-except Exception:
-    # Fallback to current directory when no config present (best-effort)
-    BASES = [str(Path(__file__).resolve().parent)]
-OUTDIR = out_dir(REPO)
-# Allow explicit collection override (for versioned collections per embedding config)
-COLLECTION = os.getenv('COLLECTION_NAME', f'code_chunks_{REPO}')
-
-
-# Centralized file indexing gate (extensions, excludes, heuristics)
+# File extensions to index
 SOURCE_EXTS = {
-    ".py", ".rb", ".ts", ".tsx", ".js", ".jsx", ".go", ".rs", ".java",
-    ".cs", ".c", ".h", ".cpp", ".hpp", ".m", ".mm", ".kt", ".kts", ".swift",
-    ".sql", ".yml", ".yaml", ".toml", ".ini", ".json", ".txt", ".sh", ".bash"
-    # Note: .md excluded per user requirement - filtering.py blocks it
+    '.py', '.ts', '.tsx', '.js', '.jsx', '.go', '.rs', '.java',
+    '.c', '.h', '.cpp', '.hpp', '.rb', '.sh', '.yaml', '.yml',
+    '.json', '.toml', '.sql'
 }
-EXCLUDE_GLOBS_FILE = str((data_dir() / "exclude_globs.txt").resolve())
 
-def _load_exclude_globs() -> list[str]:
-    p = pathlib.Path(EXCLUDE_GLOBS_FILE)
-    if not p.exists():
-        return []
-    return [ln.strip() for ln in p.read_text().splitlines() if ln.strip() and not ln.startswith("#")]
+# Directories to skip (these are always excluded)
+SKIP_DIRS = {
+    # Package managers & dependencies
+    'node_modules', '.venv', 'venv', 'env', '.env', 'vendor',
+    'Pods', 'Godeps', '.bundle', 'bundle', 'packages',
+    # Build outputs
+    'dist', 'build', '.next', 'out', '__pycache__', '.cache',
+    # Version control & IDE
+    '.git', '.svn', '.hg', '.cursor', '.idea', '.vscode', '.editor_data',
+    # Other
+    'checkpoints', 'models', 'coverage', '.pytest_cache', '.mypy_cache',
+    'eggs', '*.egg-info', 'site-packages',
+}
 
-_EXCLUDE_GLOBS = _load_exclude_globs()
+# Files to skip (descriptions/docs, not implementations)
+SKIP_FILES = {
+    'tooltips.js', 'tooltips.ts', 'usetooltips.ts', 'usetooltips.tsx',
+}
 
-def should_index_file(path: str, repo_exclude_patterns: List[str] = None) -> bool:
-    """Check if a file should be indexed.
 
-    Args:
-        path: Absolute file path
-        repo_exclude_patterns: List of exclude patterns from repo config (glob patterns)
+def infer_layer_from_path(file_path: str) -> str:
+    """Infer architectural layer from file path for scoring bonuses.
+
+    Maps file paths to layer names that match repos.json layer_bonuses keys.
+    This enables intent-based scoring (e.g., 'gui' queries boost 'web' files).
     """
-    p = pathlib.Path(path)
-    # 1) fast deny: extension must look like source
+    fp = (file_path or '').lower()
+
+    # Web/GUI layer - frontend code
+    if any(x in fp for x in ['web/', 'gui/', '.tsx', '.jsx', 'component']):
+        return 'web'
+    # Server layer - API/backend code (check before retrieval since server/ contains routers)
+    if any(x in fp for x in ['server/', 'routers/', 'app.py', 'asgi.py']):
+        return 'server'
+    # Retrieval layer - search/ranking code
+    if any(x in fp for x in ['retrieval/', 'hybrid_search', 'rerank']):
+        return 'retrieval'
+    # Indexer layer - indexing code
+    if any(x in fp for x in ['indexer/', 'index_repo', 'chunker']):
+        return 'indexer'
+    # Eval layer - evaluation and testing
+    if any(x in fp for x in ['eval/', 'tests/', 'test_', '.spec.ts']):
+        return 'eval'
+    # Infra layer - infrastructure/scripts
+    if any(x in fp for x in ['infra/', 'scripts/', 'docker', 'compose']):
+        return 'infra'
+    # Common utilities
+    if 'common/' in fp:
+        return 'common'
+    # Default
+    return 'other'
+
+
+def should_index(path: str, repo_excludes: List[str] = None) -> bool:
+    """Check if file should be indexed."""
+    p = Path(path)
+    path_str = str(p)
+    path_lower = path_str.lower()
+    
+    # Check extension
     if p.suffix.lower() not in SOURCE_EXTS:
         return False
-
-    # 2) repo-specific exclude patterns (from repos.json)
-    if repo_exclude_patterns:
-        as_posix = p.as_posix()
-        for pat in repo_exclude_patterns:
-            # Support both absolute paths from repo root and glob patterns
-            # Pattern can be: /path/to/dir, *.ext, or /path/*.ext
-            if fnmatch.fnmatch(as_posix, pat) or fnmatch.fnmatch(as_posix, f"*{pat}*"):
-                return False
-
-    # 3) global glob excludes (vendor, caches, images, minified, etc.)
-    as_posix = p.as_posix()
-    for pat in _EXCLUDE_GLOBS:
-        if fnmatch.fnmatch(as_posix, pat):
-            return False
-
-    # 4) quick heuristic to skip huge/minified one-liners
-    try:
-        text = p.read_text(errors="ignore")
-        if len(text) > 2_000_000:  # ~2MB
-            return False
-        lines = text.splitlines()
-        if lines:
-            avg = sum(len(x) for x in lines) / max(1, len(lines))
-            if avg > 2500:
-                return False
-    except Exception:
+    
+    # Check for skip files (tooltips, etc - descriptions not implementations)
+    if p.name.lower() in SKIP_FILES:
         return False
+    
+    # Check for skip dirs in path parts
+    for part in p.parts:
+        part_lower = part.lower()
+        if part_lower in SKIP_DIRS or part_lower.startswith('.'):
+            # Skip hidden dirs and known junk
+            if part_lower not in {'.env'}:  # .env file is ok, but .venv dir is not
+                return False
+    
+    # Check repo-specific excludes from repos.json
+    if repo_excludes:
+        for exc in repo_excludes:
+            exc_lower = exc.lower().strip('/')
+            # Match if exclude pattern appears in path
+            if exc_lower in path_lower or f'/{exc_lower}/' in path_lower or path_lower.endswith(f'/{exc_lower}'):
+                return False
+    
+    # Skip very large files
+    try:
+        if p.stat().st_size > 1_000_000:  # 1MB
+            return False
+    except:
+        return False
+    
     return True
 
 
-"""Repo-aware layer tagging for AGRO.
+def get_embedding_func():
+    """Return embedding function based on config.
+    
+    Reads EMBEDDING_TYPE and EMBEDDING_MODEL from config registry.
+    """
+    # Get embedding dimension from config
+    embed_dim = _cfg.get_int('EMBEDDING_DIM', 3072)
+    
+    if EMBEDDING_TYPE == 'local':
+        from sentence_transformers import SentenceTransformer
+        model = SentenceTransformer(EMBEDDING_MODEL_LOCAL)
+        # Local models have varying dimensions - get from model
+        local_dim = model.get_sentence_embedding_dimension()
+        def embed(texts: List[str]) -> List[List[float]]:
+            return model.encode(texts, normalize_embeddings=True, show_progress_bar=False).tolist()
+        return embed, local_dim
+    
+    elif EMBEDDING_TYPE == 'voyage':
+        import voyageai
+        client = voyageai.Client(api_key=os.getenv('VOYAGE_API_KEY'))
+        def embed(texts: List[str]) -> List[List[float]]:
+            # Batch to avoid rate limits
+            all_embs = []
+            for i in range(0, len(texts), 64):
+                batch = texts[i:i+64]
+                r = client.embed(batch, model=VOYAGE_MODEL, input_type='document', output_dimension=512)
+                all_embs.extend(r.embeddings)
+            return all_embs
+        return embed, 512
+    
+    else:  # openai (default)
+        from openai import OpenAI
+        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+        
+        # OpenAI text-embedding-3-large has 8192 token limit
+        # Truncate texts to ~30000 chars (~7500 tokens) to stay safely under limit
+        MAX_CHARS = 30000
+        
+        def embed(texts: List[str]) -> List[List[float]]:
+            all_embs = []
+            for i in range(0, len(texts), 64):
+                batch = texts[i:i+64]
+                # Truncate any texts that are too long
+                batch = [t[:MAX_CHARS] if len(t) > MAX_CHARS else t for t in batch]
+                r = client.embeddings.create(input=batch, model=EMBEDDING_MODEL)
+                all_embs.extend([d.embedding for d in r.data])
+            return all_embs
+        return embed, embed_dim
 
-Maps files to one of the engine's actual layers:
-  gui, server, retrieval, indexer, eval, scripts, common, infra
-Defaults to 'server' when no match.
-"""
-def detect_layer(fp: str) -> str:
-    f = (fp or '').lower()
-    if '/gui/' in f or '/public/' in f:
-        return 'gui'
-    if '/server/' in f:
-        return 'server'
-    if '/retrieval/' in f:
-        return 'retrieval'
-    if '/indexer/' in f:
-        return 'indexer'
-    if '/eval/' in f or '/tests/' in f:
-        return 'eval'
-    if '/scripts/' in f:
-        return 'scripts'
-    if '/common/' in f:
-        return 'common'
-    if '/infra/' in f:
-        return 'infra'
-    return 'server'
 
-VENDOR_MARKERS = (
-    "/vendor/","/third_party/","/external/","/deps/","/node_modules/",
-    "/Pods/","/Godeps/","/.bundle/","/bundle/"
-)
-def detect_origin(fp: str) -> str:
-    low = (fp or '').lower()
-    for m in VENDOR_MARKERS:
-        if m in low:
-            return 'vendor'
+def main():
+    print(f"=== Clean Indexer v2 ===")
+    print(f"Repo: {REPO}")
+    print(f"Embedding: {EMBEDDING_TYPE}")
+    
+    # Get repo paths
     try:
-        with open(fp, 'r', encoding='utf-8', errors='ignore') as f:
-            head = ''.join([next(f) for _ in range(12)])
-        if any(k in head.lower() for k in (
-            'apache license','mit license','bsd license','mozilla public license'
-        )):
-            return 'vendor'
-    except Exception:
-        pass
-    return 'first_party'
-os.makedirs(OUTDIR, exist_ok=True)
-
-def _clip_for_openai(text: str, enc, max_tokens: int = 8000) -> str:
-    toks = enc.encode(text)
-    if len(toks) <= max_tokens:
-        return text
-    return enc.decode(toks[:max_tokens])
-
-def embed_texts(client: OpenAI, texts: List[str], model: str = 'text-embedding-3-large', batch: int = 64) -> List[List[float]]:
-    embs = []
-    enc = tiktoken.get_encoding('cl100k_base')
-    for i in range(0, len(texts), batch):
-        sub = [_clip_for_openai(t, enc) for t in texts[i:i+batch]]
-        r = client.embeddings.create(model=model, input=sub)
-        for d in r.data:
-            embs.append(d.embedding)
-    return embs
-
-def embed_texts_local(texts: List[str], model_name: str = 'BAAI/bge-small-en-v1.5', batch: int = 128) -> List[List[float]]:
-    model = _load_st_model(model_name)
-    out = []
-    for i in range(0, len(texts), batch):
-        sub = texts[i:i+batch]
-        v = model.encode(sub, normalize_embeddings=True, show_progress_bar=False)
-        out.extend(v.tolist())
-    return out
-
-def _renorm_truncate(vecs: List[List[float]], dim: int) -> List[List[float]]:
-    out: List[List[float]] = []
-    import math as _m
-    for v in vecs:
-        w = v[:dim] if dim and dim < len(v) else v
-        n = _m.sqrt(sum(x*x for x in w)) or 1.0
-        out.append([x / n for x in w])
-    return out
-
-def embed_texts_mxbai(texts: List[str], dim: int = 512, batch: int = 128) -> List[List[float]]:
-    model = _load_st_model('mixedbread-ai/mxbai-embed-large-v1')
-    out: List[List[float]] = []
-    for i in range(0, len(texts), batch):
-        sub = texts[i:i+batch]
-        v = model.encode(sub, normalize_embeddings=True, show_progress_bar=False)
-        out.extend(v.tolist())
-    return _renorm_truncate(out, dim)
-
-def embed_texts_voyage(texts: List[str], model: str = 'voyage-code-3', batch: int = 128, output_dimension: int = 512) -> List[List[float]]:
-    import voyageai  # type: ignore
-    client = voyageai.Client(api_key=os.getenv('VOYAGE_API_KEY'))
-    out: List[List[float]] = []
-    for i in range(0, len(texts), batch):
-        sub = texts[i:i+batch]
-        r = client.embed(sub, model=model, input_type='document', output_dimension=output_dimension)
-        out.extend(r.embeddings)
-    return out
-
-def main() -> None:
-    # Prepare tracking output dir
-    tracking_dir = Path(os.getenv('TRACKING_DIR', str(Path(__file__).resolve().parents[1] / 'data' / 'tracking')))
-    tracking_dir.mkdir(parents=True, exist_ok=True)
-    indexing_log = tracking_dir / 'indexing_events.jsonl'
-
-    # Load repo-specific exclude patterns from repos.json
-    repo_exclude_patterns = exclude_paths(REPO)
-    if repo_exclude_patterns:
-        print(f'Loaded {len(repo_exclude_patterns)} exclude patterns for repo "{REPO}": {repo_exclude_patterns}')
-
-    t_collect0 = _time.time()
-    files = collect_files(BASES)
-    print(f'Discovered {len(files)} source files.')
-    t_collect = _time.time() - t_collect0
-    all_chunks: List[Dict] = []
-    t_chunk0 = _time.time()
-    for fp in files:
-        if not should_index_file(fp, repo_exclude_patterns):
-            continue
+        bases = get_repo_paths(REPO)
+    except:
+        bases = [str(Path(__file__).parent.parent)]
+    
+    outdir = out_dir(REPO)
+    os.makedirs(outdir, exist_ok=True)
+    os.makedirs(os.path.join(outdir, 'bm25_index'), exist_ok=True)
+    
+    # Load repo-specific excludes
+    repo_excludes = exclude_paths(REPO)
+    print(f"Excludes: {repo_excludes}")
+    
+    # Collect files
+    print(f"\n1. Collecting files from {bases}...")
+    all_files = []
+    exclude_lower = {e.lower().strip('/') for e in repo_excludes} if repo_excludes else set()
+    
+    for base in bases:
+        for root, dirs, files in os.walk(base):
+            # Aggressively prune directories
+            dirs[:] = [
+                d for d in dirs 
+                if d.lower() not in SKIP_DIRS 
+                and d.lower() not in exclude_lower
+                and not d.startswith('.')  # Skip all hidden dirs
+            ]
+            for f in files:
+                fp = os.path.join(root, f)
+                if should_index(fp, repo_excludes):
+                    all_files.append(fp)
+    
+    print(f"   Found {len(all_files)} indexable files")
+    
+    # Chunk files
+    print(f"\n2. Chunking files...")
+    chunks: List[Dict] = []
+    seen_hashes = set()
+    
+    for fp in all_files:
         lang = lang_from_path(fp)
         if not lang:
             continue
+        
         try:
             with open(fp, 'r', encoding='utf-8', errors='ignore') as f:
                 src = f.read()
-        except Exception:
+        except:
             continue
-
-        # Convert absolute path to relative path (for portability)
-        # Try to make it relative to one of the repo base paths
-        relative_fp = fp
-        for base in BASES:
+        
+        # Make path relative
+        rel_path = fp
+        for base in bases:
             try:
-                relative_fp = str(Path(fp).relative_to(Path(base)))
+                rel_path = str(Path(fp).relative_to(base))
                 break
             except ValueError:
-                # fp is not relative to this base, try next one
                 continue
+        
+        # Chunk the file
+        file_chunks = chunk_code(src, rel_path, lang, target=900)
+        
+        for c in file_chunks:
+            # Dedupe by content hash
+            h = hashlib.md5(c['code'].encode()).hexdigest()
+            if h in seen_hashes:
+                continue
+            seen_hashes.add(h)
 
-        ch = chunk_code(src, relative_fp, lang, target=900)
-        all_chunks.extend(ch)
-
-    seen, chunks = set(), []
-    for c in all_chunks:
-        c['repo'] = REPO
-        try:
-            c['layer'] = detect_layer(c.get('file_path',''))
-        except Exception:
-            c['layer'] = 'server'
-        try:
-            c['origin'] = detect_origin(c.get('file_path',''))
-        except Exception:
-            c['origin'] = 'first_party'
-        h = hashlib.md5(c['code'].encode()).hexdigest()
-        if h in seen:
-            continue
-        seen.add(h)
-        c['hash'] = h
-        chunks.append(c)
-    t_chunk = _time.time() - t_chunk0
-    print(f'Prepared {len(chunks)} chunks.')
-
-    ENRICH = (os.getenv('ENRICH_CODE_CHUNKS', 'false') or 'false').lower() == 'true'
-    enrich = None  # type: ignore[assignment]
-    enrich_stats = {"count": 0, "seconds": 0.0, "tokens": 0, "cost_usd": 0.0, "model": os.getenv('GEN_MODEL', os.getenv('ENRICH_MODEL', ''))}
-    if ENRICH:
-        try:
-            from common.metadata import enrich  # type: ignore
-        except Exception:
-            pass
-        if enrich is not None:
-            _t0 = _time.time()
-            # Mark time window to correlate with API tracker logs for true tokens/cost
-            from datetime import datetime as _dt
-            _win_start = _dt.utcnow()
-            for c in chunks:
-                try:
-                    meta = enrich(c.get('file_path',''), c.get('language',''), c.get('code',''))
-                    c['summary'] = meta.get('summary','')
-                    c['keywords'] = meta.get('keywords', [])
-                    enrich_stats["count"] += 1
-                except Exception:
-                    c['summary'] = ''
-                    c['keywords'] = []
-            enrich_stats["seconds"] = round(_time.time() - _t0, 3)
-            # Correlate with API tracker JSONL to get tokens + cost for enrichment window
-            try:
-                from pathlib import Path as _P
-                import json as _json
-                _tracker_path = _P(__file__).resolve().parents[1] / 'data' / 'tracking' / 'api_calls.jsonl'
-                if _tracker_path.exists():
-                    lines = _tracker_path.read_text(encoding='utf-8').splitlines()
-                    # Parse minimal window
-                    _win_end = _dt.utcnow()
-                    def _parse_ts(s):
-                        try:
-                            return _dt.fromisoformat(s.replace('Z',''))
-                        except Exception:
-                            return None
-                    for ln in lines[::-1]:  # reverse for recency
-                        try:
-                            o = _json.loads(ln)
-                        except Exception:
-                            continue
-                        ts = _parse_ts(str(o.get('timestamp','')))
-                        if not ts:
-                            continue
-                        if ts < _win_start:
-                            break
-                        # Only LLM calls (OpenAI responses/chat)
-                        prov = str(o.get('provider','')).lower()
-                        if prov in {'openai'}:
-                            enrich_stats["tokens"] += int(o.get('tokens_estimated', 0) or 0)
-                            try:
-                                enrich_stats["cost_usd"] += float(o.get('cost_usd', 0.0) or 0.0)
-                            except Exception:
-                                pass
-            except Exception:
-                pass
-
-    corpus: List[str] = []
+            c['hash'] = h
+            c['repo'] = REPO
+            c['layer'] = infer_layer_from_path(rel_path)
+            chunks.append(c)
+    
+    print(f"   Created {len(chunks)} unique chunks")
+    
+    # Build BM25 index
+    print(f"\n3. Building BM25 index...")
+    
+    # Create corpus for BM25 (code + metadata)
+    corpus = []
     for c in chunks:
-        pre = []
+        # Include file path and function name for better matching
+        parts = []
         if c.get('name'):
-            pre += [c['name']]*2
-        if c.get('imports'):
-            pre += [i[0] or i[1] for i in c['imports'] if isinstance(i, (list, tuple))]
-        body = c['code']
-        corpus.append((' '.join(pre)+'\n'+body).strip())
-
-    t_bm0 = _time.time()
+            parts.append(c['name'])
+        parts.append(c.get('file_path', ''))
+        parts.append(c['code'])
+        corpus.append(' '.join(parts))
+    
+    # Tokenize with stemming and stopwords
     stemmer = Stemmer('english')
     tokenizer = Tokenizer(stemmer=stemmer, stopwords='en')
     corpus_tokens = tokenizer.tokenize(corpus)
-    retriever = bm25s.BM25(method='lucene', k1=1.2, b=0.65)
-    retriever.index(corpus_tokens)
-    os.makedirs(os.path.join(OUTDIR, 'bm25_index'), exist_ok=True)
-    try:
-        retriever.vocab_dict = {str(k): v for k, v in retriever.vocab_dict.items()}
-    except Exception:
-        pass
-    retriever.save(os.path.join(OUTDIR, 'bm25_index'), corpus=corpus)
-    tokenizer.save_vocab(save_dir=os.path.join(OUTDIR, 'bm25_index'))
-    tokenizer.save_stopwords(save_dir=os.path.join(OUTDIR, 'bm25_index'))
-    with open(os.path.join(OUTDIR, 'bm25_index', 'corpus.txt'), 'w', encoding='utf-8') as f:
-        for doc in corpus:
-            f.write(doc.replace('\n','\\n')+'\n')
-    chunk_ids = [str(c['id']) for c in chunks]
-    with open(os.path.join(OUTDIR, 'bm25_index', 'chunk_ids.txt'), 'w', encoding='utf-8') as f:
+    
+    # Build BM25 index
+    bm25 = bm25s.BM25(method='lucene', k1=1.2, b=0.75)
+    bm25.index(corpus_tokens)
+    
+    # CRITICAL: Set vocab from tokenizer
+    bm25.vocab_dict = tokenizer.get_vocab_dict()
+    
+    # Save BM25 index
+    idx_dir = os.path.join(outdir, 'bm25_index')
+    bm25.save(idx_dir, corpus=corpus)
+    tokenizer.save_vocab(idx_dir)
+    tokenizer.save_stopwords(idx_dir)
+    
+    # Save chunk ID mapping (index -> chunk_id)
+    chunk_ids = [c['id'] for c in chunks]
+    with open(os.path.join(idx_dir, 'chunk_ids.txt'), 'w') as f:
         for cid in chunk_ids:
-            f.write(cid+'\n')
-    import json as _json
-    _json.dump({str(i): cid for i, cid in enumerate(chunk_ids)}, open(os.path.join(OUTDIR,'bm25_index','bm25_map.json'),'w'))
-    with open(os.path.join(OUTDIR,'chunks.jsonl'),'w',encoding='utf-8') as f:
+            f.write(f"{cid}\n")
+    
+    # Save as JSON too for easy loading
+    id_map = {str(i): cid for i, cid in enumerate(chunk_ids)}
+    with open(os.path.join(idx_dir, 'bm25_map.json'), 'w') as f:
+        json.dump(id_map, f)
+    
+    print(f"   BM25 index saved to {idx_dir}")
+    
+    # Save chunks.jsonl
+    chunks_path = os.path.join(outdir, 'chunks.jsonl')
+    with open(chunks_path, 'w', encoding='utf-8') as f:
         for c in chunks:
-            f.write(json.dumps(c, ensure_ascii=False)+'\n')
-    t_bm = _time.time() - t_bm0
-    print('BM25 index saved.')
-
+            f.write(json.dumps(c, ensure_ascii=False) + '\n')
+    print(f"   Chunks saved to {chunks_path}")
+    
+    # Embed and store in Qdrant
+    print(f"\n4. Embedding and storing in Qdrant...")
+    
+    embed_func, embed_dim = get_embedding_func()
+    
+    # Get texts for embedding
+    texts = [c['code'] for c in chunks]
+    
+    # Embed in batches
+    print(f"   Embedding {len(texts)} chunks...")
+    embeddings = embed_func(texts)
+    print(f"   Got {len(embeddings)} embeddings (dim={embed_dim})")
+    
+    # Connect to Qdrant
+    qc = QdrantClient(url=QDRANT_URL)
+    
+    # Recreate collection
     try:
-        meta = {
-            'repo': REPO,
-            'timestamp': datetime.utcnow().isoformat() + 'Z',
-            'chunks_path': os.path.join(OUTDIR, 'chunks.jsonl'),
-            'bm25_index_dir': os.path.join(OUTDIR, 'bm25_index'),
-            'chunk_count': len(chunks),
-            'collection_name': COLLECTION,
-            'enrich': enrich_stats if ENRICH else None,
-        }
-        with open(os.path.join(OUTDIR, 'last_index.json'), 'w', encoding='utf-8') as mf:
-            json.dump(meta, mf, indent=2)
-    except Exception:
+        qc.delete_collection(COLLECTION)
+        print(f"   Deleted existing collection '{COLLECTION}'")
+    except:
         pass
-
-    embed_stats: Dict[str, any] = {"provider": None, "model": None, "tokens": 0, "cost_usd": 0.0, "cache_hits": 0, "fresh": 0}
-    if (os.getenv('SKIP_DENSE','0') or '0').strip() == '1':
-        print('Skipping dense embeddings and Qdrant upsert (SKIP_DENSE=1).')
-        # Persist tracking event for BM25-only runs
-        try:
-            evt = {
-                "type": "indexing_event",
-                "repo": REPO,
-                "ts": datetime.utcnow().isoformat() + 'Z',
-                "mode": "bm25_only",
-                "phases": {
-                    "collect_s": round(t_collect, 3),
-                    "chunk_s": round(t_chunk, 3),
-                    "bm25_s": round(t_bm, 3),
-                    "embed_s": 0.0,
-                    "upsert_s": 0.0,
-                },
-                "chunk_count": len(chunks),
-                "embedding": embed_stats,
-            }
-            with open(indexing_log, 'a', encoding='utf-8') as lf:
-                lf.write(json.dumps(evt) + '\n')
-        except Exception:
-            pass
-        return
-
-    client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
-    t_embed0 = _time.time()
-    texts = []
-    for c in chunks:
-        if c.get('summary') or c.get('keywords'):
-            kw = ' '.join(c.get('keywords', []))
-            texts.append(f"{c.get('file_path','') }\n{c.get('summary','')}\n{kw}\n{c.get('code','')}")
-        else:
-            texts.append(c['code'])
-    embs: List[List[float]] = []
-    et = (os.getenv('EMBEDDING_TYPE','openai') or 'openai').lower()
-    if et == 'voyage':
-        try:
-            voyage_model = os.getenv('VOYAGE_MODEL', 'voyage-code-3')
-            embs = embed_texts_voyage(texts, model=voyage_model, batch=64, output_dimension=int(os.getenv('VOYAGE_EMBED_DIM','512')))
-        except Exception as e:
-            print(f"Voyage embedding failed ({e}); falling back to local embeddings.")
-            embs = []
-        if not embs:
-            embs = embed_texts_local(texts)
-        embed_stats.update({"provider": "voyage", "model": os.getenv('VOYAGE_MODEL', 'voyage-code-3')})
-    elif et == 'mxbai':
-        try:
-            dim = int(os.getenv('EMBEDDING_DIM', '512'))
-            embs = embed_texts_mxbai(texts, dim=dim)
-        except Exception as e:
-            print(f"MXBAI embedding failed ({e}); falling back to local embeddings.")
-            embs = embed_texts_local(texts)
-        embed_stats.update({"provider": "local", "model": "mxbai-embed-large-v1"})
-    elif et == 'local':
-        embs = embed_texts_local(texts)
-        embed_stats.update({"provider": "local", "model": "sentence-transformers"})
-    else:
-        if client is not None:
-            try:
-                cache = EmbeddingCache(OUTDIR)
-                hashes = [c['hash'] for c in chunks]
-                embedding_model = os.getenv('EMBEDDING_MODEL', 'text-embedding-3-large')
-                # Pre-count cache hits before embedding
-                _hits = sum(1 for h in hashes if cache.get(h) is not None)
-                from tiktoken import get_encoding
-                enc = get_encoding('cl100k_base')
-                # Estimate tokens for fresh texts only
-                fresh_texts = [t for t, h in zip(texts, hashes) if cache.get(h) is None]
-                embed_stats["tokens"] = sum(len(enc.encode(t)) for t in fresh_texts)
-                # OpenAI embeddings pricing ~ $0.13 per 1K tokens for text-embedding-3-large
-                embed_stats["cost_usd"] = round((embed_stats["tokens"] / 1000.0) * 0.13, 6)
-                embed_stats.update({"provider": "openai", "model": embedding_model, "cache_hits": _hits, "fresh": len(fresh_texts)})
-                embs = cache.embed_texts(client, texts, hashes, model=embedding_model, batch=64)
-                pruned = cache.prune(set(hashes))
-                if pruned > 0:
-                    print(f'Pruned {pruned} orphaned embeddings from cache.')
-                cache.save()
-            except Exception as e:
-                print(f'Embedding via OpenAI failed ({e}); falling back to local embeddings.')
-        if not embs:
-            embs = embed_texts_local(texts)
-            embed_stats.update({"provider": "local", "model": "sentence-transformers"})
-    t_embed = _time.time() - t_embed0
-    point_ids: List[str] = []
-    t_upsert0 = _time.time()
-    try:
-        q = QdrantClient(url=QDRANT_URL)
-        qdrant_recreate_fallback.recreate_collection(
-            q,
-            collection_name=COLLECTION,
-            vectors_config={'dense': models.VectorParams(size=len(embs[0]), distance=models.Distance.COSINE)}
-        )
-        points = []
-        for c, v in zip(chunks, embs):
-            cid = str(c['id'])
-            pid = str(uuid.uuid5(uuid.NAMESPACE_DNS, cid))
-            slim_payload = {
-                'id': c.get('id'),
-                'file_path': c.get('file_path'),
-                'start_line': c.get('start_line'),
-                'end_line': c.get('end_line'),
-                'layer': c.get('layer'),
-                'repo': c.get('repo'),
-                'origin': c.get('origin'),
-                'hash': c.get('hash'),
-                'language': c.get('language')
-            }
-            slim_payload = {k: v for k, v in slim_payload.items() if v is not None}
-            points.append(models.PointStruct(id=pid, vector={'dense': v}, payload=slim_payload))
-            point_ids.append(pid)
-            if len(points) == 64:
-                q.upsert(COLLECTION, points=points)
-                points = []
-        if points:
-            q.upsert(COLLECTION, points=points)
-        import json as _json
-        _json.dump({str(i): pid for i, pid in enumerate(point_ids)}, open(os.path.join(OUTDIR,'bm25_index','bm25_point_ids.json'),'w'))
-        print(f'Indexed {len(chunks)} chunks to Qdrant (embeddings: {len(embs[0])} dims).')
-        try:
-            meta = {
-                'repo': REPO,
-                'timestamp': datetime.utcnow().isoformat() + 'Z',
-                'chunks_path': os.path.join(OUTDIR, 'chunks.jsonl'),
-                'bm25_index_dir': os.path.join(OUTDIR, 'bm25_index'),
-                'chunk_count': len(chunks),
-                'collection_name': COLLECTION,
-                'embedding_type': (os.getenv('EMBEDDING_TYPE','openai') or 'openai').lower(),
-                'embedding_dim': len(embs[0]) if embs and embs[0] else None,
-            }
-            with open(os.path.join(OUTDIR, 'last_index.json'), 'w', encoding='utf-8') as mf:
-                json.dump(meta, mf, indent=2)
-        except Exception:
-            pass
-    except Exception as e:
-        print(f"Qdrant unavailable or failed to index ({e}); continuing with BM25-only index. Dense retrieval will be disabled.")
-    t_upsert = _time.time() - t_upsert0
-
-    # Persist high-level indexing event for Grafana/Loki
-    try:
-        evt = {
-            "type": "indexing_event",
-            "repo": REPO,
-            "ts": datetime.utcnow().isoformat() + 'Z',
-            "mode": "full",
-            "phases": {
-                "collect_s": round(t_collect, 3),
-                "chunk_s": round(t_chunk, 3),
-                "bm25_s": round(t_bm, 3),
-                "embed_s": round(t_embed, 3),
-                "upsert_s": round(t_upsert, 3),
-            },
-            "chunk_count": len(chunks),
-            "embedding": embed_stats,
-            "enrich": enrich_stats if ENRICH else None,
+    
+    qc.create_collection(
+        collection_name=COLLECTION,
+        vectors_config={'dense': models.VectorParams(size=embed_dim, distance=models.Distance.COSINE)}
+    )
+    print(f"   Created collection '{COLLECTION}'")
+    
+    # Upsert points
+    points = []
+    point_ids = []
+    for i, (c, emb) in enumerate(zip(chunks, embeddings)):
+        # Generate deterministic UUID from chunk ID
+        pid = str(uuid.uuid5(uuid.NAMESPACE_DNS, c['id']))
+        point_ids.append(pid)
+        
+        payload = {
+            'id': c['id'],  # CRITICAL: Store chunk ID in payload
+            'file_path': c.get('file_path'),
+            'start_line': c.get('start_line'),
+            'end_line': c.get('end_line'),
+            'language': c.get('language'),
+            'repo': c.get('repo'),
+            'hash': c.get('hash'),
         }
-        with open(indexing_log, 'a', encoding='utf-8') as lf:
-            lf.write(json.dumps(evt) + '\n')
-    except Exception:
-        pass
+        
+        points.append(models.PointStruct(
+            id=pid,
+            vector={'dense': emb},
+            payload={k: v for k, v in payload.items() if v is not None}
+        ))
+        
+        # Batch upsert
+        if len(points) >= 64:
+            qc.upsert(COLLECTION, points=points)
+            points = []
+    
+    # Final batch
+    if points:
+        qc.upsert(COLLECTION, points=points)
+    
+    print(f"   Indexed {len(chunks)} points to Qdrant")
+    
+    # Save point ID mapping (for reference)
+    with open(os.path.join(idx_dir, 'bm25_point_ids.json'), 'w') as f:
+        json.dump({str(i): pid for i, pid in enumerate(point_ids)}, f)
+    
+    # Save metadata
+    meta = {
+        'repo': REPO,
+        'timestamp': datetime.utcnow().isoformat() + 'Z',
+        'chunk_count': len(chunks),
+        'collection': COLLECTION,
+        'embedding_type': EMBEDDING_TYPE,
+        'embedding_dim': embed_dim,
+    }
+    with open(os.path.join(outdir, 'last_index.json'), 'w') as f:
+        json.dump(meta, f, indent=2)
+    
+    print(f"\n=== Indexing Complete ===")
+    print(f"Chunks: {len(chunks)}")
+    print(f"Collection: {COLLECTION}")
+    print(f"Output: {outdir}")
+
 
 if __name__ == '__main__':
     main()
+

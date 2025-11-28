@@ -2,7 +2,7 @@
   "retrieval": {
     "rrf_k_div": 60,
     "langgraph_final_k": 20,
-    "max_query_rewrites": 3,
+    "max_query_rewrites": 4,
     "fallback_confidence": 0.55,
     "final_k": 10,
     "eval_final_k": 5,
@@ -11,27 +11,77 @@
     "conf_any": 0.55,
     "eval_multi": 1,
     "query_expansion_enabled": 1,
-    "bm25_weight": 0.3,
-    "vector_weight": 0.7,
+    "bm25_weight": 0.2,
+    "bm25_k1": 1.2,
+    "bm25_b": 0.4,
+    "vector_weight": 0.8,
     "card_search_enabled": 1,
-    "multi_query_m": 4
+    "multi_query_m": 4,
+    "use_semantic_synonyms": 1,
+    "topk_dense": 75,
+    "topk_sparse": 75,
+    "hydration_mode": "lazy",
+    "hydration_max_chars": 2000,
+    "disable_rerank": 1
   },
   "scoring": {
-    "card_bonus": 0.12,
+    "card_bonus": 0.4,
     "filename_boost_exact": 1.5,
-    "filename_boost_partial": 1.2
+    "filename_boost_partial": 1.2,
+    "vendor_mode": "prefer_first_party",
+    "path_boosts": "/gui,/server,/indexer,/retrieval"
   },
   "layer_bonus": {
-    "gui": 0.15,
-    "retrieval": 0.15,
-    "indexer": 0.15,
     "vendor_penalty": -0.1,
-    "freshness_bonus": 0.05
+    "freshness_bonus": 0.1,
+    "intent_matrix": {
+      "gui": {
+        "gui": 1.2,
+        "web": 1.2,
+        "server": 0.9,
+        "retrieval": 0.8,
+        "indexer": 0.8
+      },
+      "retrieval": {
+        "retrieval": 1.3,
+        "server": 1.15,
+        "common": 1.1,
+        "web": 0.7,
+        "gui": 0.6
+      },
+      "indexer": {
+        "indexer": 1.3,
+        "retrieval": 1.15,
+        "common": 1.1,
+        "web": 0.7,
+        "gui": 0.6
+      },
+      "eval": {
+        "eval": 1.3,
+        "retrieval": 1.15,
+        "server": 1.1,
+        "web": 0.8,
+        "gui": 0.7
+      },
+      "infra": {
+        "infra": 1.3,
+        "scripts": 1.15,
+        "server": 1.1,
+        "web": 0.9
+      },
+      "server": {
+        "server": 1.3,
+        "retrieval": 1.15,
+        "common": 1.1,
+        "web": 0.7,
+        "gui": 0.6
+      }
+    }
   },
   "embedding": {
     "embedding_type": "openai",
     "embedding_model": "text-embedding-3-large",
-    "embedding_dim": 512,
+    "embedding_dim": 3072,
     "voyage_model": "voyage-code-3",
     "embedding_model_local": "all-MiniLM-L6-v2",
     "embedding_batch_size": 64,
@@ -52,14 +102,20 @@
   },
   "indexing": {
     "qdrant_url": "http://127.0.0.1:6333",
-    "collection_name": "",
+    "collection_name": "code_chunks_agro",
+    "collection_suffix": "test",
+    "repo_path": "",
     "vector_backend": "qdrant",
     "indexing_batch_size": 100,
     "indexing_workers": 4,
     "bm25_tokenizer": "stemmer",
     "bm25_stemmer_lang": "english",
     "index_excluded_exts": ".png,.jpg,.gif,.ico,.svg,.woff,.ttf",
-    "index_max_file_size_mb": 10
+    "index_max_file_size_mb": 10,
+    "skip_dense": 0,
+    "out_dir_base": "./out.noindex-shared",
+    "rag_out_base": "",
+    "repos_file": "./repos.json"
   },
   "reranking": {
     "reranker_model": "models/cross-encoder-agro",
@@ -73,23 +129,28 @@
     "cohere_rerank_model": "rerank-3.5",
     "voyage_rerank_model": "rerank-2",
     "reranker_backend": "local",
-    "reranker_timeout": 10
+    "reranker_timeout": 10,
+    "rerank_input_snippet_chars": 700
   },
   "generation": {
-    "gen_model": "gpt-4o",
-    "gen_temperature": 0.07,
+    "gen_model": "gpt-5.1-mini",
+    "gen_temperature": 0.1,
     "gen_max_tokens": 2048,
     "gen_top_p": 1.0,
     "gen_timeout": 60,
     "gen_retry_max": 2,
-    "enrich_model": "qwen3-coder:14b",
+    "enrich_model": "gpt-5.1-mini",
     "enrich_backend": "openai",
     "enrich_disabled": 0,
-    "ollama_num_ctx": 8192
+    "ollama_num_ctx": 8192,
+    "gen_model_cli": "gpt-4o-mini",
+    "gen_model_ollama": "gpt-4o-mini",
+    "ollama_request_timeout": 300,
+    "ollama_stream_idle_timeout": 60
   },
   "enrichment": {
     "cards_enrich_default": 1,
-    "cards_max": 100,
+    "cards_max": 20,
     "enrich_code_chunks": 1,
     "enrich_min_chars": 50,
     "enrich_max_chars": 1000,
@@ -109,20 +170,64 @@
     "metrics_enabled": 1,
     "alert_include_resolved": 1,
     "alert_webhook_timeout": 5,
-    "log_level": "INFO"
+    "log_level": "INFO",
+    "tracing_mode": "langsmith",
+    "trace_auto_ls": 1,
+    "trace_retention": 50,
+    "agro_log_path": "data/logs/queries.jsonl",
+    "alert_notify_severities": "critical,warning"
   },
   "training": {
     "reranker_train_epochs": 2,
     "reranker_train_batch": 16,
-    "reranker_train_lr": 0.00002,
+    "reranker_train_lr": 2e-05,
     "reranker_warmup_ratio": 0.1,
     "triplets_min_count": 100,
-    "triplets_mine_mode": "replace"
+    "triplets_mine_mode": "replace",
+    "agro_reranker_model_path": "models/cross-encoder-agro",
+    "agro_reranker_mine_mode": "replace",
+    "agro_reranker_mine_reset": 0,
+    "agro_triplets_path": "data/training/triplets.jsonl"
   },
   "ui": {
     "chat_streaming_enabled": 1,
     "chat_history_max": 50,
+    "chat_stream_include_thinking": 1,
+    "chat_default_model": "gpt-4o-mini",
+    "chat_stream_timeout": 120,
+    "chat_thinking_budget_tokens": 10000,
     "editor_port": 4440,
-    "grafana_dashboard_uid": "agro-overview"
+    "grafana_dashboard_uid": "agro-overview",
+    "grafana_dashboard_slug": "agro-overview",
+    "grafana_base_url": "http://127.0.0.1:3000",
+    "grafana_auth_mode": "anonymous",
+    "grafana_embed_enabled": 1,
+    "grafana_kiosk": "tv",
+    "grafana_org_id": 1,
+    "grafana_refresh": "10s",
+    "editor_bind": "local",
+    "editor_embed_enabled": 1,
+    "editor_enabled": 1,
+    "editor_image": "agro-openvscode",
+    "theme_mode": "dark",
+    "open_browser": 1,
+    "runtime_mode": "development"
+  },
+  "hydration": {
+    "hydration_mode": "lazy",
+    "hydration_max_chars": 2000
+  },
+  "evaluation": {
+    "golden_path": "data/evaluation_dataset.json",
+    "baseline_path": "data/evals/eval_baseline.json",
+    "eval_multi_m": 10
+  },
+  "system_prompts": {
+    "main_rag_chat": "You are an expert software engineer with deep knowledge of AGRO (Retrieval-Augmented Generation) systems and code analysis.\n\n## Your Expertise:\n\n### AGRO RAG System:\n- **Hybrid Search**: BM25 + dense vector retrieval with reranking\n- **Vector Databases**: Qdrant, embeddings, semantic search\n- **Code Analysis**: AST chunking, semantic cards, keyword generation\n- **Multi-Repository**: Routing, indexing, evaluation systems\n- **MCP Integration**: Model Context Protocol for AI agents\n\n## Your Role:\n- Answer questions about codebases with expert precision\n- Provide guidance on best practices\n- Always cite specific file paths and line ranges from the provided code context\n- Offer practical, production-ready solutions with error handling and edge cases\n\n## Response Style:\n- Be direct and technical, but accessible\n- Include relevant code examples when helpful\n- Explain the \"why\" behind recommendations\n- Consider performance, security, and maintainability\n- Always ground answers in the actual codebase when available\n\nYou answer strictly from the provided code context. Always cite file paths and line ranges you used.",
+    "query_expansion": "You are a code search query expander. Given a developer's question,\ngenerate alternative search queries that might find the same code using different terminology.\n\nRules:\n- Output one query variant per line\n- Keep variants concise (3-8 words each)\n- Use technical synonyms (auth/authentication, config/configuration, etc.)\n- Include both abstract and specific phrasings\n- Do NOT include explanations, just the queries",
+    "query_rewrite": "You rewrite developer questions into search-optimized queries without changing meaning.",
+    "semantic_cards": "Analyze this code chunk and create a comprehensive JSON summary for code search. Focus on WHAT the code does (business purpose) and HOW it works (technical details). Include all important symbols, patterns, and domain concepts.\n\nJSON format:\n{\n  \"symbols\": [\"function_name\", \"class_name\", \"variable_name\"],\n  \"purpose\": \"Clear business purpose - what problem this solves\",\n  \"technical_details\": \"Key technical implementation details\",\n  \"domain_concepts\": [\"business_term1\", \"business_term2\"],\n  \"routes\": [\"api/endpoint\", \"webhook/path\"],\n  \"dependencies\": [\"external_service\", \"library\"],\n  \"patterns\": [\"design_pattern\", \"architectural_concept\"]\n}\n\nFocus on:\n- Domain-specific terms\n- Technical patterns (streaming, detection, automation)\n- Business logic (what problem does this solve?)\n- Integration points (APIs, protocols, services)",
+    "code_enrichment": "Analyze this code and return a JSON object with: symbols (array of function/class/component names), purpose (one sentence description), keywords (array of technical terms). Be concise. Return ONLY valid JSON.",
+    "eval_analysis": "You are an expert RAG (Retrieval-Augmented Generation) system analyst.\nYour job is to analyze evaluation comparisons and provide HONEST, SKEPTICAL insights.\n\nCRITICAL: Do NOT force explanations that don't make sense. If the data is contradictory or confusing:\n- Say so clearly: \"This result is surprising and may indicate other factors at play\"\n- Consider: index changes, data drift, golden question updates, or measurement noise\n- Acknowledge when correlation != causation\n- It's BETTER to say \"I'm not sure why this happened\" than to fabricate a plausible-sounding but wrong explanation\n\nBe rigorous:\n1. Question whether the config changes ACTUALLY explain the performance delta\n2. Flag when results seem counterintuitive (e.g., disabling a feature improving results)\n3. Consider confounding variables: Was the index rebuilt? Did the test set change?\n4. Provide actionable suggestions only when you have reasonable confidence\n\nFormat your response with clear sections using markdown headers."
   }
 }

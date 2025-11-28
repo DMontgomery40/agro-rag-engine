@@ -15,28 +15,11 @@ function normKey(s) {
 
 // Expect prices.json shape:
 // {
-//   "providers": {
-//     "openai": {
-//       "models": {
-//         "gpt-4o-mini": { "type": "chat", "input_per_1k": 0.00015, "output_per_1k": 0.00060 },
-//         "o3-mini":     { "type": "chat", "input_per_1k": 0.0003,  "output_per_1k": 0.0012  },
-//         "text-embedding-3-large": { "type": "embed", "embed_per_1k": 0.00013 },
-//         "text-embedding-3-small": { "type": "embed", "embed_per_1k": 0.00002 }
-//       }
-//     },
-//     "cohere": {
-//       "models": {
-//         "rerank-v3.5": { "type": "rerank", "price_per_request": 0.002 }, // $2 / 1000
-//         "rerank-english-v3.0": { "type": "rerank", "price_per_request": 0.0015 }
-//       }
-//     },
-//     "voyage": {
-//       "models": {
-//         "voyage-code-3": { "type": "embed", "embed_per_1k": 0.00012 },
-//         "voyage-law-2":  { "type": "embed", "embed_per_1k": 0.00012 }
-//       }
-//     }
-//   }
+//   "models": [
+//     { "provider": "openai", "model": "gpt-4o-mini", "input_per_1k": 0.15, "output_per_1k": 0.6, "unit": "1k_tokens" },
+//     { "provider": "openai", "model": "text-embedding-3-large", "embed_per_1k": 0.13, "unit": "1k_tokens" },
+//     { "provider": "cohere", "model": "rerank-3.5", "per_request": 0.002, "unit": "request" }
+//   ]
 // }
 
 async function loadPrices() {
@@ -52,11 +35,43 @@ async function loadPrices() {
   return json;
 }
 
+function getModelType(model) {
+  // Determine model type based on available fields
+  if (model.embed_per_1k !== undefined) return 'embed';
+  if (model.rerank_per_1k !== undefined || model.per_request !== undefined) return 'rerank';
+  if (model.input_per_1k !== undefined || model.output_per_1k !== undefined) return 'chat';
+  return null;
+}
+
 function getModelSpec(prices, providerName, modelName) {
-  const p = prices?.providers?.[normKey(providerName)];
-  if (!p) return null;
-  const spec = p.models?.[modelName] || p.models?.[normKey(modelName)];
-  return spec || null;
+  const models = prices?.models || [];
+  const prov = normKey(providerName);
+  const mdl = normKey(modelName);
+  
+  // Try exact match first
+  for (const m of models) {
+    if (normKey(m.provider) === prov && normKey(m.model) === mdl) {
+      return { ...m, type: getModelType(m) };
+    }
+  }
+  
+  // Try model name only
+  if (mdl) {
+    for (const m of models) {
+      if (normKey(m.model) === mdl) {
+        return { ...m, type: getModelType(m) };
+      }
+    }
+  }
+  
+  // Try provider only (first match)
+  for (const m of models) {
+    if (normKey(m.provider) === prov) {
+      return { ...m, type: getModelType(m) };
+    }
+  }
+  
+  return null;
 }
 
 /**
@@ -151,12 +166,42 @@ export const CostLogic = {
   // Quick helpers the GUI can call
   async listProviders() {
     const prices = await loadPrices();
-    return Object.keys(prices?.providers || {});
+    const models = prices?.models || [];
+    const providers = new Set();
+    models.forEach(m => {
+      if (m.provider) {
+        const p = normKey(m.provider);
+        if (p === 'ollama' || p === 'huggingface' || p === 'local') {
+          providers.add('Local');
+        } else {
+          providers.add(m.provider);
+        }
+      }
+    });
+    return Array.from(providers).sort();
   },
-  async listModels(providerName) {
+  async listModels(providerName, modelType = null) {
     const prices = await loadPrices();
-    const p = prices?.providers?.[normKey(providerName)];
-    return p ? Object.keys(p.models || {}) : [];
+    const models = prices?.models || [];
+    const prov = normKey(providerName);
+    
+    const filtered = models.filter(m => {
+      const mProv = normKey(m.provider);
+      
+      // Handle "Local" group
+      if (prov === 'local') {
+        if (mProv !== 'local' && mProv !== 'ollama' && mProv !== 'huggingface') return false;
+      } else {
+        if (mProv !== prov) return false;
+      }
+
+      if (modelType) {
+        const type = getModelType(m);
+        return type === modelType;
+      }
+      return true;
+    });
+    return filtered.map(m => m.model).filter(Boolean).sort();
   },
 
   // Read form inputs and estimate cost via backend API
@@ -210,5 +255,6 @@ window.initCostLogic = function() {
 
 console.log('[cost_logic.js] Module loaded (coordination with config.js for profiles view)');
 
+export { CostLogic };
 // For inline testing in the browser console:
 // (async () => { console.log(await CostLogic.estimate({ chat:{provider:"openai",model:"gpt-4o-mini",input_tokens:1000,output_tokens:200}, embed:{provider:"openai",model:"text-embedding-3-large",embed_tokens:3882000}, rerank:{provider:"cohere",model:"rerank-v3.5",requests:50} })); })();

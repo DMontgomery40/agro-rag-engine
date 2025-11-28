@@ -1,32 +1,28 @@
 // AGRO - Dashboard Quick Actions Component
-// 6 action buttons + eval dropdown with dynamic reranker options
+// 6 action buttons for common operations
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { QuickActionButton } from './QuickActionButton';
 import { LiveTerminalPanel } from './LiveTerminalPanel';
+import { TerminalService } from '../../services/TerminalService';
+import { RepoSwitcherModal } from '../ui/RepoSwitcherModal';
+import { useRepoStore } from '@/stores/useRepoStore';
 
 export function QuickActions() {
   const [terminalVisible, setTerminalVisible] = useState(false);
-  const [evalDropdownOpen, setEvalDropdownOpen] = useState(false);
-  const [rerankerOptions, setRerankerOptions] = useState<any[]>([]);
   const [statusMessage, setStatusMessage] = useState('Ready');
   const [progress, setProgress] = useState(0);
-
-  // Load reranker options from backend
+  const [showRepoSwitcher, setShowRepoSwitcher] = useState(false);
+  const navigate = useNavigate();
+  
+  // Use centralized repo store
+  const { activeRepo, switching, loadRepos } = useRepoStore();
+  
+  // Load repos on mount
   useEffect(() => {
-    const loadOptions = async () => {
-      try {
-        const response = await fetch('/api/reranker/available');
-        if (response.ok) {
-          const data = await response.json();
-          setRerankerOptions(data.options || []);
-        }
-      } catch (e) {
-        console.error('[QuickActions] Failed to load reranker options:', e);
-      }
-    };
-    loadOptions();
-  }, []);
+    loadRepos();
+  }, [loadRepos]);
 
   const handleGenerateKeywords = async () => {
     setTerminalVisible(true);
@@ -53,10 +49,12 @@ export function QuickActions() {
       const data = await response.json();
       
       if (response.ok) {
-        setStatusMessage('✓ Keywords generated');
+        // Support both new format (count/keywords) and legacy format (total_count)
+        const total = data.count ?? data.total_count ?? 0;
+        setStatusMessage(`✓ Loaded ${total} keywords from repos.json`);
         setProgress(100);
         if (terminal) {
-          terminal.appendLine(`✓ Generated ${data.count || 0} keywords\n`);
+          terminal.appendLine(`✓ Loaded ${total} keywords from repos.json\n`);
           terminal.updateProgress(100, 'Complete');
         }
       } else {
@@ -74,13 +72,18 @@ export function QuickActions() {
   };
 
   const handleChangeRepo = () => {
-    const newRepo = prompt('Enter repository name:');
-    if (newRepo) {
-      window.location.href = `?repo=${newRepo}`;
-    }
+    // Open the repo switcher modal - proper dropdown UI instead of prompt()
+    setShowRepoSwitcher(true);
   };
 
-  const handleRunIndexer = async () => {
+  const handleRunIndexer = () => {
+    // Navigate to RAG > Indexing subtab instead of running directly from dashboard
+    // This lets users configure settings before running
+    navigate('/rag?subtab=indexing');
+  };
+
+  // Legacy direct indexer run - kept for reference but not used
+  const _handleRunIndexerDirect = async () => {
     setTerminalVisible(true);
     setStatusMessage('Starting indexer...');
     setProgress(0);
@@ -88,23 +91,60 @@ export function QuickActions() {
     const terminal = (window as any)._dashboardTerminal;
     if (terminal) {
       terminal.setTitle('Run Indexer');
-      terminal.appendLine('🚀 Starting indexer...\n');
+      terminal.clear();
+      terminal.appendLine('🚀 Starting indexer...');
     }
 
     try {
       const response = await fetch('/api/index/start', { method: 'POST' });
-      if (response.ok) {
-        setStatusMessage('✓ Indexer started');
+
+      if (!response.ok) {
+        const error = await response.text();
+        setStatusMessage(`✗ Error: ${error}`);
         if (terminal) {
-          terminal.appendLine('✓ Indexer started successfully\n');
+          terminal.appendLine(`\x1b[31m✗ Failed to start indexer: ${error}\x1b[0m`);
         }
-        // Poll for progress
-        pollIndexStatus(terminal);
+        return;
       }
+
+      setStatusMessage('✓ Indexer started');
+      if (terminal) {
+        terminal.appendLine('✓ Indexer started, connecting to log stream...');
+      }
+
+      // Connect to SSE stream for real logs
+      TerminalService.streamOperation('dashboard_indexer', 'index', {
+        onLine: (line) => {
+          if (terminal) {
+            terminal.appendLine(line);
+          }
+        },
+        onProgress: (percent, message) => {
+          setProgress(percent);
+          setStatusMessage(message || `Indexing: ${Math.round(percent)}%`);
+          if (terminal) {
+            terminal.updateProgress(percent, message);
+          }
+        },
+        onError: (error) => {
+          setStatusMessage(`✗ Error: ${error}`);
+          if (terminal) {
+            terminal.appendLine(`\x1b[31m✗ Error: ${error}\x1b[0m`);
+          }
+        },
+        onComplete: () => {
+          setProgress(100);
+          setStatusMessage('✓ Indexing complete');
+          if (terminal) {
+            terminal.updateProgress(100, 'Complete');
+            terminal.appendLine('\x1b[32m✓ Indexing complete\x1b[0m');
+          }
+        }
+      });
     } catch (e) {
       setStatusMessage(`✗ Failed: ${e}`);
       if (terminal) {
-        terminal.appendLine(`✗ Error: ${e}\n`);
+        terminal.appendLine(`\x1b[31m✗ Error: ${e}\x1b[0m`);
       }
     }
   };
@@ -165,36 +205,9 @@ export function QuickActions() {
     }
   };
 
-  const handleRunEval = async (backend: string) => {
-    setEvalDropdownOpen(false);
-    setTerminalVisible(true);
-    setStatusMessage(`Running evaluation with ${backend}...`);
-
-    const terminal = (window as any)._dashboardTerminal;
-    if (terminal) {
-      terminal.setTitle(`Run Eval (${backend})`);
-      terminal.appendLine(`🧪 Running evaluation with ${backend} backend...\n`);
-    }
-
-    try {
-      const response = await fetch('/api/eval/run', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ backend })
-      });
-
-      if (response.ok) {
-        setStatusMessage('✓ Evaluation started');
-        if (terminal) {
-          terminal.appendLine('✓ Evaluation started\n');
-        }
-      }
-    } catch (e) {
-      setStatusMessage(`✗ Failed: ${e}`);
-      if (terminal) {
-        terminal.appendLine(`✗ Error: ${e}\n`);
-      }
-    }
+  const handleRunEval = () => {
+    // Navigate to Eval Analysis tab with autorun param
+    window.location.hash = '#/eval-analysis?autorun=true';
   };
 
   const handleRefreshStatus = () => {
@@ -234,9 +247,10 @@ export function QuickActions() {
         <QuickActionButton
           id="dash-change-repo"
           icon="📁"
-          label="Change Repo"
+          label={activeRepo ? `Repo: ${activeRepo}` : 'Change Repo'}
           onClick={handleChangeRepo}
           dataAction="change-repo"
+          disabled={switching}
         />
         <QuickActionButton
           id="dash-index-start"
@@ -253,120 +267,13 @@ export function QuickActions() {
           dataAction="reload"
         />
 
-        {/* Eval Dropdown Button */}
-        <div style={{ position: 'relative' }}>
-          <button
-            id="dash-eval-trigger"
-            className="action-btn"
-            onClick={() => setEvalDropdownOpen(!evalDropdownOpen)}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              background: 'var(--bg-elev1)',
-              border: '1px solid var(--line)',
-              color: 'var(--fg)',
-              padding: '16px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: 600,
-              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-            }}
-          >
-            <span style={{ fontSize: '24px', color: 'var(--link)' }}>🧪</span>
-            <span>Run Eval</span>
-            <svg
-              id="dash-eval-chevron"
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              style={{
-                marginLeft: 'auto',
-                transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                transform: evalDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-              }}
-            >
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
-          </button>
-
-          {/* Dropdown */}
-          {evalDropdownOpen && (
-            <div
-              id="dash-eval-dropdown"
-              style={{
-                position: 'absolute',
-                top: 'calc(100% + 4px)',
-                left: 0,
-                right: 0,
-                background: 'var(--panel)',
-                border: '1px solid var(--line)',
-                borderRadius: '6px',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-                zIndex: 100,
-                overflow: 'hidden',
-              }}
-            >
-              {/* Header */}
-              <div
-                style={{
-                  padding: '10px 12px',
-                  borderBottom: '1px solid var(--bg-elev2)',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  color: 'var(--fg-muted)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                }}
-              >
-                Select Reranker
-              </div>
-
-              {/* Options */}
-              {rerankerOptions.length === 0 && (
-                <div style={{ padding: '12px', color: 'var(--fg-muted)', fontSize: '12px' }}>
-                  Loading options...
-                </div>
-              )}
-              {rerankerOptions.map((option, idx) => (
-                <button
-                  key={option.id}
-                  className="eval-model-btn"
-                  data-model={option.id}
-                  data-backend={option.backend}
-                  onClick={() => handleRunEval(option.id)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    background: 'transparent',
-                    border: 'none',
-                    borderBottom: idx < rerankerOptions.length - 1 ? '1px solid var(--bg-elev2)' : 'none',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    color: 'var(--fg)',
-                    fontSize: '12px',
-                    transition: 'background 0.2s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--panel)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
-                  }}
-                  title={option.description}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <QuickActionButton
+          id="dash-eval-trigger"
+          icon="🧪"
+          label="Run Eval"
+          onClick={handleRunEval}
+          dataAction="eval"
+        />
 
         <QuickActionButton
           id="dash-refresh-status"
@@ -432,7 +339,7 @@ export function QuickActions() {
           )}
         </div>
 
-        <style jsx>{`
+        <style>{`
           @keyframes shine {
             0% {
               transform: translateX(-100%);
@@ -446,6 +353,12 @@ export function QuickActions() {
 
       {/* Live Terminal */}
       <LiveTerminalPanel containerId="dash-operations-terminal" isVisible={terminalVisible} />
+      
+      {/* Repository Switcher Modal */}
+      <RepoSwitcherModal 
+        isOpen={showRepoSwitcher}
+        onClose={() => setShowRepoSwitcher(false)}
+      />
     </div>
   );
 }

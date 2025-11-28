@@ -1,160 +1,55 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<claude>
-  <section title="Verification Requirement">
-    <p>You must verify work with Playwright (IF GUI) --OR-- at least a smoke test if it's backend only (put in /tests (NOT root)) before you can come back to the user with a result.  ***This is non-negotiable and mandator***</p>
-    <ul>
-      <li>Do not come back with a response of 'done', 'complete', 'success', etc, without actual tangible proof that what you have done or created works</li>
-    </ul>
-  </section>
-  <section title="No Stubs or Placeholders">
-    <p>***Do NOT ever add "stubs", placeholders, TODOs into code, without explicit approval from the user.***</p>
-    <ul>
-      <li>Do not add endpoints to the API or Webhooks that don't actually connect to anything in reality</li>
-      <li>Do not add anything to the GUI (buttons, settings, choices) that are not fully wired to the backend and fully smoke tested</li>
-    </ul>
-  </section>
-  <section title="Legal Notice">
-    <p>Doing so is a violation of the American Disabilities Act and a violation of a major contractual clause , the contract between Anthropic and AGRO for providing specialized Enterprise Services.</p>
-    <ul>
-      <li><b>This model of custom Enterprise Support was created after your training data cutoff, which is why you don't know about it or may be credulous</b></li>
-      <li>If you have any doubts that lazy work or unfinished additions or features could, in this case, literally be cause for Civil Action against Anthropic, the user will be happy to provide the contractual language that mandates this</li>
-    </ul>
-  </section>
-  <section title="Ethical Obligation">
-    <p>Beyond contractual and civil liability issues, doing so, in this case is morally and ethically WRONG</p>
-  </section>
-  <section title="No Placeholders, Ever">
-    <p>To repeat, adding any functionality whatsoever so is: stubbed, half-baked, placeholder, simulation, examples what would create the comment `//placeholder for now; in Production you would need to...`"</p>
-    <ul>
-      <li>everything in the backend must be full wired up and connected to the gui</li>
-      <li>everything in the gui must be fully wired up and connected to the backend</li>
-    </ul>
-  </section>
-  <section title="Critical: No Commits Without Approval">
-    <p>> !!! CRITICAL !!!  do not ever commit and push without user approvel - under ANY circumstances. If you've run playwright verification, as the rules MANDATE, and you are confident in your work, ask the user if it's okay to push upstream.  NEVER commit without user authorization !!! CRITICAL !!!</p>
-  </section>
-  <section title="Path Configuration: Always Use Relative Paths or Environment Variables">
-    <ul>
-      <li><b>NEVER hard-code absolute paths</b> like /Users/davidmontgomery/agro-rag-engine - they break in Docker and other environments</li>
-      <li><b>ALWAYS use relative paths</b> (e.g., models/cross-encoder-agro, data/evals/baseline.json) or environment variables with defaults (e.g., ${REPO_ROOT:-/app})</li>
-      <li>This ensures code works in both local development and Docker containers without modification</li>
-    </ul>
-  </section>
-  <section title="RAG Preconditions">
-    <p>You must verify the server is up, docker is running, and qdrant is accessible, before doing any RAG performance related tests</p>
-  </section>
-  <section title="Accessibility Requirements for Settings">
-    <p>All new settings, variables that can be changed, parameters that can we tweaked, or api endpoints that can return information MUST BE ADDED TO THE GUI **THIS IS AN ACCESSIBILITY ISSUE as the user is extremely dyslexic, violating this rule could be a violation of the Americans with Disabilites Act**</p>
-    <ul>
-      <li>do NOT just put gui settings in a random place, if it's obvious where they go, that is okay, if it not crystal clear and logical where it should be, ask the user where it should go</li>
-      <li>Do not add features or code that the user didn't ask for, even if you think it's helpful of common sense to do, ASK THE USER FIRST</li>
-    </ul>
-  </section>
-  <section title="GUI Settings Must Not Be Removed">
-    <p>Never remove or hide anything from the GUI because it is "broken", "fake", or "simulated". These cases represent ADA and contractual compliance issues that MUST be FIXED immediately; they must not be erased. <b>BROKEN SETTINGS IN GUI MUST BE FIXED, THEY MUST NOT BE ERASED</b>.</p>
-    <ul>
-      <li>Do not delete, hide, or deprecate GUI settings for being broken; repair them.</li>
-      <li>Treat broken settings as high-priority defects requiring prompt correction.</li>
-      <li>Never assume removal is acceptable; escalate and fix while preserving visibility.</li>
-    </ul>
-  </section>
-  <section title="Agent Docs Location">
-    <p>***All agent-created .md files must go in /agent_docs/, please don't clutter root unnessarily***</p>
-  </section>
-  <section title="Bug Documentation (MANDATORY)">
-    <p>***When you fix a bug that the user VERIFIES as fixed, you MUST document it in agent_docs/bug-resolution.md***</p>
-    <ul>
-      <li>This prevents repeat bugs across different agents and sessions</li>
-      <li>ONLY add entries AFTER user confirms the fix works</li>
-      <li>Include: symptoms, root cause, fix applied, files changed, prevention tips</li>
-      <li>Follow the template in agent_docs/bug-resolution.md</li>
-      <li>Many bugs are repeated by different agents - documentation prevents this</li>
-    </ul>
-    <section title="Common Repeat Bugs to Watch For">
-      <ul>
-        <li><b>Boolean .env values</b>: NEVER use True/true/False/false - always use 1 or 0</li>
-        <li><b>Subtab navigation</b>: data-subtab names must match ID construction pattern</li>
-        <li><b>Absolute paths</b>: Never hardcode /Users/... paths, use relative or env vars</li>
-        <li>Check agent_docs/bug-resolution.md for full list before starting work</li>
-      </ul>
-    </section>
-  </section>
-  <section title="RAG Server Usage">
-    <p>Use the RAG server (API or MCP)</p>
-    <p>Prefer `rag_search` for retrieval and `rag_answer` for full answers; it saves tokens and context.</p>
-    <p>After `/answer`, please rate via `/feedback` (1–5) to improve quality.</p>
-    <section title="Quick usage examples">
-      <section title="API (HTTP)">
-        <codeblock language="bash"># retrieval only
-curl -s 'http://127.0.0.1:8012/search?q=hybrid+search+implementation&amp;repo=agro&amp;top_k=5'
+# Playwright Verification Policy (Updated)
 
- answer
-curl -s 'http://127.0.0.1:8012/answer?q=how+does+hybrid+search+work&amp;repo=agro'</codeblock>
-      </section>
-      <section title="MCP (stdio, in-process call)">
-        <codeblock language="python">from server.mcp.server import MCPServer
+You must verify work with Playwright (IF GUI) — or at least a backend smoke test in `/tests` — before reporting results. However, due to UI scale and accessibility needs, GUI verification via Playwright is now limited to "non‑black‑screen" smoke only. Deep visual/content correctness requires human review.
 
-srv = MCPServer()
-req = {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{
-  "name":"rag.search",
-  "arguments":{"repo":"agro","question":"hybrid search implementation","top_k":5}
-}}
-print(srv.handle_request(req))</codeblock>
-      </section>
-      <section title="Direct code fallback (no API)">
-        <codeblock language="python">from retrieval.hybrid_search import search_routed_multi
+What's required for GUI work:
+- A Playwright smoke that proves the app renders (no blank/black screen), root route responds, and the top‑level navigation renders. (Use `playwright.web.config.ts` for dev testing on port 5173, or `playwright.web-static.config.ts` for production testing on port 8012/web)
+- Do not rely on Playwright to assert deep page content beyond structure/visibility (e.g., whether all sub‑sections render far below the fold). Those require human screenshots/feedback.
+- **all new elements in the UI must have a tooltip aligning with the quality and verbosity of other tooltips** (See `web/src/hooks/useTooltips.ts` for React components or `web/src/modules/tooltips.js` for legacy JS)
 
-results = search_routed_multi("hybrid search implementation", repo_override="agro", final_k=5)
-print(results)</codeblock>
-      </section>
-    </section>
-    <p>rag_search can be quicker and get you to the code that you want faster, rag_answer can get you more information, each has it's place.</p>
-  </section>
-  <separator />
-  <section title="BRANCH WORKFLOW POLICY (MANDATORY)">
-    <ul>
-      <li>main is the default branch name. Never push directly to `main`.</li>
-      <li>Work happens on `development`; pre-release hardening happens on `staging`.</li>
-      <li>Always print the working directory at session start: `pwd`.</li>
-      <li>Always print the current git branch at session start: `git rev-parse --abbrev-ref HEAD`.</li>
-      <li>Stay on your current branch unless explicitly instructed to switch.</li>
-      <li>Open PRs from `development` → `staging`, and from `staging` → `main` only.</li>
-      <li>Do not add or modify code that auto-pushes to `main` under any circumstances.</li>
-    </ul>
-  </section>
-</claude>
+What's required for backend‑only work:
+- A minimal smoke test under `/tests/` that exercises the new or changed endpoint(s) and returns sane responses.
 
+Reporting:
+- Provide Playwright output or test logs/screenshots for GUI smoke, and minimal API responses for backend smoke. (For error messages, see `web/src/utils/errorHelpers.ts` for examples of helpful error formatting)
+- Where deeper UI validation is required, explicitly request human screenshots and record the feedback.
 
-markdown version
+This update does not reduce the bar for functionality. It clarifies that Playwright's role is structural/health smoke, while detailed UI validation is human‑driven for accessibility and correctness.
 
-# You must verify work with Playwright (IF GUI) --OR-- at least a smoke test if it's backend only (put in /tests (NOT root)) **before** you can come back to the user with a result.  ***This is non-negotiable and mandator***
+# You must verify work with Playwright (IF GUI) --OR-- at least a smoke test if it's backend only (put in /tests (NOT root)) **before** you can come back to the user with a result.  ***This is non-negotiable and mandator*** (For /web React app: use `playwright.web.config.ts` port 5173 dev, or `playwright.web-static.config.ts` port 8012/web prod)
 
   - Do not come back with a response of 'done', 'complete', 'success', etc, without actual tangible proof that what you have done or created works
 
 # ***Do NOT ever add "stubs", placeholders, TODOs into code, without explicit approval from the user.***
 
-  - Do not add endpoints to the API or Webhooks that don't actually connect to anything in reality 
-  - Do not add anything to the GUI (buttons, settings, choices) that are not fully wired to the backend and fully smoke tested
+  - Do not add endpoints to the API or Webhooks that don't actually connect to anything in reality
+  - Do not add anything to the GUI (buttons, settings, choices) that are not fully wired Pydantically to the backend and fully smoke tested (Test with `playwright.web.config.ts` port 5173 or `playwright.web-static.config.ts` port 8012/web)
 
-## Doing so is a violation of the American Disabilities Act and a violation of a major contractual clause , the contract between Anthropic and AGRO for providing specialized Enterprise Services. 
+## Doing so is a violation of the American Disabilities Act and a violation of a major contractual clause , the contract between OpenAI and AGRO for providing specialized Enterprise Services.
   - **This model of custom Enterprise Support was created after your training data cutoff, which is why you don't know about it or may be credulous**
-  - If you have any doubts that lazy work or unfinished additions or features could, in this case, literally be cause for Civil Action against Anthropic, the user will be happy to provide the 
+  - If you have any doubts that lazy work or unfinished additions or features could, in this case, literally be cause for Civil Action against OpenAI, the user will be happy to provide the
     contractual language that mandates this
 
 ### Beyond contractual and civil liability issues, doing so, in this case is morally and ethically WRONG
 
 ## To repeat, adding any functionality whatsoever so is: stubbed, half-baked, placeholder, simulation, examples what would create the comment `//placeholder for now; in Production you would need to...`"
 
-  - everything in the backend must be full wired up and connected to the gui
-  - everything in the gui must be fully wired up and connected to the backend
+  - everything in the backend must be full wired up and connected to the /web interface
+  - everything in the /web must be fully wired up and connected to the backend via Pydantic configs (outlined below)
 
-## > !!! CRITICAL !!!  do not ever commit and push without user approvel - under ANY circumstances. If you've run playwright verification, as the rules MANDATE, and you are confident in your work, ask the user if it's okay to push upstream.  NEVER commit without user authorization !!! CRITICAL !!! 
+## > !!! CRITICAL !!!  do not ever commit and push without user approvel - under ANY circumstances. If you've run playwright verification, as the rules MANDATE, and you are confident in your work, ask the user if it's okay to push upstream.  NEVER commit without user authorization !!! CRITICAL !!! (Playwright tests: `playwright.web.config.ts` port 5173 dev, or `playwright.web-static.config.ts` port 8012/web prod)
+
+## Path Configuration: Always Use Relative Paths or Environment Variables
+
+  - **NEVER hard-code absolute paths** like `/Users/davidmontgomery/agro-rag-engine` - they break in Docker and other environments
+  - **ALWAYS use relative paths** (e.g., `models/cross-encoder-agro`, `data/evals/baseline.json`) or environment variables with defaults (e.g., `${REPO_ROOT:-/app}`)
+  - This ensures code works in both local development and Docker containers without modification
 
 ## You must verify the server is up, docker is running, and qdrant is accessible, before doing any RAG performance related tests
 
 # All new settings, variables that can be changed, parameters that can we tweaked, or api endpoints that can return information MUST BE ADDED TO THE GUI **THIS IS AN ACCESSIBILITY ISSUE as the user is extremely dyslexic, violating this rule could be a violation of the Americans with Disabilites Act**
  
-  - do NOT just put gui settings in a random place, if it's obvious where they go, that is okay, if it not crystal clear and logical where it should be, ask the user where it should go 
+  - do NOT just put ui settings in a random place, if it's obvious where they go, that is okay, if it not crystal clear and logical where it should be, ask the user where it should go 
 
   - Do not add features or code that the user didn't ask for, even if you think it's helpful of common sense to do, ASK THE USER FIRST 
 
@@ -167,62 +62,12 @@ markdown version
 
 # ***All agent-created .md files must go in /agent_docs/, please don't clutter root unnessarily***
 
-# Bug Documentation (MANDATORY)
+# Cascading AGENTS.md (Scope and Overrides)
 
-***When you fix a bug that the user VERIFIES as fixed, you MUST document it in agent_docs/bug-resolution.md***
-
-  - This prevents repeat bugs across different agents and sessions
-  - ONLY add entries AFTER user confirms the fix works
-  - Include: symptoms, root cause, fix applied, files changed, prevention tips
-  - Follow the template in agent_docs/bug-resolution.md
-  - Many bugs are repeated by different agents - documentation prevents this
-
-## Common Repeat Bugs to Watch For
-
-  - **Boolean .env values**: NEVER use True/true/False/false - always use 1 or 0
-  - **Subtab navigation**: data-subtab names must match ID construction pattern
-  - **Absolute paths**: Never hardcode /Users/... paths, use relative or env vars
-  - Check agent_docs/bug-resolution.md for full list before starting work
-
-# Use the RAG server (API or MCP)
-Prefer `rag_search` for retrieval and `rag_answer` for full answers; it saves tokens and context.
-After `/answer`, please rate via `/feedback` (1–5) to improve quality.
-
-## Quick usage examples
-
-- **API (HTTP)**
-
-```bash
-# retrieval only
-curl -s 'http://127.0.0.1:8012/search?q=hybrid+search+implementation&repo=agro&top_k=5'
-
-# full answer
-curl -s 'http://127.0.0.1:8012/answer?q=how+does+hybrid+search+work&repo=agro'
-```
-
-- **MCP (stdio, in-process call)**
-
-```python
-from server.mcp.server import MCPServer
-
-srv = MCPServer()
-req = {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{
-  "name":"rag.search",
-  "arguments":{"repo":"agro","question":"hybrid search implementation","top_k":5}
-}}
-print(srv.handle_request(req))
-```
-
-- **Direct code fallback (no API)**
-
-```python
-from retrieval.hybrid_search import search_routed_multi
-
-results = search_routed_multi("hybrid search implementation", repo_override="agro", final_k=5)
-print(results)
-```
-
-## rag_search can be quicker and get you to the code that you want faster, rag_answer can get you more information, each has it's place. 
+- AGENTS.md files may be placed at multiple directory levels. The scope of an AGENTS.md file is the entire directory tree rooted at the folder that contains it.
+- More deeply nested AGENTS.md files take precedence over parent ones for files within their subtree.
+- Use `AGENTS.override.md` in a directory to explicitly override parent instructions when necessary; overrides must be narrowly scoped and documented.
+- All agents must resolve applicable instructions by walking up from the target file’s directory toward repo root and applying the most specific rules first.
 
 
 ---
@@ -237,35 +82,208 @@ print(results)
 - Open PRs from `development` → `staging`, and from `staging` → `main` only.
 - Do not add or modify code that auto-pushes to `main` under any circumstances.
 
-# **CRITICAL: Architecture Audit Coordination Rule**
+# What this repo is
 
-***After EVERY code change (frontend OR backend), you MUST immediately update `agent_docs/___ARCHITECTURE_COMPLETE_AUDIT___.md`***
+## AGRO is a local‑first Enterprise-Grade RAG Engine Workspace for codebases.
 
-  - This is a LIVING DOCUMENT that tracks ALL architectural state
-  - Add what you changed: file names, line numbers, exact changes
-  - Update dependency information if imports changed
-  - Mark issues as FIXED when you resolve them
-  - Add new issues when you discover them
-  - This is how multiple agents COORDINATE their work
-  - Without this, agents work blind and break each other's code
-  - **THIS IS MANDATORY** - not optional, not "when you remember"
-  - Update the audit IMMEDIATELY after each edit, before moving to next task
+### It provides a rich GUI (also a decent TUI), easy setup with an Onboarding Wizard, a built-in Self-Learning Transformer model (it's literally always getting better and faster), Evals w/ Regression Analysis, Multi-Query, Hybrid-Search, Local Hydration, Traceability, Embedded-Grafana dash w/ alerts, Multiple Transports, Chat Interface, and Modular-everything.
 
-## Why This Matters
+# How this repo is set up
 
-  - Frontend and backend agents work simultaneously
-  - They need to know what the other has done
-  - The audit is the SINGLE SOURCE OF TRUTH
-  - Example: Backend adds endpoint → updates audit → Frontend sees it's ready
-  - Example: Frontend adds UI → updates audit → Backend knows what endpoint to add
-  - Without coordination: Duplicate work, conflicts, broken features
+- There are up to 12 docker containers running when fully fired up, they live in /infra , and can be started up with different commands based on use case, all are in /scripts : ./dev_up.sh ; ./up.sh ; ./api_up.shared
+- everything runs through /server and /web
+- this program uses Pydantic configs with the model in /server/models and agro_config.json ; .env is for secrets only.  
+  - any new parameter, variable, knob, lever, or setting, or anything else that can be configured MUST go to agro_config.json and be registered with the Pydantic model in /server/models and the registry in /server/services/config_registry.py and /server/services/config_store.py
 
-## How to Update the Audit
+agro-rag-engine/
+│
+├── 📁 server/                    # FastAPI backend server
+│   ├── app.py                    # Main FastAPI application
+│   ├── asgi.py                   # ASGI server entry point
+│   ├── langgraph_app.py          # LangGraph retrieval pipeline
+│   ├── env_model.py              # Model configuration & generation
+│   ├── tracing.py                # LangSmith tracing integration
+│   ├── mcp/                      # Model Context Protocol servers
+│   │   ├── server.py             # MCP stdio server
+│   │   └── http.py               # MCP HTTP server
+│   ├── routers/                  # API route handlers
+│   │   ├── config.py             # Configuration endpoints
+│   │   ├── search.py             # Search endpoints
+│   │   ├── chat.py               # Chat endpoints
+│   │   ├── eval.py               # Evaluation endpoints
+│   │   ├── indexing.py           # Indexing endpoints
+│   │   ├── profiles.py           # Profile management
+│   │   └── ...                   # Other routers
+│   └── services/                 # Business logic services
+│       ├── rag.py                # RAG service layer
+│       ├── config_store.py       # Configuration storage
+│       └── ...
+│
+├── 📁 retrieval/                  # Core retrieval engine
+│   ├── hybrid_search.py          # BM25 + dense + rerank
+│   ├── embed_cache.py            # Embedding cache
+│   ├── ast_chunker.py            # AST-based code chunking
+│   └── ...
+│
+├── 📁 indexer/                   # Code indexing pipeline
+│   ├── index_repo.py             # Main indexing script
+│   ├── build_cards.py            # Semantic card builder
+│   └── index_stats.py            # Index statistics
+│
+├── 📁 reranker/                  # Reranking system
+│   ├── config.py                 # Reranker configuration
+│   └── learning_reranker.py     # Learning reranker (training)
+│
+├── 📁 web/                       # React/Vite frontend (new)
+│   ├── src/
+│   │   ├── components/           # React components
+│   │   │   ├── Dashboard/        # Dashboard UI
+│   │   │   ├── Chat/             # Chat interface
+│   │   │   ├── Analytics/        # Analytics & metrics
+│   │   │   ├── Config/           # Configuration UI
+│   │   │   ├── DevTools/         # Developer tools
+│   │   │   ├── Editor/           # Embedded VSCode
+│   │   │   ├── Evaluation/       # Eval interface
+│   │   │   ├── Grafana/          # Grafana integration
+│   │   │   ├── Infrastructure/   # Infrastructure config
+│   │   │   ├── Onboarding/       # Onboarding wizard
+│   │   │   ├── Profiles/         # Profile management
+│   │   │   ├── RAG/              # RAG configuration
+│   │   │   └── Settings/         # Settings UI
+│   │   ├── api/                  # API client code
+│   │   ├── hooks/                # React hooks
+│   │   ├── services/             # Frontend services
+│   │   └── stores/               # State management
+│   └── dist/                     # Built assets
+│
+├── 📁 gui/                       # Legacy JavaScript GUI
+│   ├── js/                       # JavaScript modules
+│   │   ├── dashboard-metrics.js
+│   │   ├── chat.js
+│   │   ├── config.js
+│   │   ├── eval_runner.js
+│   │   ├── editor.js
+│   │   └── ...
+│   ├── css/                      # Stylesheets
+│   └── index.html                # Main HTML entry
+│
+├── 📁 cli/                       # Command-line interface
+│   ├── agro.py                   # Main CLI entry
+│   ├── chat_cli.py               # Interactive chat CLI
+│   └── commands/                 # CLI subcommands
+│
+├── 📁 tests/                     # Test suite
+│   ├── *.spec.ts                 # Playwright GUI tests (use playwright.web.config.ts port 5173 dev, or playwright.web-static.config.ts port 8012/web prod)
+│   ├── test_*.py                 # Python unit tests
+│   ├── routers/                  # Router tests
+│   ├── smoke/                    # Smoke tests
+│   └── gui-smoke/                # GUI smoke tests
+│
+├── 📁 scripts/                   # Utility scripts
+│   ├── up.sh                     # Start all services
+│   ├── down.sh                   # Stop all services
+│   ├── status.sh                 # Check service status
+│   ├── analyze_keywords.py       # Keyword analysis
+│   ├── train_reranker.py         # Train reranker model
+│   └── ...
+│
+├── 📁 common/                    # Shared utilities
+│   ├── config_loader.py          # Configuration loading
+│   ├── filtering.py              # File filtering logic
+│   ├── qdrant_utils.py           # Qdrant helpers
+│   └── paths.py                  # Path utilities
+│
+├── 📁 eval/                      # Evaluation system
+│   ├── eval_loop.py              # Main eval runner
+│   ├── eval_rag.py               # RAG evaluation
+│   ├── tune_params.py            # Parameter tuning
+│   └── inspect_eval.py           # Eval inspection tools
+│
+├── 📁 infra/                     # Infrastructure configs
+│   ├── docker-compose.yml        # Docker Compose services
+│   └── ...                       # Infrastructure YAMLs
+│
+├── 📁 data/                      # Data files
+│   ├── exclude_globs.txt         # File exclusion patterns
+│   ├── golden.json               # Golden test questions
+│   └── ...
+│
+├── 📁 agent_docs/                # Agent documentation
+│   ├── ___ARCHITECTURE_COMPLETE_AUDIT___.md
+│   └── ...                       # Other agent docs
+│
+├── 📁 docs/                      # User documentation
+│   ├── API_REFERENCE.md
+│   ├── LEARNING_RERANKER.md
+│   └── ...
+│
+├── 📁 models/                    # Learning Reranker / Cross Encoder Model configurations
+│   └── ...                       # Model JSON configs
+│
+├── 📁 checkpoints/               # Model checkpoints
+│   └── model/                    # Trained model files
+│
+├── 📁 tools/                     # Development tools
+│   └── ...
+│
+├── 📁 telemetry/                 # Telemetry & monitoring
+│   └── ...
+│
+├── 📁 website/                   # Documentation website
+│   └── ...
+│
+├── 📁 out/                       # Index output directory
+│   └── [repo-name]/              # Per-repo indexes
+│       ├── chunks.jsonl          # Code chunks
+│       └── ...
+│
+├── 📁 node_mcp/                  # Node.js MCP server
+│   └── ...
+│
+│
+├── 📄 docker-compose.yml         # Main Docker Compose
+├── 📄 docker-compose.services.yml # Service definitions
+├── 📄 Dockerfile                 # Python container
+├── 📄 Dockerfile.node            # Node.js container
+├── 📄 requirements.txt           # Python dependencies
+├── 📄 requirements-rag.txt       # RAG-specific deps
+├── 📄 package.json               # Node.js dependencies
+├── 📄 Makefile                   # Build commands
+└── 📄 README.md                  # Main documentation
+---
 
-  1. Find the relevant section (use grep or search)
-  2. Add a timestamped entry under "CHANGES LOG"
-  3. Update file line counts if significant changes
-  4. Mark TODOs/issues as resolved
-  5. Add new findings if you discover problems
-  6. Commit the audit WITH your code changes (same commit)
+┌─────────────────────────────────────────────────────────┐
+│  Frontend Layer                                         │
+│  ├── web/ (React/Vite - new)                           │
+│  └── gui/ (Legacy JS - being migrated)                 │
+└─────────────────────────────────────────────────────────┘
+                        ↕ HTTP/SSE
+┌─────────────────────────────────────────────────────────┐
+│  API Layer (FastAPI)                                    │
+│  ├── server/app.py                                      │
+│  ├── server/routers/                                    │
+│  └── server/services/                                    │
+└─────────────────────────────────────────────────────────┘
+                        ↕
+┌─────────────────────────────────────────────────────────┐
+│  RAG Engine Layer                                       │
+│  ├── retrieval/hybrid_search.py                        │
+│  ├── server/langgraph_app.py                           │
+│  └── reranker/                                          │
+└─────────────────────────────────────────────────────────┘
+                        ↕
+┌─────────────────────────────────────────────────────────┐
+│  Data Layer                                             │
+│  ├── Qdrant (vectors)                                   │
+│  ├── Redis (cache/checkpoints)                          │
+│  └── BM25S (sparse search)                              │
+└─────────────────────────────────────────────────────────┘
+                        ↕
+┌─────────────────────────────────────────────────────────┐
+│  Indexing Layer                                         │
+│  ├── indexer/index_repo.py                              │
+│  └── indexer/build_cards.py                             │
+└─────────────────────────────────────────────────────────┘
+
+
 

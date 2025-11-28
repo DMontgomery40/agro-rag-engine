@@ -4,14 +4,14 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from server.utils import read_json, atomic_write_json
 from retrieval.hybrid_search import search_routed_multi, search_routed
+from server.services.config_registry import get_config_registry
 
 router = APIRouter()
+_config = get_config_registry()
 
 def _golden_path() -> Path:
-    env_p = os.getenv('GOLDEN_PATH')
-    if env_p:
-        return Path(env_p)
-    return Path('data/golden.json')
+    golden_path_str = _config.get_str('GOLDEN_PATH', 'data/evaluation_dataset.json')
+    return Path(golden_path_str)
 
 @router.get("/api/golden")
 def golden_list() -> Dict[str, Any]:
@@ -32,7 +32,7 @@ def golden_add(payload: Dict[str, Any]) -> Dict[str, Any]:
     
     new_q = {
         "q": q,
-        "repo": str(payload.get("repo") or os.getenv("REPO", "agro")),
+        "repo": str(payload.get("repo") or os.getenv("REPO", "agro")),  # REPO is infrastructure, keep as-is
         "expect_paths": list(payload.get("expect_paths") or [])
     }
     data.append(new_q)
@@ -81,12 +81,12 @@ def golden_test(payload: Dict[str, Any]) -> Dict[str, Any]:
     q = str(payload.get("q") or "").strip()
     repo = str(payload.get("repo") or os.getenv("REPO", "agro"))
     expect_paths = list(payload.get("expect_paths") or [])
-    
+
     # Handle potential None or string types safely
     raw_k = payload.get("final_k")
-    final_k = int(raw_k) if raw_k is not None else int(os.getenv("EVAL_FINAL_K", "5"))
-    
-    use_multi = payload.get("use_multi", os.getenv("EVAL_MULTI", "1") == "1")
+    final_k = int(raw_k) if raw_k is not None else _config.get_int("EVAL_FINAL_K", 5)
+
+    use_multi = payload.get("use_multi", _config.get_bool("EVAL_MULTI", True))
 
     if use_multi:
         docs = search_routed_multi(q, repo_override=repo, m=4, final_k=final_k)

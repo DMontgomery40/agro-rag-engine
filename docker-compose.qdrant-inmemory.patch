@@ -1,0 +1,17 @@
+--- docker-compose.yml.orig
++++ docker-compose.yml
+@@ -10,9 +10,10 @@
+       - "6333:6333"
+       - "6334:6334"
+     environment:
+       - QDRANT__STORAGE__USE_MMAP=false
+-      - QDRANT__STORAGE__ON_DISK_PERSISTENCE=true
+-    volumes:
+-      - ./data/qdrant:/qdrant/storage
++      - QDRANT__STORAGE__ON_DISK_PERSISTENCE=false
++    # No volumes - in-memory only avoids Mac FUSE/osxfs corruption
++    # Collection auto-rebuilds from BM25 index on startup via init script
++    # tmpfs provides optional RAM disk for performance
+ 
+   redis:
+     image: redis/redis-stack:7.2.0-v10

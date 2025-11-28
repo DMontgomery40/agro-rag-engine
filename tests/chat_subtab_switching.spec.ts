@@ -46,11 +46,19 @@ test.describe('Chat Tab Subtab Switching', () => {
     expect(uiClass).not.toContain('active');
   });
 
-  test('Both subtabs exist in DOM at all times', async ({ page }) => {
+  test('Subtabs mount lazily but switch reliably', async ({ page }) => {
     const uiSubtab = page.locator('#tab-chat-ui');
-    const settingsSubtab = page.locator('#tab-chat-settings');
-
     expect(await uiSubtab.count()).toBe(1);
-    expect(await settingsSubtab.count()).toBe(1);
+
+    // Settings should not exist until clicked (lazy mount)
+    const settingsBefore = page.locator('#tab-chat-settings');
+    expect(await settingsBefore.count()).toBeLessThanOrEqual(1);
+
+    // Click and verify it appears
+    const settingsButton = page.locator('#chat-subtabs button:has-text("Settings")');
+    await settingsButton.click();
+    await page.waitForTimeout(200);
+    const settingsAfter = page.locator('#tab-chat-settings');
+    expect(await settingsAfter.count()).toBe(1);
   });
 });

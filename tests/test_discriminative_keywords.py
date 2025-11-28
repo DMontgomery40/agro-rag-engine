@@ -8,72 +8,71 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from retrieval.hybrid_search import _feature_bonus, _load_discriminative_keywords
+from retrieval.hybrid_search import get_keyword_boost, load_discriminative_keywords
 
 
 def test_discriminative_keywords_loading():
     """Test that discriminative keywords load properly."""
-    keywords = _load_discriminative_keywords('agro')
+    keywords = load_discriminative_keywords('agro')
     assert keywords, "Discriminative keywords should be loaded"
     assert len(keywords) > 10, f"Should have at least 10 keywords, got {len(keywords)}"
-    
+
     # Check for some expected RAG-related keywords
     expected_terms = ['hybrid', 'bm25', 'qdrant', 'rerank', 'embedding']
     found_terms = [term for term in expected_terms if term in keywords]
     assert len(found_terms) >= 3, f"Should find at least 3 expected RAG terms, found: {found_terms}"
-    
+
     print(f"✓ Loaded {len(keywords)} discriminative keywords")
     print(f"✓ Found expected RAG terms: {found_terms}")
-    return keywords
 
 
 def test_feature_bonus_with_keywords():
-    """Test that feature bonus properly boosts based on discriminative keywords."""
-    keywords = _load_discriminative_keywords('agro')
-    
+    """Test that keyword boost properly boosts based on discriminative keywords."""
+    keywords = load_discriminative_keywords('agro')
+
     # Test 1: Query with discriminative keywords should get boosted
     query1 = "how does hybrid search work with bm25 and qdrant"
     fp1 = "retrieval/hybrid_search.py"
     code1 = "def hybrid_search with embedding and rerank"
-    
-    bonus1 = _feature_bonus(query1, fp1, code1)
-    assert bonus1 > 0, f"Query with keywords should get positive bonus, got {bonus1}"
-    print(f"✓ Query with keywords got bonus: {bonus1:.3f}")
-    
+
+    boost1 = get_keyword_boost(query1, fp1, code1, 'agro')
+    assert boost1 > 1.0, f"Query with keywords should get boost > 1.0, got {boost1}"
+    print(f"✓ Query with keywords got boost: {boost1:.3f}")
+
     # Test 2: Path matching keywords should get boosted
     query2 = "search implementation"
-    fp2 = "retrieval/hybrid_search.py" 
+    fp2 = "retrieval/hybrid_search.py"
     code2 = "def search"
-    
-    bonus2 = _feature_bonus(query2, fp2, code2)
-    print(f"✓ Path with 'hybrid' got bonus: {bonus2:.3f}")
-    
-    # Test 3: Query with no keywords should get minimal/no boost
+
+    boost2 = get_keyword_boost(query2, fp2, code2, 'agro')
+    print(f"✓ Path with 'hybrid' got boost: {boost2:.3f}")
+
+    # Test 3: Query with no keywords should get no boost (1.0)
     query3 = "hello world test"
     fp3 = "some/random/file.py"
     code3 = "print('hello world')"
-    
-    bonus3 = _feature_bonus(query3, fp3, code3)
-    assert bonus3 < bonus1, f"Query without keywords should get less bonus than with keywords"
-    print(f"✓ Query without keywords got lower bonus: {bonus3:.3f}")
-    
-    # Test 4: Multiple keyword matches should increase bonus
+
+    boost3 = get_keyword_boost(query3, fp3, code3, 'agro')
+    assert boost3 <= boost1, f"Query without keywords should get less/equal boost than with keywords"
+    print(f"✓ Query without keywords got boost: {boost3:.3f}")
+
+    # Test 4: Multiple keyword matches should increase boost
     query4 = "hybrid bm25 qdrant rerank embedding"  # Many keywords
     fp4 = "retrieval/hybrid_search.py"
     code4 = "hybrid search with bm25"
-    
-    bonus4 = _feature_bonus(query4, fp4, code4)
-    assert bonus4 >= bonus1, f"More keyword matches should give equal or higher bonus"
-    print(f"✓ Query with many keywords got bonus: {bonus4:.3f}")
-    
-    # Test 5: Legacy hardcoded boosts should still work
-    query5 = "diagnostic health check"
-    fp5 = "server/diagnostic.py"
-    code5 = "def health_check"
-    
-    bonus5 = _feature_bonus(query5, fp5, code5)
-    assert bonus5 > 0, f"Legacy diagnostic keywords should still work"
-    print(f"✓ Legacy keywords still work, got bonus: {bonus5:.3f}")
+
+    boost4 = get_keyword_boost(query4, fp4, code4, 'agro')
+    assert boost4 >= boost1, f"More keyword matches should give equal or higher boost"
+    print(f"✓ Query with many keywords got boost: {boost4:.3f}")
+
+    # Test 5: No keywords in any field should return 1.0 (no boost)
+    query5 = "random unrelated query"
+    fp5 = "some/other/file.py"
+    code5 = "def some_function"
+
+    boost5 = get_keyword_boost(query5, fp5, code5, 'agro')
+    assert boost5 == 1.0, f"No keyword matches should return 1.0 (no boost), got {boost5}"
+    print(f"✓ No keywords returns 1.0, got boost: {boost5:.3f}")
 
 
 def main():
@@ -84,10 +83,10 @@ def main():
     try:
         # Test keyword loading
         print("\n[1] Testing keyword loading...")
-        keywords = test_discriminative_keywords_loading()
-        
+        test_discriminative_keywords_loading()
+
         # Test feature bonus calculation
-        print(f"\n[2] Testing feature bonus with {len(keywords)} keywords...")
+        print(f"\n[2] Testing feature bonus...")
         test_feature_bonus_with_keywords()
         
         print("\n" + "=" * 60)

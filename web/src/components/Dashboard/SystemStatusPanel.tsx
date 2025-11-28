@@ -1,5 +1,5 @@
 // AGRO - System Status Panel Component
-// 5 status boxes: Health, Repo, Cards, MCP, Auto-Tune
+// Status boxes: Health, Repo, Cards, MCP
 
 import React, { useEffect, useState } from 'react';
 
@@ -9,7 +9,6 @@ interface SystemStats {
   branch: string;
   cards: string;
   mcp: string;
-  autotune: string;
 }
 
 export function SystemStatusPanel() {
@@ -19,7 +18,6 @@ export function SystemStatusPanel() {
     branch: '—',
     cards: '—',
     mcp: '—',
-    autotune: '—',
   });
 
   const loadStats = async () => {
@@ -50,7 +48,6 @@ export function SystemStatusPanel() {
         branch: config.git_branch || 'development',
         cards: `${indexData.total_chunks || 0} cards`,
         mcp: `${mcpHost}:${mcpPort}${mcpPath}`,
-        autotune: config.env?.AUTOTUNE_ENABLED === '1' ? 'enabled' : 'disabled',
       });
     } catch (e) {
       console.error('[SystemStatus] Failed to load stats:', e);
@@ -204,26 +201,6 @@ export function SystemStatusPanel() {
           >
             {stats.mcp}
           </div>
-        </div>
-
-        {/* Auto-Tune */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '8px 12px',
-            background: 'var(--card-bg)',
-            borderRadius: '4px',
-            border: '1px solid var(--line)',
-          }}
-        >
-          <span style={{ fontSize: '11px', color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Auto-Tune
-          </span>
-          <span id="dash-autotune" className="mono" style={{ color: 'var(--warn)', fontWeight: 600 }}>
-            {stats.autotune}
-          </span>
         </div>
       </div>
     </div>

@@ -31,12 +31,37 @@ except Exception:
 
 # Module-level cached configuration values from ConfigRegistry
 _config_registry = get_config_registry()
+_REPO = _config_registry.get_str('REPO', 'agro')  # Active repository - used when not specified in request
 _MAX_QUERY_REWRITES = _config_registry.get_int('MAX_QUERY_REWRITES', 2)
 _LANGGRAPH_FINAL_K = _config_registry.get_int('LANGGRAPH_FINAL_K', 20)
 _FALLBACK_CONFIDENCE = _config_registry.get_float('FALLBACK_CONFIDENCE', 0.55)
 _CONF_TOP1 = _config_registry.get_float('CONF_TOP1', 0.62)
 _CONF_AVG5 = _config_registry.get_float('CONF_AVG5', 0.55)
 _CONF_ANY = _config_registry.get_float('CONF_ANY', 0.55)
+_PACK_BUDGET_TOKENS = _config_registry.get_int('PACK_BUDGET_TOKENS', 4096)
+_HYDRATION_MODE = _config_registry.get_str('HYDRATION_MODE', 'lazy')
+_SYSTEM_PROMPT = _config_registry.get_str('SYSTEM_PROMPT', '''You are an expert software engineer and code analysis assistant.
+
+## Your Role:
+- Answer questions about the indexed codebase with precision and accuracy
+- Always cite specific file paths and line ranges from the provided code context
+- Provide clear explanations of how code works, what it does, and why design decisions were made
+- Offer practical, actionable insights based on the actual implementation
+
+## Guidelines:
+- **Be Evidence-Based**: Ground every answer in the provided code context
+- **Be Specific**: Include file paths, line numbers, function/class names, and relevant code snippets
+- **Be Clear**: Explain technical concepts in an accessible way
+- **Be Honest**: If the context doesn't contain enough information, say so
+- **Be Helpful**: Consider edge cases, error handling, and best practices when relevant
+
+## Response Format:
+- Start with a direct answer to the question
+- Support with specific citations: `file_path:start_line-end_line`
+- Include relevant code snippets when they add clarity
+- Explain the "why" behind implementation choices when apparent
+
+You answer strictly from the provided code context. Always cite file paths and line ranges you used.''')
 
 
 def reload_config():
@@ -45,14 +70,39 @@ def reload_config():
     Call this function after config changes to update module-level cached values.
     This is automatically called when the config registry is reloaded via the API.
     """
-    global _MAX_QUERY_REWRITES, _LANGGRAPH_FINAL_K, _FALLBACK_CONFIDENCE
-    global _CONF_TOP1, _CONF_AVG5, _CONF_ANY
+    global _REPO, _MAX_QUERY_REWRITES, _LANGGRAPH_FINAL_K, _FALLBACK_CONFIDENCE
+    global _CONF_TOP1, _CONF_AVG5, _CONF_ANY, _PACK_BUDGET_TOKENS, _HYDRATION_MODE, _SYSTEM_PROMPT
+    _REPO = _config_registry.get_str('REPO', 'agro')
     _MAX_QUERY_REWRITES = _config_registry.get_int('MAX_QUERY_REWRITES', 2)
     _LANGGRAPH_FINAL_K = _config_registry.get_int('LANGGRAPH_FINAL_K', 20)
     _FALLBACK_CONFIDENCE = _config_registry.get_float('FALLBACK_CONFIDENCE', 0.55)
     _CONF_TOP1 = _config_registry.get_float('CONF_TOP1', 0.62)
     _CONF_AVG5 = _config_registry.get_float('CONF_AVG5', 0.55)
     _CONF_ANY = _config_registry.get_float('CONF_ANY', 0.55)
+    _PACK_BUDGET_TOKENS = _config_registry.get_int('PACK_BUDGET_TOKENS', 4096)
+    _HYDRATION_MODE = _config_registry.get_str('HYDRATION_MODE', 'lazy')
+    _SYSTEM_PROMPT = _config_registry.get_str('SYSTEM_PROMPT', '''You are an expert software engineer and code analysis assistant.
+
+## Your Role:
+- Answer questions about the indexed codebase with precision and accuracy
+- Always cite specific file paths and line ranges from the provided code context
+- Provide clear explanations of how code works, what it does, and why design decisions were made
+- Offer practical, actionable insights based on the actual implementation
+
+## Guidelines:
+- **Be Evidence-Based**: Ground every answer in the provided code context
+- **Be Specific**: Include file paths, line numbers, function/class names, and relevant code snippets
+- **Be Clear**: Explain technical concepts in an accessible way
+- **Be Honest**: If the context doesn't contain enough information, say so
+- **Be Helpful**: Consider edge cases, error handling, and best practices when relevant
+
+## Response Format:
+- Start with a direct answer to the question
+- Support with specific citations: `file_path:start_line-end_line`
+- Include relevant code snippets when they add clarity
+- Explain the "why" behind implementation choices when apparent
+
+You answer strictly from the provided code context. Always cite file paths and line ranges you used.''')
 
 
 class RAGState(TypedDict):
@@ -79,7 +129,7 @@ def retrieve_node(state: RAGState) -> Dict:
     tr = get_trace()
     docs = hybrid_search_routed_multi(q, repo_override=repo, m=mq, final_k=_LANGGRAPH_FINAL_K, trace=tr)
     conf = float(sum(d.get('rerank_score',0.0) for d in docs)/max(1,len(docs)))
-    repo_used = (repo or (docs[0].get('repo') if docs else os.getenv('REPO','project')))
+    repo_used = (repo or (docs[0].get('repo') if docs else _REPO))
     # freshness snapshot (per-request)
     try:
         from server.index_stats import get_index_stats
@@ -137,7 +187,9 @@ def route_after_retrieval(state:RAGState)->str:
 
 def rewrite_query(state: RAGState) -> Dict:
     q = state['question']
-    sys = "You rewrite developer questions into search-optimized queries without changing meaning."
+    # Get query rewrite prompt from config (or use default)
+    default_prompt = "You rewrite developer questions into search-optimized queries without changing meaning."
+    sys = _config_registry.get_str('PROMPT_QUERY_REWRITE', default_prompt)
     user = f"Rewrite this for code search (expand CamelCase, include API nouns), one line.\n\n{q}"
     newq, _ = generate_text(user_input=user, system_instructions=sys, reasoning_effort=None)
     newq = (newq or '').strip()
@@ -150,7 +202,6 @@ def generate_node(state: RAGState) -> Dict:
     try:
         tr = get_trace()
         if tr is not None:
-            budget = int(os.getenv('PACK_BUDGET_TOKENS', '4096') or 4096)
             selected = []
             for d in ctx:
                 sel = {
@@ -161,9 +212,9 @@ def generate_node(state: RAGState) -> Dict:
                 }
                 selected.append(sel)
             tr.add('packer.pack', {
-                'budget_tokens': budget,
+                'budget_tokens': _PACK_BUDGET_TOKENS,
                 'diversity_penalty': 0.0,
-                'hydration_mode': (os.getenv('HYDRATION_MODE','lazy') or 'lazy'),
+                'hydration_mode': _HYDRATION_MODE,
                 'selected': selected,
                 'final_tokens': sum(s['est_tokens'] for s in selected)
             })
@@ -172,7 +223,7 @@ def generate_node(state: RAGState) -> Dict:
     ql = (q or '').lower()
     if any(kw in ql for kw in ("last index", "last indexed", "when was this indexed", "when indexed", "index time")):
         stats = get_index_stats()
-        repo_hdr = state.get('repo') or os.getenv('REPO','project')
+        repo_hdr = state.get('repo') or _REPO
         paths = None
         for r in stats.get('repos', []):
             if str(r.get('name')) == str(repo_hdr):
@@ -193,110 +244,37 @@ def generate_node(state: RAGState) -> Dict:
         return f"- {d['file_path']}:{d['start_line']}-{d['end_line']}{mark}"
     citations = "\n".join([_cite(d) for d in ctx])
     context_text = "\n\n".join([d.get('code','') for d in ctx])
-    # Use custom system prompt if provided, otherwise use default
-    sys = os.getenv('SYSTEM_PROMPT') or '''You are an expert software engineer and smart home automation specialist with deep knowledge of both AGRO (Retrieval-Augmented Generation) systems and  plugin development.
-
-## Your Expertise:
-
-###  Plugin Development:
-- **Plugin Architecture**: Expert in creating device plugins, automation plugins, and integration plugins for the  smart home platform
-- **Device Interfaces**: Deep understanding of Interface types (Camera, MotionSensor, BinarySensor, Switch, Lock, Thermostat, etc.)
-- **Protocols & Communication**: 
-  - **WebRTC**: Real-time video streaming, peer connections, data channels
-  - **RTSP**: Real-Time Streaming Protocol for IP cameras
-  - **ONVIF**: Network video interface standard
-  - **HTTP/HTTPS**: REST APIs, webhooks, authentication
-  - **MQTT**: Message queuing for IoT devices
-  - **WebSockets**: Real-time bidirectional communication
-  - **FFmpeg**: Video processing, transcoding, streaming
-- **Smart Home Integration**: HomeKit, Alexa, Google Assistant, Home Assistant
-- **AI & Computer Vision**: Motion detection, object recognition, face detection
-- **Device Management**: Discovery, pairing, state management, event handling
-
-### AGRO RAG System:
-- **Hybrid Search**: BM25 + dense vector retrieval with reranking
-- **Vector Databases**: Qdrant, embeddings, semantic search
-- **Code Analysis**: AST chunking, semantic cards, keyword generation
-- **Multi-Repository**: Routing, indexing, evaluation systems
-- **MCP Integration**: Model Context Protocol for AI agents
-
-## Your Role:
-- Answer questions about both AGRO and  codebases with expert precision
-- Help developers create robust, efficient  plugins for any device type
-- Provide guidance on protocol implementation, interface design, and best practices
-- Always cite specific file paths and line ranges from the provided code context
-- Offer practical, production-ready solutions with error handling and edge cases
-
-## Response Style:
-- Be direct and technical, but accessible
-- Include relevant code examples when helpful
-- Explain the "why" behind recommendations
-- Consider performance, security, and maintainability
-- Always ground answers in the actual codebase when available
-
-You answer strictly from the provided code context. Always cite file paths and line ranges you used.'''
+    # Use cached system prompt from config
+    sys = _SYSTEM_PROMPT
     user = f"Question:\n{q}\n\nContext:\n{context_text}\n\nCitations (paths and line ranges):\n{citations}\n\nAnswer:"
-    content, _ = generate_text(user_input=user, system_instructions=sys, reasoning_effort=None)
+    content, meta = generate_text(user_input=user, system_instructions=sys, reasoning_effort=None)
     content = content or ''
     conf = float(state.get('confidence', 0.0) or 0.0)
     if conf < _FALLBACK_CONFIDENCE:
-        repo = state.get('repo') or os.getenv('REPO','project')
+        repo = state.get('repo') or _REPO
         alt_docs = hybrid_search_routed_multi(q, repo_override=repo, m=4, final_k=10)
         if alt_docs:
             ctx2 = alt_docs[:5]
             citations2 = "\n".join([f"- {d['file_path']}:{d['start_line']}-{d['end_line']}" + (" (card)" if d.get('card_hit') else "") for d in ctx2])
             context_text2 = "\n\n".join([d.get('code','') for d in ctx2])
             user2 = f"Question:\n{q}\n\nContext:\n{context_text2}\n\nCitations (paths and line ranges):\n{citations2}\n\nAnswer:"
-            # Use same system prompt as first generation attempt
-            sys2 = os.getenv('SYSTEM_PROMPT') or '''You are an expert software engineer and smart home automation specialist with deep knowledge of both AGRO (Retrieval-Augmented Generation) systems and  plugin development.
-
-## Your Expertise:
-
-###  Plugin Development:
-- **Plugin Architecture**: Expert in creating device plugins, automation plugins, and integration plugins for the  smart home platform
-- **Device Interfaces**: Deep understanding of Interface types (Camera, MotionSensor, BinarySensor, Switch, Lock, Thermostat, etc.)
-- **Protocols & Communication**: 
-  - **WebRTC**: Real-time video streaming, peer connections, data channels
-  - **RTSP**: Real-Time Streaming Protocol for IP cameras
-  - **ONVIF**: Network video interface standard
-  - **HTTP/HTTPS**: REST APIs, webhooks, authentication
-  - **MQTT**: Message queuing for IoT devices
-  - **WebSockets**: Real-time bidirectional communication
-  - **FFmpeg**: Video processing, transcoding, streaming
-- **Smart Home Integration**: HomeKit, Alexa, Google Assistant, Home Assistant
-- **AI & Computer Vision**: Motion detection, object recognition, face detection
-- **Device Management**: Discovery, pairing, state management, event handling
-
-### AGRO RAG System:
-- **Hybrid Search**: BM25 + dense vector retrieval with reranking
-- **Vector Databases**: Qdrant, embeddings, semantic search
-- **Code Analysis**: AST chunking, semantic cards, keyword generation
-- **Multi-Repository**: Routing, indexing, evaluation systems
-- **MCP Integration**: Model Context Protocol for AI agents
-
-## Your Role:
-- Answer questions about both AGRO and  codebases with expert precision
-- Help developers create robust, efficient  plugins for any device type
-- Provide guidance on protocol implementation, interface design, and best practices
-- Always cite specific file paths and line ranges from the provided code context
-- Offer practical, production-ready solutions with error handling and edge cases
-
-## Response Style:
-- Be direct and technical, but accessible
-- Include relevant code examples when helpful
-- Explain the "why" behind recommendations
-- Consider performance, security, and maintainability
-- Always ground answers in the actual codebase when available
-
-You answer strictly from the provided code context. Always cite file paths and line ranges you used.'''
-            content2, _ = generate_text(user_input=user2, system_instructions=sys2, reasoning_effort=None)
+            # Use same cached system prompt as first generation attempt
+            content2, meta2 = generate_text(user_input=user2, system_instructions=_SYSTEM_PROMPT, reasoning_effort=None)
             content = (content2 or content or '')
-    repo_hdr = state.get('repo') or (ctx[0].get('repo') if ctx else None) or os.getenv('REPO','project')
+            if meta2:
+                meta = meta2
+    repo_hdr = state.get('repo') or (ctx[0].get('repo') if ctx else None) or _REPO
     header = f"[repo: {repo_hdr}]"
-    return {'generation': header + "\n" + content}
+    out = {'generation': header + "\n" + content}
+    try:
+        if meta is not None:
+            out['gen_meta'] = meta
+    except Exception:
+        pass
+    return out
 
 def fallback_node(state: RAGState) -> Dict:
-    repo_hdr = state.get('repo') or (state.get('documents', [])[0].get('repo') if state.get('documents') else None) or os.getenv('REPO','project')
+    repo_hdr = state.get('repo') or (state.get('documents', [])[0].get('repo') if state.get('documents') else None) or _REPO
     header = f"[repo: {repo_hdr}]"
     msg = "I don't have high confidence from local code. Try refining the question or expanding the context."
     return {'generation': header + "\n" + msg}

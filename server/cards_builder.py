@@ -25,21 +25,46 @@ _CARDS_ENRICH_DEFAULT = None
 _CARDS_MAX = None
 _ENRICH_CODE_CHUNKS = None
 _ENRICH_TIMEOUT = None
+_OUT_DIR_BASE = None
+_EMBEDDING_TYPE = None
+_ENRICH_MODEL = None
+_GEN_MODEL = None
+_RERANK_BACKEND = None
+_COHERE_RERANK_MODEL = None
+_RERANKER_MODEL = None
 
 def _load_cached_config():
     """Load cards config values into module-level cache."""
     global _CARDS_ENRICH_DEFAULT, _CARDS_MAX, _ENRICH_CODE_CHUNKS, _ENRICH_TIMEOUT
+    global _OUT_DIR_BASE, _EMBEDDING_TYPE, _ENRICH_MODEL, _GEN_MODEL
+    global _RERANK_BACKEND, _COHERE_RERANK_MODEL, _RERANKER_MODEL
 
     if _config_registry is None:
+        # Fallback to os.getenv only when registry unavailable
         _CARDS_ENRICH_DEFAULT = int(os.getenv('CARDS_ENRICH_DEFAULT', '1') or '1')
         _CARDS_MAX = int(os.getenv('CARDS_MAX', '100') or '100')
         _ENRICH_CODE_CHUNKS = int(os.getenv('ENRICH_CODE_CHUNKS', '1') or '1')
         _ENRICH_TIMEOUT = int(os.getenv('ENRICH_TIMEOUT', '30') or '30')
+        _OUT_DIR_BASE = os.getenv("OUT_DIR_BASE") or str(Path(__file__).resolve().parents[1] / "out")
+        _EMBEDDING_TYPE = (os.getenv("EMBEDDING_TYPE", "openai") or "openai").lower()
+        _ENRICH_MODEL = os.getenv("ENRICH_MODEL") or os.getenv("GEN_MODEL") or "gpt-4o-mini"
+        _GEN_MODEL = os.getenv("GEN_MODEL") or "gpt-4o-mini"
+        _RERANK_BACKEND = (os.getenv("RERANK_BACKEND", "local") or "local").lower()
+        _COHERE_RERANK_MODEL = os.getenv("COHERE_RERANK_MODEL", "rerank-3.5")
+        _RERANKER_MODEL = os.getenv("RERANKER_MODEL", "BAAI/bge-reranker-v2-m3")
     else:
+        # Use config_registry (preferred path)
         _CARDS_ENRICH_DEFAULT = _config_registry.get_int('CARDS_ENRICH_DEFAULT', 1)
         _CARDS_MAX = _config_registry.get_int('CARDS_MAX', 100)
         _ENRICH_CODE_CHUNKS = _config_registry.get_int('ENRICH_CODE_CHUNKS', 1)
         _ENRICH_TIMEOUT = _config_registry.get_int('ENRICH_TIMEOUT', 30)
+        _OUT_DIR_BASE = _config_registry.get_str('OUT_DIR_BASE', str(Path(__file__).resolve().parents[1] / "out"))
+        _EMBEDDING_TYPE = _config_registry.get_str('EMBEDDING_TYPE', 'openai').lower()
+        _ENRICH_MODEL = _config_registry.get_str('ENRICH_MODEL', '') or _config_registry.get_str('GEN_MODEL', 'gpt-4o-mini')
+        _GEN_MODEL = _config_registry.get_str('GEN_MODEL', 'gpt-4o-mini')
+        _RERANK_BACKEND = _config_registry.get_str('RERANK_BACKEND', 'local').lower()
+        _COHERE_RERANK_MODEL = _config_registry.get_str('COHERE_RERANK_MODEL', 'rerank-3.5')
+        _RERANKER_MODEL = _config_registry.get_str('RERANKER_MODEL', 'BAAI/bge-reranker-v2-m3')
 
 def reload_config():
     """Reload all cached config values from registry."""
@@ -59,32 +84,30 @@ QUICK_TIPS = [
 
 
 def _progress_dir(repo: str) -> Path:
-    base = Path(os.getenv("OUT_DIR_BASE") or Path(__file__).resolve().parents[1] / "out")
+    base = Path(_OUT_DIR_BASE)
     return base / "cards" / repo
 
 
 def _logs_path() -> Path:
-    base = Path(os.getenv("OUT_DIR_BASE") or Path(__file__).resolve().parents[1] / "out")
+    base = Path(_OUT_DIR_BASE)
     return base / "logs" / "cards_build.log"
 
 
 def _model_info() -> Dict[str, str]:
     # Embed
-    et = (os.getenv("EMBEDDING_TYPE", "openai") or "openai").lower()
-    if et == "voyage":
+    if _EMBEDDING_TYPE == "voyage":
         embed = "voyage-code-3"
-    elif et == "local":
+    elif _EMBEDDING_TYPE == "local":
         embed = "BAAI/bge-small-en-v1.5"
     else:
         embed = "text-embedding-3-large"
     # Enrich
-    enrich = os.getenv("ENRICH_MODEL") or os.getenv("GEN_MODEL") or "gpt-4o-mini"
+    enrich = _ENRICH_MODEL
     # Rerank
-    rr_backend = (os.getenv("RERANK_BACKEND", "local") or "local").lower()
-    if rr_backend == "cohere":
-        rerank = os.getenv("COHERE_RERANK_MODEL", "rerank-3.5")
+    if _RERANK_BACKEND == "cohere":
+        rerank = _COHERE_RERANK_MODEL
     else:
-        rerank = os.getenv("RERANKER_MODEL", "BAAI/bge-reranker-v2-m3")
+        rerank = _RERANKER_MODEL
     return {"embed": embed, "enrich": str(enrich), "rerank": rerank}
 
 
@@ -254,7 +277,7 @@ class CardsBuildJob:
             self.done = 0
             self._emit_progress(QUICK_TIPS[2])
 
-            max_chunks = int(os.getenv("CARDS_MAX", "0") or "0")
+            max_chunks = _CARDS_MAX
             written = 0
             skipped = 0
             with paths["cards"].open("w", encoding="utf-8") as out_json, paths["cards_txt"].open("w", encoding="utf-8") as out_txt:
@@ -273,11 +296,30 @@ class CardsBuildJob:
                     code = (ch.get("code") or "")[:2000]
                     fp = ch.get("file_path", "")
                     if self.enrich:
-                        prompt = (
-                            "Summarize this code chunk for retrieval as a JSON object with keys: "
-                            "symbols (array of names: functions/classes/components/routes), purpose (short sentence), routes (array of route paths if any). "
-                            "Respond with only the JSON.\n\n"
+                        # Get semantic cards prompt from config (or use default)
+                        # Using same prompt as indexer/build_cards.py for consistency
+                        default_prompt = (
+                            "Analyze this code chunk and create a comprehensive JSON summary for code search. "
+                            "Focus on WHAT the code does (business purpose) and HOW it works (technical details). "
+                            "Include all important symbols, patterns, and domain concepts.\n\n"
+                            "JSON format:\n"
+                            "{\n"
+                            "  \"symbols\": [\"function_name\", \"class_name\", \"variable_name\"],\n"
+                            "  \"purpose\": \"Clear business purpose - what problem this solves\",\n"
+                            "  \"technical_details\": \"Key technical implementation details\",\n"
+                            "  \"domain_concepts\": [\"business_term1\", \"business_term2\"],\n"
+                            "  \"routes\": [\"api/endpoint\", \"webhook/path\"],\n"
+                            "  \"dependencies\": [\"external_service\", \"library\"],\n"
+                            "  \"patterns\": [\"design_pattern\", \"architectural_concept\"]\n"
+                            "}\n\n"
+                            "Focus on:\n"
+                            "- Domain-specific terminology and concepts from this codebase\n"
+                            "- Technical patterns and architectural decisions\n"
+                            "- Business logic and problem being solved\n"
+                            "- Integration points, APIs, and external services\n"
+                            "- Key algorithms, data structures, and workflows\n\n"
                         )
+                        prompt = _config_registry.get_str('PROMPT_SEMANTIC_CARDS', default_prompt) if _config_registry else default_prompt
                         user = prompt + code
                         try:
                             text, _meta = generate_text(user_input=user, system_instructions=None, reasoning_effort=None, response_format={"type": "json_object"})
@@ -332,7 +374,18 @@ class CardsBuildJob:
                         syml = card.get("symbols") or []
                         card["purpose"] = (f"Defines {'/'.join(syml[:2])} in {base}" if syml else f"High-level summary for {base}")
                     out_json.write(json.dumps(card, ensure_ascii=False) + "\n")
-                    text_out = " ".join(card.get("symbols", [])) + "\n" + card.get("purpose", "") + "\n" + " ".join(card.get("routes", [])) + "\n" + fp
+                    # Create rich text representation for BM25 indexing (matching indexer/build_cards.py format)
+                    text_parts = [
+                        ' '.join(card.get('symbols', [])),
+                        card.get('purpose', ''),
+                        card.get('technical_details', ''),
+                        ' '.join(card.get('domain_concepts', [])),
+                        ' '.join(card.get('routes', [])),
+                        ' '.join(card.get('dependencies', [])),
+                        ' '.join(card.get('patterns', [])),
+                        fp
+                    ]
+                    text_out = ' '.join(filter(None, text_parts))
                     out_txt.write(text_out.replace("\n", " ") + "\n")
                     written += 1
                     self.done = idx + 1
@@ -357,7 +410,13 @@ class CardsBuildJob:
                 tok = Tokenizer(stemmer=stemmer, stopwords="en")
                 docs = [ln.strip() for ln in paths["cards_txt"].read_text(encoding="utf-8").splitlines() if ln.strip()]
                 tokens = tok.tokenize(docs)
-                retriever = bm25s.BM25(method="lucene", k1=1.2, b=0.65)
+                # Load BM25 parameters from config
+                from server.services.config_registry import get_config_registry
+                cfg = get_config_registry()
+                bm25_k1 = cfg.get_float('BM25_K1', 1.2)
+                bm25_b = cfg.get_float('BM25_B', 0.4)
+                
+                retriever = bm25s.BM25(method="lucene", k1=bm25_k1, b=bm25_b)
                 retriever.index(tokens)
                 try:
                     retriever.vocab_dict = {str(k): v for k, v in retriever.vocab_dict.items()}

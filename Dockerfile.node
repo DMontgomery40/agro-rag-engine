@@ -1,8 +1,8 @@
 FROM node:20-alpine
 WORKDIR /app
-COPY package.json ./
+COPY node_mcp/package.json ./
 RUN npm i --no-audit --no-fund
-COPY server.mjs ./
+COPY node_mcp/server.mjs ./
 EXPOSE 8014
 ENV NODE_ENV=production
 CMD ["node","server.mjs"]

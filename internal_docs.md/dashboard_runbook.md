@@ -68,7 +68,7 @@ scrape_configs:
   - job_name: "agro"
     metrics_path: /metrics
     static_configs:
-      - targets: ["host.docker.internal:8000"]
+      - targets: ["host.docker.internal:8012"]
 YAML
 && \
 DC="docker compose" && $DC version >/dev/null 2>&1 || DC="docker-compose" && \
@@ -689,7 +689,7 @@ scrape_configs:
   - job_name: "agro"
     metrics_path: /metrics
     static_configs:
-      - targets: ["host.docker.internal:8000"]  # or your LAN/IP:PORT if running elsewhere
+      - targets: ["host.docker.internal:8012"]  # or your LAN/IP:PORT if running elsewhere
 
 
 Restart Prometheus if you changed it.

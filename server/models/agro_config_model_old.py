@@ -212,6 +212,21 @@ class LayerBonusConfig(BaseModel):
 class RerankingConfig(BaseModel):
     """Reranking configuration for result refinement."""
 
+    reranker_active: str = Field(
+        default="local",
+        description="Active reranker choice (local vs cloud provider)"
+    )
+
+    reranker_provider: str = Field(
+        default="",
+        description="Cloud reranker provider when using external API"
+    )
+
+    reranker_cloud_model: str = Field(
+        default="rerank-3.5",
+        description="Selected cloud reranker model for the chosen provider"
+    )
+
     reranker_model: str = Field(
         default="cross-encoder/ms-marco-MiniLM-L-12-v2",
         description="Reranker model path"
@@ -278,8 +293,7 @@ class RerankingConfig(BaseModel):
 
     reranker_backend: str = Field(
         default="local",
-        pattern="^(local|cohere|voyage)$",
-        description="Reranker backend"
+        description="Reranker backend (local/hf/learning for on-host models, provider id for cloud, none/off to disable)"
     )
 
     reranker_timeout: int = Field(
@@ -288,6 +302,40 @@ class RerankingConfig(BaseModel):
         le=60,
         description="Reranker API timeout (seconds)"
     )
+
+    @field_validator('reranker_backend', mode='before')
+    @classmethod
+    def normalize_backend(cls, v: str) -> str:
+        if isinstance(v, str):
+            val = v.strip().lower()
+            if val in {'off', 'none', 'disabled'}:
+                return 'none'
+            if val == 'hf':
+                return 'hf'
+            return val
+        return v
+
+    @field_validator('reranker_active', mode='before')
+    @classmethod
+    def normalize_active(cls, v: str) -> str:
+        if isinstance(v, str):
+            val = v.strip().lower()
+            if val in {'off', 'none', 'disabled'}:
+                return 'none'
+            if val in {'learning', 'hf'}:
+                return 'local'
+            return val
+        return v
+
+    @field_validator('reranker_provider', mode='before')
+    @classmethod
+    def normalize_provider(cls, v: str) -> str:
+        if isinstance(v, str):
+            val = v.strip().lower()
+            if val in {'off', 'none', 'disabled'}:
+                return 'none'
+            return val
+        return v
 
 
 class GenerationConfig(BaseModel):
@@ -481,6 +529,9 @@ class AgroConfigRoot(BaseModel):
             'AGRO_RERANKER_RELOAD_PERIOD_SEC': self.reranking.agro_reranker_reload_period_sec,
             'COHERE_RERANK_MODEL': self.reranking.cohere_rerank_model,
             'VOYAGE_RERANK_MODEL': self.reranking.voyage_rerank_model,
+            'RERANKER_ACTIVE': self.reranking.reranker_active,
+            'RERANKER_PROVIDER': self.reranking.reranker_provider,
+            'RERANKER_CLOUD_MODEL': self.reranking.reranker_cloud_model,
             'RERANKER_BACKEND': self.reranking.reranker_backend,
             'RERANKER_TIMEOUT': self.reranking.reranker_timeout,
             # Generation params (10 new)
@@ -547,18 +598,21 @@ class AgroConfigRoot(BaseModel):
                 freshness_bonus=data.get('FRESHNESS_BONUS', 0.05),
             ),
             reranking=RerankingConfig(
-                reranker_model=data.get('RERANKER_MODEL', 'cross-encoder/ms-marco-MiniLM-L-12-v2'),
-                agro_reranker_enabled=data.get('AGRO_RERANKER_ENABLED', 1),
-                agro_reranker_alpha=data.get('AGRO_RERANKER_ALPHA', 0.7),
-                agro_reranker_topn=data.get('AGRO_RERANKER_TOPN', 50),
-                agro_reranker_batch=data.get('AGRO_RERANKER_BATCH', 16),
-                agro_reranker_maxlen=data.get('AGRO_RERANKER_MAXLEN', 512),
-                agro_reranker_reload_on_change=data.get('AGRO_RERANKER_RELOAD_ON_CHANGE', 0),
-                agro_reranker_reload_period_sec=data.get('AGRO_RERANKER_RELOAD_PERIOD_SEC', 60),
-                cohere_rerank_model=data.get('COHERE_RERANK_MODEL', 'rerank-3.5'),
-                voyage_rerank_model=data.get('VOYAGE_RERANK_MODEL', 'rerank-2'),
-                reranker_backend=data.get('RERANKER_BACKEND', 'local'),
-                reranker_timeout=data.get('RERANKER_TIMEOUT', 10),
+            reranker_model=data.get('RERANKER_MODEL', 'cross-encoder/ms-marco-MiniLM-L-12-v2'),
+            agro_reranker_enabled=data.get('AGRO_RERANKER_ENABLED', 1),
+            agro_reranker_alpha=data.get('AGRO_RERANKER_ALPHA', 0.7),
+            agro_reranker_topn=data.get('AGRO_RERANKER_TOPN', 50),
+            agro_reranker_batch=data.get('AGRO_RERANKER_BATCH', 16),
+            agro_reranker_maxlen=data.get('AGRO_RERANKER_MAXLEN', 512),
+            agro_reranker_reload_on_change=data.get('AGRO_RERANKER_RELOAD_ON_CHANGE', 0),
+            agro_reranker_reload_period_sec=data.get('AGRO_RERANKER_RELOAD_PERIOD_SEC', 60),
+            cohere_rerank_model=data.get('COHERE_RERANK_MODEL', 'rerank-3.5'),
+            voyage_rerank_model=data.get('VOYAGE_RERANK_MODEL', 'rerank-2'),
+            reranker_active=data.get('RERANKER_ACTIVE', data.get('RERANKER_BACKEND', 'local')),
+            reranker_provider=data.get('RERANKER_PROVIDER', data.get('RERANKER_BACKEND', data.get('RERANK_BACKEND', ''))),
+            reranker_cloud_model=data.get('RERANKER_CLOUD_MODEL') or data.get('COHERE_RERANK_MODEL') or data.get('VOYAGE_RERANK_MODEL') or 'rerank-3.5',
+            reranker_backend=data.get('RERANKER_BACKEND', data.get('RERANK_BACKEND', 'local')),
+            reranker_timeout=data.get('RERANKER_TIMEOUT', 10),
             ),
             generation=GenerationConfig(
                 gen_model=data.get('GEN_MODEL', 'gpt-4o-mini'),
@@ -625,6 +679,9 @@ AGRO_CONFIG_KEYS = {
     'AGRO_RERANKER_RELOAD_PERIOD_SEC',
     'COHERE_RERANK_MODEL',
     'VOYAGE_RERANK_MODEL',
+    'RERANKER_ACTIVE',
+    'RERANKER_PROVIDER',
+    'RERANKER_CLOUD_MODEL',
     'RERANKER_BACKEND',
     'RERANKER_TIMEOUT',
     # Generation params (10 params)

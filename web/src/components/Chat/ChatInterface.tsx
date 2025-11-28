@@ -2,8 +2,130 @@
 // Main chat UI with message list, input, streaming, and trace panel
 // Reference: /assets/chat tab.png, /assets/chat_built_in.png
 
-import { useState, useEffect, useRef } from 'react';
+import type React from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAPI } from '@/hooks';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { RepoSelector } from '@/components/ui/RepoSelector';
+import { EmbeddingMismatchWarning } from '@/components/ui/EmbeddingMismatchWarning';
+import { useEmbeddingStatus } from '@/hooks/useEmbeddingStatus';
+import { useRepoStore } from '@/stores/useRepoStore';
+
+// Useful tips shown during response generation
+// Each tip has content and optional category for styling
+const AGRO_TIPS = [
+  // RAG & Search Tips
+  { tip: "Use specific file paths like 'server/app.py' to narrow your search to specific areas of the codebase.", category: "search" },
+  { tip: "Try asking 'Where is X implemented?' rather than 'What is X?' for more precise code locations.", category: "search" },
+  { tip: "Multi-query expansion rewrites your question multiple ways to find more relevant results.", category: "rag" },
+  { tip: "The reranker scores results by semantic similarity - higher confidence means better matches.", category: "rag" },
+  { tip: "BM25 finds keyword matches while dense search finds semantic meaning - AGRO uses both.", category: "rag" },
+  { tip: "Click any citation to open the file directly in VS Code at the exact line number.", category: "ux" },
+  { tip: "Fast mode skips reranking for quicker results when you need speed over precision.", category: "rag" },
+  { tip: "The confidence score reflects how well the retrieved documents match your query.", category: "rag" },
+  
+  // Learning Reranker
+  { tip: "Every thumbs up/down you give trains the Learning Reranker to better understand your codebase.", category: "feedback" },
+  { tip: "The cross-encoder reranker learns from your feedback to improve result ordering over time.", category: "feedback" },
+  { tip: "Consistent feedback helps AGRO learn your codebase's unique terminology and patterns.", category: "feedback" },
+  { tip: "The reranker model checkpoints are saved automatically - your feedback is never lost.", category: "feedback" },
+  
+  // Prompts & Models
+  { tip: "Custom system prompts let you tailor AGRO's response style to your team's preferences.", category: "config" },
+  { tip: "Lower temperature (0.0-0.3) gives more focused answers; higher (0.7+) allows more creativity.", category: "config" },
+  { tip: "You can use local models via Ollama for air-gapped environments or cost savings.", category: "config" },
+  { tip: "The model automatically fails over to cloud APIs if local inference isn't available.", category: "config" },
+  
+  // Indexing
+  { tip: "Re-index after major refactors to keep AGRO's understanding of your code current.", category: "indexing" },
+  { tip: "The AST chunker preserves function boundaries - results always show complete code blocks.", category: "indexing" },
+  { tip: "Semantic cards summarize files and classes for better high-level understanding.", category: "indexing" },
+  { tip: "Index stats show when your codebase was last indexed - check Dashboard for details.", category: "indexing" },
+  
+  // Evaluation & Quality
+  { tip: "Run evals regularly to track retrieval quality as your codebase evolves.", category: "eval" },
+  { tip: "Golden questions are your benchmark - add questions that matter to your team.", category: "eval" },
+  { tip: "MRR (Mean Reciprocal Rank) measures how quickly AGRO finds the right answer.", category: "eval" },
+  { tip: "Compare eval runs to see if config changes improved or regressed retrieval quality.", category: "eval" },
+  
+  // Tracing & Debugging
+  { tip: "Enable the Routing Trace to see exactly how AGRO found and ranked your results.", category: "debug" },
+  { tip: "Trace steps show timing for each stage: retrieval, reranking, and generation.", category: "debug" },
+  { tip: "The provider failover trace shows when AGRO switched between local and cloud models.", category: "debug" },
+  { tip: "Use LangSmith integration for detailed traces of the full RAG pipeline.", category: "debug" },
+  
+  // Keyboard & UX
+  { tip: "Press Ctrl+Enter to send messages without clicking the button.", category: "ux" },
+  { tip: "Use Ctrl+K anywhere to quickly search settings and jump to any configuration.", category: "ux" },
+  { tip: "Export your conversation to JSON for documentation or sharing with teammates.", category: "ux" },
+  { tip: "Toggle the side panel to access quick settings without leaving the chat.", category: "ux" },
+  
+  // Infrastructure
+  { tip: "Qdrant stores your vectors locally - no data leaves your machine unless you use cloud models.", category: "infra" },
+  { tip: "Redis caches embeddings and checkpoints for faster repeated queries.", category: "infra" },
+  { tip: "The embedded Grafana dashboard shows real-time metrics and query patterns.", category: "infra" },
+  { tip: "Docker containers can be configured for different deployment scenarios.", category: "infra" },
+  
+  // Best Practices
+  { tip: "Ask follow-up questions - AGRO maintains context from your conversation history.", category: "best" },
+  { tip: "Be specific about what you're looking for: 'error handling in auth' beats 'auth code'.", category: "best" },
+  { tip: "If results seem off, try rephrasing - different words can surface different code.", category: "best" },
+  { tip: "Check citations to verify the answer - AGRO shows exactly where information came from.", category: "best" },
+  { tip: "Use the repo selector to focus on specific repositories in multi-repo setups.", category: "best" },
+  
+  // Advanced
+  { tip: "Profiles let you save and switch between different AGRO configurations instantly.", category: "advanced" },
+  { tip: "The MCP server enables IDE integrations - ask your editor about your code.", category: "advanced" },
+  { tip: "Webhooks can trigger re-indexing automatically when you push code changes.", category: "advanced" },
+  { tip: "The CLI supports all chat features for terminal-first workflows.", category: "advanced" },
+];
+
+// Shuffle array using Fisher-Yates
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+// Calculate display duration based on tip length (min 3s, ~150 chars/sec reading speed)
+function getTipDuration(tip: string): number {
+  const wordsPerMinute = 200;
+  const words = tip.split(' ').length;
+  const readingTimeMs = (words / wordsPerMinute) * 60 * 1000;
+  return Math.max(3000, Math.min(readingTimeMs + 1500, 8000)); // 3-8 seconds
+}
+
+// Category colors for visual variety
+const CATEGORY_COLORS: Record<string, string> = {
+  search: 'var(--link)',
+  rag: 'var(--accent)',
+  feedback: 'var(--success)',
+  config: 'var(--warn)',
+  indexing: 'var(--info)',
+  eval: 'var(--accent)',
+  debug: 'var(--fg-muted)',
+  ux: 'var(--link)',
+  infra: 'var(--info)',
+  best: 'var(--success)',
+  advanced: 'var(--warn)',
+};
+
+const CATEGORY_ICONS: Record<string, string> = {
+  search: '🔍',
+  rag: '🧠',
+  feedback: '👍',
+  config: '⚙️',
+  indexing: '📑',
+  eval: '📊',
+  debug: '🔬',
+  ux: '✨',
+  infra: '🏗️',
+  best: '💡',
+  advanced: '🚀',
+};
 
 interface Message {
   id: string;
@@ -11,79 +133,224 @@ interface Message {
   content: string;
   timestamp: number;
   citations?: string[];
+  confidence?: number;
   traceData?: any;
+  meta?: any; // provider/backend/failover transparency
+  eventId?: string; // For feedback correlation
 }
 
-interface TraceStep {
+export interface TraceStep {
   step: string;
   duration: number;
   details: any;
 }
 
-export function ChatInterface() {
+interface ChatInterfaceProps {
+  traceOpen?: boolean;
+  onTraceUpdate?: (steps: TraceStep[], open: boolean, source?: 'config' | 'response' | 'clear') => void;
+  onTracePreferenceChange?: (open: boolean) => void;
+}
+
+export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChange }: ChatInterfaceProps) {
   const { api } = useAPI();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [streaming, setStreaming] = useState(false);
-  const [selectedRepo, setSelectedRepo] = useState('');
-  const [repositories, setRepositories] = useState<string[]>([]);
-  const [showTrace, setShowTrace] = useState(false);
+  const [typing, setTyping] = useState(false);
+  // Per-query repo override - empty string means use the global activeRepo
+  const [queryRepoOverride, setQueryRepoOverride] = useState('');
+  
+  // Use centralized repo store for repo list and default
+  const { repos, activeRepo, loadRepos } = useRepoStore();
+  
+  // Check if index exists for "no index" warning
+  const { status: embeddingStatus } = useEmbeddingStatus();
+  const [tracePreference, setTracePreference] = useState<boolean>(() => Boolean(traceOpen));
   const [currentTrace, setCurrentTrace] = useState<TraceStep[]>([]);
   const [showSettings, setShowSettings] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const typingStartedAtRef = useRef<number | null>(null);
+  const streamingSupportedRef = useRef<boolean | null>(null);
+  
+  // Tip rotation state for streaming indicator
+  const [currentTip, setCurrentTip] = useState<typeof AGRO_TIPS[0] | null>(null);
+  const [tipFade, setTipFade] = useState(true);
+  const shuffledTipsRef = useRef<typeof AGRO_TIPS>([]);
+  const tipIndexRef = useRef(0);
+  
+  // Feedback state: track which messages have received feedback
+  const [messageFeedback, setMessageFeedback] = useState<Record<string, { type: string; rating?: number }>>({});
+  
+  // Send feedback to API
+  const sendFeedback = async (eventId: string | undefined, messageId: string, signal: string) => {
+    if (!eventId) return;
+    
+    try {
+      const response = await fetch(api('feedback'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event_id: eventId, signal })
+      });
+      
+      if (response.ok) {
+        setMessageFeedback(prev => ({
+          ...prev,
+          [messageId]: { type: signal, rating: signal.startsWith('star') ? parseInt(signal.slice(4)) : undefined }
+        }));
+      }
+    } catch (error) {
+      console.error('[ChatInterface] Feedback error:', error);
+    }
+  };
+  
+  // Rotate tips during streaming/typing
+  useEffect(() => {
+    if (!streaming && !typing) {
+      setCurrentTip(null);
+      return;
+    }
+    
+    // Shuffle tips on first activation
+    if (shuffledTipsRef.current.length === 0) {
+      shuffledTipsRef.current = shuffleArray(AGRO_TIPS);
+      tipIndexRef.current = 0;
+    }
+    
+    // Show first tip immediately
+    const showNextTip = () => {
+      setTipFade(false);
+      setTimeout(() => {
+        const tip = shuffledTipsRef.current[tipIndexRef.current];
+        setCurrentTip(tip);
+        tipIndexRef.current = (tipIndexRef.current + 1) % shuffledTipsRef.current.length;
+        // Re-shuffle when we've shown all tips
+        if (tipIndexRef.current === 0) {
+          shuffledTipsRef.current = shuffleArray(AGRO_TIPS);
+        }
+        setTipFade(true);
+      }, 150);
+    };
+    
+    showNextTip();
+    
+    // Set up interval for tip rotation
+    const getNextInterval = () => {
+      const tip = shuffledTipsRef.current[tipIndexRef.current];
+      return getTipDuration(tip?.tip || '');
+    };
+    
+    let timeoutId: ReturnType<typeof setTimeout>;
+    const scheduleNext = () => {
+      timeoutId = setTimeout(() => {
+        showNextTip();
+        scheduleNext();
+      }, getNextInterval());
+    };
+    scheduleNext();
+    
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [streaming, typing]);
 
   // Chat settings state
   const [model, setModel] = useState('gpt-4o-mini');
   const [temperature, setTemperature] = useState(0);
   const [maxTokens, setMaxTokens] = useState(1000);
   const [topP, setTopP] = useState(1);
+  const [topK, setTopK] = useState(10);
+  const [streamPref, setStreamPref] = useState<boolean>(true);
+  const [showConfidence, setShowConfidence] = useState<boolean>(false);
+  const [showCitations, setShowCitations] = useState<boolean>(true);
+  const traceRef = useRef<TraceStep[]>([]);
+  const [modelOptions, setModelOptions] = useState<string[]>([]);
+  const [fastMode, setFastMode] = useState<boolean>(() => {
+    const params = new URLSearchParams(window.location.search || '');
+    return params.get('fast') === '1' || params.get('smoke') === '1';
+  });
 
-  // Load configuration for default model
+  // Define notifyTrace before useEffects that use it
+  const notifyTrace = useCallback((steps: TraceStep[], open: boolean, source: 'config' | 'response' | 'clear' = 'response') => {
+    setCurrentTrace(steps);
+    traceRef.current = steps;
+    const effectiveOpen = source === 'response' ? (open && tracePreference) : open;
+    onTraceUpdate?.(steps, effectiveOpen, source);
+  }, [onTraceUpdate, tracePreference]);
+
+  // Load chat config + model options
   useEffect(() => {
-    const loadConfig = async () => {
+    (async () => {
       try {
-        const res = await fetch(api('/config'));
+        const res = await fetch(api('chat/config'));
         if (res.ok) {
           const data = await res.json();
-          // Support both structure formats (direct env or nested env)
-          const env = data.env || data;
-          if (env.GEN_MODEL) {
-            setModel(env.GEN_MODEL);
+          if (data.model) setModel(String(data.model));
+          if (typeof data.temperature === 'number') setTemperature(data.temperature);
+          if (typeof data.maxTokens === 'number') setMaxTokens(data.maxTokens);
+          if (typeof data.topP === 'number') setTopP(data.topP);
+          if (typeof data.topK === 'number') setTopK(data.topK);
+          if (typeof data.streaming === 'boolean') setStreamPref(Boolean(data.streaming));
+          if (typeof data.showTrace === 'boolean') {
+            setTracePreference(Boolean(data.showTrace));
+            onTracePreferenceChange?.(Boolean(data.showTrace));
+            notifyTrace(traceRef.current, Boolean(data.showTrace), 'config');
           }
+          if (typeof data.showConfidence === 'boolean') setShowConfidence(Boolean(data.showConfidence));
+          if (typeof data.showCitations === 'boolean') setShowCitations(Boolean(data.showCitations));
         }
       } catch (e) {
-        console.error('[ChatInterface] Failed to load config:', e);
+        console.error('[ChatInterface] Failed to load chat config:', e);
+      }
+      try {
+        const p = await fetch(api('prices'));
+        if (p.ok) {
+          const d = await p.json();
+          const list = (d.models || [])
+            .filter((m: any) => (m && (String(m.unit || '').toLowerCase() === '1k_tokens')))
+            .map((m: any) => String(m.model || '').trim())
+            .filter(Boolean);
+          setModelOptions(Array.from(new Set(list)));
+        }
+      } catch {}
+    })();
+  }, [api, notifyTrace]);
+
+  // React to config updates from ChatSettings (cross-component sync)
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent).detail || {};
+      if (detail && typeof detail === 'object') {
+        if (Object.prototype.hasOwnProperty.call(detail, 'streaming')) setStreamPref(Boolean(detail.streaming));
+        if (Object.prototype.hasOwnProperty.call(detail, 'showConfidence')) setShowConfidence(Boolean(detail.showConfidence));
+        if (Object.prototype.hasOwnProperty.call(detail, 'showCitations')) setShowCitations(Boolean(detail.showCitations));
+        if (Object.prototype.hasOwnProperty.call(detail, 'showTrace')) {
+          const pref = Boolean(detail.showTrace);
+          setTracePreference(pref);
+          onTracePreferenceChange?.(pref);
+          notifyTrace(traceRef.current, pref, 'config');
+        }
       }
     };
-    loadConfig();
-  }, []);
+    window.addEventListener('agro-chat-config-updated', handler as EventListener);
+    return () => window.removeEventListener('agro-chat-config-updated', handler as EventListener);
+  }, [notifyTrace, onTracePreferenceChange]);
 
-  // Load repositories
+  // Load repositories via store
   useEffect(() => {
-    loadRepositories();
+    if (repos.length === 0) {
+      loadRepos();
+    }
     // Load chat history from localStorage
     loadChatHistory();
-  }, []);
+  }, [repos.length, loadRepos]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-
-  const loadRepositories = async () => {
-    try {
-      const response = await fetch(api('/repos/list'));
-      if (response.ok) {
-        const data = await response.json();
-        setRepositories(data.repos || ['agro']);
-      }
-    } catch (error) {
-      console.error('[ChatInterface] Failed to load repositories:', error);
-      setRepositories(['agro']);
-    }
-  };
 
   const loadChatHistory = () => {
     try {
@@ -105,6 +372,23 @@ export function ChatInterface() {
     }
   };
 
+  const startThinking = () => {
+    typingStartedAtRef.current = Date.now();
+    setTyping(true);
+  };
+
+  const stopThinking = () => {
+    const elapsed = typingStartedAtRef.current ? Date.now() - typingStartedAtRef.current : 0;
+    const remaining = Math.max(0, 750 - elapsed);
+    setTimeout(() => setTyping(false), remaining);
+  };
+
+  const formatConfidence = (value?: number | null) => {
+    if (value === undefined || value === null || Number.isNaN(value)) return null;
+    const pct = value <= 1 ? value * 100 : value;
+    return `${pct.toFixed(1)}%`;
+  };
+
   const handleSend = async () => {
     if (!input.trim() || sending) return;
 
@@ -120,17 +404,20 @@ export function ChatInterface() {
     saveChatHistory(newMessages);
     setInput('');
     setSending(true);
-    setCurrentTrace([]);
+    notifyTrace([], false, 'clear');
+    startThinking();
 
     try {
-      // Check if streaming is enabled
-      const streamingEnabled = localStorage.getItem('chat-streaming') !== 'false';
-
+      const streamingEnabled = streamPref && streamingSupportedRef.current !== false;
       if (streamingEnabled) {
-        // Use Server-Sent Events for streaming
-        await handleStreamingResponse(userMessage);
+        try {
+          await handleStreamingResponse(userMessage);
+          streamingSupportedRef.current = true;
+        } catch (err) {
+          streamingSupportedRef.current = false;
+          await handleRegularResponse(userMessage);
+        }
       } else {
-        // Regular fetch request
         await handleRegularResponse(userMessage);
       }
     } catch (error) {
@@ -147,22 +434,32 @@ export function ChatInterface() {
     } finally {
       setSending(false);
       setStreaming(false);
+      stopThinking();
     }
   };
 
   const handleStreamingResponse = async (userMessage: Message) => {
     setStreaming(true);
 
-    const response = await fetch(api('/chat/stream'), {
+    const params = new URLSearchParams(window.location.search || '');
+    const fast = fastMode || params.get('fast') === '1' || params.get('smoke') === '1';
+
+    // Use unified /api/chat endpoint with stream: true
+    const response = await fetch(api('chat'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        message: userMessage.content,
-        repo: selectedRepo || undefined,
+        question: userMessage.content,
+        repo: queryRepoOverride || activeRepo || null,
         model,
         temperature,
         max_tokens: maxTokens,
-        top_p: topP,
+        multi_query: 1,
+        final_k: topK,
+        system_prompt: '',
+        fast_mode: fast,
+        stream: true,
+        include_reasoning: false,
         history: messages.map(m => ({ role: m.role, content: m.content }))
       })
     });
@@ -174,9 +471,13 @@ export function ChatInterface() {
     const reader = response.body?.getReader();
     const decoder = new TextDecoder();
     let accumulatedContent = '';
+    let thinkingContent = '';
     let assistantMessageId = `assistant-${Date.now()}`;
     let citations: string[] = [];
     let traceData: any = null;
+    let confidence: number | undefined;
+    let meta: any = undefined;
+    let eventId: string | undefined;
 
     if (!reader) {
       throw new Error('Response body is not readable');
@@ -191,20 +492,81 @@ export function ChatInterface() {
 
       for (const line of lines) {
         if (line.startsWith('data: ')) {
-          const data = line.slice(6);
-          if (data === '[DONE]') continue;
+          const data = line.slice(6).trim();
+          if (!data || data === '[DONE]') continue;
 
           try {
             const parsed = JSON.parse(data);
-            if (parsed.content) {
-              accumulatedContent += parsed.content;
-            }
-            if (parsed.citations) {
-              citations = parsed.citations;
-            }
-            if (parsed.trace) {
-              traceData = parsed.trace;
-              setCurrentTrace(parsed.trace.steps || []);
+            const chunkType = parsed.type;
+
+            switch (chunkType) {
+              case 'thinking':
+                // Accumulate thinking/reasoning content
+                if (parsed.content) {
+                  thinkingContent += parsed.content;
+                }
+                break;
+
+              case 'content':
+                // Main answer content
+                if (parsed.content) {
+                  accumulatedContent += parsed.content;
+                }
+                break;
+
+              case 'citations':
+                // Citations with optional confidence
+                if (parsed.data?.citations) {
+                  citations = parsed.data.citations;
+                }
+                if (typeof parsed.data?.confidence === 'number') {
+                  confidence = parsed.data.confidence;
+                }
+                break;
+
+              case 'trace':
+                // Trace data
+                if (parsed.data) {
+                  traceData = parsed.data;
+                  const steps = parsed.data.steps || [];
+                  notifyTrace(steps, tracePreference, 'response');
+                }
+                break;
+
+              case 'meta':
+                // Provider metadata
+                if (parsed.data) {
+                  meta = parsed.data;
+                }
+                break;
+
+              case 'done':
+                // Stream complete
+                if (parsed.data?.event_id) {
+                  eventId = parsed.data.event_id;
+                }
+                if (typeof parsed.data?.confidence === 'number') {
+                  confidence = parsed.data.confidence;
+                }
+                break;
+
+              case 'error':
+                // Error occurred
+                console.error('[ChatInterface] Stream error:', parsed.data?.message);
+                accumulatedContent = `Error: ${parsed.data?.message || 'Unknown error'}`;
+                break;
+
+              default:
+                // Legacy format fallback
+                if (parsed.content) {
+                  accumulatedContent += parsed.content;
+                }
+                if (parsed.citations) {
+                  citations = parsed.citations;
+                }
+                if (typeof parsed.confidence === 'number') {
+                  confidence = parsed.confidence;
+                }
             }
 
             // Update message in real-time
@@ -214,7 +576,10 @@ export function ChatInterface() {
               content: accumulatedContent,
               timestamp: Date.now(),
               citations,
-              traceData
+              traceData,
+              confidence,
+              meta,
+              eventId // For feedback correlation
             };
 
             setMessages(prev => {
@@ -222,7 +587,7 @@ export function ChatInterface() {
               return [...withoutLast, assistantMessage];
             });
           } catch (error) {
-            console.error('[ChatInterface] Failed to parse SSE data:', error);
+            console.error('[ChatInterface] Failed to parse SSE data:', error, data);
           }
         }
       }
@@ -236,17 +601,21 @@ export function ChatInterface() {
   };
 
   const handleRegularResponse = async (userMessage: Message) => {
-    const response = await fetch(api('/chat/answer'), {
+    const params = new URLSearchParams(window.location.search || '');
+    const fast = fastMode || params.get('fast') === '1' || params.get('smoke') === '1';
+    const response = await fetch(api('chat'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        message: userMessage.content,
-        repo: selectedRepo || undefined,
+        question: userMessage.content,
+        repo: queryRepoOverride || activeRepo || null,
         model,
         temperature,
         max_tokens: maxTokens,
-        top_p: topP,
-        history: messages.map(m => ({ role: m.role, content: m.content }))
+        multi_query: 1,
+        final_k: topK,
+        system_prompt: '',
+        fast_mode: fast
       })
     });
 
@@ -256,28 +625,97 @@ export function ChatInterface() {
 
     const data = await response.json();
 
+    // Extract provider metadata for a separate accessibility line
+    let meta: any = undefined;
+    try {
+      meta = data.meta && typeof data.meta === 'object' ? data.meta : {};
+      if (!Object.keys(meta).length) {
+        // Backward compat: some backends return flat fields
+        const prov = data.provider || undefined;
+        const backend = data.backend || prov || undefined;
+        const modelUsed = data.model || undefined;
+        const fail = data.failover || undefined;
+        const ollama = data.ollama || undefined;
+        meta = { backend, provider: prov, model: modelUsed, failover: fail, ollama };
+      }
+    } catch {}
+
+    const confidenceValue = typeof data.confidence === 'number'
+      ? data.confidence
+      : (typeof (meta?.confidence) === 'number' ? meta.confidence : undefined);
+    let citations: string[] = Array.isArray(data.citations) ? data.citations : [];
+    if (!citations.length && Array.isArray(data.documents)) {
+      citations = data.documents
+        .map((d: any) => {
+          const fp = d?.file_path || d?.path;
+          const sl = d?.start_line ?? d?.start;
+          const el = d?.end_line ?? d?.end;
+          if (!fp) return null;
+          return `${fp}:${sl ?? 0}-${el ?? sl ?? 0}`;
+        })
+        .filter(Boolean) as string[];
+    }
+
     const assistantMessage: Message = {
       id: `assistant-${Date.now()}`,
       role: 'assistant',
-      content: data.answer || data.content || '',
+      content: (data.answer || ''),
       timestamp: Date.now(),
-      citations: data.citations || [],
-      traceData: data.trace
+      meta,
+      citations,
+      confidence: confidenceValue,
+      eventId: data.event_id // For feedback correlation
     };
-
-    if (data.trace) {
-      setCurrentTrace(data.trace.steps || []);
-    }
 
     const updatedMessages = [...messages, userMessage, assistantMessage];
     setMessages(updatedMessages);
     saveChatHistory(updatedMessages);
+
+    // Attach feedback controls and local trace when available
+    try {
+      // DISABLED: Legacy feedback buttons cause DOM conflicts with React
+      // const evtId = data.event_id;
+      // if (evtId && typeof (window as any).addFeedbackButtons === 'function') {
+      //   requestAnimationFrame(() => {
+      //     const target = document.getElementById(`feedback-${assistantMessage.id}`) || document.getElementById('chat-messages');
+      //     if (target) {
+      //       (window as any).addFeedbackButtons(target, evtId);
+      //     }
+      //   });
+      // }
+      if (data.trace && Array.isArray(data.trace.steps)) {
+        const steps = data.trace.steps;
+        notifyTrace(steps, true, 'response');
+      } else {
+        // Fallback: read latest persisted trace for richer detail
+        try {
+          const lt = await fetch(api('/traces/latest'));
+          if (lt.ok) {
+            const j = await lt.json();
+            if (j && j.trace && Array.isArray(j.trace.events)) {
+              const evs = j.trace.events.map((e: any) => ({ step: e.kind, duration: e.data?.duration_ms, details: e.data || {} }));
+              if (evs.length) {
+                notifyTrace(evs, true, 'response');
+              }
+            }
+          }
+        } catch {}
+      }
+      // DISABLED: Legacy trace loader causes DOM conflicts
+      // if (tracePreference) {
+      //   requestAnimationFrame(() => {
+      //     try {
+      //       (window as any).Trace?.loadLatestTrace?.('chat-trace-output');
+      //     } catch {}
+      //   });
+      // }
+    } catch {}
   };
 
   const handleClear = () => {
     if (confirm('Clear all messages?')) {
       setMessages([]);
-      setCurrentTrace([]);
+      notifyTrace([], false, 'clear');
       localStorage.removeItem('agro-chat-history');
     }
   };
@@ -314,15 +752,18 @@ export function ChatInterface() {
   };
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: '70vh',
-      border: '1px solid var(--line)',
-      borderRadius: '6px',
-      overflow: 'hidden',
-      background: 'var(--card-bg)'
-    }}>
+    <div
+      data-react-chat="true"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '70vh',
+        border: '1px solid var(--line)',
+        borderRadius: '6px',
+        overflow: 'hidden',
+        background: 'var(--card-bg)'
+      }}
+    >
       {/* Header */}
       <div style={{
         padding: '16px',
@@ -346,24 +787,17 @@ export function ChatInterface() {
         </div>
 
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <select
-            value={selectedRepo}
-            onChange={(e) => setSelectedRepo(e.target.value)}
-            style={{
-              background: 'var(--input-bg)',
-              border: '1px solid var(--line)',
-              color: 'var(--fg)',
-              padding: '6px 12px',
-              borderRadius: '4px',
-              fontSize: '12px'
-            }}
-            aria-label="Auto-detect repo"
-          >
-            <option value="">Auto-detect repo</option>
-            {repositories.map(repo => (
-              <option key={repo} value={repo}>{repo}</option>
-            ))}
-          </select>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--fg-muted)' }}>
+            <input id="chat-fast-mode" type="checkbox" checked={fastMode} onChange={(e) => setFastMode(e.target.checked)} style={{ width: '14px', height: '14px', cursor: 'pointer' }} />
+            Fast
+          </label>
+          <RepoSelector
+            id="chat-repo-select"
+            value={queryRepoOverride}
+            onChange={setQueryRepoOverride}
+            showAutoDetect={true}
+            compact={true}
+          />
 
           <button
             onClick={handleExport}
@@ -387,6 +821,22 @@ export function ChatInterface() {
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
             Export
+          </button>
+
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            style={{
+              background: 'var(--bg-elev2)',
+              color: 'var(--fg)',
+              border: '1px solid var(--line)',
+              padding: '6px 12px',
+              borderRadius: '4px',
+              fontSize: '12px',
+              cursor: 'pointer'
+            }}
+            aria-label="Toggle history"
+          >
+            🕘
           </button>
 
           <button
@@ -423,12 +873,71 @@ export function ChatInterface() {
         </div>
       </div>
 
-      {/* Main content area with messages and optional settings sidebar */}
+      {/* Embedding Mismatch Warning - Critical for chat results */}
+      <EmbeddingMismatchWarning variant="inline" showActions={true} />
+      
+      {/* No Index Warning - Show when user hasn't indexed yet */}
+      {embeddingStatus && !embeddingStatus.hasIndex && embeddingStatus.totalChunks === 0 && (
+        <div
+          role="alert"
+          style={{
+            background: 'linear-gradient(135deg, rgba(255, 170, 0, 0.1) 0%, rgba(255, 170, 0, 0.05) 100%)',
+            border: '1px solid var(--warn)',
+            borderRadius: '8px',
+            padding: '12px 16px',
+            marginBottom: '0',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+            <span style={{ fontSize: '20px', flexShrink: 0 }}>📑</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ 
+                fontWeight: 600, 
+                color: 'var(--warn)', 
+                fontSize: '13px',
+                marginBottom: '4px',
+              }}>
+                No Index Found
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--fg-muted)', lineHeight: 1.5 }}>
+                You need to index your codebase before chat can search it. 
+                Go to <a 
+                  href="/#/rag?subtab=indexing" 
+                  style={{ color: 'var(--link)', textDecoration: 'underline' }}
+                >
+                  RAG → Indexing
+                </a> and click "INDEX NOW" to get started.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main content area with messages and optional sidebars */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        {showHistory && (
+          <div style={{ width: '260px', borderRight: '1px solid var(--line)', background: 'var(--bg-elev1)', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '12px', borderBottom: '1px solid var(--line)', fontSize: '12px', fontWeight: 600, color: 'var(--fg)' }}>History</div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
+              {messages.filter(m => m.role === 'user').slice(-20).reverse().map((m, i) => (
+                <div key={`${m.id}-${i}`} style={{ padding: '8px', border: '1px solid var(--line)', borderRadius: '6px', marginBottom: '8px', background: 'var(--card-bg)' }}>
+                  <div style={{ fontSize: '11px', opacity: 0.7 }}>{new Date(m.timestamp).toLocaleString()}</div>
+                  <div style={{ fontSize: '12px', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.content}</div>
+                </div>
+              ))}
+              {messages.length === 0 && (
+                <div style={{ fontSize: '12px', color: 'var(--fg-muted)', padding: '12px' }}>No messages yet</div>
+              )}
+            </div>
+            <div style={{ padding: '8px', borderTop: '1px solid var(--line)' }}>
+              <button onClick={handleClear} style={{ width: '100%', background: 'var(--bg-elev2)', color: 'var(--err)', border: '1px solid var(--err)', padding: '8px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>New Chat</button>
+            </div>
+          </div>
+        )}
         {/* Messages area */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {/* Messages */}
-          <div style={{
+          <div id="chat-messages" style={{
             flex: 1,
             overflowY: 'auto',
             padding: '16px'
@@ -452,6 +961,7 @@ export function ChatInterface() {
               messages.map(message => (
                 <div
                   key={message.id}
+                  data-role={message.role}
                   style={{
                     marginBottom: '16px',
                     display: 'flex',
@@ -459,23 +969,26 @@ export function ChatInterface() {
                   }}
                 >
                   <div style={{
-                    maxWidth: '80%',
-                    background: message.role === 'user' ? 'var(--accent)' : 'var(--bg-elev1)',
+                    maxWidth: '78%',
+                    background: message.role === 'user' ? 'linear-gradient(90deg, var(--accent) 0%, var(--link) 100%)' : 'var(--bg-elev1)',
                     color: message.role === 'user' ? 'var(--accent-contrast)' : 'var(--fg)',
                     padding: '12px 16px',
-                    borderRadius: '8px',
-                    position: 'relative'
+                    borderRadius: '12px',
+                    position: 'relative',
+                    boxShadow: message.role === 'user' ? '0 1px 6px rgba(0,0,0,0.15)' : 'none'
                   }}>
+                    <div style={{ fontSize: '11px', opacity: 0.7, marginBottom: '6px' }}>{message.role === 'user' ? 'You' : 'Assistant'} · {new Date(message.timestamp).toLocaleTimeString()}</div>
                     <div style={{
                       fontSize: '13px',
                       lineHeight: '1.6',
                       whiteSpace: 'pre-wrap',
                       wordBreak: 'break-word'
                     }}>
+                      {message.role === 'assistant' && showConfidence && message.confidence !== undefined ? `[Confidence: ${formatConfidence(message.confidence)}] ` : ''}
                       {message.content}
                     </div>
 
-                    {message.citations && message.citations.length > 0 && (
+                    {showCitations && message.citations && message.citations.length > 0 && (
                       <div style={{
                         marginTop: '8px',
                         paddingTop: '8px',
@@ -492,15 +1005,16 @@ export function ChatInterface() {
                       </div>
                     )}
 
+                    {/* Message footer with copy and feedback */}
                     <div style={{
                       marginTop: '8px',
                       fontSize: '10px',
-                      opacity: 0.6,
                       display: 'flex',
                       justifyContent: 'space-between',
-                      alignItems: 'center'
+                      alignItems: 'center',
+                      gap: '8px',
+                      opacity: 0.75
                     }}>
-                      <span>{new Date(message.timestamp).toLocaleTimeString()}</span>
                       <button
                         onClick={() => handleCopy(message.content)}
                         style={{
@@ -508,35 +1022,288 @@ export function ChatInterface() {
                           border: 'none',
                           color: 'inherit',
                           cursor: 'pointer',
-                          padding: '2px 4px',
-                          fontSize: '10px'
+                          padding: '2px 6px',
+                          fontSize: '10px',
+                          borderRadius: '4px',
+                          transition: 'background 0.15s'
                         }}
                         aria-label="Copy message"
+                        title="Copy to clipboard"
                       >
-                        Copy
+                        📋
                       </button>
+                      
+                      {/* Feedback controls for assistant messages */}
+                      {message.role === 'assistant' && (
+                        <div style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '4px',
+                          marginLeft: 'auto'
+                        }}>
+                          {/* Show submitted feedback state OR the feedback buttons */}
+                          {messageFeedback[message.id] ? (
+                            <span style={{ 
+                              fontSize: '10px', 
+                              color: messageFeedback[message.id].type === 'thumbsup' ? 'var(--success)' : 
+                                     messageFeedback[message.id].type === 'thumbsdown' ? 'var(--warn)' : 'var(--accent)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '3px'
+                            }}>
+                              {messageFeedback[message.id].type === 'thumbsup' && '👍'}
+                              {messageFeedback[message.id].type === 'thumbsdown' && '👎'}
+                              {messageFeedback[message.id].rating && '⭐'.repeat(messageFeedback[message.id].rating!)}
+                              <span style={{ opacity: 0.7, marginLeft: '2px' }}>Thanks!</span>
+                            </span>
+                          ) : (
+                            <>
+                              {/* Thumbs up/down */}
+                              <button
+                                onClick={() => sendFeedback(message.eventId, message.id, 'thumbsup')}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  padding: '2px 4px',
+                                  fontSize: '12px',
+                                  borderRadius: '4px',
+                                  transition: 'all 0.15s',
+                                  opacity: 0.6
+                                }}
+                                aria-label="Helpful"
+                                title="This was helpful - trains the reranker"
+                              >
+                                👍
+                              </button>
+                              <button
+                                onClick={() => sendFeedback(message.eventId, message.id, 'thumbsdown')}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  padding: '2px 4px',
+                                  fontSize: '12px',
+                                  borderRadius: '4px',
+                                  transition: 'all 0.15s',
+                                  opacity: 0.6
+                                }}
+                                aria-label="Not helpful"
+                                title="Not helpful - trains the reranker"
+                              >
+                                👎
+                              </button>
+                              
+                              {/* Star rating - compact row */}
+                              <span style={{ 
+                                borderLeft: '1px solid var(--line)', 
+                                paddingLeft: '6px', 
+                                marginLeft: '2px',
+                                display: 'flex',
+                                gap: '1px'
+                              }}>
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <button
+                                    key={star}
+                                    onClick={() => sendFeedback(message.eventId, message.id, `star${star}`)}
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                      padding: '1px 2px',
+                                      fontSize: '11px',
+                                      borderRadius: '2px',
+                                      transition: 'all 0.15s',
+                                      opacity: 0.4,
+                                      lineHeight: 1
+                                    }}
+                                    aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
+                                    title={`Rate ${star}/5 - trains the reranker`}
+                                  >
+                                    ⭐
+                                  </button>
+                                ))}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
               ))
             )}
 
+            {/* Provider transparency indicator (accessibility) */}
+            {messages.length > 0 && (
+              <div style={{
+                marginTop: '8px',
+                fontSize: '11px',
+                color: 'var(--fg-muted)'
+              }}>
+                {(() => {
+                  const last = messages[messages.length - 1];
+                  const m = last && last.meta ? last.meta : null;
+                  if (!m) return null;
+                  const parts: string[] = [];
+                  const backend = m.backend || m.provider;
+                  if (backend) parts.push(`backend: ${backend}`);
+                  if (m.model) parts.push(`model: ${m.model}`);
+                  if (m.failover && m.failover.from && m.failover.to) parts.push(`failover: ${m.failover.from} → ${m.failover.to}`);
+                  if (!parts.length) return null;
+                  return (<span>— [{parts.join(' • ')}]</span>);
+                })()}
+              </div>
+            )}
+
             {streaming && (
               <div style={{
-                color: 'var(--fg-muted)',
-                fontSize: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
+                background: 'linear-gradient(135deg, var(--bg-elev1) 0%, var(--bg-elev2) 100%)',
+                border: '1px solid var(--line)',
+                borderRadius: '12px',
+                padding: '16px 20px',
+                marginBottom: '12px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
               }}>
+                {/* Status indicator */}
                 <div style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  background: 'var(--accent)',
-                  animation: 'pulse 1.5s ease-in-out infinite'
-                }} />
-                Streaming response...
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  marginBottom: currentTip ? '12px' : '0'
+                }}>
+                  <div style={{
+                    width: '10px',
+                    height: '10px',
+                    borderRadius: '50%',
+                    background: 'var(--accent)',
+                    animation: 'pulse 1.5s ease-in-out infinite',
+                    boxShadow: '0 0 8px var(--accent)'
+                  }} />
+                  <span style={{
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: 'var(--fg)',
+                    letterSpacing: '0.3px'
+                  }}>
+                    Generating response...
+                  </span>
+                </div>
+                
+                {/* Tip display */}
+                {currentTip && (
+                  <div style={{
+                    opacity: tipFade ? 1 : 0,
+                    transition: 'opacity 0.15s ease-in-out',
+                    borderTop: '1px solid var(--line)',
+                    paddingTop: '12px',
+                    marginTop: '4px'
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '10px'
+                    }}>
+                      <span style={{
+                        fontSize: '16px',
+                        lineHeight: '1.4'
+                      }}>
+                        {CATEGORY_ICONS[currentTip.category] || '💡'}
+                      </span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.8px',
+                          color: CATEGORY_COLORS[currentTip.category] || 'var(--fg-muted)',
+                          marginBottom: '4px'
+                        }}>
+                          {currentTip.category === 'rag' ? 'RAG' : currentTip.category === 'ux' ? 'UX' : currentTip.category}
+                        </div>
+                        <div style={{
+                          fontSize: '12px',
+                          lineHeight: '1.5',
+                          color: 'var(--fg)'
+                        }}>
+                          {currentTip.tip}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!streaming && typing && (
+              <div style={{
+                background: 'linear-gradient(135deg, var(--bg-elev1) 0%, var(--bg-elev2) 100%)',
+                border: '1px solid var(--line)',
+                borderRadius: '12px',
+                padding: '16px 20px',
+                marginBottom: '12px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              }} aria-live="polite" aria-label="Assistant is thinking">
+                {/* Status indicator */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  marginBottom: currentTip ? '12px' : '0'
+                }}>
+                  <LoadingSpinner variant="dots" size="md" color="accent" />
+                  <span style={{
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: 'var(--fg)',
+                    letterSpacing: '0.3px'
+                  }}>
+                    Thinking...
+                  </span>
+                </div>
+                
+                {/* Tip display */}
+                {currentTip && (
+                  <div style={{
+                    opacity: tipFade ? 1 : 0,
+                    transition: 'opacity 0.15s ease-in-out',
+                    borderTop: '1px solid var(--line)',
+                    paddingTop: '12px',
+                    marginTop: '4px'
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '10px'
+                    }}>
+                      <span style={{
+                        fontSize: '16px',
+                        lineHeight: '1.4'
+                      }}>
+                        {CATEGORY_ICONS[currentTip.category] || '💡'}
+                      </span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{
+                          fontSize: '10px',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.8px',
+                          color: CATEGORY_COLORS[currentTip.category] || 'var(--fg-muted)',
+                          marginBottom: '4px'
+                        }}>
+                          {currentTip.category === 'rag' ? 'RAG' : currentTip.category === 'ux' ? 'UX' : currentTip.category}
+                        </div>
+                        <div style={{
+                          fontSize: '12px',
+                          lineHeight: '1.5',
+                          color: 'var(--fg)'
+                        }}>
+                          {currentTip.tip}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -551,6 +1318,7 @@ export function ChatInterface() {
           }}>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
               <textarea
+                id="chat-input"
                 ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -574,6 +1342,7 @@ export function ChatInterface() {
                 aria-label="Chat input"
               />
               <button
+                id="chat-send"
                 onClick={handleSend}
                 disabled={!input.trim() || sending}
                 style={{
@@ -595,59 +1364,9 @@ export function ChatInterface() {
             </div>
 
             <div style={{ fontSize: '11px', color: 'var(--fg-muted)', marginBottom: '8px' }}>
-              Press Ctrl+Enter to send • Citations will appear as clickable file links
+              Press Ctrl+Enter to send • Citations appear as clickable file links when enabled in settings
             </div>
 
-            {/* Trace panel */}
-            {currentTrace.length > 0 && (
-              <details
-                open={showTrace}
-                onToggle={(e: any) => setShowTrace(e.target.open)}
-                style={{ marginTop: '8px' }}
-              >
-                <summary style={{
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  color: 'var(--accent)'
-                }}>
-                  Routing Trace ({currentTrace.length} steps)
-                </summary>
-                <div style={{
-                  marginTop: '8px',
-                  background: 'var(--code-bg)',
-                  border: '1px solid var(--line)',
-                  borderRadius: '4px',
-                  padding: '12px',
-                  fontSize: '11px',
-                  fontFamily: 'monospace',
-                  maxHeight: '200px',
-                  overflowY: 'auto'
-                }}>
-                  {currentTrace.map((step, idx) => (
-                    <div key={idx} style={{ marginBottom: '8px' }}>
-                      <div style={{ color: 'var(--accent)', fontWeight: '600' }}>
-                        {idx + 1}. {step.step}
-                      </div>
-                      <div style={{ color: 'var(--fg-muted)', marginLeft: '16px' }}>
-                        Duration: {step.duration}ms
-                      </div>
-                      {step.details && (
-                        <pre style={{
-                          marginLeft: '16px',
-                          marginTop: '4px',
-                          fontSize: '10px',
-                          color: 'var(--fg)',
-                          whiteSpace: 'pre-wrap'
-                        }}>
-                          {JSON.stringify(step.details, null, 2)}
-                        </pre>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </details>
-            )}
           </div>
         </div>
 
@@ -674,20 +1393,38 @@ export function ChatInterface() {
               }}>
                 Model
               </label>
-              <input
-                type="text"
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                style={{
-                  width: '100%',
-                  background: 'var(--input-bg)',
-                  border: '1px solid var(--line)',
-                  color: 'var(--fg)',
-                  padding: '6px 8px',
-                  borderRadius: '4px',
-                  fontSize: '12px'
-                }}
-              />
+              {modelOptions.length > 0 ? (
+                <select
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  style={{
+                    width: '100%',
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--line)',
+                    color: 'var(--fg)',
+                    padding: '6px 8px',
+                    borderRadius: '4px',
+                    fontSize: '12px'
+                  }}
+                >
+                  {modelOptions.map(m => (<option key={m} value={m}>{m}</option>))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  style={{
+                    width: '100%',
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--line)',
+                    color: 'var(--fg)',
+                    padding: '6px 8px',
+                    borderRadius: '4px',
+                    fontSize: '12px'
+                  }}
+                />
+              )}
             </div>
 
             <div style={{ marginBottom: '16px' }}>
@@ -757,6 +1494,34 @@ export function ChatInterface() {
                 value={topP}
                 onChange={(e) => setTopP(parseFloat(e.target.value))}
                 style={{ width: '100%' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '11px',
+                fontWeight: '600',
+                color: 'var(--fg-muted)',
+                marginBottom: '4px'
+              }}>
+                Top-K (results)
+              </label>
+              <input
+                type="number"
+                value={topK}
+                onChange={(e) => setTopK(Math.max(1, parseInt(e.target.value) || 10))}
+                min="1"
+                max="100"
+                style={{
+                  width: '100%',
+                  background: 'var(--input-bg)',
+                  border: '1px solid var(--line)',
+                  color: 'var(--fg)',
+                  padding: '6px 8px',
+                  borderRadius: '4px',
+                  fontSize: '12px'
+                }}
               />
             </div>
           </div>

@@ -10,6 +10,7 @@ export { useModuleLoader } from './useModuleLoader';
 export { useEventBus } from './useEventBus';
 export { useGlobalState } from './useGlobalState';
 export { useApplyButton } from './useApplyButton';
+export { useNotification } from './useNotification';
 
 // Core utility hooks (converted from legacy modules)
 export { useAPI } from './useAPI';
@@ -19,3 +20,8 @@ export { useUIHelpers } from './useUIHelpers';
 // Navigation hooks (React Router integration)
 export { useNavigation } from './useNavigation';
 export { useTabs } from './useTabs';
+export { useVSCodeEmbed } from './useVSCodeEmbed';
+
+// Embedding status (critical mismatch detection)
+export { useEmbeddingStatus } from './useEmbeddingStatus';
+export type { EmbeddingStatus } from './useEmbeddingStatus';

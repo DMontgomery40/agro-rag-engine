@@ -6,18 +6,34 @@ import { useState, useEffect } from 'react';
 import { useAPI } from '@/hooks';
 
 interface GrafanaConfig {
-  url: string;
-  dashboardId: string;
+  baseUrl: string;
+  dashboardUid: string;
+  dashboardSlug: string;
+  embedEnabled: boolean;
+  refresh: string;
+  kiosk: string;
+  authMode: string;
+  orgId: number;
   apiKey: string;
+  authToken: string;
 }
+
+const DEFAULT_CONFIG: GrafanaConfig = {
+  baseUrl: 'http://127.0.0.1:3000',
+  dashboardUid: 'agro-overview',
+  dashboardSlug: 'agro-overview',
+  embedEnabled: true,
+  refresh: '10s',
+  kiosk: 'tv',
+  authMode: 'anonymous',
+  orgId: 1,
+  apiKey: '',
+  authToken: ''
+};
 
 export function GrafanaConfig() {
   const { api } = useAPI();
-  const [config, setConfig] = useState<GrafanaConfig>({
-    url: 'http://localhost:3000',
-    dashboardId: 'd/agro-metrics/agro-rag-metrics',
-    apiKey: ''
-  });
+  const [config, setConfig] = useState<GrafanaConfig>(DEFAULT_CONFIG);
   const [showApiKey, setShowApiKey] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -27,7 +43,7 @@ export function GrafanaConfig() {
 
   // Load config on mount
   useEffect(() => {
-    loadConfig();
+    void loadConfig();
   }, []);
 
   const loadConfig = async () => {
@@ -36,9 +52,16 @@ export function GrafanaConfig() {
       if (response.ok) {
         const data = await response.json();
         setConfig({
-          url: data.url || 'http://localhost:3000',
-          dashboardId: data.dashboardId || 'd/agro-metrics/agro-rag-metrics',
-          apiKey: data.apiKey || ''
+          baseUrl: data.url || DEFAULT_CONFIG.baseUrl,
+          dashboardUid: data.dashboardUid || DEFAULT_CONFIG.dashboardUid,
+          dashboardSlug: data.dashboardSlug || DEFAULT_CONFIG.dashboardSlug,
+          embedEnabled: Boolean(data.embedEnabled ?? DEFAULT_CONFIG.embedEnabled),
+          refresh: data.refresh || DEFAULT_CONFIG.refresh,
+          kiosk: data.kiosk || DEFAULT_CONFIG.kiosk,
+          authMode: data.authMode || DEFAULT_CONFIG.authMode,
+          orgId: data.orgId !== undefined ? Number(data.orgId) : DEFAULT_CONFIG.orgId,
+          apiKey: data.apiKey || '',
+          authToken: data.authToken || ''
         });
       }
     } catch (error) {
@@ -56,8 +79,9 @@ export function GrafanaConfig() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          url: config.url,
-          apiKey: config.apiKey
+          url: config.baseUrl,
+          apiKey: config.apiKey,
+          authToken: config.authToken
         })
       });
 
@@ -91,7 +115,18 @@ export function GrafanaConfig() {
       const response = await fetch(api('/grafana/config'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config)
+        body: JSON.stringify({
+          url: config.baseUrl,
+          dashboardUid: config.dashboardUid,
+          dashboardSlug: config.dashboardSlug,
+          embedEnabled: config.embedEnabled,
+          refresh: config.refresh,
+          kiosk: config.kiosk,
+          authMode: config.authMode,
+          orgId: config.orgId,
+          apiKey: config.apiKey,
+          authToken: config.authToken
+        })
       });
 
       if (response.ok) {
@@ -109,14 +144,14 @@ export function GrafanaConfig() {
   };
 
   const handleOpenInNewTab = () => {
-    const baseUrl = config.url.replace(/\/$/, '');
-    const fullUrl = `${baseUrl}/${config.dashboardId}`;
+    const baseUrl = config.baseUrl.replace(/\/$/, '');
+    const fullUrl = `${baseUrl}/d/${config.dashboardUid}/${config.dashboardSlug}`;
     window.open(fullUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (
     <div style={{
-      maxWidth: '800px',
+      maxWidth: '900px',
       margin: '0 auto',
       padding: '24px'
     }}>
@@ -135,9 +170,34 @@ export function GrafanaConfig() {
         border: '1px solid var(--line)',
         borderRadius: '6px',
         padding: '24px',
-        marginBottom: '24px'
+        marginBottom: '24px',
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '16px'
       }}>
-        <div style={{ marginBottom: '20px' }}>
+        <div style={{ gridColumn: '1 / 3' }}>
+          <label style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '13px',
+            fontWeight: '600',
+            color: 'var(--fg)',
+            marginBottom: '8px'
+          }}>
+            <input
+              type="checkbox"
+              name="GRAFANA_EMBED_ENABLED"
+              checked={config.embedEnabled}
+              onChange={(e) => setConfig(prev => ({ ...prev, embedEnabled: e.target.checked }))}
+              aria-label="Enable embedded Grafana"
+              title="Toggle to show/hide the embedded Grafana iframe inside the app"
+            />
+            Enable Embedded Grafana
+          </label>
+        </div>
+
+        <div>
           <label style={{
             display: 'block',
             fontSize: '13px',
@@ -145,13 +205,14 @@ export function GrafanaConfig() {
             color: 'var(--fg)',
             marginBottom: '8px'
           }}>
-            Grafana URL
+            Grafana Base URL
           </label>
           <input
             type="text"
-            value={config.url}
-            onChange={(e) => setConfig(prev => ({ ...prev, url: e.target.value }))}
-            placeholder="http://localhost:3000"
+            name="GRAFANA_BASE_URL"
+            value={config.baseUrl}
+            onChange={(e) => setConfig(prev => ({ ...prev, baseUrl: e.target.value }))}
+            placeholder="http://127.0.0.1:3000"
             style={{
               width: '100%',
               background: 'var(--input-bg)',
@@ -162,17 +223,11 @@ export function GrafanaConfig() {
               fontSize: '14px'
             }}
             aria-label="Grafana URL"
+            title="The root URL of your Grafana instance (e.g., http://127.0.0.1:3000)"
           />
-          <div style={{
-            fontSize: '11px',
-            color: 'var(--fg-muted)',
-            marginTop: '4px'
-          }}>
-            The base URL of your Grafana instance (e.g., http://localhost:3000)
-          </div>
         </div>
 
-        <div style={{ marginBottom: '20px' }}>
+        <div>
           <label style={{
             display: 'block',
             fontSize: '13px',
@@ -180,13 +235,14 @@ export function GrafanaConfig() {
             color: 'var(--fg)',
             marginBottom: '8px'
           }}>
-            Dashboard ID
+            Dashboard UID
           </label>
           <input
             type="text"
-            value={config.dashboardId}
-            onChange={(e) => setConfig(prev => ({ ...prev, dashboardId: e.target.value }))}
-            placeholder="d/agro-metrics/agro-rag-metrics"
+            name="GRAFANA_DASHBOARD_UID"
+            value={config.dashboardUid}
+            onChange={(e) => setConfig(prev => ({ ...prev, dashboardUid: e.target.value }))}
+            placeholder="agro-overview"
             style={{
               width: '100%',
               background: 'var(--input-bg)',
@@ -196,18 +252,165 @@ export function GrafanaConfig() {
               borderRadius: '4px',
               fontSize: '14px'
             }}
-            aria-label="Dashboard ID"
+            aria-label="Dashboard UID"
+            title="The Grafana dashboard UID (first segment after /d/ in the URL)"
           />
-          <div style={{
-            fontSize: '11px',
-            color: 'var(--fg-muted)',
-            marginTop: '4px'
-          }}>
-            The path to your Grafana dashboard (e.g., d/agro-metrics/agro-rag-metrics)
-          </div>
         </div>
 
-        <div style={{ marginBottom: '20px' }}>
+        <div>
+          <label style={{
+            display: 'block',
+            fontSize: '13px',
+            fontWeight: '600',
+            color: 'var(--fg)',
+            marginBottom: '8px'
+          }}>
+            Dashboard Slug
+          </label>
+          <input
+            type="text"
+            name="GRAFANA_DASHBOARD_SLUG"
+            value={config.dashboardSlug}
+            onChange={(e) => setConfig(prev => ({ ...prev, dashboardSlug: e.target.value }))}
+            placeholder="agro-overview"
+            style={{
+              width: '100%',
+              background: 'var(--input-bg)',
+              border: '1px solid var(--line)',
+              color: 'var(--fg)',
+              padding: '10px 12px',
+              borderRadius: '4px',
+              fontSize: '14px'
+            }}
+            aria-label="Dashboard Slug"
+            title="The Grafana dashboard slug (second segment after /d/<uid>/ in the URL)"
+          />
+        </div>
+
+        <div>
+          <label style={{
+            display: 'block',
+            fontSize: '13px',
+            fontWeight: '600',
+            color: 'var(--fg)',
+            marginBottom: '8px'
+          }}>
+            Org ID
+          </label>
+          <input
+            type="number"
+            min={1}
+            name="GRAFANA_ORG_ID"
+            value={config.orgId}
+            onChange={(e) => setConfig(prev => ({ ...prev, orgId: parseInt(e.target.value || '1', 10) }))}
+            style={{
+              width: '100%',
+              background: 'var(--input-bg)',
+              border: '1px solid var(--line)',
+              color: 'var(--fg)',
+              padding: '10px 12px',
+              borderRadius: '4px',
+              fontSize: '14px'
+            }}
+            aria-label="Grafana Org ID"
+            title="Grafana organization ID to use when rendering the dashboard"
+          />
+        </div>
+
+        <div>
+          <label style={{
+            display: 'block',
+            fontSize: '13px',
+            fontWeight: '600',
+            color: 'var(--fg)',
+            marginBottom: '8px'
+          }}>
+            Refresh Interval
+          </label>
+          <input
+            type="text"
+            name="GRAFANA_REFRESH"
+            value={config.refresh}
+            onChange={(e) => setConfig(prev => ({ ...prev, refresh: e.target.value }))}
+            placeholder="10s"
+            style={{
+              width: '100%',
+              background: 'var(--input-bg)',
+              border: '1px solid var(--line)',
+              color: 'var(--fg)',
+              padding: '10px 12px',
+              borderRadius: '4px',
+              fontSize: '14px'
+            }}
+            aria-label="Refresh Interval"
+            title="Default dashboard auto-refresh interval (e.g., 5s, 30s, 1m)"
+          />
+        </div>
+
+        <div>
+          <label style={{
+            display: 'block',
+            fontSize: '13px',
+            fontWeight: '600',
+            color: 'var(--fg)',
+            marginBottom: '8px'
+          }}>
+            Kiosk Mode
+          </label>
+          <select
+            name="GRAFANA_KIOSK"
+            value={config.kiosk}
+            onChange={(e) => setConfig(prev => ({ ...prev, kiosk: e.target.value }))}
+            style={{
+              width: '100%',
+              background: 'var(--input-bg)',
+              border: '1px solid var(--line)',
+              color: 'var(--fg)',
+              padding: '10px 12px',
+              borderRadius: '4px',
+              fontSize: '14px'
+            }}
+            aria-label="Kiosk mode"
+            title="Grafana kiosk/display mode passed to the dashboard URL"
+          >
+            <option value="">None</option>
+            <option value="tv">TV (no side nav)</option>
+            <option value="1">Minimal</option>
+          </select>
+        </div>
+
+        <div>
+          <label style={{
+            display: 'block',
+            fontSize: '13px',
+            fontWeight: '600',
+            color: 'var(--fg)',
+            marginBottom: '8px'
+          }}>
+            Auth Mode
+          </label>
+          <select
+            name="GRAFANA_AUTH_MODE"
+            value={config.authMode}
+            onChange={(e) => setConfig(prev => ({ ...prev, authMode: e.target.value }))}
+            style={{
+              width: '100%',
+              background: 'var(--input-bg)',
+              border: '1px solid var(--line)',
+              color: 'var(--fg)',
+              padding: '10px 12px',
+              borderRadius: '4px',
+              fontSize: '14px'
+            }}
+            aria-label="Auth mode"
+            title="Choose anonymous (default) or token-based embedding"
+          >
+            <option value="anonymous">Anonymous</option>
+            <option value="token">Service Account Token</option>
+          </select>
+        </div>
+
+        <div>
           <label style={{
             display: 'block',
             fontSize: '13px',
@@ -220,6 +423,7 @@ export function GrafanaConfig() {
           <div style={{ position: 'relative' }}>
             <input
               type={showApiKey ? 'text' : 'password'}
+              name="GRAFANA_API_KEY"
               value={config.apiKey}
               onChange={(e) => setConfig(prev => ({ ...prev, apiKey: e.target.value }))}
               placeholder="Enter Grafana API key..."
@@ -233,6 +437,7 @@ export function GrafanaConfig() {
                 fontSize: '14px'
               }}
               aria-label="API key"
+              title="Service account API key for the Grafana HTTP API"
             />
             <button
               onClick={() => setShowApiKey(!showApiKey)}
@@ -249,6 +454,7 @@ export function GrafanaConfig() {
                 fontSize: '12px'
               }}
               aria-label={showApiKey ? 'Hide API key' : 'Show API key'}
+              title={showApiKey ? 'Hide API key' : 'Show API key'}
             >
               {showApiKey ? '👁️' : '👁️‍🗨️'}
             </button>
@@ -258,7 +464,44 @@ export function GrafanaConfig() {
             color: 'var(--fg-muted)',
             marginTop: '4px'
           }}>
-            Required for API access and embedding. Can be created in Grafana Settings → API Keys
+            Required when anonymous access is disabled. Create under Grafana Settings → API Keys.
+          </div>
+        </div>
+
+        <div>
+          <label style={{
+            display: 'block',
+            fontSize: '13px',
+            fontWeight: '600',
+            color: 'var(--fg)',
+            marginBottom: '8px'
+          }}>
+            Auth Token (Optional)
+          </label>
+          <input
+            type="text"
+            name="GRAFANA_AUTH_TOKEN"
+            value={config.authToken}
+            onChange={(e) => setConfig(prev => ({ ...prev, authToken: e.target.value }))}
+            placeholder="Token for auth_token=..."
+            style={{
+              width: '100%',
+              background: 'var(--input-bg)',
+              border: '1px solid var(--line)',
+              color: 'var(--fg)',
+              padding: '10px 12px',
+              borderRadius: '4px',
+              fontSize: '14px'
+            }}
+            aria-label="Auth token"
+            title="Embedding auth_token passed via the iframe URL when using token auth"
+          />
+          <div style={{
+            fontSize: '11px',
+            color: 'var(--fg-muted)',
+            marginTop: '4px'
+          }}>
+            Optional if you pass auth_token in the iframe URL instead of an API key header.
           </div>
         </div>
       </div>
@@ -282,7 +525,7 @@ export function GrafanaConfig() {
 
         <button
           onClick={handleTestConnection}
-          disabled={testing || !config.url}
+          disabled={testing || !config.baseUrl}
           style={{
             background: testing ? 'var(--bg-elev2)' : 'var(--accent)',
             color: testing ? 'var(--fg-muted)' : 'var(--accent-contrast)',
@@ -291,11 +534,12 @@ export function GrafanaConfig() {
             borderRadius: '6px',
             fontSize: '14px',
             fontWeight: '600',
-            cursor: testing || !config.url ? 'not-allowed' : 'pointer',
-            opacity: testing || !config.url ? 0.5 : 1,
+            cursor: testing || !config.baseUrl ? 'not-allowed' : 'pointer',
+            opacity: testing || !config.baseUrl ? 0.5 : 1,
             marginBottom: '16px'
           }}
           aria-label="Test connection"
+          title="Ping Grafana /api/health and list datasources using the credentials above"
         >
           {testing ? 'Testing Connection...' : 'Test Connection'}
         </button>
@@ -340,7 +584,7 @@ export function GrafanaConfig() {
       }}>
         <button
           onClick={handleOpenInNewTab}
-          disabled={!config.url || !config.dashboardId}
+          disabled={!config.baseUrl || !config.dashboardUid}
           style={{
             background: 'var(--bg-elev2)',
             color: 'var(--fg)',
@@ -349,13 +593,14 @@ export function GrafanaConfig() {
             borderRadius: '6px',
             fontSize: '14px',
             fontWeight: '600',
-            cursor: !config.url || !config.dashboardId ? 'not-allowed' : 'pointer',
-            opacity: !config.url || !config.dashboardId ? 0.5 : 1,
+            cursor: !config.baseUrl || !config.dashboardUid ? 'not-allowed' : 'pointer',
+            opacity: !config.baseUrl || !config.dashboardUid ? 0.5 : 1,
             display: 'flex',
             alignItems: 'center',
             gap: '6px'
           }}
           aria-label="Open in new tab"
+          title="Open the configured dashboard directly in Grafana"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
@@ -367,7 +612,7 @@ export function GrafanaConfig() {
 
         <button
           onClick={handleSave}
-          disabled={saving || !config.url}
+          disabled={saving || !config.baseUrl}
           style={{
             background: saving ? 'var(--bg-elev2)' : 'var(--accent)',
             color: saving ? 'var(--fg-muted)' : 'var(--accent-contrast)',
@@ -376,10 +621,11 @@ export function GrafanaConfig() {
             borderRadius: '6px',
             fontSize: '14px',
             fontWeight: '600',
-            cursor: saving || !config.url ? 'not-allowed' : 'pointer',
-            opacity: saving || !config.url ? 0.5 : 1
+            cursor: saving || !config.baseUrl ? 'not-allowed' : 'pointer',
+            opacity: saving || !config.baseUrl ? 0.5 : 1
           }}
           aria-label="Save configuration"
+          title="Persist Grafana settings to agro_config.json and .env"
         >
           {saving ? 'Saving...' : 'Save Configuration'}
         </button>
@@ -419,16 +665,16 @@ export function GrafanaConfig() {
         </h4>
         <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
           <li style={{ marginBottom: '4px' }}>
-            Make sure Grafana is running and accessible at the specified URL
+            Ensure Grafana is running (docker-compose up) and accessible at the base URL.
           </li>
           <li style={{ marginBottom: '4px' }}>
-            The Dashboard ID can be found in the dashboard URL (e.g., d/your-dashboard/name)
+            UID/Slug come from the dashboard URL: /d/&lt;uid&gt;/&lt;slug&gt;.
           </li>
           <li style={{ marginBottom: '4px' }}>
-            API Key is optional but recommended for secure access
+            Use token or API key if anonymous access is disabled.
           </li>
           <li style={{ marginBottom: '4px' }}>
-            Test the connection before saving to ensure settings are correct
+            Click Test Connection before saving to verify Prometheus/Loki datasources are reachable.
           </li>
         </ul>
       </div>

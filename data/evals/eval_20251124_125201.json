@@ -1,0 +1,2127 @@
+{
+  "run_id": "20251124_125201",
+  "total": 50,
+  "top1_hits": 15,
+  "topk_hits": 21,
+  "top1_accuracy": 0.3,
+  "topk_accuracy": 0.42,
+  "duration_secs": 16.570769786834717,
+  "config": {
+    "rrf_k_div": 60,
+    "bm25_weight": 1.0,
+    "vector_weight": 0.0,
+    "topk_dense": 75,
+    "topk_sparse": 75,
+    "disable_rerank": 0,
+    "eval_final_k": 5,
+    "layer_bonus_keyword": 0.0,
+    "layer_bonus_summary": 0.0,
+    "layer_bonus_tree": 0.0,
+    "layer_bonus_card": 0.0,
+    "layer_bonus_code": 0.0,
+    "embed_model": "",
+    "chunk_size": 1000,
+    "chunk_overlap": 200,
+    "rerank_provider": "",
+    "rerank_model": "",
+    "rerank_topk": 0,
+    "keyword_boost": 0.0,
+    "recency_weight": 0.0,
+    "path_boosts": [
+      "/gui",
+      "/server",
+      "/indexer",
+      "/retrieval"
+    ],
+    "exclude_globs": [],
+    "exclude_dirs": [
+      "docs",
+      "agent_docs",
+      "website",
+      "tests",
+      "assets",
+      "internal_docs.md",
+      "out/",
+      "checkpoints/",
+      "models/",
+      "data/",
+      "telemetry/",
+      "node_mcp/",
+      "public/",
+      "examples/",
+      "bin/",
+      "reports/",
+      "screenshots/",
+      "web/dist",
+      "gui"
+    ],
+    "index_excluded_exts": [
+      ".png",
+      ".jpg",
+      ".gif",
+      ".ico",
+      ".svg",
+      ".woff",
+      ".ttf"
+    ]
+  },
+  "results": [
+    {
+      "question": "How does RRF (Reciprocal Rank Fusion) combine BM25 and vector results?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 0.45304083824157715,
+      "docs": [
+        {
+          "file_path": "retrieval/hybrid_search.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "retrieval/hybrid_search.py",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "Where is the tokenizer vocab loaded for BM25 queries?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "retrieval/hybrid_search.py",
+        "scripts/measure_token_savings.py",
+        "web/src/components/Profiles/ProfileEditor.tsx"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": true,
+      "duration_secs": 0.3473081588745117,
+      "docs": [
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "retrieval/hybrid_search.py",
+          "score": 0
+        },
+        {
+          "file_path": "scripts/measure_token_savings.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/components/Profiles/ProfileEditor.tsx",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "How are chunk IDs mapped to BM25 index positions?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py",
+        "indexer/index_repo.py"
+      ],
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "web/src/components/Storage/ResultsDisplay.tsx"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 0.3057708740234375,
+      "docs": [
+        {
+          "file_path": "retrieval/hybrid_search.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/components/Storage/ResultsDisplay.tsx",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "Where does query expansion happen in the retrieval pipeline?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/synonym_expander.py"
+      ],
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "retrieval/hybrid_search.py",
+        "web/src/components/Profiles/ProfileEditor.tsx",
+        "retrieval/synonym_expander.py",
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": true,
+      "duration_secs": 0.33418798446655273,
+      "docs": [
+        {
+          "file_path": "retrieval/hybrid_search.py",
+          "score": 0
+        },
+        {
+          "file_path": "retrieval/hybrid_search.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/components/Profiles/ProfileEditor.tsx",
+          "score": 0
+        },
+        {
+          "file_path": "retrieval/synonym_expander.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "How is the BM25 index saved and what files does it create?",
+      "repo": "agro",
+      "expect_paths": [
+        "indexer/index_repo.py"
+      ],
+      "top_paths": [
+        "indexer/build_cards.py",
+        "web/src/components/Onboarding/HelpPanel.tsx",
+        "web/src/api/config.ts",
+        "retrieval/hybrid_search.py",
+        "retrieval/synonym_expander.py"
+      ],
+      "top1_path": [
+        "indexer/build_cards.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.3184208869934082,
+      "docs": [
+        {
+          "file_path": "indexer/build_cards.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/components/Onboarding/HelpPanel.tsx",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/api/config.ts",
+          "score": 0
+        },
+        {
+          "file_path": "retrieval/hybrid_search.py",
+          "score": 0
+        },
+        {
+          "file_path": "retrieval/synonym_expander.py",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "Where are code language detection functions implemented?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/ast_chunker.py"
+      ],
+      "top_paths": [
+        "web/src/modules/golden_questions.js",
+        "web/src/components/Evaluation/QuestionManager.tsx",
+        "web/src/components/RAG/EvaluateSubtab.tsx",
+        "web/src/components/RAG/EvaluateSubtab.tsx",
+        "common/metadata.py"
+      ],
+      "top1_path": [
+        "web/src/modules/golden_questions.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2622358798980713,
+      "docs": [
+        {
+          "file_path": "web/src/modules/golden_questions.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/components/Evaluation/QuestionManager.tsx",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/components/RAG/EvaluateSubtab.tsx",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/components/RAG/EvaluateSubtab.tsx",
+          "score": 0
+        },
+        {
+          "file_path": "common/metadata.py",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "How does the system handle tree-sitter parsing errors?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/ast_chunker.py"
+      ],
+      "top_paths": [
+        "scripts/verify_refactor.py",
+        "scripts/debug_search_ast.py",
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_path": [
+        "scripts/verify_refactor.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.31431102752685547,
+      "docs": [
+        {
+          "file_path": "scripts/verify_refactor.py",
+          "score": 0
+        },
+        {
+          "file_path": "scripts/debug_search_ast.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "Where is the Redis checkpoint system configured for LangGraph?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/langgraph_app.py"
+      ],
+      "top_paths": [
+        "server/langgraph_app.py",
+        "cli/chat_cli.py",
+        "web/src/modules/tooltips.js",
+        "ui/ALL_KNOBS.yaml",
+        "server/langgraph_app.py"
+      ],
+      "top1_path": [
+        "server/langgraph_app.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 0.3086071014404297,
+      "docs": [
+        {
+          "file_path": "server/langgraph_app.py",
+          "score": 0
+        },
+        {
+          "file_path": "cli/chat_cli.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "ui/ALL_KNOBS.yaml",
+          "score": 0
+        },
+        {
+          "file_path": "server/langgraph_app.py",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "How does multi-query retrieval generate query variants?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "retrieval/hybrid_search.py",
+        "retrieval/synonym_expander.py",
+        "web/src/modules/profile_renderer.js",
+        "web/src/components/Profiles/ProfileEditor.tsx"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 0.37967824935913086,
+      "docs": [
+        {
+          "file_path": "retrieval/hybrid_search.py",
+          "score": 0
+        },
+        {
+          "file_path": "retrieval/hybrid_search.py",
+          "score": 0
+        },
+        {
+          "file_path": "retrieval/synonym_expander.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/profile_renderer.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/components/Profiles/ProfileEditor.tsx",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "Where are path bonuses calculated for scoring?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "web/src/modules/tooltips.js",
+        "retrieval/hybrid_search.py",
+        "retrieval/hybrid_search.py",
+        "scripts/promote_reranker.py"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 0.23936915397644043,
+      "docs": [
+        {
+          "file_path": "retrieval/hybrid_search.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "retrieval/hybrid_search.py",
+          "score": 0
+        },
+        {
+          "file_path": "retrieval/hybrid_search.py",
+          "score": 0
+        },
+        {
+          "file_path": "scripts/promote_reranker.py",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "How does layer bonus scoring work for different code layers?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "web/src/components/Evaluation/EvalDrillDown.tsx"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 0.3135406970977783,
+      "docs": [
+        {
+          "file_path": "retrieval/hybrid_search.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/components/Evaluation/EvalDrillDown.tsx",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "Where is the filename boost multiplier applied?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "web/src/modules/tooltips.js",
+        "ui/ALL_KNOBS.yaml",
+        "retrieval/hybrid_search.py",
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 0.3804769515991211,
+      "docs": [
+        {
+          "file_path": "retrieval/hybrid_search.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "ui/ALL_KNOBS.yaml",
+          "score": 0
+        },
+        {
+          "file_path": "retrieval/hybrid_search.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "How are vendor/third-party code penalties calculated?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/modules/app.js",
+        "web/src/modules/tooltips.js",
+        "scripts/analyze_keywords.py"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.27820801734924316,
+      "docs": [
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/app.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "scripts/analyze_keywords.py",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "Where is streaming eval output implemented with SSE?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/routers/eval.py"
+      ],
+      "top_paths": [
+        "server/routers/stream_logs.py",
+        "server/routers/stream_logs.py",
+        "server/routers/stream_logs.py",
+        "web/src/hooks/useTooltips.ts",
+        "server/routers/stream_logs.py"
+      ],
+      "top1_path": [
+        "server/routers/stream_logs.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.37134814262390137,
+      "docs": [
+        {
+          "file_path": "server/routers/stream_logs.py",
+          "score": 0
+        },
+        {
+          "file_path": "server/routers/stream_logs.py",
+          "score": 0
+        },
+        {
+          "file_path": "server/routers/stream_logs.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/hooks/useTooltips.ts",
+          "score": 0
+        },
+        {
+          "file_path": "server/routers/stream_logs.py",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "How does the eval compare current results to baseline?",
+      "repo": "agro",
+      "expect_paths": [
+        "eval/eval_loop.py"
+      ],
+      "top_paths": [
+        "server/routers/eval.py",
+        "server/routers/eval.py",
+        "cli/commands/eval.py",
+        "cli/commands/eval.py",
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_path": [
+        "server/routers/eval.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.4872100353240967,
+      "docs": [
+        {
+          "file_path": "server/routers/eval.py",
+          "score": 0
+        },
+        {
+          "file_path": "server/routers/eval.py",
+          "score": 0
+        },
+        {
+          "file_path": "cli/commands/eval.py",
+          "score": 0
+        },
+        {
+          "file_path": "cli/commands/eval.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "Where are eval results stored and how are they timestamped?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/routers/eval.py"
+      ],
+      "top_paths": [
+        "web/src/modules/eval_history.js",
+        "web/src/modules/tooltips.js",
+        "server/routers/eval.py",
+        "cli/commands/eval.py",
+        "eval_embeddings.py"
+      ],
+      "top1_path": [
+        "web/src/modules/eval_history.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": true,
+      "duration_secs": 0.3344612121582031,
+      "docs": [
+        {
+          "file_path": "web/src/modules/eval_history.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "server/routers/eval.py",
+          "score": 0
+        },
+        {
+          "file_path": "cli/commands/eval.py",
+          "score": 0
+        },
+        {
+          "file_path": "eval_embeddings.py",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "How does the frequency limiter middleware detect anomalies?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/frequency_limiter.py"
+      ],
+      "top_paths": [
+        "server/frequency_limiter.py",
+        "server/frequency_limiter.py",
+        "server/api_tracker.py",
+        "web/src/hooks/useTooltips.ts",
+        "infra/alertmanager.yml"
+      ],
+      "top1_path": [
+        "server/frequency_limiter.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 0.3697929382324219,
+      "docs": [
+        {
+          "file_path": "server/frequency_limiter.py",
+          "score": 0
+        },
+        {
+          "file_path": "server/frequency_limiter.py",
+          "score": 0
+        },
+        {
+          "file_path": "server/api_tracker.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/hooks/useTooltips.ts",
+          "score": 0
+        },
+        {
+          "file_path": "infra/alertmanager.yml",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "Where is the API request interceptor configured?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/api_interceptor.py"
+      ],
+      "top_paths": [
+        "server/api_interceptor.py",
+        "server/asgi.py",
+        "scripts/netlify_deploy.py",
+        "server/mcp/http.py",
+        "web/src/api/client.ts"
+      ],
+      "top1_path": [
+        "server/api_interceptor.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 0.33772778511047363,
+      "docs": [
+        {
+          "file_path": "server/api_interceptor.py",
+          "score": 0
+        },
+        {
+          "file_path": "server/asgi.py",
+          "score": 0
+        },
+        {
+          "file_path": "scripts/netlify_deploy.py",
+          "score": 0
+        },
+        {
+          "file_path": "server/mcp/http.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/api/client.ts",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "How are CORS origins validated and configured?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/asgi.py"
+      ],
+      "top_paths": [
+        "server/routers/repos.py",
+        "server/routers/chat.py",
+        "retrieval/synonym_expander.py",
+        "eval_embeddings.py",
+        "infra/loki-config.yml"
+      ],
+      "top1_path": [
+        "server/routers/repos.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.36342811584472656,
+      "docs": [
+        {
+          "file_path": "server/routers/repos.py",
+          "score": 0
+        },
+        {
+          "file_path": "server/routers/chat.py",
+          "score": 0
+        },
+        {
+          "file_path": "retrieval/synonym_expander.py",
+          "score": 0
+        },
+        {
+          "file_path": "eval_embeddings.py",
+          "score": 0
+        },
+        {
+          "file_path": "infra/loki-config.yml",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "Where is the static file serving middleware setup?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/asgi.py"
+      ],
+      "top_paths": [
+        "server/asgi.py",
+        "web/src/hooks/useTooltips.ts",
+        "web/src/hooks/useTooltips.ts",
+        "web/src/hooks/useTooltips.ts",
+        "web/src/components/Settings/General.tsx"
+      ],
+      "top1_path": [
+        "server/asgi.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 0.3904109001159668,
+      "docs": [
+        {
+          "file_path": "server/asgi.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/hooks/useTooltips.ts",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/hooks/useTooltips.ts",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/hooks/useTooltips.ts",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/components/Settings/General.tsx",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "How does config hot-reload work when files change?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/services/config_registry.py"
+      ],
+      "top_paths": [
+        "server/routers/config.py",
+        "retrieval/hybrid_search.py",
+        "server/langgraph_app.py",
+        "web/src/modules/tooltips.js",
+        "retrieval/synonym_expander.py"
+      ],
+      "top1_path": [
+        "server/routers/config.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.33642077445983887,
+      "docs": [
+        {
+          "file_path": "server/routers/config.py",
+          "score": 0
+        },
+        {
+          "file_path": "retrieval/hybrid_search.py",
+          "score": 0
+        },
+        {
+          "file_path": "server/langgraph_app.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "retrieval/synonym_expander.py",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "Where are environment variable overrides handled?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/services/config_registry.py"
+      ],
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/components/Admin/SecretsSubtab.tsx",
+        "common/config_loader.py",
+        "web/src/modules/golden_questions.js",
+        "eval_embeddings.py"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.3072052001953125,
+      "docs": [
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/components/Admin/SecretsSubtab.tsx",
+          "score": 0
+        },
+        {
+          "file_path": "common/config_loader.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/golden_questions.js",
+          "score": 0
+        },
+        {
+          "file_path": "eval_embeddings.py",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "How does the config validation ensure weights sum to 1.0?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/models/agro_config_model.py"
+      ],
+      "top_paths": [
+        "server/services/config_store.py",
+        "web/src/modules/tooltips.js",
+        "web/src/hooks/useTooltips.ts",
+        "web/src/modules/tooltips.js",
+        "retrieval/synonym_expander.py"
+      ],
+      "top1_path": [
+        "server/services/config_store.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.33208703994750977,
+      "docs": [
+        {
+          "file_path": "server/services/config_store.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/hooks/useTooltips.ts",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "retrieval/synonym_expander.py",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "Where are Pydantic field validators defined for config?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/models/agro_config_model.py"
+      ],
+      "top_paths": [
+        "server/routers/repos.py",
+        "server/feedback.py",
+        "server/services/config_store.py",
+        "server/services/config_registry.py",
+        "web/src/modules/golden_questions.js"
+      ],
+      "top1_path": [
+        "server/routers/repos.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2871692180633545,
+      "docs": [
+        {
+          "file_path": "server/routers/repos.py",
+          "score": 0
+        },
+        {
+          "file_path": "server/feedback.py",
+          "score": 0
+        },
+        {
+          "file_path": "server/services/config_store.py",
+          "score": 0
+        },
+        {
+          "file_path": "server/services/config_registry.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/golden_questions.js",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "How does the reranker decide between local and Cohere backend?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/rerank.py"
+      ],
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/components/Profiles/ProfileEditor.tsx",
+        "web/src/modules/tooltips.js",
+        "web/src/hooks/useTooltips.ts",
+        "server/reranker_info.py"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.36862707138061523,
+      "docs": [
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/components/Profiles/ProfileEditor.tsx",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/hooks/useTooltips.ts",
+          "score": 0
+        },
+        {
+          "file_path": "server/reranker_info.py",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "Where is the cross-encoder model loaded and cached?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/rerank.py"
+      ],
+      "top_paths": [
+        "server/learning_reranker.py",
+        "web/src/modules/tooltips.js",
+        "retrieval/embed_cache.py",
+        "web/src/components/RAG/LearningRankerSubtab.tsx",
+        "server/asgi.py"
+      ],
+      "top1_path": [
+        "server/learning_reranker.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.27860188484191895,
+      "docs": [
+        {
+          "file_path": "server/learning_reranker.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "retrieval/embed_cache.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/components/RAG/LearningRankerSubtab.tsx",
+          "score": 0
+        },
+        {
+          "file_path": "server/asgi.py",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "How does snippet truncation work for reranker input?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/rerank.py"
+      ],
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "retrieval/synonym_expander.py",
+        "web/src/components/Onboarding/IndexStep.tsx",
+        "cli/commands/golden.py",
+        "web/src/components/tabs/StartTab.tsx"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.31156396865844727,
+      "docs": [
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "retrieval/synonym_expander.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/components/Onboarding/IndexStep.tsx",
+          "score": 0
+        },
+        {
+          "file_path": "cli/commands/golden.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/components/tabs/StartTab.tsx",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "Where is the embedding model selected based on provider?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/embed_cache.py"
+      ],
+      "top_paths": [
+        "web/src/modules/model_flows.js",
+        "web/src/modules/model_flows.js",
+        "retrieval/hybrid_search.py",
+        "ui/ALL_KNOBS.yaml",
+        "web/src/modules/model_flows.js"
+      ],
+      "top1_path": [
+        "web/src/modules/model_flows.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.33127498626708984,
+      "docs": [
+        {
+          "file_path": "web/src/modules/model_flows.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/model_flows.js",
+          "score": 0
+        },
+        {
+          "file_path": "retrieval/hybrid_search.py",
+          "score": 0
+        },
+        {
+          "file_path": "ui/ALL_KNOBS.yaml",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/model_flows.js",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "How does the embedding cache handle batch operations?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/embed_cache.py"
+      ],
+      "top_paths": [
+        "retrieval/embed_cache.py",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_path": [
+        "retrieval/embed_cache.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 0.339008092880249,
+      "docs": [
+        {
+          "file_path": "retrieval/embed_cache.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "retrieval/hybrid_search.py",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "Where are chunk overlaps calculated during AST chunking?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/ast_chunker.py"
+      ],
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "web/src/components/RAG/IndexingSubtab.tsx",
+        "server/index_stats.py"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.4073038101196289,
+      "docs": [
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/components/RAG/IndexingSubtab.tsx",
+          "score": 0
+        },
+        {
+          "file_path": "server/index_stats.py",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "How does the indexer handle binary files and large files?",
+      "repo": "agro",
+      "expect_paths": [
+        "common/filtering.py",
+        "indexer/index_repo.py"
+      ],
+      "top_paths": [
+        "common/filtering.py",
+        "web/src/hooks/useTooltips.ts",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "scripts/cleanup_repo.sh"
+      ],
+      "top1_path": [
+        "common/filtering.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 0.3235809803009033,
+      "docs": [
+        {
+          "file_path": "common/filtering.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/hooks/useTooltips.ts",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "scripts/cleanup_repo.sh",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "Where is the progress bar displayed during indexing?",
+      "repo": "agro",
+      "expect_paths": [
+        "indexer/index_repo.py"
+      ],
+      "top_paths": [
+        "web/src/modules/onboarding.js",
+        "web/src/components/tabs/StartTab.tsx",
+        "web/src/hooks/useOnboarding.ts",
+        "web/src/components/RAG/IndexingSubtab.tsx",
+        "web/src/components/Onboarding/IndexStep.tsx"
+      ],
+      "top1_path": [
+        "web/src/modules/onboarding.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.27591514587402344,
+      "docs": [
+        {
+          "file_path": "web/src/modules/onboarding.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/components/tabs/StartTab.tsx",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/hooks/useOnboarding.ts",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/components/RAG/IndexingSubtab.tsx",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/components/Onboarding/IndexStep.tsx",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "How are import statements extracted from code chunks?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/ast_chunker.py"
+      ],
+      "top_paths": [
+        "common/metadata.py",
+        "scripts/analyze_keywords.py",
+        "web/src/modules/tooltips.js",
+        "scripts/analyze_keywords_v2.py",
+        "indexer/build_cards.py"
+      ],
+      "top1_path": [
+        "common/metadata.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.35836100578308105,
+      "docs": [
+        {
+          "file_path": "common/metadata.py",
+          "score": 0
+        },
+        {
+          "file_path": "scripts/analyze_keywords.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "scripts/analyze_keywords_v2.py",
+          "score": 0
+        },
+        {
+          "file_path": "indexer/build_cards.py",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "Where is repo routing logic that maps queries to repositories?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top_paths": [
+        "web/src/hooks/useTooltips.ts",
+        "web/src/modules/tooltips.js",
+        "retrieval/hybrid_search.py",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/golden_questions.js"
+      ],
+      "top1_path": [
+        "web/src/hooks/useTooltips.ts"
+      ],
+      "top1_hit": false,
+      "topk_hit": true,
+      "duration_secs": 0.2874259948730469,
+      "docs": [
+        {
+          "file_path": "web/src/hooks/useTooltips.ts",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "retrieval/hybrid_search.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/golden_questions.js",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "How does intent classification determine query type?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 0.289963960647583,
+      "docs": [
+        {
+          "file_path": "retrieval/hybrid_search.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "retrieval/hybrid_search.py",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "Where are document hydration limits enforced?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/modules/storage-calculator.js",
+        "web/src/hooks/useStorageCalculator.ts",
+        "web/src/modules/storage-calculator.js",
+        "web/src/modules/storage-calculator-template.js"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2964611053466797,
+      "docs": [
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/storage-calculator.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/hooks/useStorageCalculator.ts",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/storage-calculator.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/storage-calculator-template.js",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "How does the terminal service handle SSE connections?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/routers/stream_logs.py"
+      ],
+      "top_paths": [
+        "web/src/services/TerminalService.ts",
+        "web/src/components/RAG/DataQualitySubtab.tsx",
+        "web/src/components/Dashboard/QuickActions.tsx",
+        "web/src/components/Settings/Integrations.tsx",
+        "web/src/modules/config.js"
+      ],
+      "top1_path": [
+        "web/src/services/TerminalService.ts"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2798929214477539,
+      "docs": [
+        {
+          "file_path": "web/src/services/TerminalService.ts",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/components/RAG/DataQualitySubtab.tsx",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/components/Dashboard/QuickActions.tsx",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/components/Settings/Integrations.tsx",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/config.js",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "Where is subprocess output captured for indexing jobs?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/services/indexing.py"
+      ],
+      "top_paths": [
+        "server/routers/docker.py",
+        "web/src/hooks/useTooltips.ts",
+        "server/routers/reranker_learning.py",
+        "web/src/modules/tooltips.js",
+        "web/src/components/RAG/EvaluateSubtab.tsx"
+      ],
+      "top1_path": [
+        "server/routers/docker.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2442610263824463,
+      "docs": [
+        {
+          "file_path": "server/routers/docker.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/hooks/useTooltips.ts",
+          "score": 0
+        },
+        {
+          "file_path": "server/routers/reranker_learning.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/components/RAG/EvaluateSubtab.tsx",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "How are Qdrant collections created with proper schema?",
+      "repo": "agro",
+      "expect_paths": [
+        "common/qdrant_utils.py"
+      ],
+      "top_paths": [
+        "common/qdrant_utils.py",
+        "web/src/modules/tooltips.js",
+        "web/src/hooks/useTooltips.ts",
+        "scripts/full_comparison.py",
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_path": [
+        "common/qdrant_utils.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 0.32747817039489746,
+      "docs": [
+        {
+          "file_path": "common/qdrant_utils.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/hooks/useTooltips.ts",
+          "score": 0
+        },
+        {
+          "file_path": "scripts/full_comparison.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "Where is vector search performed against Qdrant?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "retrieval/hybrid_search.py",
+        "web/src/hooks/useTooltips.ts",
+        "retrieval/hybrid_search.py",
+        "web/src/hooks/useTooltips.ts"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "duration_secs": 0.3155221939086914,
+      "docs": [
+        {
+          "file_path": "retrieval/hybrid_search.py",
+          "score": 0
+        },
+        {
+          "file_path": "retrieval/hybrid_search.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/hooks/useTooltips.ts",
+          "score": 0
+        },
+        {
+          "file_path": "retrieval/hybrid_search.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/hooks/useTooltips.ts",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "How does the system detect if Qdrant is available?",
+      "repo": "agro",
+      "expect_paths": [
+        "common/qdrant_utils.py"
+      ],
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "web/src/modules/tooltips.js",
+        "server/api_tracker.py",
+        "web/src/hooks/useTooltips.ts",
+        "retrieval/synonym_expander.py"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.30817699432373047,
+      "docs": [
+        {
+          "file_path": "retrieval/hybrid_search.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "server/api_tracker.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/hooks/useTooltips.ts",
+          "score": 0
+        },
+        {
+          "file_path": "retrieval/synonym_expander.py",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "Where are triplets generated for reranker training?",
+      "repo": "agro",
+      "expect_paths": [
+        "scripts/mine_triplets.py"
+      ],
+      "top_paths": [
+        "scripts/train_reranker.py",
+        "cli/commands/reranker.py",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_path": [
+        "scripts/train_reranker.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.25019001960754395,
+      "docs": [
+        {
+          "file_path": "scripts/train_reranker.py",
+          "score": 0
+        },
+        {
+          "file_path": "cli/commands/reranker.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "How does the learning reranker training loop work?",
+      "repo": "agro",
+      "expect_paths": [
+        "reranker/learning_reranker.py"
+      ],
+      "top_paths": [
+        "server/learning_reranker.py",
+        "web/src/components/RAG/LearningRankerSubtab.tsx",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_path": [
+        "server/learning_reranker.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.43320298194885254,
+      "docs": [
+        {
+          "file_path": "server/learning_reranker.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/components/RAG/LearningRankerSubtab.tsx",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "Where are training metrics logged during reranker training?",
+      "repo": "agro",
+      "expect_paths": [
+        "reranker/learning_reranker.py"
+      ],
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "web/src/components/RAG/LearningRankerSubtab.tsx",
+        "web/src/modules/tooltips.js",
+        "server/learning_reranker.py"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.3304769992828369,
+      "docs": [
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/components/RAG/LearningRankerSubtab.tsx",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "server/learning_reranker.py",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "How are negative examples sampled for triplet mining?",
+      "repo": "agro",
+      "expect_paths": [
+        "scripts/mine_triplets.py"
+      ],
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "scripts/mine_from_evaluation_dataset.py"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.38525390625,
+      "docs": [
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "scripts/mine_from_evaluation_dataset.py",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "Where is the Docker daemon status checked?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/routers/docker.py"
+      ],
+      "top_paths": [
+        "web/src/modules/docker.js",
+        "web/src/modules/docker.js",
+        "web/src/components/DockerStatusCard.tsx",
+        "web/src/modules/docker.js",
+        "web/src/modules/docker.js"
+      ],
+      "top1_path": [
+        "web/src/modules/docker.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.2637817859649658,
+      "docs": [
+        {
+          "file_path": "web/src/modules/docker.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/docker.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/components/DockerStatusCard.tsx",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/docker.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/docker.js",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "How does the MCP server handle tool invocations?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/mcp/server.py"
+      ],
+      "top_paths": [
+        "scripts/test_mcp.sh",
+        "server/routers/mcp_ops.py",
+        "scripts/test_mcp.sh",
+        "scripts/full_comparison.py",
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_path": [
+        "scripts/test_mcp.sh"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.4373960494995117,
+      "docs": [
+        {
+          "file_path": "scripts/test_mcp.sh",
+          "score": 0
+        },
+        {
+          "file_path": "server/routers/mcp_ops.py",
+          "score": 0
+        },
+        {
+          "file_path": "scripts/test_mcp.sh",
+          "score": 0
+        },
+        {
+          "file_path": "scripts/full_comparison.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "Where are LangSmith trace IDs generated and tracked?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/tracing.py"
+      ],
+      "top_paths": [
+        "web/src/hooks/useTooltips.ts",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "server/api_tracker.py",
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_path": [
+        "web/src/hooks/useTooltips.ts"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "duration_secs": 0.3238539695739746,
+      "docs": [
+        {
+          "file_path": "web/src/hooks/useTooltips.ts",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "server/api_tracker.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "How does Prometheus collect RAG performance metrics?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/metrics.py"
+      ],
+      "top_paths": [
+        "eval/eval_rag_instrumented.py",
+        "server/metrics.py",
+        "server/metrics.py",
+        "web/src/modules/tooltips.js",
+        "infra/prometheus.yml"
+      ],
+      "top1_path": [
+        "eval/eval_rag_instrumented.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": true,
+      "duration_secs": 0.30346012115478516,
+      "docs": [
+        {
+          "file_path": "eval/eval_rag_instrumented.py",
+          "score": 0
+        },
+        {
+          "file_path": "server/metrics.py",
+          "score": 0
+        },
+        {
+          "file_path": "server/metrics.py",
+          "score": 0
+        },
+        {
+          "file_path": "web/src/modules/tooltips.js",
+          "score": 0
+        },
+        {
+          "file_path": "infra/prometheus.yml",
+          "score": 0
+        }
+      ]
+    },
+    {
+      "question": "Where are alertmanager webhooks received and processed?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/alerts.py"
+      ],
+      "top_paths": [
+        "infra/alertmanager.yml",
+        "server/alerts.py",
+        "infra/grafana/provisioning/datasources/alertmanager.yml",
+        "infra/alertmanager.yml",
+        "server/alerts.py"
+      ],
+      "top1_path": [
+        "infra/alertmanager.yml"
+      ],
+      "top1_hit": false,
+      "topk_hit": true,
+      "duration_secs": 0.34561586380004883,
+      "docs": [
+        {
+          "file_path": "infra/alertmanager.yml",
+          "score": 0
+        },
+        {
+          "file_path": "server/alerts.py",
+          "score": 0
+        },
+        {
+          "file_path": "infra/grafana/provisioning/datasources/alertmanager.yml",
+          "score": 0
+        },
+        {
+          "file_path": "infra/alertmanager.yml",
+          "score": 0
+        },
+        {
+          "file_path": "server/alerts.py",
+          "score": 0
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,954 @@
+{
+  "total": 50,
+  "top1_hits": 14,
+  "topk_hits": 20,
+  "top1_accuracy": 0.28,
+  "topk_accuracy": 0.4,
+  "final_k": 5,
+  "use_multi": true,
+  "duration_secs": 23.31,
+  "timestamp": "2025-11-24 12:14:56",
+  "results": [
+    {
+      "question": "How does RRF (Reciprocal Rank Fusion) combine BM25 and vector results?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "web/src/hooks/useTooltips.ts"
+      ]
+    },
+    {
+      "question": "Where is the tokenizer vocab loaded for BM25 queries?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": true,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "retrieval/hybrid_search.py",
+        "web/src/components/Grafana/GrafanaConfig.tsx",
+        "web/src/components/RAG/IndexingSubtab.tsx",
+        "web/src/components/Profiles/ProfileEditor.tsx"
+      ]
+    },
+    {
+      "question": "How are chunk IDs mapped to BM25 index positions?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py",
+        "indexer/index_repo.py"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "retrieval/hybrid_search.py",
+        "web/src/modules/tooltips.js",
+        "web/src/components/RAG/RAGSubtabs.tsx"
+      ]
+    },
+    {
+      "question": "Where does query expansion happen in the retrieval pipeline?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/synonym_expander.py"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": true,
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "retrieval/hybrid_search.py",
+        "web/src/components/Profiles/ProfileEditor.tsx",
+        "retrieval/synonym_expander.py",
+        "web/src/modules/tooltips.js"
+      ]
+    },
+    {
+      "question": "How is the BM25 index saved and what files does it create?",
+      "repo": "agro",
+      "expect_paths": [
+        "indexer/index_repo.py"
+      ],
+      "top1_path": [
+        "indexer/build_cards.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "indexer/build_cards.py",
+        "web/src/stores/index.ts",
+        "web/src/api/config.ts",
+        "retrieval/synonym_expander.py",
+        "web/src/hooks/useIndexing.ts"
+      ]
+    },
+    {
+      "question": "Where are code language detection functions implemented?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/ast_chunker.py"
+      ],
+      "top1_path": [
+        "web/src/components/Evaluation/QuestionManager.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/Evaluation/QuestionManager.tsx",
+        "web/src/components/RAG/EvaluateSubtab.tsx",
+        "web/src/components/RAG/EvaluateSubtab.tsx",
+        "web/src/modules/tooltips.js",
+        "common/metadata.py"
+      ]
+    },
+    {
+      "question": "How does the system handle tree-sitter parsing errors?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/ast_chunker.py"
+      ],
+      "top1_path": [
+        "scripts/debug_search_ast.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "scripts/debug_search_ast.py",
+        "web/src/components/Chat/ChatInterface.tsx",
+        "web/src/modules/tooltips.js",
+        "scripts/cleanup_repo.sh"
+      ]
+    },
+    {
+      "question": "Where is the Redis checkpoint system configured for LangGraph?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/langgraph_app.py"
+      ],
+      "top1_path": [
+        "server/langgraph_app.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "top_paths": [
+        "server/langgraph_app.py",
+        "web/src/modules/tooltips.js",
+        "ui/ALL_KNOBS.yaml",
+        "web/src/components/Infrastructure/ServicesSubtab.tsx",
+        "infra/docker-compose.yml"
+      ]
+    },
+    {
+      "question": "How does multi-query retrieval generate query variants?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "retrieval/hybrid_search.py",
+        "retrieval/synonym_expander.py",
+        "web/src/components/Profiles/ProfileEditor.tsx",
+        "retrieval/hybrid_search.py"
+      ]
+    },
+    {
+      "question": "Where are path bonuses calculated for scoring?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "retrieval/hybrid_search.py",
+        "web/src/modules/app.js",
+        "retrieval/hybrid_search.py",
+        "web/src/modules/tooltips.js"
+      ]
+    },
+    {
+      "question": "How does layer bonus scoring work for different code layers?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js"
+      ]
+    },
+    {
+      "question": "Where is the filename boost multiplier applied?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "web/src/modules/tooltips.js",
+        "ui/ALL_KNOBS.yaml",
+        "retrieval/hybrid_search.py",
+        "web/src/modules/tooltips.js"
+      ]
+    },
+    {
+      "question": "How are vendor/third-party code penalties calculated?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/modules/app.js",
+        "scripts/analyze_keywords.py",
+        "web/src/modules/tooltips.js"
+      ]
+    },
+    {
+      "question": "Where is streaming eval output implemented with SSE?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/routers/eval.py"
+      ],
+      "top1_path": [
+        "server/routers/stream_logs.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "server/routers/stream_logs.py",
+        "server/routers/stream_logs.py",
+        "server/routers/stream_logs.py",
+        "web/src/hooks/useTooltips.ts"
+      ]
+    },
+    {
+      "question": "How does the eval compare current results to baseline?",
+      "repo": "agro",
+      "expect_paths": [
+        "eval/eval_loop.py"
+      ],
+      "top1_path": [
+        "server/routers/eval.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "server/routers/eval.py",
+        "server/routers/eval.py",
+        "cli/commands/eval.py",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/eval_runner.js"
+      ]
+    },
+    {
+      "question": "Where are eval results stored and how are they timestamped?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/routers/eval.py"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/modules/eval_history.js",
+        "server/metrics.py",
+        "web/src/modules/eval_history.js",
+        "web/src/modules/eval_runner.js"
+      ]
+    },
+    {
+      "question": "How does the frequency limiter middleware detect anomalies?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/frequency_limiter.py"
+      ],
+      "top1_path": [
+        "server/frequency_limiter.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "top_paths": [
+        "server/frequency_limiter.py",
+        "server/frequency_limiter.py",
+        "infra/prometheus-alert-rules.yml",
+        "web/src/hooks/useTooltips.ts",
+        "infra/alertmanager.yml"
+      ]
+    },
+    {
+      "question": "Where is the API request interceptor configured?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/api_interceptor.py"
+      ],
+      "top1_path": [
+        "server/api_interceptor.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "top_paths": [
+        "server/api_interceptor.py",
+        "server/api_interceptor.py",
+        "server/api_interceptor.py",
+        "server/asgi.py",
+        "server/mcp/http.py"
+      ]
+    },
+    {
+      "question": "How are CORS origins validated and configured?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/asgi.py"
+      ],
+      "top1_path": [
+        "web/src/services/TerminalService.ts"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/services/TerminalService.ts",
+        "server/routers/chat.py",
+        "web/src/modules/tooltips.js",
+        "eval_embeddings.py",
+        "infra/loki-config.yml"
+      ]
+    },
+    {
+      "question": "Where is the static file serving middleware setup?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/asgi.py"
+      ],
+      "top1_path": [
+        "web/src/hooks/useTooltips.ts"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/hooks/useTooltips.ts",
+        "web/src/components/Settings/General.tsx",
+        "web/src/components/Infrastructure/MCPSubtab.tsx",
+        "web/src/components/RAG/IndexingSubtab.tsx",
+        "web/src/components/VSCode/VSCodeSettingsPanel.tsx"
+      ]
+    },
+    {
+      "question": "How does config hot-reload work when files change?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/services/config_registry.py"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "server/langgraph_app.py",
+        "web/src/modules/tooltips.js",
+        "server/routers/config.py",
+        "web/src/stores/useConfigStore.ts"
+      ]
+    },
+    {
+      "question": "Where are environment variable overrides handled?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/services/config_registry.py"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/components/Admin/SecretsSubtab.tsx",
+        "web/src/modules/golden_questions.js",
+        "eval_embeddings.py",
+        "web/src/components/Evaluation/QuestionManager.tsx"
+      ]
+    },
+    {
+      "question": "How does the config validation ensure weights sum to 1.0?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/models/agro_config_model.py"
+      ],
+      "top1_path": [
+        "server/services/config_store.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "server/services/config_store.py",
+        "scripts/benchmark_improvements.py",
+        "web/src/components/RAG/DataQualitySubtab.tsx",
+        "server/metrics.py",
+        "web/src/hooks/useTooltips.ts"
+      ]
+    },
+    {
+      "question": "Where are Pydantic field validators defined for config?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/models/agro_config_model.py"
+      ],
+      "top1_path": [
+        "server/routers/repos.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "server/routers/repos.py",
+        "server/services/config_store.py",
+        "server/services/config_store.py",
+        "web/src/modules/golden_questions.js",
+        "scripts/test_mcp.sh"
+      ]
+    },
+    {
+      "question": "How does the reranker decide between local and Cohere backend?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/rerank.py"
+      ],
+      "top1_path": [
+        "reranker/config.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "reranker/config.py",
+        "web/src/components/Profiles/ProfileEditor.tsx",
+        "web/src/modules/tooltips.js",
+        "web/src/hooks/useTooltips.ts",
+        "server/reranker_info.py"
+      ]
+    },
+    {
+      "question": "Where is the cross-encoder model loaded and cached?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/rerank.py"
+      ],
+      "top1_path": [
+        "retrieval/embed_cache.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "retrieval/embed_cache.py",
+        "web/src/modules/onboarding.js",
+        "eval_embeddings.py",
+        "ui/ALL_KNOBS.yaml",
+        "server/asgi.py"
+      ]
+    },
+    {
+      "question": "How does snippet truncation work for reranker input?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/rerank.py"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/components/DevTools/Reranker.tsx",
+        "web/src/components/DevTools/Reranker.tsx",
+        "web/src/components/Onboarding/IndexStep.tsx",
+        "web/src/components/tabs/StartTab.tsx"
+      ]
+    },
+    {
+      "question": "Where is the embedding model selected based on provider?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/embed_cache.py"
+      ],
+      "top1_path": [
+        "web/src/modules/model_flows.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/model_flows.js",
+        "web/src/modules/model_flows.js",
+        "ui/ALL_KNOBS.yaml",
+        "web/src/modules/model_flows.js",
+        "web/src/modules/model_flows.js"
+      ]
+    },
+    {
+      "question": "How does the embedding cache handle batch operations?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/embed_cache.py"
+      ],
+      "top1_path": [
+        "retrieval/embed_cache.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "top_paths": [
+        "retrieval/embed_cache.py",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "retrieval/hybrid_search.py"
+      ]
+    },
+    {
+      "question": "Where are chunk overlaps calculated during AST chunking?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/ast_chunker.py"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "web/src/components/RAG/IndexingSubtab.tsx",
+        "server/index_stats.py"
+      ]
+    },
+    {
+      "question": "How does the indexer handle binary files and large files?",
+      "repo": "agro",
+      "expect_paths": [
+        "common/filtering.py",
+        "indexer/index_repo.py"
+      ],
+      "top1_path": [
+        "common/filtering.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "top_paths": [
+        "common/filtering.py",
+        "web/src/hooks/useTooltips.ts",
+        "web/src/modules/tooltips.js",
+        "scripts/cleanup_repo.sh",
+        "scripts/cleanup_repo.sh"
+      ]
+    },
+    {
+      "question": "Where is the progress bar displayed during indexing?",
+      "repo": "agro",
+      "expect_paths": [
+        "indexer/index_repo.py"
+      ],
+      "top1_path": [
+        "web/src/hooks/useOnboarding.ts"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/hooks/useOnboarding.ts",
+        "web/src/components/RAG/IndexingSubtab.tsx",
+        "web/src/hooks/useOnboarding.ts",
+        "web/src/components/Onboarding/IndexStep.tsx",
+        "web/src/components/Analytics/Usage.tsx"
+      ]
+    },
+    {
+      "question": "How are import statements extracted from code chunks?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/ast_chunker.py"
+      ],
+      "top1_path": [
+        "common/metadata.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "common/metadata.py",
+        "scripts/analyze_keywords.py",
+        "retrieval/hybrid_search.py",
+        "web/src/modules/tooltips.js",
+        "scripts/analyze_keywords_v2.py"
+      ]
+    },
+    {
+      "question": "Where is repo routing logic that maps queries to repositories?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_path": [
+        "web/src/hooks/useTooltips.ts"
+      ],
+      "top1_hit": false,
+      "topk_hit": true,
+      "top_paths": [
+        "web/src/hooks/useTooltips.ts",
+        "web/src/modules/tooltips.js",
+        "retrieval/hybrid_search.py",
+        "retrieval/hybrid_search.py",
+        "web/src/modules/tooltips.js"
+      ]
+    },
+    {
+      "question": "How does intent classification determine query type?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "web/src/modules/tooltips.js",
+        "ui/ALL_KNOBS.yaml",
+        "retrieval/hybrid_search.py"
+      ]
+    },
+    {
+      "question": "Where are document hydration limits enforced?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": true,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "retrieval/hybrid_search.py",
+        "web/src/hooks/useStorageCalculator.ts",
+        "web/src/modules/storage-calculator.js",
+        "web/src/modules/storage-calculator-template.js"
+      ]
+    },
+    {
+      "question": "How does the terminal service handle SSE connections?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/routers/stream_logs.py"
+      ],
+      "top1_path": [
+        "web/src/services/TerminalService.ts"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/services/TerminalService.ts",
+        "web/src/components/Settings/Integrations.tsx",
+        "web/src/modules/git-hooks.js",
+        "web/src/modules/config.js",
+        "infra/alertmanager.yml"
+      ]
+    },
+    {
+      "question": "Where is subprocess output captured for indexing jobs?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/services/indexing.py"
+      ],
+      "top1_path": [
+        "server/routers/docker.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "server/routers/docker.py",
+        "web/src/hooks/useTooltips.ts",
+        "server/routers/reranker_learning.py",
+        "web/src/modules/tooltips.js",
+        "infra/promtail-config.yml"
+      ]
+    },
+    {
+      "question": "How are Qdrant collections created with proper schema?",
+      "repo": "agro",
+      "expect_paths": [
+        "common/qdrant_utils.py"
+      ],
+      "top1_path": [
+        "common/qdrant_utils.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "top_paths": [
+        "common/qdrant_utils.py",
+        "web/src/modules/tooltips.js",
+        "web/src/hooks/useTooltips.ts",
+        "scripts/test_token_comparison.py",
+        "scripts/measure_overhead.py"
+      ]
+    },
+    {
+      "question": "Where is vector search performed against Qdrant?",
+      "repo": "agro",
+      "expect_paths": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": true,
+      "topk_hit": true,
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "retrieval/hybrid_search.py",
+        "retrieval/hybrid_search.py",
+        "web/src/hooks/useTooltips.ts",
+        "web/src/components/Profiles/ProfileEditor.tsx"
+      ]
+    },
+    {
+      "question": "How does the system detect if Qdrant is available?",
+      "repo": "agro",
+      "expect_paths": [
+        "common/qdrant_utils.py"
+      ],
+      "top1_path": [
+        "retrieval/hybrid_search.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "retrieval/hybrid_search.py",
+        "server/frequency_limiter.py",
+        "server/api_tracker.py",
+        "server/env_model.py",
+        "web/src/hooks/useTooltips.ts"
+      ]
+    },
+    {
+      "question": "Where are triplets generated for reranker training?",
+      "repo": "agro",
+      "expect_paths": [
+        "scripts/mine_triplets.py"
+      ],
+      "top1_path": [
+        "cli/commands/reranker.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "cli/commands/reranker.py",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "scripts/train_reranker.py",
+        "ui/ALL_KNOBS.yaml"
+      ]
+    },
+    {
+      "question": "How does the learning reranker training loop work?",
+      "repo": "agro",
+      "expect_paths": [
+        "reranker/learning_reranker.py"
+      ],
+      "top1_path": [
+        "server/learning_reranker.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "server/learning_reranker.py",
+        "web/src/components/RAG/LearningRankerSubtab.tsx",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js"
+      ]
+    },
+    {
+      "question": "Where are training metrics logged during reranker training?",
+      "repo": "agro",
+      "expect_paths": [
+        "reranker/learning_reranker.py"
+      ],
+      "top1_path": [
+        "web/src/components/RAG/LearningRankerSubtab.tsx"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/components/RAG/LearningRankerSubtab.tsx",
+        "web/src/modules/tooltips.js",
+        "server/learning_reranker.py",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js"
+      ]
+    },
+    {
+      "question": "How are negative examples sampled for triplet mining?",
+      "repo": "agro",
+      "expect_paths": [
+        "scripts/mine_triplets.py"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js"
+      ]
+    },
+    {
+      "question": "Where is the Docker daemon status checked?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/routers/docker.py"
+      ],
+      "top1_path": [
+        "web/src/modules/docker.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/docker.js",
+        "web/src/modules/docker.js",
+        "web/src/modules/docker.js"
+      ]
+    },
+    {
+      "question": "How does the MCP server handle tool invocations?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/mcp/server.py"
+      ],
+      "top1_path": [
+        "scripts/test_mcp.sh"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "scripts/test_mcp.sh",
+        "server/routers/mcp_ops.py",
+        "scripts/test_mcp.sh",
+        "scripts/mcp_restart.sh",
+        "scripts/full_comparison.py"
+      ]
+    },
+    {
+      "question": "Where are LangSmith trace IDs generated and tracked?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/tracing.py"
+      ],
+      "top1_path": [
+        "web/src/modules/tooltips.js"
+      ],
+      "top1_hit": false,
+      "topk_hit": false,
+      "top_paths": [
+        "web/src/modules/tooltips.js",
+        "web/src/components/Analytics/Tracing.tsx",
+        "web/src/components/Analytics/Tracing.tsx",
+        "infra/promtail-config.yml",
+        "web/src/modules/tooltips.js"
+      ]
+    },
+    {
+      "question": "How does Prometheus collect RAG performance metrics?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/metrics.py"
+      ],
+      "top1_path": [
+        "eval/eval_rag_instrumented.py"
+      ],
+      "top1_hit": false,
+      "topk_hit": true,
+      "top_paths": [
+        "eval/eval_rag_instrumented.py",
+        "server/metrics.py",
+        "server/routers/eval.py",
+        "web/src/modules/tooltips.js",
+        "web/src/modules/tooltips.js"
+      ]
+    },
+    {
+      "question": "Where are alertmanager webhooks received and processed?",
+      "repo": "agro",
+      "expect_paths": [
+        "server/alerts.py"
+      ],
+      "top1_path": [
+        "infra/alertmanager.yml"
+      ],
+      "top1_hit": false,
+      "topk_hit": true,
+      "top_paths": [
+        "infra/alertmanager.yml",
+        "server/alerts.py",
+        "infra/alertmanager.yml",
+        "web/src/api/dashboard.ts",
+        "server/alerts.py"
+      ]
+    }
+  ]
+}

@@ -180,16 +180,23 @@ export function useDashboard() {
     
     const runKeywords = useCallback(async () => {
         showTerminal('Generate Keywords');
+        appendTerminalLine('🔄 Loading keywords from repos.json...');
         try {
-            const response = await fetch('/api/keywords/generate', { method: 'POST' });
-            if (!response.body) return;
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                const text = decoder.decode(value);
-                appendTerminalLine(text);
+            const response = await fetch('/api/keywords/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+            const data = await response.json();
+
+            if (response.ok && data.ok !== false) {
+                // Support both new format (count/keywords) and legacy format (total_count)
+                const total = data.count ?? data.total_count ?? 0;
+                appendTerminalLine(`✅ Loaded ${total} keywords from repos.json`);
+                appendTerminalLine(`   Duration: ${data.duration_seconds || 0}s`);
+            } else {
+                const errorMsg = data.error || data.detail || 'Unknown error';
+                appendTerminalLine(`❌ Error: ${errorMsg}`);
             }
         } catch (error) {
             console.error('Failed to generate keywords:', error);

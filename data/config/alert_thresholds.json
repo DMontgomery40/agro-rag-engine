@@ -1,0 +1,17 @@
+{
+  "cost_burn_spike_usd_per_hour": 0.1,
+  "token_burn_spike_per_minute": 5000,
+  "token_burn_sustained_per_minute": 2000,
+  "endpoint_call_frequency_per_minute": 10,
+  "endpoint_frequency_sustained_minutes": 2,
+  "cohere_rerank_calls_per_minute": 35,
+  "error_rate_threshold_percent": 9.5,
+  "timeout_errors_per_5min": 15,
+  "rate_limit_errors_per_5min": 5,
+  "request_latency_p99_seconds": 8.0,
+  "monthly_budget_usd": 50.0,
+  "budget_warning_usd": 5.0,
+  "budget_critical_usd": 40.0,
+  "retrieval_mrr_threshold": 0.6,
+  "canary_pass_rate_threshold": 0.9
+}

@@ -1,7 +1,37 @@
 {
-  "last_updated": "2025-10-20",
+  "last_updated": "2025-11-24",
   "currency": "USD",
   "models": [
+    {
+      "provider": "openai",
+      "family": "gpt-5.1",
+      "model": "gpt-5.1",
+      "unit": "1k_tokens",
+      "input_per_1k": 1.50,
+      "output_per_1k": 12.0,
+      "context": 256000,
+      "notes": "Latest GPT-5.1 model - enhanced coding & agentic tasks"
+    },
+    {
+      "provider": "openai",
+      "family": "gpt-5.1-mini",
+      "model": "gpt-5.1-mini",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.30,
+      "output_per_1k": 2.5,
+      "context": 256000,
+      "notes": "GPT-5.1 mini variant - fast & economical"
+    },
+    {
+      "provider": "openai",
+      "family": "gpt-5.1-nano",
+      "model": "gpt-5.1-nano",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.06,
+      "output_per_1k": 0.5,
+      "context": 256000,
+      "notes": "GPT-5.1 nano variant - ultra-budget"
+    },
     {
       "provider": "openai",
       "family": "gpt-5",
@@ -10,7 +40,7 @@
       "input_per_1k": 1.25,
       "output_per_1k": 10.0,
       "context": 200000,
-      "notes": "Latest GPT-5 model"
+      "notes": "GPT-5 base model"
     },
     {
       "provider": "openai",
@@ -40,7 +70,7 @@
       "input_per_1k": 1.25,
       "output_per_1k": 10.0,
       "context": 200000,
-      "notes": "Latest GPT-5 chat model"
+      "notes": "Latest GPT-5 chat model alias"
     },
     {
       "provider": "openai",
@@ -60,7 +90,7 @@
       "input_per_1k": 15.0,
       "output_per_1k": 120.0,
       "context": 200000,
-      "notes": "GPT-5 pro variant"
+      "notes": "GPT-5 pro variant - highest capability"
     },
     {
       "provider": "openai",
@@ -100,7 +130,7 @@
       "input_per_1k": 2.5,
       "output_per_1k": 10.0,
       "context": 128000,
-      "notes": "GPT-4o model"
+      "notes": "GPT-4o model (legacy)"
     },
     {
       "provider": "openai",
@@ -110,7 +140,7 @@
       "input_per_1k": 5.0,
       "output_per_1k": 15.0,
       "context": 128000,
-      "notes": "GPT-4o snapshot from 2024-05-13"
+      "notes": "GPT-4o snapshot from 2024-05-13 (legacy)"
     },
     {
       "provider": "openai",
@@ -120,7 +150,17 @@
       "input_per_1k": 0.15,
       "output_per_1k": 0.6,
       "context": 128000,
-      "notes": "GPT-4o mini variant"
+      "notes": "GPT-4o mini variant (legacy)"
+    },
+    {
+      "provider": "openai",
+      "family": "o3-mini",
+      "model": "o3-mini",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.40,
+      "output_per_1k": 1.60,
+      "context": 16384,
+      "notes": "O3 mini - fast reasoning tier"
     },
     {
       "provider": "openai",
@@ -139,6 +179,26 @@
       "embed_per_1k": 0.13,
       "dimensions": 3072,
       "notes": "Large embeddings model"
+    },
+    {
+      "provider": "anthropic",
+      "family": "claude-4.5-sonnet",
+      "model": "claude-4.5-sonnet",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.003,
+      "output_per_1k": 0.015,
+      "context": 200000,
+      "notes": "Claude 4.5 Sonnet"
+    },
+    {
+      "provider": "anthropic",
+      "family": "claude-4.1-opus",
+      "model": "claude-4.1-opus",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.015,
+      "output_per_1k": 0.075,
+      "context": 1000000,
+      "notes": "Claude 4.1 Opus - 1M context"
     },
     {
       "provider": "anthropic",
@@ -238,6 +298,26 @@
       "embed_per_1k": 0.00015,
       "dimensions": 3072,
       "notes": "Gemini embeddings"
+    },
+    {
+      "provider": "xai",
+      "family": "grok-4-fast-reasoning",
+      "model": "grok-4-fast-reasoning",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.0002,
+      "output_per_1k": 0.0005,
+      "context": 2000000,
+      "notes": "Grok 4 Fast - 2M context reasoning"
+    },
+    {
+      "provider": "xai",
+      "family": "grok-3",
+      "model": "grok-3",
+      "unit": "1k_tokens",
+      "input_per_1k": 0.003,
+      "output_per_1k": 0.015,
+      "context": 131072,
+      "notes": "Grok 3 base"
     },
     {
       "provider": "cohere",

@@ -1,0 +1,164 @@
+[
+  {
+    "_comment": "Fresh eval questions for AGRO RAG - split between keyword and semantic"
+  },
+
+  {
+    "_section": "=== KEYWORD-FOCUSED (BM25 should nail these) ==="
+  },
+  {
+    "q": "Where is the BM25 retriever loaded?",
+    "type": "keyword",
+    "expect_paths": ["retrieval/hybrid_search.py", "indexer/index_repo.py"]
+  },
+  {
+    "q": "Where is QdrantClient used?",
+    "type": "keyword",
+    "expect_paths": ["retrieval/hybrid_search.py", "indexer/index_repo.py"]
+  },
+  {
+    "q": "Where is the Stemmer imported?",
+    "type": "keyword",
+    "expect_paths": ["retrieval/hybrid_search.py", "indexer/index_repo.py"]
+  },
+  {
+    "q": "Where is config_registry defined?",
+    "type": "keyword",
+    "expect_paths": ["server/services/config_registry.py"]
+  },
+  {
+    "q": "Where is FastAPI app created?",
+    "type": "keyword",
+    "expect_paths": ["server/app.py"]
+  },
+  {
+    "q": "Where is COLLECTION_NAME used?",
+    "type": "keyword",
+    "expect_paths": ["retrieval/hybrid_search.py", "indexer/index_repo.py"]
+  },
+  {
+    "q": "Where is chunk_code function defined?",
+    "type": "keyword",
+    "expect_paths": ["retrieval/ast_chunker.py"]
+  },
+  {
+    "q": "Where is rerank function defined?",
+    "type": "keyword",
+    "expect_paths": ["retrieval/rerank.py", "retrieval/hybrid_search.py"]
+  },
+  {
+    "q": "Where is QDRANT_URL configured?",
+    "type": "keyword",
+    "expect_paths": ["retrieval/hybrid_search.py", "indexer/index_repo.py", "server/services/config_registry.py"]
+  },
+  {
+    "q": "Where is SentenceTransformer used?",
+    "type": "keyword",
+    "expect_paths": ["indexer/index_repo.py", "retrieval/hybrid_search.py"]
+  },
+  {
+    "q": "Where is rrf_fusion called?",
+    "type": "keyword",
+    "expect_paths": ["retrieval/hybrid_search.py"]
+  },
+  {
+    "q": "Where is load_chunks function?",
+    "type": "keyword",
+    "expect_paths": ["retrieval/hybrid_search.py"]
+  },
+  {
+    "q": "Where is preprocess_query defined?",
+    "type": "keyword",
+    "expect_paths": ["retrieval/hybrid_search.py"]
+  },
+  {
+    "q": "Where is out_dir imported from?",
+    "type": "keyword",
+    "expect_paths": ["common/config_loader.py", "retrieval/hybrid_search.py", "indexer/index_repo.py"]
+  },
+  {
+    "q": "Where is bm25s.BM25 instantiated?",
+    "type": "keyword",
+    "expect_paths": ["indexer/index_repo.py"]
+  },
+
+  {
+    "_section": "=== SEMANTIC-FOCUSED (need understanding, not just keywords) ==="
+  },
+  {
+    "q": "How does the search combine sparse and dense retrieval?",
+    "type": "semantic",
+    "expect_paths": ["retrieval/hybrid_search.py"]
+  },
+  {
+    "q": "What happens when a user submits a search query?",
+    "type": "semantic",
+    "expect_paths": ["retrieval/hybrid_search.py", "server/routers/search.py"]
+  },
+  {
+    "q": "How are code files split into smaller pieces for indexing?",
+    "type": "semantic",
+    "expect_paths": ["retrieval/ast_chunker.py", "indexer/index_repo.py"]
+  },
+  {
+    "q": "How does the system decide which documents are most relevant?",
+    "type": "semantic",
+    "expect_paths": ["retrieval/hybrid_search.py", "retrieval/rerank.py"]
+  },
+  {
+    "q": "What's the process for storing code in the vector database?",
+    "type": "semantic",
+    "expect_paths": ["indexer/index_repo.py"]
+  },
+  {
+    "q": "How are API settings persisted and loaded?",
+    "type": "semantic",
+    "expect_paths": ["server/services/config_registry.py", "server/services/config_store.py"]
+  },
+  {
+    "q": "How does the application handle chat conversations?",
+    "type": "semantic",
+    "expect_paths": ["server/routers/chat.py", "server/langgraph_app.py"]
+  },
+  {
+    "q": "What happens during the evaluation process?",
+    "type": "semantic",
+    "expect_paths": ["eval/eval_rag.py", "eval/eval_loop.py", "server/routers/eval.py"]
+  },
+  {
+    "q": "How does the system improve retrieval quality over time?",
+    "type": "semantic",
+    "expect_paths": ["reranker/learning_reranker.py", "retrieval/rerank.py"]
+  },
+  {
+    "q": "What's the workflow for adding a new repository to search?",
+    "type": "semantic",
+    "expect_paths": ["indexer/index_repo.py", "common/config_loader.py"]
+  },
+  {
+    "q": "How does the frontend communicate with the backend?",
+    "type": "semantic",
+    "expect_paths": ["server/app.py", "server/routers/search.py", "web/src/api/"]
+  },
+  {
+    "q": "What security measures protect the API?",
+    "type": "semantic",
+    "expect_paths": ["server/app.py", "server/routers/"]
+  },
+  {
+    "q": "How are embeddings generated for code?",
+    "type": "semantic",
+    "expect_paths": ["indexer/index_repo.py", "retrieval/hybrid_search.py"]
+  },
+  {
+    "q": "What's the architecture of the RAG pipeline?",
+    "type": "semantic",
+    "expect_paths": ["retrieval/hybrid_search.py", "server/langgraph_app.py"]
+  },
+  {
+    "q": "How does the system handle errors in search?",
+    "type": "semantic",
+    "expect_paths": ["retrieval/hybrid_search.py", "server/routers/search.py"]
+  }
+]
+

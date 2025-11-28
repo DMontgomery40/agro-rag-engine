@@ -59,13 +59,15 @@ def enrich(file_path: str, lang: str, code: str) -> Dict[str, Any]:
         if len(code or "") < _ENRICH_MIN_CHARS or _ENRICH_DISABLED == 1:
             raise ValueError("Skip LLM enrichment")
 
-        prompt = (
+        # Get code enrichment prompt from config (or use default)
+        default_prompt = (
             "Analyze this code and return a JSON object with: "
             "symbols (array of function/class/component names), "
             "purpose (one sentence description), "
             "keywords (array of technical terms). "
             "Be concise. Return ONLY valid JSON.\n\n"
         )
+        prompt = _config_registry.get_str('PROMPT_CODE_ENRICHMENT', default_prompt) if _config_registry else default_prompt
         user_input = prompt + (code or "")[:_ENRICH_MAX_CHARS]
 
         text, _ = generate_text(

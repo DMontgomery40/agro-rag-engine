@@ -5,12 +5,14 @@ from typing import Any, Dict
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
 from common.paths import repo_root, gui_dir, docs_dir, files_root
 from common.config_loader import load_repos
 from server.api_interceptor import setup_interceptor
 from server.frequency_limiter import FrequencyAnomalyMiddleware
 from server.metrics import init_metrics_fastapi
+from server.services.config_registry import get_config_registry
 import logging
 import uuid
 from server.feedback import router as feedback_router
@@ -29,6 +31,7 @@ from server.routers.onboarding import router as onboarding_router
 from server.routers.golden import router as golden_router
 from server.routers.eval import router as eval_router
 from server.routers.cost import router as cost_router
+from server.routers.data_quality import router as data_quality_router
 from server.routers.cards import router as cards_router
 from server.routers.profiles import router as profiles_router
 from server.routers.autotune import router as autotune_router
@@ -37,6 +40,14 @@ from server.routers.hardware import router as hardware_router
 from server.routers.observability import router as observability_router
 from server.routers.reranker_ops import router as reranker_ops_router
 from server.routers.mcp_ops import router as mcp_ops_router
+from server.routers.chat import router as chat_router
+from server.routers.stream_logs import router as stream_logs_router
+from server.routers.grafana import router as grafana_router
+from server.routers.webhooks import router as webhooks_router
+from server.routers.prompts import router as prompts_router
+
+# Module-level config registry cache
+_config_registry = get_config_registry()
 
 
 def create_app() -> FastAPI:
@@ -52,7 +63,25 @@ def create_app() -> FastAPI:
 
     app = FastAPI(title="AGRO RAG + GUI")
 
-    # Metrics + middleware
+    # CORS configuration for multiple developers on Vite dev servers (ports 5170-5179)
+    # Also allows production origins and same-origin requests
+    cors_kwargs = dict(
+        allow_credentials=True,  # Enable credentials for auth/cookies if needed
+        allow_methods=["*"],
+        allow_headers=["*"],
+        # Explicit origins for production and common dev ports
+        allow_origins=[
+            "http://localhost:8012",
+            "http://127.0.0.1:8012",
+            # Production origins can be added here
+        ],
+        # Regex pattern to allow Vite dev server ports 5170-5179
+        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1):517[0-9]$"
+    )
+
+    app.add_middleware(CORSMiddleware, **cors_kwargs)
+
+    # Metrics + middleware (add after CORS so preflight is handled first)
     init_metrics_fastapi(app)
     app.add_middleware(FrequencyAnomalyMiddleware)
 
@@ -76,6 +105,79 @@ def create_app() -> FastAPI:
         except Exception:
             pass
         return response
+
+    # Tracing middleware: start/end trace around /api/chat
+    # Note: /answer is deprecated - all new integrations should use /api/chat
+    @app.middleware("http")
+    async def tracing_middleware(request: Request, call_next):  # type: ignore[unused-ignore]
+        try:
+            # Config gate and sampling
+            enabled = _config_registry.get_int("TRACING_ENABLED", 1)
+            if not enabled:
+                return await call_next(request)
+            try:
+                rate = float(_config_registry.get_float("TRACE_SAMPLING_RATE", 1.0))
+            except Exception:
+                rate = 1.0
+            if rate < 1.0:
+                import random as _rand
+                if _rand.random() > max(0.0, min(1.0, rate)):
+                    return await call_next(request)
+
+            path = request.url.path or ""
+            # Only trace /api/chat - the unified chat endpoint
+            # /answer is deprecated and will be removed in future version
+            if path not in {"/api/chat"}:
+                return await call_next(request)
+
+            # Import lazily to avoid cycles at import time
+            try:
+                from server.tracing import start_trace, end_trace
+            except Exception:
+                return await call_next(request)
+
+            repo = _config_registry.get_str("REPO", "agro")
+            question = ""
+
+            # /api/chat: we need to read and re-inject the body for downstream
+            try:
+                body = await request.body()
+                import json as _json
+                try:
+                    data = _json.loads(body.decode("utf-8")) if body else {}
+                except Exception:
+                    data = {}
+                question = str(data.get("question") or "")
+                repo = str(data.get("repo") or repo)
+
+                # Create a fresh receive channel that returns the original body once
+                async def _receive_once(has=[False]):  # type: ignore[arg-type]
+                    if has[0]:
+                        return {"type": "http.request", "body": b"", "more_body": False}
+                    has[0] = True
+                    return {"type": "http.request", "body": body, "more_body": False}
+
+                from starlette.requests import Request as _Req
+                new_request = _Req(request.scope, _receive_once)
+            except Exception:
+                new_request = request
+
+            try:
+                start_trace(repo=repo, question=question)
+            except Exception:
+                pass
+
+            try:
+                response = await call_next(new_request)
+            finally:
+                try:
+                    end_trace()
+                except Exception:
+                    pass
+            return response
+        except Exception:
+            # Never let tracing break requests
+            return await call_next(request)
 
     ROOT = repo_root()
     GUI_DIR = gui_dir()
@@ -169,6 +271,7 @@ def create_app() -> FastAPI:
     app.include_router(golden_router)
     app.include_router(eval_router)
     app.include_router(cost_router)
+    app.include_router(data_quality_router)
     app.include_router(cards_router)
     app.include_router(profiles_router)
     app.include_router(autotune_router)
@@ -177,6 +280,11 @@ def create_app() -> FastAPI:
     app.include_router(observability_router)
     app.include_router(reranker_ops_router)
     app.include_router(mcp_ops_router)
+    app.include_router(chat_router)
+    app.include_router(stream_logs_router)
+    app.include_router(grafana_router)
+    app.include_router(webhooks_router)
+    app.include_router(prompts_router)
 
     # Include existing routers
     app.include_router(feedback_router)
@@ -200,10 +308,6 @@ def create_app() -> FastAPI:
         import socket
         import requests
 
-        def _bool_env(name: str, default: str = "0") -> bool:
-            v = (os.getenv(name, default) or default).strip().lower()
-            return v in {"1", "true", "yes", "on"}
-
         repo_cfg = load_repos()
         repo_name = os.getenv("REPO") or repo_cfg.get("default_repo") or "local"
         repo_mode = "repo" if repo_name and repo_name != "local" else "local"
@@ -216,36 +320,34 @@ def create_app() -> FastAPI:
             except Exception:
                 branch = None
 
-        if (os.getenv("SKIP_DENSE", "0") or "0").strip() == "1":
-            retrieval_mode = "bm25"
-        else:
-            retrieval_mode = "hybrid"
-        # Be resilient to invalid or missing env overrides
-        try:
-            top_k = int((os.getenv("FINAL_K") or os.getenv("LANGGRAPH_FINAL_K") or "10").strip())
-        except Exception:
-            top_k = 10
+        skip_dense = _config_registry.get_bool("SKIP_DENSE", False)
+        retrieval_mode = "bm25" if skip_dense else "hybrid"
 
-        rr_enabled = _bool_env("AGRO_RERANKER_ENABLED", "0")
-        rr_backend = (os.getenv("RERANK_BACKEND", "").strip().lower() or None)
+        # Get top_k with fallback chain
+        top_k = _config_registry.get_int("FINAL_K", 10)
+        if top_k == 10:  # Check if we got the default
+            top_k = _config_registry.get_int("LANGGRAPH_FINAL_K", 10)
+
+        rr_enabled = _config_registry.get_bool("AGRO_RERANKER_ENABLED", False)
+        rr_backend = _config_registry.get_str("RERANKER_BACKEND", "").strip().lower() or None
         rr_provider = None
         rr_model = None
         if rr_backend:
             if rr_backend in {"cohere", "voyage"}:
                 rr_provider = rr_backend
-                rr_model = os.getenv("COHERE_RERANK_MODEL") if rr_backend == "cohere" else os.getenv("VOYAGE_RERANK_MODEL")
+                rr_model = _config_registry.get_str("COHERE_RERANK_MODEL", "") if rr_backend == "cohere" else _config_registry.get_str("VOYAGE_RERANK_MODEL", "")
             elif rr_backend in {"hf", "local"}:
                 rr_provider = rr_backend
-                rr_model = os.getenv("RERANK_MODEL") or os.getenv("BAAI_RERANK_MODEL")
+                rr_model = _config_registry.get_str("RERANKER_MODEL", "")
             elif rr_backend == "learning":
                 rr_provider = "learning"
                 rr_model = os.getenv("AGRO_LEARNING_RERANKER_MODEL", "cross-encoder-agro")
 
-        enrich_enabled = _bool_env("ENRICH_CODE_CHUNKS", "0")
-        enrich_backend = (os.getenv("ENRICH_BACKEND", "").strip().lower() or None)
-        enrich_model = os.getenv("ENRICH_MODEL") or os.getenv("ENRICH_MODEL_OLLAMA")
+        enrich_enabled = _config_registry.get_bool("ENRICH_CODE_CHUNKS", False)
+        enrich_backend = _config_registry.get_str("ENRICH_BACKEND", "").strip().lower() or None
+        enrich_model = _config_registry.get_str("ENRICH_MODEL", "")
 
-        gen_model = os.getenv("GEN_MODEL") or os.getenv("ENRICH_MODEL") or None
+        gen_model = _config_registry.get_str("GEN_MODEL", "") or _config_registry.get_str("ENRICH_MODEL", "") or None
         gen_provider = None
         if gen_model:
             ml = gen_model.lower()
@@ -257,7 +359,7 @@ def create_app() -> FastAPI:
                 gen_provider = "mlx"
 
         def _qdrant_health() -> str:
-            base = (os.getenv("QDRANT_URL") or "").rstrip("/") or "http://127.0.0.1:6333"
+            base = _config_registry.get_str("QDRANT_URL", "http://127.0.0.1:6333").rstrip("/")
             url = f"{base}/collections"
             try:
                 r = requests.get(url, timeout=1.5)
@@ -308,10 +410,10 @@ def create_app() -> FastAPI:
                 "health": {"qdrant": "unknown", "redis": "unknown", "llm": "unknown"},
             }
 
-    # Startup event: Load config registry
+    # Startup event: Load config registry and historical eval metrics
     @app.on_event("startup")
     async def startup_event():
-        """Load configuration registry at application startup."""
+        """Load configuration registry and historical eval metrics at application startup."""
         try:
             from server.services.config_registry import get_config_registry
             registry = get_config_registry()
@@ -320,5 +422,14 @@ def create_app() -> FastAPI:
         except Exception as e:
             # Log error but don't fail startup - config registry should be resilient
             logging.getLogger("agro.api").error(f"Failed to load config registry: {e}")
+
+        # Load historical eval metrics for Prometheus
+        try:
+            from server.metrics import load_historical_eval_metrics
+            load_historical_eval_metrics()
+            logging.getLogger("agro.api").info("Historical eval metrics loaded successfully")
+        except Exception as e:
+            # Log error but don't fail startup
+            logging.getLogger("agro.api").error(f"Failed to load historical eval metrics: {e}")
 
     return app
