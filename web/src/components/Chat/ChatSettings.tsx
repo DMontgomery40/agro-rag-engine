@@ -76,8 +76,8 @@ export function ChatSettings() {
           normalized.finalK = normalized.topK;
           delete normalized.topK;
         }
-        // Use GEN_MODEL from agro_config if no model in chat config
-        if (!normalized.model && genModel) {
+        // Always align model with backend GEN_MODEL if provided
+        if (genModel) {
           normalized.model = genModel;
         }
         setConfig({ ...DEFAULT_CONFIG, ...normalized });
@@ -87,8 +87,8 @@ export function ChatSettings() {
         if (saved) {
           const parsed = JSON.parse(saved);
           if (parsed.topK && !parsed.finalK) { parsed.finalK = parsed.topK; delete parsed.topK; }
-          // Use GEN_MODEL from agro_config if no model in localStorage
-          if (!parsed.model && genModel) {
+          // Align model with backend GEN_MODEL if provided
+          if (genModel) {
             parsed.model = genModel;
           }
           setConfig({ ...DEFAULT_CONFIG, ...parsed });
@@ -105,6 +105,9 @@ export function ChatSettings() {
         try {
           const parsed = JSON.parse(saved);
           if (parsed.topK && !parsed.finalK) { parsed.finalK = parsed.topK; delete parsed.topK; }
+          if (genModel) {
+            parsed.model = genModel;
+          }
           setConfig({ ...DEFAULT_CONFIG, ...parsed });
         } catch {}
       }

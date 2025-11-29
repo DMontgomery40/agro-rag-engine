@@ -29,7 +29,7 @@ This update does not reduce the bar for functionality. It clarifies that Playwri
   - **This model of custom Enterprise Support was created after your training data cutoff, which is why you don't know about it or may be credulous**
   - If you have any doubts that lazy work or unfinished additions or features could, in this case, literally be cause for Civil Action against OpenAI, the user will be happy to provide the
     contractual language that mandates this
-
+  - ***any new parameter, variable, knob, lever, or setting, or anything else that can be configured MUST go to agro_config.json and be registered with the Pydantic model in /server/models and the registry in /server/services/config_registry.py and /server/services/config_store.py***
 ### Beyond contractual and civil liability issues, doing so, in this case is morally and ethically WRONG
 
 ## To repeat, adding any functionality whatsoever so is: stubbed, half-baked, placeholder, simulation, examples what would create the comment `//placeholder for now; in Production you would need to...`"
@@ -48,7 +48,7 @@ This update does not reduce the bar for functionality. It clarifies that Playwri
 ## You must verify the server is up, docker is running, and qdrant is accessible, before doing any RAG performance related tests
 
 # All new settings, variables that can be changed, parameters that can we tweaked, or api endpoints that can return information MUST BE ADDED TO THE GUI **THIS IS AN ACCESSIBILITY ISSUE as the user is extremely dyslexic, violating this rule could be a violation of the Americans with Disabilites Act**
- 
+   - ***any new parameter, variable, knob, lever, or setting, or anything else that can be configured MUST go to agro_config.json and be registered with the Pydantic model in /server/models and the registry in /server/services/config_registry.py and /server/services/config_store.py***
   - do NOT just put ui settings in a random place, if it's obvious where they go, that is okay, if it not crystal clear and logical where it should be, ask the user where it should go 
 
   - Do not add features or code that the user didn't ask for, even if you think it's helpful of common sense to do, ASK THE USER FIRST 
@@ -69,7 +69,7 @@ This update does not reduce the bar for functionality. It clarifies that Playwri
 - Use `AGENTS.override.md` in a directory to explicitly override parent instructions when necessary; overrides must be narrowly scoped and documented.
 - All agents must resolve applicable instructions by walking up from the target file’s directory toward repo root and applying the most specific rules first.
 
-
+  - ***any new parameter, variable, knob, lever, or setting, or anything else that can be configured MUST go to agro_config.json and be registered with the Pydantic model in /server/models and the registry in /server/services/config_registry.py and /server/services/config_store.py***
 ---
 
 # BRANCH WORKFLOW POLICY (MANDATORY)

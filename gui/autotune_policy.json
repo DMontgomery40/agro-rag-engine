@@ -1,0 +1,19 @@
+{
+  "business_hours": { "start": "09:00", "end": "18:00", "days": [1,2,3,4,5] },
+  "thresholds": { "cpu_hot": 0.80, "mem_hot": 0.85, "gpu_hot": 0.85 },
+  "modes": {
+    "ECO": {
+      "when": { "cpu_util_max": 0.25, "mem_util_max": 0.50, "gpu_util_max": 0.30 },
+      "apply": { "GEN_MODEL": "qwen3-coder:7b", "RERANK_BACKEND": "none" }
+    },
+    "BALANCED": {
+      "when": { "cpu_util_max": 0.55, "mem_util_max": 0.70, "gpu_util_max": 0.60 },
+      "apply": { "GEN_MODEL": "qwen3-coder:14b", "RERANK_BACKEND": "local" }
+    },
+    "TURBO": {
+      "when": { "cpu_util_max": 0.90, "mem_util_max": 0.90, "gpu_util_max": 0.90 },
+      "apply": { "GEN_MODEL": "gpt-4o-mini", "RERANK_BACKEND": "cohere" }
+    }
+  }
+}
+

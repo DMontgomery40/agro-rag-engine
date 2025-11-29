@@ -5,22 +5,38 @@ from typing import Any, Dict
 from fastapi import APIRouter
 
 from common.paths import repo_root
+from server.services.config_registry import get_config_registry
 
 router = APIRouter()
+
+# Helper to get config values with defaults
+def _get_docker_config():
+    """Get Docker config values from registry."""
+    registry = get_config_registry()
+    return {
+        "status_timeout": registry.get_int("DOCKER_STATUS_TIMEOUT", 5),
+        "container_list_timeout": registry.get_int("DOCKER_CONTAINER_LIST_TIMEOUT", 10),
+        "container_action_timeout": registry.get_int("DOCKER_CONTAINER_ACTION_TIMEOUT", 30),
+        "infra_up_timeout": registry.get_int("DOCKER_INFRA_UP_TIMEOUT", 60),
+        "infra_down_timeout": registry.get_int("DOCKER_INFRA_DOWN_TIMEOUT", 30),
+        "logs_tail": registry.get_int("DOCKER_LOGS_TAIL", 100),
+        "logs_timestamps": registry.get_bool("DOCKER_LOGS_TIMESTAMPS", True),
+    }
 
 
 @router.get("/api/docker/status")
 def docker_status() -> Dict[str, Any]:
+    cfg = _get_docker_config()
     try:
         result = subprocess.run(
             ["docker", "info", "--format", "{{.ServerVersion}}"],
             capture_output=True,
             text=True,
-            timeout=5,
+            timeout=cfg["status_timeout"],
         )
         if result.returncode == 0:
             count_result = subprocess.run(
-                ["docker", "ps", "-q"], capture_output=True, text=True, timeout=5
+                ["docker", "ps", "-q"], capture_output=True, text=True, timeout=cfg["status_timeout"]
             )
             container_count = len(
                 [line for line in count_result.stdout.strip().split("\n") if line]
@@ -47,12 +63,13 @@ def docker_containers() -> Dict[str, Any]:
 
 @router.get("/api/docker/containers/all")
 def docker_containers_all() -> Dict[str, Any]:
+    cfg = _get_docker_config()
     try:
         result = subprocess.run(
             ["docker", "ps", "-a", "--format", "{{json .}}"],
             capture_output=True,
             text=True,
-            timeout=10,
+            timeout=cfg["container_list_timeout"],
         )
         if result.returncode == 0:
             containers = []
@@ -148,12 +165,13 @@ def docker_containers_all() -> Dict[str, Any]:
 
 @router.get("/api/docker/redis/ping")
 def docker_redis_ping() -> Dict[str, Any]:
+    cfg = _get_docker_config()
     try:
         find_result = subprocess.run(
             ["docker", "ps", "--format", "{{.Names}}", "--filter", "name=redis"],
             capture_output=True,
             text=True,
-            timeout=5,
+            timeout=cfg["status_timeout"],
         )
         if find_result.returncode != 0 or not find_result.stdout.strip():
             return {"success": False, "error": "Redis container not found"}
@@ -163,7 +181,7 @@ def docker_redis_ping() -> Dict[str, Any]:
             ["docker", "exec", container_name, "redis-cli", "ping"],
             capture_output=True,
             text=True,
-            timeout=5,
+            timeout=cfg["status_timeout"],
         )
         return {
             "success": ping_result.returncode == 0 and "PONG" in ping_result.stdout,
@@ -173,15 +191,69 @@ def docker_redis_ping() -> Dict[str, Any]:
         return {"success": False, "error": str(e)}
 
 
+@router.get("/api/docker/redis/memory")
+def docker_redis_memory() -> Dict[str, Any]:
+    """Get actual Redis memory usage in bytes."""
+    cfg = _get_docker_config()
+    try:
+        find_result = subprocess.run(
+            ["docker", "ps", "--format", "{{.Names}}", "--filter", "name=redis"],
+            capture_output=True,
+            text=True,
+            timeout=cfg["status_timeout"],
+        )
+        if find_result.returncode != 0 or not find_result.stdout.strip():
+            return {"success": False, "error": "Redis container not found", "used_memory": 0}
+
+        container_name = find_result.stdout.strip().split("\n")[0]
+        # Get memory info from Redis
+        info_result = subprocess.run(
+            ["docker", "exec", container_name, "redis-cli", "INFO", "memory"],
+            capture_output=True,
+            text=True,
+            timeout=cfg["status_timeout"],
+        )
+        if info_result.returncode != 0:
+            return {"success": False, "error": "Failed to get Redis memory info", "used_memory": 0}
+
+        # Parse used_memory from the output
+        used_memory = 0
+        for line in info_result.stdout.split("\n"):
+            if line.startswith("used_memory:"):
+                try:
+                    used_memory = int(line.split(":")[1].strip())
+                except (ValueError, IndexError):
+                    pass
+                break
+
+        return {
+            "success": True,
+            "used_memory": used_memory,
+            "used_memory_human": _format_bytes(used_memory),
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e), "used_memory": 0}
+
+
+def _format_bytes(num_bytes: int) -> str:
+    """Format bytes to human readable string."""
+    for unit in ["B", "KB", "MB", "GB"]:
+        if abs(num_bytes) < 1024.0:
+            return f"{num_bytes:.1f} {unit}"
+        num_bytes /= 1024.0
+    return f"{num_bytes:.1f} TB"
+
+
 @router.post("/api/docker/infra/up")
 def docker_infra_up() -> Dict[str, Any]:
+    cfg = _get_docker_config()
     try:
         root = repo_root()
         result = subprocess.run(
             ["bash", str(root / "scripts" / "up.sh")],
             capture_output=True,
             text=True,
-            timeout=60,
+            timeout=cfg["infra_up_timeout"],
             cwd=str(root),
         )
         return {
@@ -195,13 +267,14 @@ def docker_infra_up() -> Dict[str, Any]:
 
 @router.post("/api/docker/infra/down")
 def docker_infra_down() -> Dict[str, Any]:
+    cfg = _get_docker_config()
     try:
         root = repo_root()
         result = subprocess.run(
             ["docker", "compose", "down"],
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=cfg["infra_down_timeout"],
             cwd=str(root),  # Fixed: Use root compose file (same as up.sh), not infra/
         )
         return {
@@ -213,7 +286,10 @@ def docker_infra_down() -> Dict[str, Any]:
         return {"success": False, "error": str(e)}
 
 
-def _ctl(action: str, container_id: str, timeout: int = 30) -> Dict[str, Any]:
+def _ctl(action: str, container_id: str, timeout: int = None) -> Dict[str, Any]:
+    if timeout is None:
+        cfg = _get_docker_config()
+        timeout = cfg["container_action_timeout"]
     try:
         result = subprocess.run(
             ["docker", action, container_id],
@@ -255,33 +331,34 @@ def loki_status() -> Dict[str, Any]:
 
 @router.post("/api/docker/container/{container_id}/pause")
 def docker_container_pause(container_id: str) -> Dict[str, Any]:
-    return _ctl("pause", container_id, timeout=10)
+    return _ctl("pause", container_id)
 
 
 @router.post("/api/docker/container/{container_id}/unpause")
 def docker_container_unpause(container_id: str) -> Dict[str, Any]:
-    return _ctl("unpause", container_id, timeout=10)
+    return _ctl("unpause", container_id)
 
 
 @router.post("/api/docker/container/{container_id}/stop")
 def docker_container_stop(container_id: str) -> Dict[str, Any]:
-    return _ctl("stop", container_id, timeout=30)
+    return _ctl("stop", container_id)
 
 
 @router.post("/api/docker/container/{container_id}/start")
 def docker_container_start(container_id: str) -> Dict[str, Any]:
-    return _ctl("start", container_id, timeout=30)
+    return _ctl("start", container_id)
 
 
 @router.post("/api/docker/container/{container_id}/remove")
 def docker_container_remove(container_id: str) -> Dict[str, Any]:
+    cfg = _get_docker_config()
     # Use rm -f for remove
     try:
         result = subprocess.run(
             ["docker", "rm", "-f", container_id],
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=cfg["container_action_timeout"],
         )
         return {
             "success": result.returncode == 0,
@@ -294,20 +371,26 @@ def docker_container_remove(container_id: str) -> Dict[str, Any]:
 
 @router.post("/api/docker/container/{container_id}/restart")
 def docker_container_restart(container_id: str) -> Dict[str, Any]:
-    return _ctl("restart", container_id, timeout=30)
+    return _ctl("restart", container_id)
 
 
 @router.get("/api/docker/container/{container_id}/logs")
 def docker_container_logs(
-    container_id: str, tail: int = 100, timestamps: bool = True
+    container_id: str, tail: int = None, timestamps: bool = None
 ) -> Dict[str, Any]:
+    cfg = _get_docker_config()
+    # Use config defaults if not specified
+    if tail is None:
+        tail = cfg["logs_tail"]
+    if timestamps is None:
+        timestamps = cfg["logs_timestamps"]
     try:
         cmd = ["docker", "logs", "--tail", str(tail)]
         if timestamps:
             cmd.append("--timestamps")
         cmd.append(container_id)
         result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=30
+            cmd, capture_output=True, text=True, timeout=cfg["container_action_timeout"]
         )
         return {
             "success": result.returncode == 0,

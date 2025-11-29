@@ -160,7 +160,22 @@ export interface IndexStats {
 export async function getIndexStats(): Promise<IndexStats> {
   const response = await fetch(apiUrl('/index/stats'));
   if (!response.ok) throw new Error('Failed to fetch index stats');
-  return response.json();
+  const raw = await response.json();
+  
+  // Map the API response to the expected interface
+  const breakdown = raw.storage_breakdown || {};
+  return {
+    chunks_json_size: breakdown.chunks_json || 0,
+    ram_embeddings_size: breakdown.embeddings_raw || 0,
+    qdrant_size: (breakdown.embeddings_raw || 0) + (breakdown.qdrant_overhead || 0),
+    bm25_index_size: breakdown.bm25_index || 0,
+    cards_size: breakdown.cards || 0,
+    reranker_cache_size: breakdown.reranker_cache || 0,
+    redis_cache_size: breakdown.redis || 0,
+    keyword_count: raw.keywords_count || 0,
+    total_storage: raw.total_storage || 0,
+    profile_count: (raw.repos || []).length,
+  };
 }
 
 export interface IndexStatusMetadata {
@@ -272,26 +287,106 @@ export async function getEvalStatus(): Promise<EvalStatus> {
 // Docker & Infrastructure APIs
 // ============================================================================
 
+/**
+ * Container info from /api/docker/containers
+ */
+export interface DockerContainer {
+  id: string;
+  short_id: string;
+  name: string;
+  image: string;
+  state: string;
+  status: string;
+  ports: string;
+  compose_project: string | null;
+  compose_service: string | null;
+  agro_managed: boolean;
+}
+
+/**
+ * Normalized Docker status for UI consumption.
+ * Combines data from /api/docker/status and /api/docker/containers.
+ */
 export interface DockerStatus {
   available: boolean;
-  containers?: Array<{
-    id: string;
-    name: string;
-    status: string;
-    state: string;
-  }>;
+  runtime?: string;
+  containers?: DockerContainer[];
 }
 
+/**
+ * Raw response from /api/docker/status
+ */
+interface DockerStatusRaw {
+  running: boolean;
+  runtime: string;
+  containers_count: number;
+  error?: string;
+}
+
+/**
+ * Raw response from /api/docker/containers
+ */
+interface DockerContainersRaw {
+  containers: DockerContainer[];
+  error?: string;
+}
+
+/**
+ * Get Docker status with container list.
+ * Calls both /api/docker/status and /api/docker/containers to provide
+ * complete Docker state information for the UI.
+ */
 export async function getDockerStatus(): Promise<DockerStatus> {
-  const response = await fetch(apiUrl('/docker/status'));
-  if (!response.ok) return { available: false };
-  return response.json();
+  try {
+    // Fetch status and containers in parallel
+    const [statusRes, containersRes] = await Promise.all([
+      fetch(apiUrl('/docker/status')),
+      fetch(apiUrl('/docker/containers'))
+    ]);
+
+    if (!statusRes.ok) {
+      return { available: false };
+    }
+
+    const statusData: DockerStatusRaw = await statusRes.json();
+
+    // If Docker isn't running, return early
+    if (!statusData.running) {
+      return { available: false, runtime: statusData.runtime };
+    }
+
+    // Get container list if available
+    let containers: DockerContainer[] = [];
+    if (containersRes.ok) {
+      const containersData: DockerContainersRaw = await containersRes.json();
+      containers = containersData.containers || [];
+    }
+
+    return {
+      available: true,
+      runtime: statusData.runtime,
+      containers
+    };
+  } catch (err) {
+    console.error('[getDockerStatus] Error:', err);
+    return { available: false };
+  }
 }
 
-export async function getDockerContainers(): Promise<any[]> {
-  const response = await fetch(apiUrl('/docker/containers'));
-  if (!response.ok) return [];
-  return response.json();
+/**
+ * Get raw container list from Docker.
+ * Returns the containers array directly (unwrapped from response object).
+ */
+export async function getDockerContainers(): Promise<DockerContainer[]> {
+  try {
+    const response = await fetch(apiUrl('/docker/containers'));
+    if (!response.ok) return [];
+    const data: DockerContainersRaw = await response.json();
+    return data.containers || [];
+  } catch (err) {
+    console.error('[getDockerContainers] Error:', err);
+    return [];
+  }
 }
 
 // ============================================================================
@@ -324,7 +419,7 @@ export async function getRepos(): Promise<RepoInfo[]> {
 }
 
 // ============================================================================
-// Top Folders / Analytics
+// Analytics APIs
 // ============================================================================
 
 export interface FolderMetrics {
@@ -333,8 +428,71 @@ export interface FolderMetrics {
   last_access?: string;
 }
 
-export async function getTopFolders(days: number = 5): Promise<FolderMetrics[]> {
-  // This endpoint might not exist yet - return mock data for now
-  // TODO: Wire to real analytics endpoint when available
-  return [];
+export interface TopQueryData {
+  query: string;
+  count: number;
+  routes: Array<[string, number]>;
+  ips: Array<[string, number]>;
 }
+
+export interface TopQueriesResponse {
+  total_queries: number;
+  top: TopQueryData[];
+}
+
+/**
+ * Get top folder access metrics by extracting folder paths from query analytics.
+ * Wired to /api/monitoring/top-queries endpoint.
+ * @param _days - Number of days to analyze (reserved for future backend filtering)
+ */
+export async function getTopFolders(_days: number = 5): Promise<FolderMetrics[]> {
+  try {
+    // Note: _days parameter reserved for future backend filtering implementation
+    const response = await fetch(apiUrl('/monitoring/top-queries?limit=100'));
+    if (!response.ok) return [];
+    
+    const data: TopQueriesResponse = await response.json();
+    
+    // Extract folder references from queries and aggregate by folder
+    const folderCounts: Record<string, number> = {};
+    
+    for (const item of data.top || []) {
+      // Extract file paths from queries that mention folders/files
+      const pathMatches = item.query.match(/(?:\/[\w.-]+)+/g) || [];
+      for (const path of pathMatches) {
+        // Get the folder part (parent directory)
+        const parts = path.split('/').filter(Boolean);
+        if (parts.length >= 2) {
+          const folder = parts.slice(0, -1).join('/');
+          folderCounts[folder] = (folderCounts[folder] || 0) + item.count;
+        }
+      }
+    }
+    
+    // Convert to array and sort by access count
+    const folders: FolderMetrics[] = Object.entries(folderCounts)
+      .map(([folder, count]) => ({ folder, access_count: count }))
+      .sort((a, b) => b.access_count - a.access_count)
+      .slice(0, 10);
+    
+    return folders;
+  } catch (err) {
+    console.error('[getTopFolders] Error:', err);
+    return [];
+  }
+}
+
+/**
+ * Get raw top queries data from monitoring endpoint.
+ */
+export async function getTopQueries(limit: number = 20): Promise<TopQueriesResponse> {
+  try {
+    const response = await fetch(apiUrl(`/monitoring/top-queries?limit=${limit}`));
+    if (!response.ok) return { total_queries: 0, top: [] };
+    return response.json();
+  } catch (err) {
+    console.error('[getTopQueries] Error:', err);
+    return { total_queries: 0, top: [] };
+  }
+}
+

@@ -1,5 +1,6 @@
 import os
 import json
+import subprocess
 from pathlib import Path
 from typing import Any, Dict, List
 from common.paths import repo_root, data_dir
@@ -93,6 +94,46 @@ def _get_index_embedding_metadata(repo_name: str) -> Dict[str, Any] | None:
     return best_meta
 
 
+def _get_redis_memory_usage() -> int:
+    """Get actual Redis memory usage in bytes by querying the Redis container.
+    
+    Returns 0 if Redis is not available.
+    """
+    try:
+        # Find Redis container
+        find_result = subprocess.run(
+            ["docker", "ps", "--format", "{{.Names}}", "--filter", "name=redis"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if find_result.returncode != 0 or not find_result.stdout.strip():
+            return 0  # Redis not running
+
+        container_name = find_result.stdout.strip().split("\n")[0]
+        
+        # Get memory info from Redis
+        info_result = subprocess.run(
+            ["docker", "exec", container_name, "redis-cli", "INFO", "memory"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if info_result.returncode != 0:
+            return 0
+
+        # Parse used_memory from the output
+        for line in info_result.stdout.split("\n"):
+            if line.startswith("used_memory:"):
+                try:
+                    return int(line.split(":")[1].strip())
+                except (ValueError, IndexError):
+                    pass
+        return 0
+    except Exception:
+        return 0
+
+
 def get_index_stats() -> Dict[str, Any]:
     """Gather comprehensive indexing statistics with storage calculator integration.
 
@@ -124,7 +165,7 @@ def get_index_stats() -> Dict[str, Any]:
             "embeddings_raw": 0,
             "qdrant_overhead": 0,
             "reranker_cache": 0,
-            "redis": 419430400,  # 400 MiB default
+            "redis": _get_redis_memory_usage(),  # actual Redis memory
         },
         "costs": {
             "total_tokens": 0,
@@ -229,12 +270,18 @@ def get_index_stats() -> Dict[str, Any]:
             stats["costs"]["total_tokens"] = total_tokens
             stats["costs"]["embedding_cost"] = round(embedding_cost, 4)
 
-    # Try to get keywords count
-    keywords_file = data_dir() / f"keywords_{stats.get('current_repo','agro')}.json"
-    if keywords_file.exists():
+    # Try to get keywords count from repos.json
+    current_repo = stats.get('current_repo', 'agro')
+    repos_json_path = repo_root() / "repos.json"
+    if repos_json_path.exists():
         try:
-            kw_data = json.loads(keywords_file.read_text())
-            stats["keywords_count"] = len(kw_data) if isinstance(kw_data, list) else len(kw_data.get("keywords", []))
+            repos_data = json.loads(repos_json_path.read_text())
+            repos_list = repos_data.get("repos", [])
+            for repo_entry in repos_list:
+                if repo_entry.get("name") == current_repo:
+                    keywords = repo_entry.get("keywords", [])
+                    stats["keywords_count"] = len(keywords) if isinstance(keywords, list) else 0
+                    break
         except Exception:
             pass
 

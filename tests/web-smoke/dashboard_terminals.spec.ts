@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Dashboard Terminals', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to dashboard
-    await page.goto('http://localhost:5175/#/dashboard');
+    await page.goto('/#/dashboard');
 
     // Wait for dashboard to load
     await page.waitForSelector('#tab-dashboard-system', { state: 'visible' });

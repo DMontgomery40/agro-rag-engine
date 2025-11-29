@@ -25,8 +25,10 @@ def files_root() -> Path:
 def gui_dir() -> Path:
     env = os.getenv("GUI_DIR")
     if env:
-        return _as_dir(env)
-    # Legacy GUI assets have been fully removed; default to the React web public assets
+        candidate = _as_dir(env)
+        if candidate.exists():
+            return candidate
+    # Default to the React web public assets (shared prices/profiles)
     return repo_root() / "web" / "public"
 
 

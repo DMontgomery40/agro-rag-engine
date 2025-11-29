@@ -17,6 +17,7 @@ import { useAppInit, useModuleLoader, useApplyButton } from '@/hooks';
 
 function App() {
   const [healthDisplay, setHealthDisplay] = useState('—');
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { status, checkHealth } = useHealthStore();
   const navigate = useNavigate();
 
@@ -24,6 +25,16 @@ function App() {
   const { isInitialized, initError } = useAppInit();
   const { modulesLoaded, loadError, loadProgress } = useModuleLoader();
   const { handleApply: handleSaveAllChanges, isDirty, isSaving, saveError } = useApplyButton();
+
+  // Toggle mobile navigation
+  const toggleMobileNav = () => {
+    setMobileNavOpen(prev => !prev);
+  };
+
+  // Close mobile nav when clicking outside or navigating
+  const closeMobileNav = () => {
+    setMobileNavOpen(false);
+  };
 
   useEffect(() => {
     // Initial health check
@@ -173,11 +184,26 @@ function App() {
     <>
       {/* Topbar */}
       <div className="topbar">
-        <button className="mobile-nav-toggle" id="mobile-nav-toggle" aria-label="Toggle navigation">
+        <button 
+          className={`mobile-nav-toggle ${mobileNavOpen ? 'active' : ''}`} 
+          id="mobile-nav-toggle" 
+          aria-label="Toggle navigation"
+          aria-expanded={mobileNavOpen}
+          onClick={toggleMobileNav}
+        >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="3" y1="6" x2="21" y2="6"></line>
-            <line x1="3" y1="12" x2="21" y2="12"></line>
-            <line x1="3" y1="18" x2="21" y2="18"></line>
+            {mobileNavOpen ? (
+              <>
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </>
+            ) : (
+              <>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </>
+            )}
           </svg>
         </button>
         <h1>
@@ -226,7 +252,7 @@ function App() {
         <div className="resize-handle"></div>
         <div className="content" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
           {/* Tab Bar - React Router navigation */}
-          <TabBar />
+          <TabBar mobileOpen={mobileNavOpen} onNavigate={closeMobileNav} />
 
           {/* Scrollable content wrapper */}
           <div style={{ flex: 1, overflowY: 'auto' }}>

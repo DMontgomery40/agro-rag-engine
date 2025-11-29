@@ -436,19 +436,23 @@ def _classify_components(m: Dict[str, Any]) -> list[str]:
     comps: list[str] = []
     name = (str(m.get("family") or "") + " " + str(m.get("model") or "")).lower()
     unit = str(m.get("unit") or "").lower()
+    rerank_val = m.get("rerank_per_1k")
+    embed_val = m.get("embed_per_1k")
+    input_val = m.get("input_per_1k")
+    output_val = m.get("output_per_1k")
 
     # Rerank if explicit field present or name hints contain rerank
-    if ("rerank_per_1k" in m) or ("rerank" in name):
+    if (rerank_val is not None) or ("rerank" in name):
         comps.append("RERANK")
 
-    # Embedding if explicit field or dimensions present and no token pricing
-    has_embed_cost = ("embed_per_1k" in m) or ("dimensions" in m)
-    has_gen_pricing = ("input_per_1k" in m) or ("output_per_1k" in m) or (unit in {"1k_tokens", "request"}) or ("per_request" in m)
-    if has_embed_cost and ("rerank_per_1k" not in m):
+    # Embedding if explicit field or dimensions present and rerank not set
+    has_embed_cost = (embed_val is not None) or ("dimensions" in m)
+    has_gen_pricing = (input_val is not None) or (output_val is not None) or (unit in {"1k_tokens", "request"}) or (m.get("per_request") is not None)
+    if has_embed_cost and (rerank_val is None):
         comps.append("EMB")
 
     # Generative if token pricing present or marked as request based, and not a pure embed-only entry
-    if has_gen_pricing and not ("embed_per_1k" in m and "input_per_1k" not in m and "output_per_1k" not in m):
+    if has_gen_pricing and not ((embed_val is not None) and (input_val is None) and (output_val is None)):
         comps.append("GEN")
 
     if not comps:
@@ -483,15 +487,36 @@ def _normalize_prices(data: Dict[str, Any]) -> Dict[str, Any]:
     return new
 
 
+def _prices_path_candidates() -> List[Path]:
+    """Ordered list of possible prices.json locations."""
+    root = repo_root()
+    return [
+        root / "web" / "public" / "prices.json",
+        gui_dir() / "prices.json",
+        root / "prices.json",
+    ]
+
+
 def prices_get() -> Dict[str, Any]:
-    raw = _read_json(gui_dir() / "prices.json", {"models": []})
+    raw = None
+    for candidate in _prices_path_candidates():
+        raw = _read_json(candidate, None)
+        if raw:
+            break
     data = raw if (raw and isinstance(raw, dict) and raw.get("models") is not None) else _default_prices()
     return _normalize_prices(data)
 
 
 def prices_upsert(item: Dict[str, Any]) -> Dict[str, Any]:
-    prices_path = gui_dir() / "prices.json"
-    data = _read_json(prices_path, {"models": []})
+    data = None
+    prices_path = _prices_path_candidates()[0]
+    for candidate in _prices_path_candidates():
+        prices_path = candidate
+        data = _read_json(candidate, None)
+        if data:
+            break
+    if data is None:
+        data = {"models": []}
     try:
         cfg = PricesConfig.model_validate(data)
     except ValidationError as exc:

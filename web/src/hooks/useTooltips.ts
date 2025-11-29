@@ -216,6 +216,13 @@ export function useTooltips() {
         ['MCP Security Guide', '/docs/REMOTE_MCP.md']
       ], [['Stored in .env', 'security']]),
 
+      DASHBOARD_INDEX_PANEL: L(
+        'Index Readiness',
+        'Live embedding config, indexing cost, and storage requirements pulled directly from /api/index/status. Updates automatically every 30 seconds and mirrors the legacy GUI layout exactly.',
+        [],
+        [['Auto-refresh', 'info']]
+      ),
+
       // Monitoring & Alerts
       ERROR_RATE_THRESHOLD: L('Error Rate Threshold (%)', 'Percentage threshold for triggering error rate alerts. When the error rate across all requests exceeds this percentage over a 5-minute window, Grafana will trigger an alert. Typical values: 5% for production (strict), 10-15% for development. Set lower for critical systems, higher for experimental features.', [
         ['Grafana Alerting', 'https://grafana.com/docs/grafana/latest/alerting/'],

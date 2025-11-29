@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import * as DashAPI from '@/api/dashboard';
+import { StorageCalculatorSuite } from './StorageCalculatorSuite';
 
 interface StorageItem {
   label: string;
@@ -100,6 +101,7 @@ export function StorageSubtab() {
     };
   }, []);
 
+
   // Calculate percentage for each item
   const getPercentage = (bytes: number): number => {
     if (totalBytes === 0) return 0;
@@ -171,11 +173,11 @@ export function StorageSubtab() {
           </div>
         ) : (
           <>
-            {/* Storage Grid - 4 columns */}
+            {/* Storage Grid - Responsive auto-fit */}
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
                 gap: '16px',
                 marginBottom: '24px'
               }}
@@ -316,6 +318,11 @@ export function StorageSubtab() {
             </div>
           </>
         )}
+      </div>
+
+      {/* Storage Calculator Suite */}
+      <div className="settings-section" style={{ background: 'var(--panel)', borderLeft: '3px solid var(--accent)' }}>
+        <StorageCalculatorSuite />
       </div>
 
       {/* Storage Tips & Optimization */}

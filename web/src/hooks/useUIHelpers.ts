@@ -145,6 +145,12 @@ export function useUIHelpers() {
       const clampedWidth = Math.max(MIN_WIDTH, Math.min(hardMax, width));
       document.documentElement.style.setProperty('--sidepanel-width', clampedWidth + 'px');
       localStorage.setItem(STORAGE_KEY, clampedWidth.toString());
+      
+      // Also update .layout directly in case CSS variable doesn't propagate
+      const layout = document.querySelector('.layout') as HTMLElement;
+      if (layout && window.innerWidth > 768) { // Only on desktop
+        layout.style.gridTemplateColumns = `1fr ${clampedWidth}px`;
+      }
     };
 
     const onMouseDown = (e: MouseEvent) => {

@@ -103,11 +103,13 @@ export function ServicesSubtab() {
   };
 
   const fetchAllStatus = async () => {
-    await Promise.all([
+    // Fetch Docker status in parallel with containers
+    const [, containersList] = await Promise.all([
       fetchDockerStatus(),
-      fetchContainers(),
-      fetchServiceStatus()
+      fetchContainers()
     ]);
+    // THEN check service status using the returned containers (not stale state)
+    await fetchServiceStatus(containersList);
   };
 
   const fetchDockerStatus = async () => {
@@ -120,7 +122,7 @@ export function ServicesSubtab() {
     }
   };
 
-  const fetchContainers = async () => {
+  const fetchContainers = async (): Promise<DockerContainer[]> => {
     try {
       const result = await dockerApi.listContainers();
       const allContainers = result.containers || [];
@@ -129,16 +131,19 @@ export function ServicesSubtab() {
       // Filter AGRO containers
       const agro = allContainers.filter((c: any) => c.agro_managed === true);
       setAgroContainers(agro);
+
+      return allContainers;
     } catch (error) {
       console.error('[ServicesSubtab] Failed to fetch containers:', error);
       setContainers([]);
       setAgroContainers([]);
+      return [];
     }
   };
 
-  const fetchServiceStatus = async () => {
-    // Check Qdrant
-    const qdrantContainer = containers.find(c =>
+  const fetchServiceStatus = async (containersList: DockerContainer[]) => {
+    // Check Qdrant - use passed containersList, not stale state
+    const qdrantContainer = containersList.find(c =>
       c.name.toLowerCase().includes('qdrant')
     );
     setQdrantStatus(prev => ({
@@ -162,8 +167,8 @@ export function ServicesSubtab() {
       setRedisStatus(prev => ({ ...prev, status: 'offline' }));
     }
 
-    // Check Prometheus
-    const prometheusContainer = containers.find(c =>
+    // Check Prometheus - use passed containersList
+    const prometheusContainer = containersList.find(c =>
       c.name.toLowerCase().includes('prometheus')
     );
     setPrometheusStatus(prev => ({
@@ -171,8 +176,8 @@ export function ServicesSubtab() {
       status: prometheusContainer?.state === 'running' ? 'online' : 'offline'
     }));
 
-    // Check Grafana
-    const grafanaContainer = containers.find(c =>
+    // Check Grafana - use passed containersList
+    const grafanaContainer = containersList.find(c =>
       c.name.toLowerCase().includes('grafana')
     );
     setGrafanaStatus(prev => ({

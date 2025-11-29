@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import * as DashAPI from '@/api/dashboard';
 import { QuickActions } from './QuickActions';
+import { IndexDisplayPanels } from './IndexDisplayPanels';
 
 export function SystemStatusSubtab() {
   const [health, setHealth] = useState<string>('—');
@@ -292,8 +293,21 @@ export function SystemStatusSubtab() {
             </button>
           </div>
 
-          {/* Right: Quick Actions */}
-          <QuickActions />
+          {/* Right: Quick Actions + Index Display */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <QuickActions />
+            <div
+              style={{
+                background: 'var(--panel)',
+                borderRadius: '8px',
+                border: '1px solid var(--line)',
+                padding: '18px',
+                boxShadow: '0 15px 35px rgba(0,0,0,0.35)'
+              }}
+            >
+              <IndexDisplayPanels />
+            </div>
+          </div>
         </div>
       </div>
 

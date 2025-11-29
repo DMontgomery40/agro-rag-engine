@@ -9,7 +9,7 @@ Using Pydantic provides:
 - JSON schema generation for documentation
 """
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from typing import Dict, List, Literal
 
 
@@ -1379,6 +1379,59 @@ Format your response with clear sections using markdown headers.''',
     )
 
 
+class DockerConfig(BaseModel):
+    """Docker infrastructure configuration."""
+
+    docker_status_timeout: int = Field(
+        default=5,
+        ge=1,
+        le=30,
+        description="Timeout for Docker status check (seconds)"
+    )
+
+    docker_container_list_timeout: int = Field(
+        default=10,
+        ge=1,
+        le=60,
+        description="Timeout for Docker container list (seconds)"
+    )
+
+    docker_container_action_timeout: int = Field(
+        default=30,
+        ge=5,
+        le=120,
+        description="Timeout for Docker container actions (start/stop/restart)"
+    )
+
+    docker_infra_up_timeout: int = Field(
+        default=60,
+        ge=30,
+        le=300,
+        description="Timeout for Docker infrastructure up command (seconds)"
+    )
+
+    docker_infra_down_timeout: int = Field(
+        default=30,
+        ge=10,
+        le=120,
+        description="Timeout for Docker infrastructure down command (seconds)"
+    )
+
+    docker_logs_tail: int = Field(
+        default=100,
+        ge=10,
+        le=1000,
+        description="Default number of log lines to tail from containers"
+    )
+
+    docker_logs_timestamps: int = Field(
+        default=1,
+        ge=0,
+        le=1,
+        description="Include timestamps in Docker logs (1=yes, 0=no)"
+    )
+
+
 class AgroConfigRoot(BaseModel):
     """Root configuration model for agro_config.json.
 
@@ -1403,15 +1456,15 @@ class AgroConfigRoot(BaseModel):
     hydration: HydrationConfig = Field(default_factory=HydrationConfig)
     evaluation: EvaluationConfig = Field(default_factory=EvaluationConfig)
     system_prompts: SystemPromptsConfig = Field(default_factory=SystemPromptsConfig)
+    docker: DockerConfig = Field(default_factory=DockerConfig)
 
-    class Config:
-        # Allow extra fields for forward compatibility
-        extra = 'allow'
-        # Use nested JSON structure
-        json_schema_extra = {
+    model_config = ConfigDict(
+        extra="allow",
+        json_schema_extra={
             "description": "AGRO RAG Engine tunable configuration parameters",
-            "title": "AGRO Config"
-        }
+            "title": "AGRO Config",
+        },
+    )
 
     def to_flat_dict(self) -> dict[str, any]:
         """Convert nested config to flat dict with env-style keys.
@@ -1623,6 +1676,14 @@ class AgroConfigRoot(BaseModel):
             'PROMPT_CODE_ENRICHMENT': self.system_prompts.code_enrichment,
             'PROMPT_EVAL_ANALYSIS': self.system_prompts.eval_analysis,
             'PROMPT_LIGHTWEIGHT_CARDS': self.system_prompts.lightweight_cards,
+            # Docker params (7)
+            'DOCKER_STATUS_TIMEOUT': self.docker.docker_status_timeout,
+            'DOCKER_CONTAINER_LIST_TIMEOUT': self.docker.docker_container_list_timeout,
+            'DOCKER_CONTAINER_ACTION_TIMEOUT': self.docker.docker_container_action_timeout,
+            'DOCKER_INFRA_UP_TIMEOUT': self.docker.docker_infra_up_timeout,
+            'DOCKER_INFRA_DOWN_TIMEOUT': self.docker.docker_infra_down_timeout,
+            'DOCKER_LOGS_TAIL': self.docker.docker_logs_tail,
+            'DOCKER_LOGS_TIMESTAMPS': self.docker.docker_logs_timestamps,
         }
 
     @classmethod
@@ -1851,6 +1912,15 @@ class AgroConfigRoot(BaseModel):
                 eval_analysis=data.get('PROMPT_EVAL_ANALYSIS', SystemPromptsConfig().eval_analysis),
                 lightweight_cards=data.get('PROMPT_LIGHTWEIGHT_CARDS', SystemPromptsConfig().lightweight_cards),
             ),
+            docker=DockerConfig(
+                docker_status_timeout=data.get('DOCKER_STATUS_TIMEOUT', 5),
+                docker_container_list_timeout=data.get('DOCKER_CONTAINER_LIST_TIMEOUT', 10),
+                docker_container_action_timeout=data.get('DOCKER_CONTAINER_ACTION_TIMEOUT', 30),
+                docker_infra_up_timeout=data.get('DOCKER_INFRA_UP_TIMEOUT', 60),
+                docker_infra_down_timeout=data.get('DOCKER_INFRA_DOWN_TIMEOUT', 30),
+                docker_logs_tail=data.get('DOCKER_LOGS_TAIL', 100),
+                docker_logs_timestamps=data.get('DOCKER_LOGS_TIMESTAMPS', 1),
+            ),
         )
 
 
@@ -2054,6 +2124,14 @@ AGRO_CONFIG_KEYS = {
     'PROMPT_LIGHTWEIGHT_CARDS',
     'PROMPT_CODE_ENRICHMENT',
     'PROMPT_EVAL_ANALYSIS',
+    # Docker params (7)
+    'DOCKER_STATUS_TIMEOUT',
+    'DOCKER_CONTAINER_LIST_TIMEOUT',
+    'DOCKER_CONTAINER_ACTION_TIMEOUT',
+    'DOCKER_INFRA_UP_TIMEOUT',
+    'DOCKER_INFRA_DOWN_TIMEOUT',
+    'DOCKER_LOGS_TAIL',
+    'DOCKER_LOGS_TIMESTAMPS',
 }
 
 
