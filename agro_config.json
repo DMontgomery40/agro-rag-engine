@@ -121,7 +121,7 @@
     "repos_file": "./repos.json"
   },
   "reranking": {
-    "reranker_active": "local",
+    "reranker_active": "cloud",
     "reranker_provider": "cohere",
     "reranker_cloud_model": "rerank-3.5",
     "reranker_model": "models/cross-encoder-agro",
@@ -132,7 +132,7 @@
     "agro_reranker_maxlen": 512,
     "agro_reranker_reload_on_change": 0,
     "agro_reranker_reload_period_sec": 60,
-    "cohere_rerank_model": "rerank-3.5",
+    "cohere_rerank_model": "",
     "voyage_rerank_model": "rerank-2",
     "reranker_backend": "local",
     "reranker_timeout": 10,
@@ -140,7 +140,7 @@
     "transformers_trust_remote_code": 1
   },
   "generation": {
-    "gen_model": "gpt-4o-mini",
+    "gen_model": "gpt-5.1",
     "gen_temperature": 0.1,
     "gen_max_tokens": 2048,
     "gen_top_p": 1.0,
@@ -167,6 +167,33 @@
     "enrich_min_chars": 50,
     "enrich_max_chars": 1000,
     "enrich_timeout": 30
+  },
+  "cards": {
+    "exclude_dirs": [
+      "docs",
+      "agent_docs",
+      "website",
+      "tests",
+      "assets",
+      "internal_docs.md",
+      "out/",
+      "checkpoints/",
+      "models/",
+      "data/",
+      "telemetry/",
+      "node_mcp/",
+      "public/",
+      "examples/",
+      "bin/",
+      "reports/",
+      "screenshots/",
+      "web/dist",
+      "gui"
+    ],
+    "exclude_patterns": [],
+    "exclude_keywords": [
+      "playwright"
+    ]
   },
   "keywords": {
     "keywords_max_per_repo": 100,

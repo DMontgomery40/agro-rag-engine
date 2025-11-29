@@ -1,5 +1,5 @@
 # Playwright Verification Policy (Updated)
-
+# ***Do NOT ever add "stubs", placeholders, TODOs into code,***
 You must verify work with Playwright (IF GUI) — or at least a backend smoke test in `/tests` — before reporting results. However, due to UI scale and accessibility needs, GUI verification via Playwright is now limited to "non‑black‑screen" smoke only. Deep visual/content correctness requires human review.
 
 What's required for GUI work:
@@ -20,7 +20,7 @@ This update does not reduce the bar for functionality. It clarifies that Playwri
 
   - Do not come back with a response of 'done', 'complete', 'success', etc, without actual tangible proof that what you have done or created works
 
-# ***Do NOT ever add "stubs", placeholders, TODOs into code, without explicit approval from the user.***
+# ***Do NOT ever add "stubs", placeholders, TODOs into code,***
 
   - Do not add endpoints to the API or Webhooks that don't actually connect to anything in reality
   - Do not add anything to the GUI (buttons, settings, choices) that are not fully wired Pydantically to the backend and fully smoke tested (Test with `playwright.web.config.ts` port 5173 or `playwright.web-static.config.ts` port 8012/web)
@@ -38,7 +38,7 @@ This update does not reduce the bar for functionality. It clarifies that Playwri
   - everything in the /web must be fully wired up and connected to the backend via Pydantic configs (outlined below)
 
 ## > !!! CRITICAL !!!  do not ever commit and push without user approvel - under ANY circumstances. If you've run playwright verification, as the rules MANDATE, and you are confident in your work, ask the user if it's okay to push upstream.  NEVER commit without user authorization !!! CRITICAL !!! (Playwright tests: `playwright.web.config.ts` port 5173 dev, or `playwright.web-static.config.ts` port 8012/web prod)
-
+# ***Do NOT ever add "stubs", placeholders, TODOs into code,***
 ## Path Configuration: Always Use Relative Paths or Environment Variables
 
   - **NEVER hard-code absolute paths** like `/Users/davidmontgomery/agro-rag-engine` - they break in Docker and other environments
@@ -52,7 +52,7 @@ This update does not reduce the bar for functionality. It clarifies that Playwri
   - do NOT just put ui settings in a random place, if it's obvious where they go, that is okay, if it not crystal clear and logical where it should be, ask the user where it should go 
 
   - Do not add features or code that the user didn't ask for, even if you think it's helpful of common sense to do, ASK THE USER FIRST 
-
+# ***Do NOT ever add "stubs", placeholders, TODOs into code,***
 ## Broken GUI Settings Must Not Be Removed
 
   - Never remove or hide settings because they are "broken", "fake", or "simulated".
@@ -81,7 +81,7 @@ This update does not reduce the bar for functionality. It clarifies that Playwri
 - Stay on your current branch unless explicitly instructed to switch.
 - Open PRs from `development` → `staging`, and from `staging` → `main` only.
 - Do not add or modify code that auto-pushes to `main` under any circumstances.
-
+# ***Do NOT ever add "stubs", placeholders, TODOs into code,***
 # What this repo is
 
 ## AGRO is a local‑first Enterprise-Grade RAG Engine Workspace for codebases.

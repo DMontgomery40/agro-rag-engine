@@ -38,9 +38,17 @@ async function loadPrices() {
 
 function getModelType(model) {
   // Determine model type based on available fields
-  if (model.embed_per_1k !== undefined) return 'embed';
-  if (model.rerank_per_1k !== undefined || model.per_request !== undefined) return 'rerank';
-  if (model.input_per_1k !== undefined || model.output_per_1k !== undefined) return 'chat';
+  // Use != null to catch both null and undefined, and check for actual numeric values
+  // Order matters: check embed/rerank first since chat models may have null values for those fields
+  const hasEmbed = model.embed_per_1k != null && typeof model.embed_per_1k === 'number';
+  const hasRerank = (model.rerank_per_1k != null && typeof model.rerank_per_1k === 'number') || 
+                    (model.per_request != null && typeof model.per_request === 'number');
+  const hasChat = (model.input_per_1k != null && typeof model.input_per_1k === 'number') || 
+                  (model.output_per_1k != null && typeof model.output_per_1k === 'number');
+  
+  if (hasEmbed) return 'embed';
+  if (hasRerank) return 'rerank';
+  if (hasChat) return 'chat';
   return null;
 }
 
