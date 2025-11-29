@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useConfig } from '@/hooks';
 
 // TypeScript interface for reranker info response
 interface RerankerInfo {
@@ -28,13 +27,15 @@ interface PriceModelEntry {
 }
 
 export function ExternalRerankersSubtab() {
-  const { get, set, loading, error } = useConfig();
   // State for each input field
   const [rerankBackend, setRerankBackend] = useState<string>('local');
   const [activeChoice, setActiveChoice] = useState<'local' | 'cloud'>('local');
   const [cloudProvider, setCloudProvider] = useState<string>('');
   const [cloudModel, setCloudModel] = useState<string>('');
+  const [voyageModel, setVoyageModel] = useState<string>('rerank-2');
+  const [rerankerModel, setRerankerModel] = useState<string>('');
   const [cohereModel, setCohereModel] = useState<string>('rerank-3.5');
+  const [cohereApiKey, setCohereApiKey] = useState<string>('');
   const [trustRemoteCode, setTrustRemoteCode] = useState<string>('1');
   const [snippetChars, setSnippetChars] = useState<number>(700);
   const [priceModels, setPriceModels] = useState<PriceModelEntry[]>([]);
@@ -73,11 +74,14 @@ export function ExternalRerankersSubtab() {
 
   // State for reranker info display
   const [rerankerInfo, setRerankerInfo] = useState<RerankerInfo | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>('');
 
   const addModelDisabled = savingModel || !cloudProvider || !cloudModel;
 
   // Load current config on mount
   useEffect(() => {
+    loadConfig();
     loadPrices();
   }, []);
 
@@ -92,15 +96,6 @@ export function ExternalRerankersSubtab() {
       setCloudModel(cloudModelOptions[0]);
     }
   }, [cloudModelOptions, cloudModel]);
-
-  // Sync config values from backend on mount
-  useEffect(() => {
-    if (!loading) {
-      setCloudModel(get('RERANKER_CLOUD_MODEL', ''));
-      setSnippetChars(get('RERANK_INPUT_SNIPPET_CHARS', 700));
-    }
-  }, [loading, get]);
-
 
   const loadPrices = async () => {
     try {
@@ -131,7 +126,65 @@ export function ExternalRerankersSubtab() {
     }
   };
 
-  
+  const loadConfig = async () => {
+    try {
+      setError('');
+
+      // Fetch config
+      const response = await fetch('/api/config');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch config: ${response.status} ${response.statusText}`);
+      }
+      const data = await response.json();
+
+      // Extract values from env object
+      const env = data.env || {};
+      const backendRaw = (env.RERANKER_BACKEND || env.RERANK_BACKEND || 'local').toString();
+      const activeRaw = (env.RERANKER_ACTIVE || backendRaw || 'local').toString().toLowerCase();
+      const providerRaw = (env.RERANKER_PROVIDER || env.RERANKER_BACKEND || env.RERANK_BACKEND || '').toString().toLowerCase();
+      const normalizedBackend = backendRaw.toLowerCase() || 'local';
+      const providerValue = providerRaw || (normalizedBackend && !['local', 'hf', 'learning', 'none'].includes(normalizedBackend) ? normalizedBackend : cloudProvider || '');
+      const activeSelection = activeRaw === 'cloud' || (!['local', 'hf', 'learning', 'none'].includes(normalizedBackend) && providerValue) ? 'cloud' : 'local';
+      setActiveChoice(activeSelection as 'local' | 'cloud');
+      setCloudProvider(providerValue);
+      setRerankBackend(normalizedBackend);
+      setRerankerModel(env.RERANKER_MODEL || '');
+      const cohere = env.COHERE_RERANK_MODEL || 'rerank-3.5';
+      const voyage = env.VOYAGE_RERANK_MODEL || 'rerank-2';
+      setCohereModel(cohere);
+      setVoyageModel(voyage);
+      // Don't populate password field with masked value
+      setCohereApiKey(env.COHERE_API_KEY === '••••••••••••••••' ? '' : (env.COHERE_API_KEY || ''));
+      setTrustRemoteCode(env.TRANSFORMERS_TRUST_REMOTE_CODE || '1');
+      setSnippetChars(parseInt(env.RERANK_INPUT_SNIPPET_CHARS || '700', 10));
+      const cloudModelVal =
+        env.RERANKER_CLOUD_MODEL ||
+        (providerValue === 'voyage' ? voyage : undefined) ||
+        (providerValue === 'cohere' ? cohere : undefined) ||
+        (cloudModelOptions.length > 0 ? cloudModelOptions[0] : '') ||
+        cloudModel ||
+        'rerank-3.5';
+      setCloudModel(cloudModelVal);
+
+      // Fetch reranker info for display panel
+      const infoResponse = await fetch('/api/reranker/info');
+      if (infoResponse.ok) {
+        const info = await infoResponse.json();
+        // Prefer new schema if present
+        setRerankerInfo(info?.rerank_config ? info.rerank_config : info);
+      } else {
+        setRerankerInfo(null);
+      }
+
+      setLoading(false);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to load config';
+      console.error('[ExternalRerankersSubtab] Error loading config:', err);
+      setError(errorMsg);
+      setLoading(false);
+    }
+  };
+
   const updateConfigBatch = async (envUpdates: Record<string, any>) => {
     try {
       setError('');
@@ -153,45 +206,49 @@ export function ExternalRerankersSubtab() {
       await fetch('/api/env/reload', { method: 'POST' });
 
       // Reload config after update to get latest values
-       } catch (err) {
+      await loadConfig();
+    } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to update configuration';
       console.error('[ExternalRerankersSubtab] Error updating config:', err);
       setError(errorMsg);
     }
   };
 
-  
+  const updateConfig = async (key: string, value: any) => {
+    return updateConfigBatch({ [key]: value });
+  };
+
   const handleBackendChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setRerankBackend(value);
-    set('RERANKER_BACKEND', value);
+    updateConfig('RERANKER_BACKEND', value);
     if (value === 'local' || value === 'hf' || value === 'learning') {
       handleActiveChange('local');
     } else if (value === 'none') {
       setActiveChoice('local');
-      set('RERANKER_ACTIVE', 'none');
+      updateConfig('RERANKER_ACTIVE', 'none');
     } else {
       const providerValue = value.trim().toLowerCase();
       setCloudProvider(providerValue);
       handleActiveChange('cloud');
-      set('RERANKER_PROVIDER', providerValue);
+      updateConfig('RERANKER_PROVIDER', providerValue);
       const providerModels = priceModels
         .filter((m) => m.provider === providerValue)
         .map((m) => m.model)
         .filter(Boolean);
       if (providerModels.length > 0) {
         setCloudModel(providerModels[0]);
-        set('RERANKER_CLOUD_MODEL', providerModels[0]);
+        updateConfig('RERANKER_CLOUD_MODEL', providerModels[0]);
       }
     }
   };
 
   const handleActiveChange = (value: 'local' | 'cloud') => {
     setActiveChoice(value);
-    set('RERANKER_ACTIVE', value === 'local' ? 'local' : 'cloud');
+    updateConfig('RERANKER_ACTIVE', value === 'local' ? 'local' : 'cloud');
     if (value === 'local') {
       setRerankBackend('local');
-      set('RERANKER_BACKEND', 'local');
+      updateConfig('RERANKER_BACKEND', 'local');
     } else {
       const providerValue = cloudProvider || providerOptions[0] || 'cloud';
       if (!cloudProvider && providerValue) {
@@ -199,11 +256,11 @@ export function ExternalRerankersSubtab() {
       }
       setRerankBackend(providerValue);
       if (providerValue) {
-        set('RERANKER_PROVIDER', providerValue);
+        updateConfig('RERANKER_PROVIDER', providerValue);
       }
-      set('RERANKER_BACKEND', providerValue);
+      updateConfig('RERANKER_BACKEND', providerValue);
       if (cloudModel) {
-        set('RERANKER_CLOUD_MODEL', cloudModel);
+        updateConfig('RERANKER_CLOUD_MODEL', cloudModel);
       }
     }
   };
@@ -219,29 +276,29 @@ export function ExternalRerankersSubtab() {
     if (nextModel) {
       setCloudModel(nextModel);
     }
-    set('RERANKER_PROVIDER', normalized);
+    updateConfig('RERANKER_PROVIDER', normalized);
     // Keep backend in sync when cloud is active
     if (activeChoice === 'cloud') {
       setRerankBackend(normalized || 'cloud');
-      set('RERANKER_BACKEND', normalized || 'cloud');
+      updateConfig('RERANKER_BACKEND', normalized || 'cloud');
     }
     if (nextModel) {
-      set('RERANKER_CLOUD_MODEL', nextModel);
+      updateConfig('RERANKER_CLOUD_MODEL', nextModel);
       if (normalized === 'cohere') {
-        set('COHERE_RERANK_MODEL', nextModel);
+        updateConfig('COHERE_RERANK_MODEL', nextModel);
       } else if (normalized === 'voyage') {
-        set('VOYAGE_RERANK_MODEL', nextModel);
+        updateConfig('VOYAGE_RERANK_MODEL', nextModel);
       }
     }
   };
 
   const handleCloudModelBlur = () => {
-    set('RERANKER_CLOUD_MODEL', cloudModel);
+    updateConfig('RERANKER_CLOUD_MODEL', cloudModel);
     if (cloudProvider === 'cohere') {
-      set('COHERE_RERANK_MODEL', cloudModel);
+      updateConfig('COHERE_RERANK_MODEL', cloudModel);
       setCohereModel(cloudModel);
     } else if (cloudProvider === 'voyage') {
-      set('VOYAGE_RERANK_MODEL', cloudModel);
+      updateConfig('VOYAGE_RERANK_MODEL', cloudModel);
       setVoyageModel(cloudModel);
     }
   };
@@ -288,7 +345,7 @@ export function ExternalRerankersSubtab() {
   };
 
   const handleModelBlur = () => {
-    set('RERANKER_MODEL', rerankerModel);
+    updateConfig('RERANKER_MODEL', rerankerModel);
   };
 
   const handleCohereApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -298,14 +355,14 @@ export function ExternalRerankersSubtab() {
 
   const handleCohereApiKeyBlur = () => {
     if (cohereApiKey) {
-      set('COHERE_API_KEY', cohereApiKey);
+      updateConfig('COHERE_API_KEY', cohereApiKey);
     }
   };
 
   const handleTrustRemoteCodeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setTrustRemoteCode(value);
-    set('TRANSFORMERS_TRUST_REMOTE_CODE', value);
+    updateConfig('TRANSFORMERS_TRUST_REMOTE_CODE', value);
   };
 
   const handleSnippetCharsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -314,7 +371,7 @@ export function ExternalRerankersSubtab() {
   };
 
   const handleSnippetCharsBlur = () => {
-    set('RERANK_INPUT_SNIPPET_CHARS', snippetChars);
+    updateConfig('RERANK_INPUT_SNIPPET_CHARS', snippetChars);
   };
 
   // Show warning when backend is 'none'
@@ -435,7 +492,7 @@ export function ExternalRerankersSubtab() {
                 placeholder="e.g., rerank-3.5 or voyage-3"
                 value={cloudModel}
                 list="reranker-cloud-models"
-                onChange={(e) => set('RERANKER_CLOUD_MODEL', e.target.value)}
+                onChange={(e) => setCloudModel(e.target.value)}
                 onBlur={handleCloudModelBlur}
                 autoComplete="off"
               />
@@ -563,7 +620,7 @@ export function ExternalRerankersSubtab() {
               type="text"
               name="RERANKER_MODEL"
               placeholder="e.g., baai/bge-reranker-base or cross-encoder/ms-marco-*"
-              value={get('RERANKER_MODEL', '')}
+              value={rerankerModel}
               onChange={handleModelChange}
               onBlur={handleModelBlur}
             />
@@ -624,13 +681,13 @@ export function ExternalRerankersSubtab() {
               onChange={(e) => {
                 const value = e.target.value;
                 setCloudModel(value);
-                set('RERANKER_CLOUD_MODEL', value);
+                updateConfig('RERANKER_CLOUD_MODEL', value);
                 if (cloudProvider === 'cohere') {
                   setCohereModel(value);
-                  set('COHERE_RERANK_MODEL', value);
+                  updateConfig('COHERE_RERANK_MODEL', value);
                 } else if (cloudProvider === 'voyage') {
                   setVoyageModel(value);
-                  set('VOYAGE_RERANK_MODEL', value);
+                  updateConfig('VOYAGE_RERANK_MODEL', value);
                 }
               }}
             >
@@ -652,7 +709,7 @@ export function ExternalRerankersSubtab() {
               type="password"
               name="COHERE_API_KEY"
               placeholder="ck_..."
-              value={get('COHERE_API_KEY', '')}
+              value={cohereApiKey}
               onChange={handleCohereApiKeyChange}
               onBlur={handleCohereApiKeyBlur}
             />

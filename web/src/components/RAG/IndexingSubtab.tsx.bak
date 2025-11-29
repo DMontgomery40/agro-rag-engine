@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useConfig } from '@/hooks';
 import { LiveTerminal, LiveTerminalHandle } from '../LiveTerminal/LiveTerminal';
 import { TerminalService } from '@/services/TerminalService';
 import { useRepoStore } from '@/stores/useRepoStore';
@@ -33,7 +32,6 @@ interface RepoInfo {
 }
 
 export function IndexingSubtab() {
-  const { get, set, loading, error } = useConfig();
   // Simple indexing state
   const [simpleRepo, setSimpleRepo] = useState<string>('');
   const [simpleDense, setSimpleDense] = useState<boolean>(true);
@@ -41,6 +39,7 @@ export function IndexingSubtab() {
 
   // Advanced indexing state
   const [indexRepo, setIndexRepo] = useState<string>('');
+  const [embeddingType, setEmbeddingType] = useState<string>('openai');
   const [skipDense, setSkipDense] = useState<string>('0');
   const [enrichChunks, setEnrichChunks] = useState<string>('0');
   const [indexStatus, setIndexStatus] = useState<string>('Ready to index...');
@@ -56,6 +55,8 @@ export function IndexingSubtab() {
   // Advanced settings state
   const [outDirBase, setOutDirBase] = useState<string>('./out');
   const [collectionName, setCollectionName] = useState<string>('');
+  const [chunkSize, setChunkSize] = useState<number>(1000);
+  const [chunkOverlap, setChunkOverlap] = useState<number>(200);
   const [astOverlapLines, setAstOverlapLines] = useState<number>(20);
   const [maxChunkSize, setMaxChunkSize] = useState<number>(2000000);
   const [minChunkChars, setMinChunkChars] = useState<number>(50);
@@ -70,6 +71,9 @@ export function IndexingSubtab() {
   const [indexMaxFileSizeMb, setIndexMaxFileSizeMb] = useState<number>(10);
 
   // Embedding model picker state (NEW - REQUIRED)
+  const [embeddingModel, setEmbeddingModel] = useState<string>('text-embedding-3-large');
+  const [embeddingDim, setEmbeddingDim] = useState<number>(3072);
+  const [voyageModel, setVoyageModel] = useState<string>('voyage-code-3');
   const [embeddingModelLocal, setEmbeddingModelLocal] = useState<string>('all-MiniLM-L6-v2');
   const [embeddingBatchSize, setEmbeddingBatchSize] = useState<number>(64);
   const [embeddingMaxTokens, setEmbeddingMaxTokens] = useState<number>(8000);
@@ -108,6 +112,7 @@ export function IndexingSubtab() {
 
   // Load config on mount
   useEffect(() => {
+    loadConfig();
     if (storeRepos.length === 0) {
       storeLoadRepos();
     }
@@ -126,7 +131,50 @@ export function IndexingSubtab() {
     }
   }, [repos, activeRepo, currentRepo]);
 
-  
+  const loadConfig = async () => {
+    try {
+      const response = await fetch('/api/config');
+      const data = await response.json();
+      const env = data.env || {};
+
+      // Load embedding settings
+      setEmbeddingType(env.EMBEDDING_TYPE || 'openai');
+      setEmbeddingModel(env.EMBEDDING_MODEL || 'text-embedding-3-large');
+      setEmbeddingDim(parseInt(env.EMBEDDING_DIM || '3072', 10));
+      setVoyageModel(env.VOYAGE_MODEL || 'voyage-code-3');
+      setEmbeddingModelLocal(env.EMBEDDING_MODEL_LOCAL || 'all-MiniLM-L6-v2');
+      setEmbeddingBatchSize(parseInt(env.EMBEDDING_BATCH_SIZE || '64', 10));
+      setEmbeddingMaxTokens(parseInt(env.EMBEDDING_MAX_TOKENS || '8000', 10));
+      setEmbeddingCacheEnabled(env.EMBEDDING_CACHE_ENABLED || '1');
+      setEmbeddingTimeout(parseInt(env.EMBEDDING_TIMEOUT || '30', 10));
+      setEmbeddingRetryMax(parseInt(env.EMBEDDING_RETRY_MAX || '3', 10));
+
+      // Load chunking settings
+      setChunkSize(parseInt(env.CHUNK_SIZE || '1000', 10));
+      setChunkOverlap(parseInt(env.CHUNK_OVERLAP || '200', 10));
+      setAstOverlapLines(parseInt(env.AST_OVERLAP_LINES || '20', 10));
+      setMaxChunkSize(parseInt(env.MAX_CHUNK_SIZE || '2000000', 10));
+      setMinChunkChars(parseInt(env.MIN_CHUNK_CHARS || '50', 10));
+      setGreedyFallbackTarget(parseInt(env.GREEDY_FALLBACK_TARGET || '800', 10));
+      setChunkingStrategy(env.CHUNKING_STRATEGY || 'ast');
+      setPreserveImports(env.PRESERVE_IMPORTS || '1');
+
+      // Load indexing settings
+      setOutDirBase(env.OUT_DIR_BASE || './out');
+      setCollectionName(env.COLLECTION_NAME || '');
+      setIndexingBatchSize(parseInt(env.INDEXING_BATCH_SIZE || '100', 10));
+      setIndexingWorkers(parseInt(env.INDEXING_WORKERS || '4', 10));
+      setBm25Tokenizer(env.BM25_TOKENIZER || 'stemmer');
+      setBm25StemmerLang(env.BM25_STEMMER_LANG || 'english');
+      setIndexExcludedExts(env.INDEX_EXCLUDED_EXTS || '.png,.jpg,.gif,.ico,.svg,.woff,.ttf');
+      setIndexMaxFileSizeMb(parseInt(env.INDEX_MAX_FILE_SIZE_MB || '10', 10));
+      setSkipDense(env.SKIP_DENSE || '0');
+      setEnrichChunks(env.ENRICH_CODE_CHUNKS || '0');
+    } catch (error) {
+      console.error('Failed to load config:', error);
+    }
+  };
+
   // Repos are now loaded via the store - see useEffect above
 
   const loadIndexStats = async () => {
@@ -328,6 +376,7 @@ export function IndexingSubtab() {
 
       if (response.ok) {
         alert(`Applied ${activeProfile} profile`);
+        await loadConfig();
       }
     } catch (error) {
       console.error('Failed to apply profile:', error);
@@ -465,8 +514,8 @@ export function IndexingSubtab() {
             </label>
             <select
               name="EMBEDDING_TYPE"
-              value={get('EMBEDDING_TYPE', 'openai')}
-              onChange={(e) => set('EMBEDDING_TYPE', e.target.value)}
+              value={embeddingType}
+              onChange={(e) => setEmbeddingType(e.target.value)}
               style={{ background: 'var(--bg-elev2)', color: 'var(--fg)', border: '1px solid var(--line)', padding: '8px', borderRadius: '4px' }}
             >
               <option value="openai">OpenAI (text-embedding-3-large)</option>
@@ -686,7 +735,7 @@ export function IndexingSubtab() {
               name="COLLECTION_NAME"
               placeholder="code_chunks_{'{repo}'}"
               value={collectionName}
-              onChange={(e) => set('COLLECTION_NAME', e.target.value)}
+              onChange={(e) => setCollectionName(e.target.value)}
             />
             <p className="small" style={{ color: 'var(--fg-muted)' }}>Qdrant collection name (leave empty for auto)</p>
           </div>
@@ -704,8 +753,8 @@ export function IndexingSubtab() {
               type="text"
               id="EMBEDDING_MODEL"
               name="EMBEDDING_MODEL"
-              value={get('EMBEDDING_MODEL', '')}
-              onChange={(e) => set('EMBEDDING_MODEL', e.target.value)}
+              value={embeddingModel}
+              onChange={(e) => setEmbeddingModel(e.target.value)}
             />
           </div>
           <div className="input-group">
@@ -717,8 +766,8 @@ export function IndexingSubtab() {
               type="number"
               id="EMBEDDING_DIM"
               name="EMBEDDING_DIM"
-              value={get('EMBEDDING_DIM', 1536)}
-              onChange={(e) => set('EMBEDDING_DIM', parseInt(e.target.value, 10))}
+              value={embeddingDim}
+              onChange={(e) => setEmbeddingDim(parseInt(e.target.value, 10))}
               min={512}
               max={3072}
               step={256}
@@ -736,8 +785,8 @@ export function IndexingSubtab() {
               type="text"
               id="VOYAGE_MODEL"
               name="VOYAGE_MODEL"
-              value={get('VOYAGE_MODEL', '')}
-              onChange={(e) => set('VOYAGE_MODEL', e.target.value)}
+              value={voyageModel}
+              onChange={(e) => setVoyageModel(e.target.value)}
             />
           </div>
           <div className="input-group">
@@ -750,7 +799,7 @@ export function IndexingSubtab() {
               id="EMBEDDING_MODEL_LOCAL"
               name="EMBEDDING_MODEL_LOCAL"
               value={embeddingModelLocal}
-              onChange={(e) => set('EMBEDDING_MODEL_LOCAL', e.target.value)}
+              onChange={(e) => setEmbeddingModelLocal(e.target.value)}
             />
           </div>
         </div>
@@ -766,7 +815,7 @@ export function IndexingSubtab() {
               id="EMBEDDING_BATCH_SIZE"
               name="EMBEDDING_BATCH_SIZE"
               value={embeddingBatchSize}
-              onChange={(e) => set('EMBEDDING_BATCH_SIZE', parseInt(e.target.value, 10))}
+              onChange={(e) => setEmbeddingBatchSize(parseInt(e.target.value, 10))}
               min={1}
               max={256}
               step={8}
@@ -782,7 +831,7 @@ export function IndexingSubtab() {
               id="EMBEDDING_MAX_TOKENS"
               name="EMBEDDING_MAX_TOKENS"
               value={embeddingMaxTokens}
-              onChange={(e) => set('EMBEDDING_MAX_TOKENS', parseInt(e.target.value, 10))}
+              onChange={(e) => setEmbeddingMaxTokens(parseInt(e.target.value, 10))}
               min={512}
               max={8192}
               step={512}
@@ -800,7 +849,7 @@ export function IndexingSubtab() {
               id="EMBEDDING_CACHE_ENABLED"
               name="EMBEDDING_CACHE_ENABLED"
               value={embeddingCacheEnabled}
-              onChange={(e) => set('EMBEDDING_CACHE_ENABLED', e.target.value)}
+              onChange={(e) => setEmbeddingCacheEnabled(e.target.value)}
             >
               <option value="1">Enabled</option>
               <option value="0">Disabled</option>
@@ -816,7 +865,7 @@ export function IndexingSubtab() {
               id="EMBEDDING_TIMEOUT"
               name="EMBEDDING_TIMEOUT"
               value={embeddingTimeout}
-              onChange={(e) => set('EMBEDDING_TIMEOUT', parseInt(e.target.value, 10))}
+              onChange={(e) => setEmbeddingTimeout(parseInt(e.target.value, 10))}
               min={5}
               max={120}
               step={5}
@@ -835,7 +884,7 @@ export function IndexingSubtab() {
               id="EMBEDDING_RETRY_MAX"
               name="EMBEDDING_RETRY_MAX"
               value={embeddingRetryMax}
-              onChange={(e) => set('EMBEDDING_RETRY_MAX', parseInt(e.target.value, 10))}
+              onChange={(e) => setEmbeddingRetryMax(parseInt(e.target.value, 10))}
               min={1}
               max={5}
               step={1}
@@ -854,8 +903,8 @@ export function IndexingSubtab() {
             <input
               type="number"
               name="CHUNK_SIZE"
-              value={get('CHUNK_SIZE', 512)}
-              onChange={(e) => set('CHUNK_SIZE', parseInt(e.target.value, 10))}
+              value={chunkSize}
+              onChange={(e) => setChunkSize(parseInt(e.target.value, 10))}
               min={100}
               max={4000}
               step={100}
@@ -869,8 +918,8 @@ export function IndexingSubtab() {
             <input
               type="number"
               name="CHUNK_OVERLAP"
-              value={get('CHUNK_OVERLAP', 50)}
-              onChange={(e) => set('CHUNK_OVERLAP', parseInt(e.target.value, 10))}
+              value={chunkOverlap}
+              onChange={(e) => setChunkOverlap(parseInt(e.target.value, 10))}
               min={0}
               max={1000}
               step={50}
@@ -889,7 +938,7 @@ export function IndexingSubtab() {
               id="AST_OVERLAP_LINES"
               name="AST_OVERLAP_LINES"
               value={astOverlapLines}
-              onChange={(e) => set('AST_OVERLAP_LINES', parseInt(e.target.value, 10))}
+              onChange={(e) => setAstOverlapLines(parseInt(e.target.value, 10))}
               min={0}
               max={100}
               step={5}
@@ -905,7 +954,7 @@ export function IndexingSubtab() {
               id="MAX_CHUNK_SIZE"
               name="MAX_CHUNK_SIZE"
               value={maxChunkSize}
-              onChange={(e) => set('MAX_CHUNK_SIZE', parseInt(e.target.value, 10))}
+              onChange={(e) => setMaxChunkSize(parseInt(e.target.value, 10))}
               min={10000}
               max={10000000}
               step={100000}
@@ -924,7 +973,7 @@ export function IndexingSubtab() {
               id="MIN_CHUNK_CHARS"
               name="MIN_CHUNK_CHARS"
               value={minChunkChars}
-              onChange={(e) => set('MIN_CHUNK_CHARS', parseInt(e.target.value, 10))}
+              onChange={(e) => setMinChunkChars(parseInt(e.target.value, 10))}
               min={10}
               max={500}
               step={10}
@@ -940,7 +989,7 @@ export function IndexingSubtab() {
               id="GREEDY_FALLBACK_TARGET"
               name="GREEDY_FALLBACK_TARGET"
               value={greedyFallbackTarget}
-              onChange={(e) => set('GREEDY_FALLBACK_TARGET', parseInt(e.target.value, 10))}
+              onChange={(e) => setGreedyFallbackTarget(parseInt(e.target.value, 10))}
               min={200}
               max={2000}
               step={100}
@@ -958,7 +1007,7 @@ export function IndexingSubtab() {
               id="CHUNKING_STRATEGY"
               name="CHUNKING_STRATEGY"
               value={chunkingStrategy}
-              onChange={(e) => set('CHUNKING_STRATEGY', e.target.value)}
+              onChange={(e) => setChunkingStrategy(e.target.value)}
             >
               <option value="ast">AST-based</option>
               <option value="greedy">Greedy</option>
@@ -974,7 +1023,7 @@ export function IndexingSubtab() {
               id="PRESERVE_IMPORTS"
               name="PRESERVE_IMPORTS"
               value={preserveImports}
-              onChange={(e) => set('PRESERVE_IMPORTS', e.target.value)}
+              onChange={(e) => setPreserveImports(e.target.value)}
             >
               <option value="1">Yes</option>
               <option value="0">No</option>
@@ -995,7 +1044,7 @@ export function IndexingSubtab() {
               id="INDEXING_BATCH_SIZE"
               name="INDEXING_BATCH_SIZE"
               value={indexingBatchSize}
-              onChange={(e) => set('INDEXING_BATCH_SIZE', parseInt(e.target.value, 10))}
+              onChange={(e) => setIndexingBatchSize(parseInt(e.target.value, 10))}
               min={10}
               max={1000}
               step={10}
@@ -1011,7 +1060,7 @@ export function IndexingSubtab() {
               id="INDEXING_WORKERS"
               name="INDEXING_WORKERS"
               value={indexingWorkers}
-              onChange={(e) => set('INDEXING_WORKERS', parseInt(e.target.value, 10))}
+              onChange={(e) => setIndexingWorkers(parseInt(e.target.value, 10))}
               min={1}
               max={16}
               step={1}
@@ -1062,7 +1111,7 @@ export function IndexingSubtab() {
               id="INDEX_EXCLUDED_EXTS"
               name="INDEX_EXCLUDED_EXTS"
               value={indexExcludedExts}
-              onChange={(e) => set('INDEX_EXCLUDED_EXTS', e.target.value)}
+              onChange={(e) => setIndexExcludedExts(e.target.value)}
             />
           </div>
           <div className="input-group">
@@ -1075,7 +1124,7 @@ export function IndexingSubtab() {
               id="INDEX_MAX_FILE_SIZE_MB"
               name="INDEX_MAX_FILE_SIZE_MB"
               value={indexMaxFileSizeMb}
-              onChange={(e) => set('INDEX_MAX_FILE_SIZE_MB', parseInt(e.target.value, 10))}
+              onChange={(e) => setIndexMaxFileSizeMb(parseInt(e.target.value, 10))}
               min={1}
               max={100}
               step={1}

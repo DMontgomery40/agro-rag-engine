@@ -1,6 +1,5 @@
 // React implementation of EvaluateSubtab - NO legacy JS modules
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useConfig } from '@/hooks';
 import { useAPI } from '@/hooks';
 import { EvalDrillDown } from '@/components/Evaluation/EvalDrillDown';
 import { LiveTerminal, LiveTerminalHandle } from '@/components/LiveTerminal/LiveTerminal';
@@ -52,7 +51,6 @@ interface EvalResults {
 }
 
 export function EvaluateSubtab() {
-  const { get, set, loading, error } = useConfig();
   const { api } = useAPI();
   const [goldenQuestions, setGoldenQuestions] = useState<GoldenQuestion[]>([]);
   const [newQuestion, setNewQuestion] = useState({ q: '', repo: 'agro', paths: '' });
@@ -60,6 +58,8 @@ export function EvaluateSubtab() {
   const [evalRunning, setEvalRunning] = useState(false);
   const [evalProgress, setEvalProgress] = useState({ current: 0, total: 0, status: '' });
   const [evalResults, setEvalResults] = useState<EvalResults | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [evalSettings, setEvalSettings] = useState({
     useMulti: true,
     finalK: 5,
@@ -112,11 +112,31 @@ export function EvaluateSubtab() {
 
   // Load config and golden questions on mount
   useEffect(() => {
+    loadConfig();
     loadGoldenQuestions();
   }, []);
 
   // Load eval settings from backend config
-  
+  const loadConfig = async () => {
+    try {
+      const response = await fetch('/api/config');
+      const data = await response.json();
+      const env = data.env || {};
+
+      setEvalSettings(prev => ({
+        ...prev,
+        goldenPath: env.GOLDEN_PATH || 'data/golden.json',
+        baselinePath: env.BASELINE_PATH || 'data/evals/eval_baseline.json',
+        // Load user preferences from localStorage
+        useMulti: localStorage.getItem('eval_useMulti') === 'false' ? false : true,
+        finalK: parseInt(localStorage.getItem('eval_finalK') || '5', 10),
+        sampleSize: localStorage.getItem('eval_sampleSize') || ''
+      }));
+    } catch (error) {
+      console.error('Failed to load eval config:', error);
+    }
+  };
+
   // Load available eval runs on mount
   useEffect(() => {
     const loadRuns = async () => {
@@ -142,14 +162,16 @@ export function EvaluateSubtab() {
 
   const loadGoldenQuestions = async () => {
     try {
-            const response = await fetchJson('golden');
+      setLoading(true);
+      const response = await fetchJson('golden');
       setGoldenQuestions(response.questions || []);
       setError(null);
     } catch (err) {
       setError(`Failed to load golden questions: ${err}`);
       console.error('Failed to load golden questions:', err);
     } finally {
-          }
+      setLoading(false);
+    }
   };
 
   const addGoldenQuestion = async () => {

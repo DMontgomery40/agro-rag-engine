@@ -18,7 +18,6 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useConfig } from '@/hooks';
 
 /**
  * Reranker status object returned from backend
@@ -60,7 +59,6 @@ interface EvalMetrics {
 }
 
 export function LearningRankerSubtab() {
-  const { get, set, loading, error } = useConfig();
 
   // Configuration state - all inputs wired to /api/config
   const [rerankerEnabled, setRerankerEnabled] = useState<string>('0');
@@ -101,9 +99,11 @@ export function LearningRankerSubtab() {
   const [costAvg, setCostAvg] = useState<number>(0);
   const [noHitQueries, setNoHitQueries] = useState<any[]>([]);
   const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
-  
+  const [loading, setLoading] = useState<boolean>(true);
+
   // Load configuration and status on mount
   useEffect(() => {
+    loadConfig();
     loadStatus();
     loadCounts();
     loadCosts();
@@ -117,30 +117,45 @@ export function LearningRankerSubtab() {
     return () => clearInterval(interval);
   }, []);
 
-  // Sync config values from backend on mount
-  useEffect(() => {
-    if (!loading) {
-      setLogPath(get('AGRO_LOG_PATH', 'data/logs/queries.jsonl'));
-      setTripletsPath(get('AGRO_TRIPLETS_PATH', 'data/training/triplets.jsonl'));
-      setBlendAlpha(get('AGRO_RERANKER_ALPHA', 0.7));
-      setMaxSeqLength(get('AGRO_RERANKER_MAXLEN', 512));
-      setBatchSize(get('AGRO_RERANKER_BATCH', 16));
-      setRerankerTopN(get('AGRO_RERANKER_TOPN', 50));
-      setVoyageRerankerModel(get('VOYAGE_RERANK_MODEL', 'rerank-2'));
-      setTrainEpochs(get('RERANKER_TRAIN_EPOCHS', 2));
-      setTrainBatchSize(get('RERANKER_TRAIN_BATCH', 16));
-      setTrainMaxLength(get('RERANKER_TRAIN_MAX_LENGTH', 512));
-      setTrainLearningRate(get('RERANKER_TRAIN_LR', 0.00002));
-      setWarmupRatio(get('RERANKER_WARMUP_RATIO', 0.1));
-      setTripletsMinCount(get('TRIPLETS_MIN_COUNT', 100));
-    }
-  }, [loading, get]);
-
-
   /**
    * Load configuration from /api/config
    */
-  
+  const loadConfig = async () => {
+    try {
+      const response = await fetch('/api/config');
+      const data = await response.json();
+      const env = data.env || {};
+
+      setRerankerEnabled(env.AGRO_RERANKER_ENABLED || '0');
+      setModelPath(env.AGRO_RERANKER_MODEL_PATH || 'models/cross-encoder-agro');
+      setLogPath(env.AGRO_LOG_PATH || 'data/logs/queries.jsonl');
+      setTripletsPath(env.AGRO_TRIPLETS_PATH || 'data/training/triplets.jsonl');
+      setMineMode(env.AGRO_RERANKER_MINE_MODE || 'append');
+      setMineReset(env.AGRO_RERANKER_MINE_RESET || '0');
+      setBlendAlpha(parseFloat(env.AGRO_RERANKER_ALPHA || '0.7'));
+      setMaxSeqLength(parseInt(env.AGRO_RERANKER_MAXLEN || '512', 10));
+      setBatchSize(parseInt(env.AGRO_RERANKER_BATCH || '16', 10));
+      setRerankerTopN(parseInt(env.AGRO_RERANKER_TOPN || '50', 10));
+      setVoyageRerankerModel(env.VOYAGE_RERANK_MODEL || 'rerank-2');
+      setReloadOnChange(env.AGRO_RERANKER_RELOAD_ON_CHANGE || '0');
+      setTrainEpochs(parseInt(env.RERANKER_TRAIN_EPOCHS || '2', 10));
+      setTrainBatchSize(parseInt(env.RERANKER_TRAIN_BATCH || '16', 10));
+      setTrainMaxLength(parseInt(env.RERANKER_TRAIN_MAX_LENGTH || '512', 10));
+      setTrainLearningRate(parseFloat(env.RERANKER_TRAIN_LR || '0.00002'));
+      setWarmupRatio(parseFloat(env.RERANKER_WARMUP_RATIO || '0.1'));
+      setTripletsMinCount(parseInt(env.TRIPLETS_MIN_COUNT || '100', 10));
+      setTripletsMineMode(env.TRIPLETS_MINE_MODE || 'replace');
+
+      // Load available models from filesystem
+      loadAvailableModels();
+
+      setLoading(false);
+    } catch (error) {
+      console.error('Failed to load config:', error);
+      setLoading(false);
+    }
+  };
+
   /**
    * Load available reranker models from models directory
    */
@@ -247,18 +262,36 @@ export function LearningRankerSubtab() {
   /**
    * Update config value in backend
    */
-  
+  const updateConfig = async (key: string, value: any) => {
+    try {
+      const response = await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ env: { [key]: value } })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update ${key}`);
+      }
+
+      await loadConfig();
+    } catch (error) {
+      console.error(`Error updating ${key}:`, error);
+      alert(`Failed to update ${key}`);
+    }
+  };
+
   // Handler functions for all inputs
   const handleRerankerEnabledChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setRerankerEnabled(value);
-    set('AGRO_RERANKER_ENABLED', value);
+    updateConfig('AGRO_RERANKER_ENABLED', value);
   };
 
   const handleModelPathChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setModelPath(value);
-    set('AGRO_RERANKER_MODEL_PATH', value);
+    updateConfig('AGRO_RERANKER_MODEL_PATH', value);
   };
 
   const handleLogPathChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -266,7 +299,7 @@ export function LearningRankerSubtab() {
   };
 
   const handleLogPathBlur = () => {
-    set('AGRO_LOG_PATH', logPath);
+    updateConfig('AGRO_LOG_PATH', logPath);
   };
 
   const handleTripletsPathChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -274,19 +307,19 @@ export function LearningRankerSubtab() {
   };
 
   const handleTripletsPathBlur = () => {
-    set('AGRO_TRIPLETS_PATH', tripletsPath);
+    updateConfig('AGRO_TRIPLETS_PATH', tripletsPath);
   };
 
   const handleMineModeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setMineMode(value);
-    set('AGRO_RERANKER_MINE_MODE', value);
+    updateConfig('AGRO_RERANKER_MINE_MODE', value);
   };
 
   const handleMineResetChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setMineReset(value);
-    set('AGRO_RERANKER_MINE_RESET', value);
+    updateConfig('AGRO_RERANKER_MINE_RESET', value);
   };
 
   const handleBlendAlphaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -294,7 +327,7 @@ export function LearningRankerSubtab() {
   };
 
   const handleBlendAlphaBlur = () => {
-    set('AGRO_RERANKER_ALPHA', blendAlpha);
+    updateConfig('AGRO_RERANKER_ALPHA', blendAlpha);
   };
 
   const handleMaxSeqLengthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -302,7 +335,7 @@ export function LearningRankerSubtab() {
   };
 
   const handleMaxSeqLengthBlur = () => {
-    set('AGRO_RERANKER_MAXLEN', maxSeqLength);
+    updateConfig('AGRO_RERANKER_MAXLEN', maxSeqLength);
   };
 
   const handleBatchSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -310,7 +343,7 @@ export function LearningRankerSubtab() {
   };
 
   const handleBatchSizeBlur = () => {
-    set('AGRO_RERANKER_BATCH', batchSize);
+    updateConfig('AGRO_RERANKER_BATCH', batchSize);
   };
 
   const handleRerankerTopNChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -318,7 +351,7 @@ export function LearningRankerSubtab() {
   };
 
   const handleRerankerTopNBlur = () => {
-    set('AGRO_RERANKER_TOPN', rerankerTopN);
+    updateConfig('AGRO_RERANKER_TOPN', rerankerTopN);
   };
 
   const handleVoyageRerankerModelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -326,13 +359,13 @@ export function LearningRankerSubtab() {
   };
 
   const handleVoyageRerankerModelBlur = () => {
-    set('VOYAGE_RERANK_MODEL', voyageRerankerModel);
+    updateConfig('VOYAGE_RERANK_MODEL', voyageRerankerModel);
   };
 
   const handleReloadOnChangeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setReloadOnChange(value);
-    set('AGRO_RERANKER_RELOAD_ON_CHANGE', value);
+    updateConfig('AGRO_RERANKER_RELOAD_ON_CHANGE', value);
   };
 
   const handleTrainEpochsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -340,7 +373,7 @@ export function LearningRankerSubtab() {
   };
 
   const handleTrainEpochsBlur = () => {
-    set('RERANKER_TRAIN_EPOCHS', trainEpochs);
+    updateConfig('RERANKER_TRAIN_EPOCHS', trainEpochs);
   };
 
   const handleTrainBatchSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -348,7 +381,7 @@ export function LearningRankerSubtab() {
   };
 
   const handleTrainBatchSizeBlur = () => {
-    set('RERANKER_TRAIN_BATCH', trainBatchSize);
+    updateConfig('RERANKER_TRAIN_BATCH', trainBatchSize);
   };
 
   const handleTrainMaxLengthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -356,7 +389,7 @@ export function LearningRankerSubtab() {
   };
 
   const handleTrainMaxLengthBlur = () => {
-    set('RERANKER_TRAIN_MAX_LENGTH', trainMaxLength);
+    updateConfig('RERANKER_TRAIN_MAX_LENGTH', trainMaxLength);
   };
 
   const handleTrainLearningRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -364,7 +397,7 @@ export function LearningRankerSubtab() {
   };
 
   const handleTrainLearningRateBlur = () => {
-    set('RERANKER_TRAIN_LR', trainLearningRate);
+    updateConfig('RERANKER_TRAIN_LR', trainLearningRate);
   };
 
   const handleWarmupRatioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -372,7 +405,7 @@ export function LearningRankerSubtab() {
   };
 
   const handleWarmupRatioBlur = () => {
-    set('RERANKER_WARMUP_RATIO', warmupRatio);
+    updateConfig('RERANKER_WARMUP_RATIO', warmupRatio);
   };
 
   const handleTripletsMinCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -380,13 +413,13 @@ export function LearningRankerSubtab() {
   };
 
   const handleTripletsMinCountBlur = () => {
-    set('TRIPLETS_MIN_COUNT', tripletsMinCount);
+    updateConfig('TRIPLETS_MIN_COUNT', tripletsMinCount);
   };
 
   const handleTripletsMineModChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setTripletsMineMode(value);
-    set('TRIPLETS_MINE_MODE', value);
+    updateConfig('TRIPLETS_MINE_MODE', value);
   };
 
   // Action handlers

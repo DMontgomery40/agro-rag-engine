@@ -3,7 +3,6 @@
 // Subtab navigation for RAG mega-tab
 
 import { useEffect } from 'react';
-import { useConfig } from '@/hooks';
 
 interface RAGSubtabsProps {
   activeSubtab: string;
