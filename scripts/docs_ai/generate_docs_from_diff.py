@@ -36,10 +36,83 @@ def run(cmd: str, check: bool = True) -> str:
     return p.stdout
 
 
+# Files/patterns to EXCLUDE from doc generation
+EXCLUDE_PATTERNS = [
+    # Documentation files themselves
+    ".md",
+    # Test-related
+    "tests/",
+    "test-results/",
+    "playwright",
+    ".spec.ts",
+    ".test.ts",
+    ".test.py",
+    # Build/output
+    "dist/",
+    "build/",
+    "out/",
+    "node_modules/",
+    ".venv/",
+    "venv/",
+    # Data/assets
+    "data/",
+    "assets/",
+    "examples/",
+    # Model checkpoints
+    "checkpoints/",
+    "models/",
+    # Tools and agent docs
+    "tools/",
+    "agent_docs/",
+    # Config files that aren't code
+    ".json",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".lock",
+    # Other
+    ".gitignore",
+    ".gitattributes",
+    ".env",
+    "Makefile",
+    "Dockerfile",
+    # Cursor/IDE files
+    ".cursor/",
+    "cursor.rules",
+    # Backup/temp files
+    ".backup",
+    ".bak",
+    ".old",
+    ".txt",
+    ".sh",  # Scripts generally don't need to be in docs
+    # Legacy GUI (now in web/)
+    "gui/",
+    # Public static copies
+    "public/",
+]
+
+
+def should_include_file(path: str) -> bool:
+    """Check if a file should be included for doc generation."""
+    path_lower = path.lower()
+    for pattern in EXCLUDE_PATTERNS:
+        if pattern.startswith("."):
+            # Extension match
+            if path_lower.endswith(pattern):
+                return False
+        else:
+            # Path segment match
+            if pattern in path_lower:
+                return False
+    return True
+
+
 def git_diff_names(base: str) -> List[str]:
-    """Get list of changed files between base and HEAD."""
+    """Get list of changed files between base and HEAD, excluding irrelevant files."""
     out = run(f"git diff --name-only {shlex.quote(base)}..HEAD")
-    return [ln.strip() for ln in out.splitlines() if ln.strip()]
+    all_files = [ln.strip() for ln in out.splitlines() if ln.strip()]
+    # Filter out excluded patterns
+    return [f for f in all_files if should_include_file(f)]
 
 
 def _read(path: Path) -> str:
@@ -248,17 +321,33 @@ def main():
     # LLM mode
     plan = build_plan(args.base)
 
-    system_prompt = """You are a senior technical writer for AGRO, a local-first RAG engine for codebases.
+    system_prompt = """You are writing documentation updates for AGRO (Another Good RAG Option), a local-first RAG engine for codebases.
+
+AGRO is a recursive acronym - an attempt to gain mass credibility with greybeard devs who remember what YAML and GNU and PHP stand for. Did it work? Probably not, but here we are.
 
 Your task: Review the code changes and suggest documentation updates as a unified diff patch.
 Only modify files under mkdocs/docs/ and mkdocs.yml.
 
-Guidelines:
-- Write in a casual, direct, technical voice (like the README)
-- Focus on what users need to know to use the feature
-- Don't over-explain implementation details
-- Include code examples where helpful
-- Keep it concise
+WRITING STYLE:
+Primary mode (90% of the time): Thorough, technical, precise. Clear explanations. Use first person ("I built this because...").
+
+When appropriate: Direct, unpretentious. No marketing speak. If something is genuinely novel, explain WHY. If there's a rough edge, acknowledge it briefly. This is a solo dev project.
+
+KEY POINTS:
+- AGRO explains itself - tooltips with links to docs and arxiv papers, searchable
+- AGRO is indexed on itself - questions about modifying it? Ask in chat tab. MIT licensed.
+- MCP integration benefits Claude Code/Codex - but don't claim specific token savings
+- Be honest: tons of features, but you don't need them all. Small codebases often work better with just BM25.
+
+DON'T:
+- Overdo casual/funny stuff
+- Use marketing language ("revolutionary", "game-changing")
+- Claim specific performance numbers
+
+TECHNICAL:
+- Models are NOT a finite list - users can add ANY model via Pydantic config
+- Use MkDocs Material formatting: admonitions, code blocks, content tabs, diagrams, etc.
+- Reference: https://squidfunk.github.io/mkdocs-material/reference/
 
 Output ONLY a unified diff patch that can be applied with `git apply`.
 """
