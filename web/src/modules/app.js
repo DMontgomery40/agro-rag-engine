@@ -938,6 +938,12 @@
     const ingestFile = window.Secrets?.ingestFile || (async () => {});
 
     // ---------------- Quick Action Helpers ----------------
+    const getReactDashboardRoot = () => document.querySelector('[data-react-dashboard="true"]');
+    const isReactDashboardActive = () => Boolean(window.__AGRO_REACT_DASHBOARD__) || Boolean(getReactDashboardRoot());
+    const isInsideReactDashboard = (node) => {
+        const root = getReactDashboardRoot();
+        return Boolean(root && node && root.contains(node));
+    };
     function setButtonState(btn, state) {
         if (!btn) return;
         btn.classList.remove('loading', 'success', 'error');
@@ -947,6 +953,7 @@
     }
 
     function showStatus(message, type = 'info') {
+        if (isReactDashboardActive()) return;
         const status = document.getElementById('dash-index-status');
         const bar = document.getElementById('dash-index-bar');
         if (!status) return;
@@ -979,6 +986,9 @@
 
     // Simulated progress ticker for long-running actions
     function startSimProgress(label, total = 80, tips = []) {
+        if (isReactDashboardActive()) {
+            return { stop: () => {} };
+        }
         const status = document.getElementById('dash-index-status');
         const bar = document.getElementById('dash-index-bar');
         let step = 0; let tipIdx = 0;
@@ -1010,6 +1020,7 @@
     function bindQuickAction(btnId, handler) {
         const btn = document.getElementById(btnId);
         if (!btn) return;
+        if (isInsideReactDashboard(btn)) return;
 
         btn.addEventListener('click', async (e) => {
             e.preventDefault();
@@ -1029,6 +1040,7 @@
 
     // ---------------- Quick Actions ----------------
     async function changeRepo() {
+        if (isReactDashboardActive()) return;
         showStatus('Loading repositories...', 'loading');
 
         try {
@@ -1112,6 +1124,7 @@
     }
 
     async function createKeywords() {
+        if (isReactDashboardActive()) return;
         const btn = document.getElementById('btn-generate-keywords');
         setButtonState(btn, 'loading');
         showStatus('Generating keywords (this may take 2–5 minutes)...', 'loading');
@@ -1278,6 +1291,7 @@
 
         // Dopamine-y feedback on any button click
         document.querySelectorAll('button').forEach(btn => {
+            if (isInsideReactDashboard(btn)) return;
             if (btn.dataset && btn.dataset.dopamineBound) return;
             if (!btn.dataset) btn.dataset = {};
             btn.dataset.dopamineBound = '1';
@@ -1434,6 +1448,9 @@
 
     // ---------------- Dashboard Summary ----------------
     async function refreshDashboard() {
+        if (isReactDashboardActive()) {
+            return;
+        }
         try {
             const c = state.config || (await (await fetch(api('/api/config'))).json());
             const repo = (c.env && (c.env.REPO || c.default_repo)) || '(none)';

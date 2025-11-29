@@ -5,6 +5,12 @@
   let indexPoll = null;
   let backgroundPoll = null;  // Persistent background poll for index display
 
+  const getReactDashboardRoot = () => document.querySelector('[data-react-dashboard="true"]');
+  const isReactDashboardElement = (node) => {
+    const root = getReactDashboardRoot();
+    return Boolean((window.__AGRO_REACT_DASHBOARD__ || root) && node && root && root.contains(node));
+  };
+
   function formatBytes(bytes){
     if (!bytes || bytes === 0) return '0 B';
     const k = 1024; const sizes = ['B','KB','MB','GB'];
@@ -84,10 +90,16 @@
       const pct = d.running ? 50 : (d.metadata ? 100 : 0);
       if (box1) box1.innerHTML = formatted;
       if (bar1) bar1.style.width = pct + '%';
-      if (box2) box2.innerHTML = formatted;
-      if (bar2) bar2.style.width = pct + '%';
+      if (box2 && !isReactDashboardElement(box2)) box2.innerHTML = formatted;
+      if (bar2 && !isReactDashboardElement(bar2)) bar2.style.width = pct + '%';
       if (lastIndexedDisplay && d.metadata && d.metadata.timestamp){ lastIndexedDisplay.textContent = new Date(d.metadata.timestamp).toLocaleString(); }
-      if (!d.running && indexPoll){ clearInterval(indexPoll); indexPoll = null; if (bar2){ setTimeout(()=>{bar2.style.width='0%';}, 2000); } }
+      if (!d.running && indexPoll){
+        clearInterval(indexPoll);
+        indexPoll = null;
+        if (bar2 && !isReactDashboardElement(bar2)){
+          setTimeout(()=>{bar2.style.width='0%';}, 2000);
+        }
+      }
     }catch(_e){}
   }
 

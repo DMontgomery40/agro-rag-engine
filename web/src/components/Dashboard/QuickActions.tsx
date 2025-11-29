@@ -2,19 +2,42 @@
 // 6 action buttons for common operations
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { QuickActionButton } from './QuickActionButton';
 import { LiveTerminalPanel } from './LiveTerminalPanel';
 import { TerminalService } from '../../services/TerminalService';
 import { RepoSwitcherModal } from '../ui/RepoSwitcherModal';
 import { useRepoStore } from '@/stores/useRepoStore';
+import * as DashAPI from '@/api/dashboard';
+
+const FALLBACK_EVAL_OPTIONS: DashAPI.RerankerOption[] = [
+  {
+    id: 'baseline-eval',
+    backend: 'default',
+    label: 'Baseline Eval (current config)',
+    description: 'Run evaluation using the active agro_config settings.'
+  },
+  {
+    id: 'multi-query-eval',
+    backend: 'multi',
+    label: 'Multi‑Query Eval (stress test)',
+    description: 'Enable multi-query rewrites with a higher final_k for recall tuning.'
+  }
+];
+
+const FALLBACK_EVAL_PARAMS: Record<string, { use_multi?: boolean; final_k?: number; sample_limit?: number }> = {
+  'baseline-eval': { use_multi: false, final_k: 5, sample_limit: 10 },
+  'multi-query-eval': { use_multi: true, final_k: 15, sample_limit: 20 }
+};
 
 export function QuickActions() {
   const [terminalVisible, setTerminalVisible] = useState(false);
   const [statusMessage, setStatusMessage] = useState('Ready');
   const [progress, setProgress] = useState(0);
   const [showRepoSwitcher, setShowRepoSwitcher] = useState(false);
-  const navigate = useNavigate();
+  const [showEvalDropdown, setShowEvalDropdown] = useState(false);
+  const [evalOptions, setEvalOptions] = useState<DashAPI.RerankerOption[]>([]);
+  const [evalLoading, setEvalLoading] = useState(false);
+  const [evalError, setEvalError] = useState<string | null>(null);
   
   // Use centralized repo store
   const { activeRepo, switching, loadRepos } = useRepoStore();
@@ -23,6 +46,23 @@ export function QuickActions() {
   useEffect(() => {
     loadRepos();
   }, [loadRepos]);
+
+  useEffect(() => {
+    if (!showEvalDropdown) {
+      return;
+    }
+    const handleClickOutside = (event: MouseEvent) => {
+      const trigger = document.getElementById('dash-eval-trigger');
+      const dropdown = document.getElementById('dash-eval-dropdown');
+      if (trigger && dropdown && !trigger.contains(event.target as Node) && !dropdown.contains(event.target as Node)) {
+        setShowEvalDropdown(false);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [showEvalDropdown]);
 
   const handleGenerateKeywords = async () => {
     setTerminalVisible(true);
@@ -39,7 +79,7 @@ export function QuickActions() {
     try {
       // Get current repo from URL params or default to agro
       const params = new URLSearchParams(window.location.search);
-      const repo = params.get('repo') || 'agro';
+      const repo = params.get('repo') || activeRepo || 'agro';
 
       const response = await fetch('/api/keywords/generate', {
         method: 'POST',
@@ -77,13 +117,10 @@ export function QuickActions() {
   };
 
   const handleRunIndexer = () => {
-    // Navigate to RAG > Indexing subtab instead of running directly from dashboard
-    // This lets users configure settings before running
-    navigate('/rag?subtab=indexing');
+    runIndexer();
   };
 
-  // Legacy direct indexer run - kept for reference but not used
-  const _handleRunIndexerDirect = async () => {
+  const runIndexer = async () => {
     setTerminalVisible(true);
     setStatusMessage('Starting indexer...');
     setProgress(0);
@@ -149,36 +186,6 @@ export function QuickActions() {
     }
   };
 
-  const pollIndexStatus = async (terminal: any) => {
-    const interval = setInterval(async () => {
-      try {
-        const response = await fetch('/api/index/status');
-        const data = await response.json();
-        
-        if (data.active) {
-          const prog = data.progress || 0;
-          setProgress(prog);
-          setStatusMessage(`Indexing: ${Math.round(prog)}%`);
-          
-          if (terminal) {
-            terminal.updateProgress(prog, data.current_file || 'Processing...');
-          }
-        } else {
-          clearInterval(interval);
-          setProgress(100);
-          setStatusMessage('✓ Indexing complete');
-          
-          if (terminal) {
-            terminal.updateProgress(100, 'Complete');
-            terminal.appendLine('✓ Indexing complete\n');
-          }
-        }
-      } catch (e) {
-        clearInterval(interval);
-      }
-    }, 1000);
-  };
-
   const handleReloadConfig = async () => {
     setTerminalVisible(true);
     setStatusMessage('Reloading configuration...');
@@ -205,9 +212,96 @@ export function QuickActions() {
     }
   };
 
-  const handleRunEval = () => {
-    // Navigate to Eval Analysis tab with autorun param
-    window.location.hash = '#/eval-analysis?autorun=true';
+  const handleRunEval = async () => {
+    if (showEvalDropdown) {
+      setShowEvalDropdown(false);
+      return;
+    }
+    setShowEvalDropdown(true);
+    if (evalOptions.length === 0) {
+      setEvalOptions(FALLBACK_EVAL_OPTIONS);
+    }
+    setEvalLoading(true);
+    setEvalError(null);
+    try {
+      const options = await DashAPI.getRerankerOptions();
+      if (options.length > 0) {
+        setEvalOptions(options);
+      } else {
+        setEvalOptions(FALLBACK_EVAL_OPTIONS);
+      }
+    } catch (err) {
+      setEvalOptions(FALLBACK_EVAL_OPTIONS);
+      setEvalError(
+        err instanceof Error
+          ? `${err.message} (showing default presets)`
+          : 'Failed to load evaluation presets (showing defaults)'
+      );
+    } finally {
+      setEvalLoading(false);
+    }
+  };
+
+  const handleEvalOptionSelect = async (option: DashAPI.RerankerOption) => {
+    setShowEvalDropdown(false);
+    setTerminalVisible(true);
+    setStatusMessage(`Running eval with ${option.label}`);
+    setProgress(0);
+
+    const params = new URLSearchParams(window.location.search);
+    const repo = params.get('repo') || activeRepo || 'agro';
+
+    const terminal = (window as any)._dashboardTerminal;
+    if (terminal) {
+      terminal.setTitle(`Evaluate (${option.label})`);
+      terminal.clear();
+      terminal.appendLine(`🔬 Starting evaluation for repo: ${repo}`);
+    }
+
+    // Kick off eval run to ensure backend starts processing (non-stream acknowledgement)
+    try {
+      await fetch('/api/eval/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ backend: option.backend, repo })
+      });
+    } catch (error) {
+      console.warn('Eval run kickoff failed (continuing with stream):', error);
+    }
+
+    const preset = FALLBACK_EVAL_PARAMS[option.id] || {};
+
+    TerminalService.streamEvalRun('dashboard_eval', {
+      use_multi: preset.use_multi,
+      final_k: preset.final_k,
+      sample_limit: preset.sample_limit,
+      onLine: (line) => {
+        if (terminal) {
+          terminal.appendLine(line);
+        }
+      },
+      onProgress: (percent, message) => {
+        setProgress(percent);
+        setStatusMessage(message || `Eval: ${Math.round(percent)}%`);
+        if (terminal) {
+          terminal.updateProgress(percent, message || `Eval ${Math.round(percent)}%`);
+        }
+      },
+      onError: (error) => {
+        setStatusMessage(`✗ Eval error: ${error}`);
+        if (terminal) {
+          terminal.appendLine(`\x1b[31m✗ Eval error: ${error}\x1b[0m`);
+        }
+      },
+      onComplete: () => {
+        setProgress(100);
+        setStatusMessage('✓ Eval complete');
+        if (terminal) {
+          terminal.updateProgress(100, 'Complete');
+          terminal.appendLine('\x1b[32m✓ Evaluation complete\x1b[0m');
+        }
+      }
+    });
   };
 
   const handleRefreshStatus = () => {
@@ -283,6 +377,56 @@ export function QuickActions() {
           dataAction="refresh"
         />
       </div>
+
+      {showEvalDropdown && (
+        <div
+          id="dash-eval-dropdown"
+          style={{
+            background: 'var(--bg-elev2)',
+            border: '1px solid var(--line)',
+            borderRadius: '8px',
+            padding: '12px',
+            marginBottom: '16px',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)'
+          }}
+        >
+          <div style={{ fontSize: '12px', color: 'var(--fg-muted)', marginBottom: '8px' }}>
+            Select an evaluation preset to run instantly.
+          </div>
+          {evalLoading && (
+            <div style={{ color: 'var(--fg-muted)', marginBottom: '8px' }}>Loading evaluation presets…</div>
+          )}
+          {evalError && (
+            <div style={{ color: 'var(--err)', marginBottom: '8px' }}>{evalError}</div>
+          )}
+          {evalOptions.length === 0 ? (
+            <div style={{ color: 'var(--fg-muted)' }}>No evaluation presets available.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {evalOptions.map(option => (
+                <button
+                  key={option.id}
+                  onClick={() => handleEvalOptionSelect(option)}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    padding: '10px 12px',
+                    background: 'var(--bg-elev1)',
+                    border: '1px solid var(--line)',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                >
+                  <span style={{ fontWeight: 600, color: 'var(--accent)' }}>{option.label}</span>
+                  <span style={{ fontSize: '11px', color: 'var(--fg-muted)' }}>{option.description}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Status Display */}
       <div

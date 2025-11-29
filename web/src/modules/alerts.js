@@ -12,6 +12,12 @@
         return;
     }
 
+    const getReactDashboardRoot = () => document.querySelector('[data-react-dashboard="true"]');
+    const isReactDashboardElement = (node) => {
+        const root = getReactDashboardRoot();
+        return Boolean((window.__AGRO_REACT_DASHBOARD__ || root) && node && root && root.contains(node));
+    };
+
     // Alert threshold field mapping (HTML ID -> backend key)
     const THRESHOLD_FIELDS = {
         // Cost & Token Burn
@@ -93,6 +99,7 @@
         try {
             const container = $('#alert-status-container');
             if (!container) return;
+            if (isReactDashboardElement(container)) return;
 
             const r = await fetch(api('/webhooks/alertmanager/status'));
             if (!r.ok) {
@@ -170,7 +177,7 @@
                 ]
             }) : `Failed to load alert status: ${e.message}`;
             const container = $('#alert-status-container');
-            if (container) {
+            if (container && !isReactDashboardElement(container)) {
                 container.innerHTML = '<p style="color: var(--err); font-size: 13px;">❌ Error loading alert status</p>';
             }
             console.error('[alerts.js] Failed to load alert status:', msg);
@@ -184,6 +191,7 @@
         try {
             const container = $('#alert-history-container');
             if (!container) return;
+            if (isReactDashboardElement(container)) return;
 
             const r = await fetch(api('/webhooks/alertmanager/status'));
             if (!r.ok) {
@@ -253,7 +261,7 @@
                 ]
             }) : `Failed to load alert history: ${e.message}`;
             const container = $('#alert-history-container');
-            if (container) {
+            if (container && !isReactDashboardElement(container)) {
                 container.innerHTML = '<p style="color: var(--err); font-size: 12px;">Error loading alert history</p>';
             }
             console.error('[alerts.js] Failed to load alert history:', msg);

@@ -14,6 +14,16 @@ export function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeSubtab, setActiveSubtab] = useState(searchParams.get('subtab') || 'system');
 
+  // Flag for legacy modules so they can avoid mutating React-rendered dashboard DOM
+  useEffect(() => {
+    (window as any).__AGRO_REACT_DASHBOARD__ = true;
+    window.dispatchEvent(new CustomEvent('react-dashboard-ready'));
+    return () => {
+      delete (window as any).__AGRO_REACT_DASHBOARD__;
+      window.dispatchEvent(new CustomEvent('react-dashboard-unmount'));
+    };
+  }, []);
+
   // Update URL when subtab changes
   useEffect(() => {
     if (activeSubtab !== 'system') {
@@ -32,7 +42,11 @@ export function Dashboard() {
   }, [searchParams, activeSubtab]);
 
   return (
-    <div id="tab-dashboard" className="tab-content">
+    <div
+      id="tab-dashboard"
+      className="tab-content"
+      data-react-dashboard="true"
+    >
       {/* Subtab navigation */}
       <DashboardSubtabs activeSubtab={activeSubtab} onSubtabChange={setActiveSubtab} />
 

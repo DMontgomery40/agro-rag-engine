@@ -1,32 +1,34 @@
 #!/usr/bin/env python3
+# pyright: reportMissingImports=false, reportMissingModuleSource=false
 """
-Bootstrap AGRO documentation by reading source files and generating docs via LLM.
+Docs Autopilot bootstrap for AGRO.
 
-This script:
-1. Reads relevant source files for each doc topic
-2. Sends them to AGRO's /answer endpoint (uses configured gen_model)
-3. Generates complete documentation with MkDocs Material formatting
-
-Usage:
-    python scripts/docs_ai/bootstrap_docs.py
-    python scripts/docs_ai/bootstrap_docs.py --page features/rag  # Single page only
-    python scripts/docs_ai/bootstrap_docs.py --dry-run  # Preview without writing
+Reads curated source files for each documentation page, chunks the input to stay
+under token limits, and calls OpenAI's Responses API (gpt-5.1) to generate
+MkDocs pages. Designed for the large “catch-up” run where every page needs a
+fresh rewrite without hammering AGRO's own API.
 """
 
 import argparse
 import glob
+import json
+import os
 import sys
 import time
+import urllib.error
+import urllib.request
+from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import Any, Dict, Iterable, List, Optional, Sequence
 
-import requests
+from dotenv import load_dotenv  # type: ignore[import-not-found]
 
-ROOT = Path(__file__).parent.parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 DOCS_DIR = ROOT / "mkdocs" / "docs"
-API_URL = "http://127.0.0.1:8012"
 
-# The system prompt for doc generation
+load_dotenv(ROOT / ".env", override=False)
+
+# The system prompt for doc generation (do not change).
 SYSTEM_PROMPT = """You are writing documentation for AGRO (Another Good RAG Option), a local-first RAG engine for codebases.
 
 AGRO is a recursive acronym - an attempt to gain mass credibility with greybeard devs who remember what YAML and GNU and PHP stand for. Did it work? Probably not, but here we are.
@@ -70,8 +72,19 @@ You MUST use these components where appropriate:
 - Tooltips for technical terms
 """
 
+PROMPT_TEMPLATE = """=== SOURCE FILES TO DOCUMENT ===
+
+{source}
+
+=== YOUR TASK ===
+
+{instruction}
+
+Write the complete markdown documentation page. Use MkDocs Material formatting throughout.
+Output ONLY the markdown content, no explanations or meta-commentary."""
+
 # Map each doc page to the source files it should read
-DOC_PAGES = {
+DOC_PAGES: Dict[str, Dict[str, Any]] = {
     "index": {
         "title": "AGRO - Another Good RAG Option",
         "source_files": [
@@ -382,263 +395,351 @@ Be practical and solution-oriented.""",
     },
 }
 
+MAX_FILE_CHARS = 15_000
+DEFAULT_PAGE_CHAR_LIMIT = 60_000
 
-def read_source_files(file_patterns: List[str]) -> str:
-    """Read source files and return concatenated content."""
-    content_parts = []
+
+@dataclass(frozen=True)
+class DocPage:
+    slug: str
+    title: str
+    source_files: Sequence[str]
+    instruction: str
+
+
+def iter_pages(selected: Optional[Sequence[str]] = None) -> Iterable[DocPage]:
+    if selected:
+        missing = [slug for slug in selected if slug not in DOC_PAGES]
+        if missing:
+            raise KeyError(f"Unknown page(s): {', '.join(missing)}")
+        ordered = []
+        for slug in selected:
+            if slug not in ordered:
+                ordered.append(slug)
+    else:
+        ordered = list(DOC_PAGES.keys())
+
+    for slug in ordered:
+        config = DOC_PAGES[slug]
+        yield DocPage(
+            slug=slug,
+            title=config["title"],
+            source_files=config["source_files"],
+            instruction=config["instruction"],
+        )
+
+
+def read_source_files(
+    file_patterns: Sequence[str],
+    *,
+    max_file_chars: int = MAX_FILE_CHARS,
+    max_total_chars: int = DEFAULT_PAGE_CHAR_LIMIT,
+) -> str:
+    content_parts: List[str] = []
+    total = 0
 
     for pattern in file_patterns:
-        # Handle glob patterns
-        if "*" in pattern:
+        if any(ch in pattern for ch in "*?["):
             matches = glob.glob(str(ROOT / pattern), recursive=True)
         else:
             matches = [str(ROOT / pattern)]
 
+        if not matches:
+            print(f"  Warning: No matches for pattern '{pattern}'")
+            continue
+
         for filepath in matches:
             path = Path(filepath)
-            if path.exists() and path.is_file():
-                try:
-                    text = path.read_text(encoding="utf-8")
-                    # Truncate very large files
-                    if len(text) > 15000:
-                        text = text[:15000] + "\n... [truncated]"
-                    rel_path = path.relative_to(ROOT)
-                    content_parts.append(f"=== FILE: {rel_path} ===\n{text}\n")
-                except Exception as e:
-                    print(f"  Warning: Could not read {filepath}: {e}")
+            if not path.exists() or not path.is_file():
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+            except Exception as exc:
+                print(f"  Warning: Could not read {path}: {exc}")
+                continue
+
+            if len(text) > max_file_chars:
+                text = text[:max_file_chars] + "\n... [truncated]"
+
+            try:
+                rel_path = path.relative_to(ROOT)
+            except ValueError:
+                rel_path = path
+
+            chunk = f"=== FILE: {rel_path} ===\n{text}\n"
+            chunk_len = len(chunk)
+            if total + chunk_len > max_total_chars:
+                remaining = max_total_chars - total
+                if remaining > 0:
+                    content_parts.append(chunk[:remaining])
+                    total += remaining
+                print("  Reached max source characters limit; skipping remaining files.")
+                return "\n".join(content_parts)
+
+            content_parts.append(chunk)
+            total += chunk_len
 
     return "\n".join(content_parts)
 
 
-def generate_doc_via_agro(
-    instruction: str,
-    source_content: str,
-    api_url: str = API_URL
+def build_user_prompt(page: DocPage, source: str) -> str:
+    source_block = source or "(No source files available)"
+    return PROMPT_TEMPLATE.format(source=source_block, instruction=page.instruction.strip())
+
+
+def call_openai_responses(
+    user_prompt: str,
+    *,
+    model: str,
+    temperature: float,
+    max_output_tokens: int,
+    max_retries: int,
+    backoff_factor: float,
 ) -> str:
-    """Generate documentation by calling AGRO's /answer endpoint."""
-
-    # Combine system prompt, source files, and instruction
-    full_prompt = f"""{SYSTEM_PROMPT}
-
-=== SOURCE FILES TO DOCUMENT ===
-
-{source_content}
-
-=== YOUR TASK ===
-
-{instruction}
-
-Write the complete markdown documentation page. Use MkDocs Material formatting throughout.
-Output ONLY the markdown content, no explanations or meta-commentary."""
-
-    try:
-        r = requests.get(
-            f"{api_url}/answer",
-            params={"q": full_prompt, "repo": "agro"},
-            timeout=300  # Long timeout for doc generation
-        )
-        r.raise_for_status()
-        data = r.json()
-        return data.get("answer", data.get("text", ""))
-    except Exception as e:
-        print(f"  Error calling AGRO: {e}")
-        return f"# Error\n\nFailed to generate documentation: {e}"
-
-
-def generate_doc_via_openai(
-    instruction: str,
-    source_content: str
-) -> str:
-    """Generate documentation by calling OpenAI Responses API."""
-    import os
-
-    key = os.getenv("OPENAI_API_KEY")
-    if not key:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
         raise RuntimeError("OPENAI_API_KEY not set")
 
-    full_prompt = f"""{SYSTEM_PROMPT}
-
-=== SOURCE FILES TO DOCUMENT ===
-
-{source_content}
-
-=== YOUR TASK ===
-
-{instruction}
-
-Write the complete markdown documentation page. Use MkDocs Material formatting throughout.
-Output ONLY the markdown content, no explanations or meta-commentary."""
-
-    url = "https://api.openai.com/v1/responses"
-    model = os.getenv("OPENAI_MODEL", "gpt-5.1")
-    headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
-    data = {
+    base_url = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1").rstrip("/")
+    url = f"{base_url}/responses"
+    payload = {
         "model": model,
-        "input": full_prompt,
-        "temperature": 0.3,
+        "input": [
+            {"role": "system", "content": [{"type": "input_text", "text": SYSTEM_PROMPT}]},
+            {"role": "user", "content": [{"type": "input_text", "text": user_prompt}]},
+        ],
+        "temperature": temperature,
+        "max_output_tokens": max_output_tokens,
     }
-    try:
-        r = requests.post(url, headers=headers, json=data, timeout=300)
-        r.raise_for_status()
-        return r.json()["output_text"]
-    except Exception as e:
-        print(f"  Error calling OpenAI: {e}")
-        return f"# Error\n\nFailed to generate documentation: {e}"
-
-
-def generate_doc_via_anthropic(
-    instruction: str,
-    source_content: str
-) -> str:
-    """Generate documentation by calling Anthropic directly."""
-    import os
-
-    key = os.getenv("ANTHROPIC_API_KEY")
-    if not key:
-        raise RuntimeError("ANTHROPIC_API_KEY not set")
-
-    full_prompt = f"""{SYSTEM_PROMPT}
-
-=== SOURCE FILES TO DOCUMENT ===
-
-{source_content}
-
-=== YOUR TASK ===
-
-{instruction}
-
-Write the complete markdown documentation page. Use MkDocs Material formatting throughout.
-Output ONLY the markdown content, no explanations or meta-commentary."""
-
-    url = "https://api.anthropic.com/v1/messages"
-    model = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
-    headers = {"x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"}
-    data = {
-        "model": model,
-        "max_tokens": 8000,
-        "temperature": 0.3,
-        "messages": [{"role": "user", "content": full_prompt}]
+    body = json.dumps(payload).encode("utf-8")
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
     }
-    try:
-        r = requests.post(url, headers=headers, json=data, timeout=300)
-        r.raise_for_status()
-        return r.json()["content"][0]["text"]
-    except Exception as e:
-        print(f"  Error calling Anthropic: {e}")
-        return f"# Error\n\nFailed to generate documentation: {e}"
+
+    for attempt in range(max_retries):
+        request = urllib.request.Request(url, data=body, headers=headers, method="POST")
+        try:
+            with urllib.request.urlopen(request, timeout=300) as response:
+                data = response.read()
+                return extract_output_text(json.loads(data))
+        except urllib.error.HTTPError as err:
+            status = err.code
+            detail = err.read().decode("utf-8", "ignore")
+            if status in {429, 500, 502, 503, 504} and attempt < max_retries - 1:
+                delay = backoff_factor * (2 ** attempt)
+                print(f"  OpenAI error {status}; retrying in {delay:.1f}s...")
+                time.sleep(delay)
+                continue
+            raise RuntimeError(f"OpenAI HTTP error ({status}): {detail}") from err
+        except urllib.error.URLError as err:
+            if attempt < max_retries - 1:
+                delay = backoff_factor * (2 ** attempt)
+                print(f"  OpenAI request failed ({err}); retrying in {delay:.1f}s...")
+                time.sleep(delay)
+                continue
+            raise RuntimeError(f"OpenAI request failed: {err}") from err
+
+    raise RuntimeError("OpenAI request exhausted retries")
 
 
-def generate_page(
-    page_key: str,
-    config: Dict,
-    dry_run: bool = False,
-    api_url: str = API_URL,
-    llm: Optional[str] = None
-) -> str:
-    """Generate a single documentation page."""
-    print(f"\nGenerating: {page_key}")
-    print(f"  Title: {config['title']}")
-    print(f"  Reading {len(config['source_files'])} source file patterns...")
+def extract_output_text(payload: Dict[str, Any]) -> str:
+    if "output_text" in payload and payload["output_text"]:
+        text = payload["output_text"]
+        if isinstance(text, list):
+            return "\n".join(text).strip()
+        return str(text).strip()
 
-    # Read source files
-    source_content = read_source_files(config["source_files"])
-    if not source_content:
-        print("  Warning: No source files found!")
-        source_content = "(No source files available)"
-    else:
-        print(f"  Read {len(source_content)} characters of source code")
+    chunks: List[str] = []
+    for block in payload.get("output", []):
+        if not isinstance(block, dict):
+            continue
+        for content in block.get("content", []):
+            if not isinstance(content, dict):
+                continue
+            if content.get("type") in {"output_text", "text"}:
+                chunks.append(content.get("text", ""))
 
-    # Generate documentation
-    if llm == "openai":
-        print("  Generating documentation via OpenAI...")
-        content = generate_doc_via_openai(config["instruction"], source_content)
-    elif llm == "anthropic":
-        print("  Generating documentation via Anthropic...")
-        content = generate_doc_via_anthropic(config["instruction"], source_content)
-    else:
-        print("  Generating documentation via AGRO...")
-        content = generate_doc_via_agro(config["instruction"], source_content, api_url)
+    if not chunks and isinstance(payload.get("content"), list):
+        for content in payload["content"]:
+            if isinstance(content, dict) and content.get("text"):
+                chunks.append(content["text"])
 
-    if dry_run:
-        print(f"  Would write to: mkdocs/docs/{page_key}.md")
-        print(f"  Content preview:\n{content[:1000]}...")
-    else:
-        output_path = DOCS_DIR / f"{page_key}.md"
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(content, encoding="utf-8")
-        print(f"  Wrote: {output_path}")
+    if not chunks:
+        return json.dumps(payload, indent=2)
 
-    return content
+    return "\n".join(chunks).strip()
 
 
-def main():
+class DocBootstrapper:
+    def __init__(
+        self,
+        *,
+        model: str,
+        temperature: float,
+        max_output_tokens: int,
+        max_source_chars: int,
+        delay_seconds: float,
+        max_retries: int,
+        backoff_factor: float,
+    ) -> None:
+        self.model = model
+        self.temperature = temperature
+        self.max_output_tokens = max_output_tokens
+        self.max_source_chars = max_source_chars
+        self.delay_seconds = delay_seconds
+        self.max_retries = max_retries
+        self.backoff_factor = backoff_factor
+
+    def generate(self, selected: Optional[Sequence[str]], dry_run: bool) -> None:
+        pages = list(iter_pages(selected))
+        if not pages:
+            print("No pages selected.")
+            return
+
+        total = len(pages)
+        print(f"Generating {total} documentation page(s) with model {self.model}...")
+
+        for index, page in enumerate(pages, start=1):
+            print(f"\n[{index}/{total}] {page.slug} — {page.title}")
+            source = read_source_files(
+                page.source_files,
+                max_total_chars=self.max_source_chars,
+            )
+            if not source:
+                print("  Warning: No source files found; continuing anyway.")
+            else:
+                print(f"  Aggregated {len(source)} characters of source context.")
+
+            prompt = build_user_prompt(page, source)
+
+            try:
+                markdown = call_openai_responses(
+                    prompt,
+                    model=self.model,
+                    temperature=self.temperature,
+                    max_output_tokens=self.max_output_tokens,
+                    max_retries=self.max_retries,
+                    backoff_factor=self.backoff_factor,
+                )
+            except Exception as exc:
+                print(f"  Error: {exc}")
+                continue
+
+            if dry_run:
+                preview = markdown[:1000].strip()
+                suffix = "..." if len(markdown) > 1000 else ""
+                print(f"  Preview:\n{preview}{suffix}")
+            else:
+                output_path = DOCS_DIR / f"{page.slug}.md"
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                output_path.write_text(markdown, encoding="utf-8")
+                rel = output_path.relative_to(ROOT)
+                print(f"  Wrote {rel} ({len(markdown)} chars)")
+
+            if index < total and self.delay_seconds > 0:
+                time.sleep(self.delay_seconds)
+
+
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Bootstrap AGRO docs by reading source files and generating via LLM"
+        description="Bootstrap AGRO docs via OpenAI Responses API",
     )
     parser.add_argument(
         "--page",
-        help="Generate only this page (e.g., 'features/rag')"
+        action="append",
+        help="Generate only this page slug (can be passed multiple times).",
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Preview without writing files"
-    )
-    parser.add_argument(
-        "--api-url",
-        default=API_URL,
-        help="AGRO API URL"
-    )
-    parser.add_argument(
-        "--llm",
-        choices=["agro", "openai", "anthropic"],
-        default="agro",
-        help="LLM provider: 'agro' uses /answer endpoint, 'openai' calls OpenAI directly, 'anthropic' calls Anthropic directly"
+        help="Preview content without writing files.",
     )
     parser.add_argument(
         "--list",
         action="store_true",
-        help="List available pages"
+        help="List available pages and exit.",
     )
-    args = parser.parse_args()
+    parser.add_argument(
+        "--model",
+        default=os.getenv("OPENAI_MODEL", "gpt-5.1"),
+        help="OpenAI model (Responses API). Default: gpt-5.1",
+    )
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=0.3,
+        help="Sampling temperature.",
+    )
+    parser.add_argument(
+        "--max-output-tokens",
+        type=int,
+        default=5000,
+        help="Maximum tokens to generate per page.",
+    )
+    parser.add_argument(
+        "--max-source-chars",
+        type=int,
+        default=DEFAULT_PAGE_CHAR_LIMIT,
+        help="Hard cap on combined source context per page.",
+    )
+    parser.add_argument(
+        "--delay",
+        type=float,
+        default=1.5,
+        help="Seconds to sleep between pages to stay under rate limits.",
+    )
+    parser.add_argument(
+        "--max-retries",
+        type=int,
+        default=5,
+        help="Maximum retries for OpenAI rate-limit/server errors.",
+    )
+    parser.add_argument(
+        "--retry-backoff",
+        type=float,
+        default=2.0,
+        help="Base seconds for exponential backoff on retries.",
+    )
+    return parser.parse_args()
+
+
+def list_pages() -> None:
+    print("Available pages:")
+    for slug, config in DOC_PAGES.items():
+        print(f"  - {slug:<30} {config['title']}")
+
+
+def main() -> None:
+    args = parse_args()
 
     if args.list:
-        print("Available pages:")
-        for key, config in DOC_PAGES.items():
-            print(f"  {key}: {config['title']}")
+        list_pages()
         return
 
-    api_url = args.api_url
-    llm = args.llm if args.llm != "agro" else None
+    if not os.getenv("OPENAI_API_KEY"):
+        print("Error: OPENAI_API_KEY not set in environment or .env file.")
+        sys.exit(1)
 
-    # Check API is running (only needed for agro mode)
-    if not llm:
-        try:
-            r = requests.get(f"{api_url}/health", timeout=5)
-            r.raise_for_status()
-            print(f"Connected to AGRO API at {api_url}")
-        except Exception as e:
-            print(f"Error: Cannot connect to AGRO API at {api_url}")
-            print(f"Make sure the server is running: make dev")
-            sys.exit(1)
-    else:
-        print(f"Using {llm.upper()} directly (bypassing AGRO /answer endpoint)")
+    bootstrapper = DocBootstrapper(
+        model=args.model,
+        temperature=args.temperature,
+        max_output_tokens=args.max_output_tokens,
+        max_source_chars=args.max_source_chars,
+        delay_seconds=args.delay,
+        max_retries=args.max_retries,
+        backoff_factor=args.retry_backoff,
+    )
 
-    if args.page:
-        if args.page not in DOC_PAGES:
-            print(f"Unknown page: {args.page}")
-            print(f"Available pages: {', '.join(DOC_PAGES.keys())}")
-            sys.exit(1)
-        generate_page(args.page, DOC_PAGES[args.page], args.dry_run, api_url, llm)
-    else:
-        print(f"Generating {len(DOC_PAGES)} documentation pages...")
-        for page_key, config in DOC_PAGES.items():
-            generate_page(page_key, config, args.dry_run, api_url, llm)
-            time.sleep(1)  # Rate limiting between pages
+    try:
+        bootstrapper.generate(args.page, args.dry_run)
+    except KeyError as exc:
+        print(exc)
+        print("Use --list to see valid page slugs.")
+        sys.exit(1)
 
-    print("\nDone!")
     if not args.dry_run:
-        print("Run 'mkdocs serve' to preview the docs.")
+        print("\nDone! Run 'mkdocs serve' to preview the docs.")
 
 
 if __name__ == "__main__":
