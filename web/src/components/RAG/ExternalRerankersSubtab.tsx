@@ -28,7 +28,7 @@ interface PriceModelEntry {
 }
 
 export function ExternalRerankersSubtab() {
-  const { get, set, loading, error } = useConfig();
+  const { get, set, loading, error, env } = useConfig();
   // State for each input field
   const [rerankBackend, setRerankBackend] = useState<string>('local');
   const [activeChoice, setActiveChoice] = useState<'local' | 'cloud'>('local');
@@ -39,6 +39,7 @@ export function ExternalRerankersSubtab() {
   const [snippetChars, setSnippetChars] = useState<number>(700);
   const [priceModels, setPriceModels] = useState<PriceModelEntry[]>([]);
   const [savingModel, setSavingModel] = useState<boolean>(false);
+  const [localError, setLocalError] = useState<string>('');
 
   const providerOptions = useMemo(() => {
     const opts = new Set<string>();
@@ -79,7 +80,20 @@ export function ExternalRerankersSubtab() {
   // Load current config on mount
   useEffect(() => {
     loadPrices();
+    loadRerankerInfo();
   }, []);
+
+  const loadRerankerInfo = async () => {
+    try {
+      const response = await fetch('/api/reranker/info');
+      if (response.ok) {
+        const data = await response.json();
+        setRerankerInfo(data);
+      }
+    } catch (err) {
+      console.warn('[ExternalRerankersSubtab] Could not load reranker info:', err);
+    }
+  };
 
   useEffect(() => {
     if (!cloudProvider && providerOptions.length > 0) {
@@ -127,14 +141,14 @@ export function ExternalRerankersSubtab() {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to load prices.json';
       console.error('[ExternalRerankersSubtab] Error loading prices:', err);
-      setError((prev) => prev || errorMsg);
+      setLocalError((prev) => prev || errorMsg);
     }
   };
 
   
   const updateConfigBatch = async (envUpdates: Record<string, any>) => {
     try {
-      setError('');
+      setLocalError('');
 
       const response = await fetch('/api/config', {
         method: 'POST',
@@ -156,7 +170,7 @@ export function ExternalRerankersSubtab() {
        } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to update configuration';
       console.error('[ExternalRerankersSubtab] Error updating config:', err);
-      setError(errorMsg);
+      setLocalError(errorMsg);
     }
   };
 
@@ -215,7 +229,7 @@ export function ExternalRerankersSubtab() {
       .filter((m) => m.provider === normalized)
       .map((m) => m.model)
       .filter(Boolean);
-    const nextModel = providerModels[0] || cloudModel || (normalized === 'voyage' ? voyageModel : normalized === 'cohere' ? cohereModel : '');
+    const nextModel = providerModels[0] || cloudModel || (normalized === 'voyage' ? get('VOYAGE_RERANK_MODEL', '') : normalized === 'cohere' ? cohereModel : '');
     if (nextModel) {
       setCloudModel(nextModel);
     }
@@ -242,7 +256,6 @@ export function ExternalRerankersSubtab() {
       setCohereModel(cloudModel);
     } else if (cloudProvider === 'voyage') {
       set('VOYAGE_RERANK_MODEL', cloudModel);
-      setVoyageModel(cloudModel);
     }
   };
 
@@ -276,31 +289,12 @@ export function ExternalRerankersSubtab() {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to add rerank model';
       console.error('[ExternalRerankersSubtab] Error adding rerank model:', err);
-      setError(errorMsg);
+      setLocalError(errorMsg);
     } finally {
       setSavingModel(false);
     }
   };
 
-  const handleModelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setRerankerModel(value);
-  };
-
-  const handleModelBlur = () => {
-    set('RERANKER_MODEL', rerankerModel);
-  };
-
-  const handleCohereApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setCohereApiKey(value);
-  };
-
-  const handleCohereApiKeyBlur = () => {
-    if (cohereApiKey) {
-      set('COHERE_API_KEY', cohereApiKey);
-    }
-  };
 
   const handleTrustRemoteCodeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
@@ -333,7 +327,7 @@ export function ExternalRerankersSubtab() {
     backend: rerankBackend || 'local',
     provider: cloudProvider || '',
     cloud_model: cloudModel || '',
-    model_path: rerankerModel || '',
+    model_path: get('RERANKER_MODEL', ''),
     alpha: '—',
     topn: '—',
     batch: '—',
@@ -346,7 +340,7 @@ export function ExternalRerankersSubtab() {
   return (
     <>
       {/* Error Display */}
-      {error && (
+      {(error || localError) && (
         <div
           style={{
             marginBottom: '16px',
@@ -358,7 +352,7 @@ export function ExternalRerankersSubtab() {
             fontSize: '12px'
           }}
         >
-          <strong>Error:</strong> {error}
+          <strong>Error:</strong> {error || localError}
         </div>
       )}
 
@@ -564,8 +558,7 @@ export function ExternalRerankersSubtab() {
               name="RERANKER_MODEL"
               placeholder="e.g., baai/bge-reranker-base or cross-encoder/ms-marco-*"
               value={get('RERANKER_MODEL', '')}
-              onChange={handleModelChange}
-              onBlur={handleModelBlur}
+              onChange={(e) => set('RERANKER_MODEL', e.target.value)}
             />
           </div>
         </div>
@@ -629,7 +622,6 @@ export function ExternalRerankersSubtab() {
                   setCohereModel(value);
                   set('COHERE_RERANK_MODEL', value);
                 } else if (cloudProvider === 'voyage') {
-                  setVoyageModel(value);
                   set('VOYAGE_RERANK_MODEL', value);
                 }
               }}
@@ -651,11 +643,15 @@ export function ExternalRerankersSubtab() {
             <input
               type="password"
               name="COHERE_API_KEY"
-              placeholder="ck_..."
+              placeholder={env['COHERE_API_KEY'] === '••••••••••••••••' ? '••••••••••••••••  (key saved)' : 'ck_...'}
               value={get('COHERE_API_KEY', '')}
-              onChange={handleCohereApiKeyChange}
-              onBlur={handleCohereApiKeyBlur}
+              onChange={(e) => set('COHERE_API_KEY', e.target.value)}
             />
+            {env['COHERE_API_KEY'] === '••••••••••••••••' && (
+              <span style={{ fontSize: '11px', color: 'var(--ok)', marginTop: '4px' }}>
+                ✓ API key is saved in .env
+              </span>
+            )}
           </div>
         </div>
         </div>

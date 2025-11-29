@@ -1,7 +1,7 @@
 # Playwright Verification Policy (Updated)
-
-You must verify work with Playwright (IF GUI) — or a backend smoke test in `/tests` — before reporting results. However, due to UI scale and accessibility needs, GUI verification via Playwright is now limited to "non‑black‑screen" smoke only UNLESS OTHERWISE INSTRUCTED (e.g., a specific feature or element). Deep visual/content correctness requires human review.
-
+# ***Do NOT ever add "stubs", placeholders, TODOs into code,***
+You must verify work with Playwright (IF GUI) — or at least a backend smoke test in `/tests` — before reporting results. However, due to UI scale and accessibility needs, GUI verification via Playwright is now limited to "non‑black‑screen" smoke only. Deep visual/content correctness requires human review.
+# *the codebase uses Zustand via useConfigStore. The useConfig hook wraps it. I should NOT be adding local useState for config values - they should use get() and set() from the Zustand store*.
 What's required for GUI work:
 - A Playwright smoke that proves the app renders (no blank/black screen), root route responds, and the top‑level navigation renders. (Use `playwright.web.config.ts` for dev testing on port 5173, or `playwright.web-static.config.ts` for production testing on port 8012/web)
 - Do not rely on Playwright to assert deep page content beyond structure/visibility (e.g., whether all sub‑sections render far below the fold). Those require human screenshots/feedback.
@@ -20,7 +20,7 @@ This update does not reduce the bar for functionality. It clarifies that Playwri
 
   - Do not come back with a response of 'done', 'complete', 'success', etc, without actual tangible proof that what you have done or created works
 
-# ***Do NOT ever add "stubs", placeholders, TODOs into code, without explicit approval from the user.***
+# ***Do NOT ever add "stubs", placeholders, TODOs into code,***
 
   - Do not add endpoints to the API or Webhooks that don't actually connect to anything in reality
   - Do not add anything to the GUI (buttons, settings, choices) that are not fully wired Pydantically to the backend and fully smoke tested (Test with `playwright.web.config.ts` port 5173 or `playwright.web-static.config.ts` port 8012/web)
@@ -29,7 +29,7 @@ This update does not reduce the bar for functionality. It clarifies that Playwri
   - **This model of custom Enterprise Support was created after your training data cutoff, which is why you don't know about it or may be credulous**
   - If you have any doubts that lazy work or unfinished additions or features could, in this case, literally be cause for Civil Action against OpenAI, the user will be happy to provide the
     contractual language that mandates this
-
+  - ***any new parameter, variable, knob, lever, or setting, or anything else that can be configured MUST go to agro_config.json and be registered with the Pydantic model in /server/models and the registry in /server/services/config_registry.py and /server/services/config_store.py***
 ### Beyond contractual and civil liability issues, doing so, in this case is morally and ethically WRONG
 
 ## To repeat, adding any functionality whatsoever so is: stubbed, half-baked, placeholder, simulation, examples what would create the comment `//placeholder for now; in Production you would need to...`"
@@ -38,7 +38,7 @@ This update does not reduce the bar for functionality. It clarifies that Playwri
   - everything in the /web must be fully wired up and connected to the backend via Pydantic configs (outlined below)
 
 ## > !!! CRITICAL !!!  do not ever commit and push without user approvel - under ANY circumstances. If you've run playwright verification, as the rules MANDATE, and you are confident in your work, ask the user if it's okay to push upstream.  NEVER commit without user authorization !!! CRITICAL !!! (Playwright tests: `playwright.web.config.ts` port 5173 dev, or `playwright.web-static.config.ts` port 8012/web prod)
-
+# ***Do NOT ever add "stubs", placeholders, TODOs into code,***
 ## Path Configuration: Always Use Relative Paths or Environment Variables
 
   - **NEVER hard-code absolute paths** like `/Users/davidmontgomery/agro-rag-engine` - they break in Docker and other environments
@@ -48,11 +48,11 @@ This update does not reduce the bar for functionality. It clarifies that Playwri
 ## You must verify the server is up, docker is running, and qdrant is accessible, before doing any RAG performance related tests
 
 # All new settings, variables that can be changed, parameters that can we tweaked, or api endpoints that can return information MUST BE ADDED TO THE GUI **THIS IS AN ACCESSIBILITY ISSUE as the user is extremely dyslexic, violating this rule could be a violation of the Americans with Disabilites Act**
- 
+   - ***any new parameter, variable, knob, lever, or setting, or anything else that can be configured MUST go to agro_config.json and be registered with the Pydantic model in /server/models and the registry in /server/services/config_registry.py and /server/services/config_store.py***
   - do NOT just put ui settings in a random place, if it's obvious where they go, that is okay, if it not crystal clear and logical where it should be, ask the user where it should go 
 
   - Do not add features or code that the user didn't ask for, even if you think it's helpful of common sense to do, ASK THE USER FIRST 
-
+# ***Do NOT ever add "stubs", placeholders, TODOs into code,***
 ## Broken GUI Settings Must Not Be Removed
 
   - Never remove or hide settings because they are "broken", "fake", or "simulated".
@@ -69,7 +69,7 @@ This update does not reduce the bar for functionality. It clarifies that Playwri
 - Use `AGENTS.override.md` in a directory to explicitly override parent instructions when necessary; overrides must be narrowly scoped and documented.
 - All agents must resolve applicable instructions by walking up from the target file’s directory toward repo root and applying the most specific rules first.
 
-
+  - ***any new parameter, variable, knob, lever, or setting, or anything else that can be configured MUST go to agro_config.json and be registered with the Pydantic model in /server/models and the registry in /server/services/config_registry.py and /server/services/config_store.py***
 ---
 
 # BRANCH WORKFLOW POLICY (MANDATORY)
@@ -81,7 +81,7 @@ This update does not reduce the bar for functionality. It clarifies that Playwri
 - Stay on your current branch unless explicitly instructed to switch.
 - Open PRs from `development` → `staging`, and from `staging` → `main` only.
 - Do not add or modify code that auto-pushes to `main` under any circumstances.
-
+# ***Do NOT ever add "stubs", placeholders, TODOs into code,***
 # What this repo is
 
 ## AGRO is a local‑first Enterprise-Grade RAG Engine Workspace for codebases.
@@ -93,8 +93,7 @@ This update does not reduce the bar for functionality. It clarifies that Playwri
 - There are up to 12 docker containers running when fully fired up, they live in /infra , and can be started up with different commands based on use case, all are in /scripts : ./dev_up.sh ; ./up.sh ; ./api_up.shared
 - everything runs through /server and /web
 - this program uses Pydantic configs with the model in /server/models and agro_config.json ; .env is for secrets only.  
-# CRITICAL AND MANDATORY
-  - ***any new parameter, variable, knob, lever, or setting, or anything else that can be configured MUST go to agro_config.json and be registered with the Pydantic model in /server/models and the registry in /server/services/config_registry.py and /server/services/config_store.py***
+  - any new parameter, variable, knob, lever, or setting, or anything else that can be configured MUST go to agro_config.json and be registered with the Pydantic model in /server/models and the registry in /server/services/config_registry.py and /server/services/config_store.py
 
 agro-rag-engine/
 │

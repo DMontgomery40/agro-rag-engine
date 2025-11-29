@@ -1,7 +1,7 @@
 # Playwright Verification Policy (Updated)
 # ***Do NOT ever add "stubs", placeholders, TODOs into code,***
 You must verify work with Playwright (IF GUI) — or at least a backend smoke test in `/tests` — before reporting results. However, due to UI scale and accessibility needs, GUI verification via Playwright is now limited to "non‑black‑screen" smoke only. Deep visual/content correctness requires human review.
-
+# *the codebase uses Zustand via useConfigStore. The useConfig hook wraps it. I should NOT be adding local useState for config values - they should use get() and set() from the Zustand store*.
 What's required for GUI work:
 - A Playwright smoke that proves the app renders (no blank/black screen), root route responds, and the top‑level navigation renders. (Use `playwright.web.config.ts` for dev testing on port 5173, or `playwright.web-static.config.ts` for production testing on port 8012/web)
 - Do not rely on Playwright to assert deep page content beyond structure/visibility (e.g., whether all sub‑sections render far below the fold). Those require human screenshots/feedback.

@@ -54,6 +54,7 @@ interface EvalResults {
 export function EvaluateSubtab() {
   const { get, set, loading, error } = useConfig();
   const { api } = useAPI();
+  const [localError, setLocalError] = useState<string | null>(null);
   const [goldenQuestions, setGoldenQuestions] = useState<GoldenQuestion[]>([]);
   const [newQuestion, setNewQuestion] = useState({ q: '', repo: 'agro', paths: '' });
   const [testResults, setTestResults] = useState<{ [key: number]: TestResult }>({});
@@ -132,7 +133,7 @@ export function EvaluateSubtab() {
       } catch (err) {
         console.error('Failed to load eval runs:', err);
         const errorMsg = err instanceof Error ? err.message : String(err);
-        setError(`Failed to load eval runs: ${errorMsg}`);
+        setLocalError(`Failed to load eval runs: ${errorMsg}`);
         // Also log the full error details for debugging
         console.error('Full error details:', err);
       }
@@ -144,9 +145,9 @@ export function EvaluateSubtab() {
     try {
             const response = await fetchJson('golden');
       setGoldenQuestions(response.questions || []);
-      setError(null);
+      setLocalError(null);
     } catch (err) {
-      setError(`Failed to load golden questions: ${err}`);
+      setLocalError(`Failed to load golden questions: ${err}`);
       console.error('Failed to load golden questions:', err);
     } finally {
           }
@@ -397,8 +398,8 @@ export function EvaluateSubtab() {
         <div style={{ background: 'var(--code-bg)', border: '1px solid var(--line)', borderRadius: '6px', padding: '16px', maxHeight: '400px', overflowY: 'auto', marginBottom: '16px' }}>
           {loading ? (
             <div style={{ textAlign: 'center', color: 'var(--fg-muted)' }}>Loading questions...</div>
-          ) : error ? (
-            <div style={{ color: 'var(--err)' }}>{error}</div>
+          ) : (error || localError) ? (
+            <div style={{ color: 'var(--err)' }}>{error || localError}</div>
           ) : goldenQuestions.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '24px', color: 'var(--fg-muted)' }}>
               No golden questions yet. Add one above!

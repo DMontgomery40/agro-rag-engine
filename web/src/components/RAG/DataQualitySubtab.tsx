@@ -4,6 +4,7 @@
 // Fully wired to repos.json for all repository configuration
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useConfig } from '@/hooks';
 import { useAPI } from '@/hooks';
 import { RepositoryConfig } from './RepositoryConfig';
 import { LiveTerminal } from '../LiveTerminal/LiveTerminal';
@@ -11,7 +12,9 @@ import { TerminalService } from '@/services/TerminalService';
 import { useRepoStore } from '@/stores/useRepoStore';
 
 export function DataQualitySubtab() {
+  const { get, set, loading, error } = useConfig();
   const { api } = useAPI();
+  const [localError, setLocalError] = useState<string>('');
   
   // Use centralized repo store
   const { repos: storeRepos, activeRepo, loadRepos: storeLoadRepos } = useRepoStore();
@@ -34,7 +37,6 @@ export function DataQualitySubtab() {
   const [keywordsBoost, setKeywordsBoost] = useState<number>(1.3);
   const [keywordsAutoGenerate, setKeywordsAutoGenerate] = useState<number>(1);
   const [keywordsRefreshHours, setKeywordsRefreshHours] = useState<number>(24);
-  const [error, setError] = useState<string>('');
 
   // Keyword generation state
   const [keywordsGenerating, setKeywordsGenerating] = useState<boolean>(false);
@@ -87,47 +89,21 @@ export function DataQualitySubtab() {
     loadCardsConfig();
   }, [api]);
 
-
-  const updateConfig = async (key: string, value: any) => {
-    try {
-      setError('');
-
-      const response = await fetch(api('config'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ env: { [key]: value } })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to save ${key}: ${response.status}`);
-      }
-
-      // Reload config to ensure backend picks up changes
-      await fetch(api('env/reload'), { method: 'POST' });
-
-      console.log(`[DataQualitySubtab] Successfully saved ${key} = ${value}`);
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : `Failed to save ${key}`;
-      console.error(`[DataQualitySubtab] Error saving ${key}:`, err);
-      setError(errorMsg);
-    }
-  };
-
+  
   /**
    * Generate keywords for the selected repository
    * Calls /api/keywords/generate endpoint
    */
   const handleGenerateKeywords = async () => {
     if (!selectedRepo) {
-      setError('Please select a repository first');
+      setLocalError('Please select a repository first');
       return;
     }
 
     setKeywordsGenerating(true);
     setKeywordsGenerateStatus('Generating keywords...');
     setGeneratedKeywordsCount(null);
-    setError('');
+    setLocalError('');
 
     try {
       const response = await fetch(api('keywords/generate'), {
@@ -146,12 +122,12 @@ export function DataQualitySubtab() {
       } else {
         const errorMsg = data.error || data.detail || 'Unknown error generating keywords';
         setKeywordsGenerateStatus(`✗ Error: ${errorMsg}`);
-        setError(errorMsg);
+        setLocalError(errorMsg);
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to generate keywords';
       setKeywordsGenerateStatus(`✗ Failed: ${errorMsg}`);
-      setError(errorMsg);
+      setLocalError(errorMsg);
       console.error('[DataQualitySubtab] Keyword generation error:', err);
     } finally {
       setKeywordsGenerating(false);
@@ -205,7 +181,7 @@ export function DataQualitySubtab() {
   return (
     <div id="tab-rag-data-quality" className="rag-subtab-content active">
       {/* Error Display */}
-      {error && (
+      {(error || localError) && (
         <div
           style={{
             marginBottom: '16px',
@@ -217,7 +193,7 @@ export function DataQualitySubtab() {
             fontSize: '12px'
           }}
         >
-          <strong>Error:</strong> {error}
+          <strong>Error:</strong> {error || localError}
         </div>
       )}
 
@@ -297,8 +273,7 @@ export function DataQualitySubtab() {
               min="10"
               max="500"
               step="10"
-              onChange={(e) => setKeywordsMaxPerRepo(parseInt(e.target.value, 10))}
-              onBlur={() => updateConfig('KEYWORDS_MAX_PER_REPO', keywordsMaxPerRepo)}
+              onChange={(e) => set('KEYWORDS_MAX_PER_REPO', parseInt(e.target.value, 10))}
             />
           </div>
           <div className="input-group">
@@ -314,8 +289,7 @@ export function DataQualitySubtab() {
               min="1"
               max="10"
               step="1"
-              onChange={(e) => setKeywordsMinFreq(parseInt(e.target.value, 10))}
-              onBlur={() => updateConfig('KEYWORDS_MIN_FREQ', keywordsMinFreq)}
+              onChange={(e) => set('KEYWORDS_MIN_FREQ', parseInt(e.target.value, 10))}
             />
           </div>
         </div>
@@ -334,8 +308,7 @@ export function DataQualitySubtab() {
               min="1.0"
               max="3.0"
               step="0.1"
-              onChange={(e) => setKeywordsBoost(parseFloat(e.target.value))}
-              onBlur={() => updateConfig('KEYWORDS_BOOST', keywordsBoost)}
+              onChange={(e) => set('KEYWORDS_BOOST', parseFloat(e.target.value))}
             />
           </div>
           <div className="input-group">
@@ -350,7 +323,7 @@ export function DataQualitySubtab() {
               onChange={(e) => {
                 const value = parseInt(e.target.value, 10);
                 setKeywordsAutoGenerate(value);
-                updateConfig('KEYWORDS_AUTO_GENERATE', value);
+                set('KEYWORDS_AUTO_GENERATE', value);
               }}
             >
               <option value="1">Enabled</option>
@@ -373,8 +346,7 @@ export function DataQualitySubtab() {
               min="1"
               max="168"
               step="1"
-              onChange={(e) => setKeywordsRefreshHours(parseInt(e.target.value, 10))}
-              onBlur={() => updateConfig('KEYWORDS_REFRESH_HOURS', keywordsRefreshHours)}
+              onChange={(e) => set('KEYWORDS_REFRESH_HOURS', parseInt(e.target.value, 10))}
             />
           </div>
         </div>
@@ -476,8 +448,7 @@ export function DataQualitySubtab() {
               name="CARDS_EXCLUDE_DIRS"
               placeholder="e.g., node_modules, vendor, dist"
               value={excludeDirs}
-              onChange={(e) => setExcludeDirs(e.target.value)}
-              onBlur={() => updateConfig('CARDS_EXCLUDE_DIRS', excludeDirs)}
+              onChange={(e) => set('CARDS_EXCLUDE_DIRS', e.target.value)}
               style={{ width: '100%' }}
             />
             <p className="small" style={{ color: 'var(--fg-muted)' }}>
@@ -498,8 +469,7 @@ export function DataQualitySubtab() {
               name="CARDS_EXCLUDE_PATTERNS"
               placeholder="e.g., .test.js, .spec.ts, .min.js"
               value={excludePatterns}
-              onChange={(e) => setExcludePatterns(e.target.value)}
-              onBlur={() => updateConfig('CARDS_EXCLUDE_PATTERNS', excludePatterns)}
+              onChange={(e) => set('CARDS_EXCLUDE_PATTERNS', e.target.value)}
               style={{ width: '100%' }}
             />
             <p className="small" style={{ color: 'var(--fg-muted)' }}>
@@ -520,8 +490,7 @@ export function DataQualitySubtab() {
               name="CARDS_EXCLUDE_KEYWORDS"
               placeholder="e.g., deprecated, legacy, TODO"
               value={excludeKeywords}
-              onChange={(e) => setExcludeKeywords(e.target.value)}
-              onBlur={() => updateConfig('CARDS_EXCLUDE_KEYWORDS', excludeKeywords)}
+              onChange={(e) => set('CARDS_EXCLUDE_KEYWORDS', e.target.value)}
               style={{ width: '100%' }}
             />
             <p className="small" style={{ color: 'var(--fg-muted)' }}>
@@ -544,7 +513,6 @@ export function DataQualitySubtab() {
                 // Enforce Pydantic constraint: ge=10
                 setCardsMax(Math.max(10, val));
               }}
-              onBlur={() => updateConfig('CARDS_MAX', cardsMax)}
               min="10"
               step="10"
               style={{ maxWidth: '160px' }}
@@ -560,7 +528,7 @@ export function DataQualitySubtab() {
                 id="cards-enrich-gui"
                 name="CARDS_ENRICH"
                 checked={enrichEnabled}
-                onChange={(e) => setEnrichEnabled(e.target.checked)}
+                onChange={(e) => set('CARDS_ENRICH', e.target.checked)}
               />{' '}
               Enrich with AI
             </label>

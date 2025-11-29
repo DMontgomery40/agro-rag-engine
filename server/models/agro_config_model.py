@@ -514,7 +514,7 @@ class RerankingConfig(BaseModel):
     """Reranking configuration for result refinement."""
 
     reranker_active: str = Field(
-        default="local",
+        default="cloud",
         description="Active reranker choice (local/learning/HF vs cloud provider)"
     )
 

@@ -141,7 +141,7 @@
   },
   "generation": {
     "gen_model": "gpt-5.1",
-    "gen_temperature": 0.1,
+    "gen_temperature": 0.22,
     "gen_max_tokens": 2048,
     "gen_top_p": 1.0,
     "gen_timeout": 60,
@@ -224,7 +224,7 @@
   "training": {
     "reranker_train_epochs": 2,
     "reranker_train_batch": 16,
-    "reranker_train_lr": 2e-05,
+    "reranker_train_lr": 0.00002,
     "reranker_warmup_ratio": 0.1,
     "triplets_min_count": 100,
     "triplets_mine_mode": "replace",
