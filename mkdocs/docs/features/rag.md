@@ -16,20 +16,20 @@ The goal is “simple, working search” first, with enough hooks to tune behavi
 
 ```mermaid
 flowchart TD
-    Q[User query] --> P[Preprocess query<br/>- stopword removal for BM25]
-    Q --> VS[Vector embedding<br/>OpenAI / Voyage / local ST]
-    P --> BM25[BM25 search<br/>bm25s index]
-    VS --> QDRANT[Qdrant dense search<br/>collection: code_chunks_REPO]
+    Q[User query] --> P["Preprocess query<br/>- stopword removal for BM25"]
+    Q --> VS["Vector embedding<br/>OpenAI / Voyage / local ST"]
+    P --> BM25["BM25 search<br/>bm25s index"]
+    VS --> QDRANT["Qdrant dense search<br/>collection: code_chunks_REPO"]
 
-    BM25 --> RRF[Reciprocal Rank Fusion<br/>(BM25 + dense)]
+    BM25 --> RRF["Reciprocal Rank Fusion<br/>(BM25 + dense)"]
     QDRANT --> RRF
 
-    RRF --> RERANK[Cross-encoder reranking<br/>local HF or cloud (Cohere/Voyage)]
-    RERANK --> BONUS[Scoring bonuses<br/>layer/path/keywords/filename]
+    RRF --> RERANK["Cross-encoder reranking<br/>local HF or cloud (Cohere/Voyage)"]
+    RERANK --> BONUS["Scoring bonuses<br/>layer/path/keywords/filename"]
     BONUS --> OUT[Ranked chunks]
 
-    OUT --> LG[LangGraph RAG graph<br/>retrieve_node()]
-    LG --> GEN[Generation node<br/>LLM answer with citations]
+    OUT --> LG["LangGraph RAG graph<br/>retrieve_node()"]
+    LG --> GEN["Generation node<br/>LLM answer with citations"]
 ```
 
 ---

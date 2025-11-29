@@ -36,15 +36,15 @@ You get a ranking model that’s **specialized to your repo and your team’s qu
 ```mermaid
 flowchart LR
     subgraph Retrieval["Retrieval Pipeline"]
-        Q[User query] --> R[Base retriever\n(BM25 / vector / hybrid)]
-        R --> Cands[Top N candidates\n{doc_id, score, text, ...}]
+        Q[User query] --> R["Base retriever<br/>BM25 / vector / hybrid"]
+        R --> Cands["Top N candidates<br/>doc_id, score, text, ..."]
     end
 
-    subgraph LearningReranker["Learning reranker (this module)"]
-        Cands --> |top_n_local| CE[CrossEncoder model\n(learning_reranker.get_reranker)]
+    subgraph LearningReranker["Learning reranker - this module"]
+        Cands --> |top_n_local| CE["CrossEncoder model<br/>learning_reranker.get_reranker"]
         Q --> CE
         CE --> Scores[Cross-encoder scores]
-        Scores --> Blend[Score blending\n(alpha * CE + (1-alpha) * base_norm)]
+        Scores --> Blend["Score blending<br/>alpha * CE + 1-alpha * base_norm"]
         Blend --> Reranked[Re-ranked candidates]
     end
 
@@ -313,6 +313,11 @@ This is what you’ll want to surface in diagnostics endpoints / UI to confirm:
 
 ## Training process: from feedback to model
 
+<figure markdown="span">
+  ![Learning Reranker Training UI](../assets/images/CE-training.png){ width="100%" }
+  <figcaption>The Learning Reranker interface: mine triplets from logs, train the cross-encoder, and evaluate performance.</figcaption>
+</figure>
+
 AGRO’s self-learning story is:
 
 1. Collect feedback about which snippets are useful for specific queries
@@ -513,7 +518,9 @@ The actual “trigger” depends on how you collect feedback, but the basic loop
 
 ```mermaid
 flowchart LR
-    Logs[Query + click/feedback logs] --> ETL[Triplet builder\n(offline script)]
-    ETL --> Triplets[data/training/triplets.jsonl]
-    Triplets --> Train[python scripts/train_reranker.py ...]
-    Train --> ModelDir
+    Logs["Query + click/feedback logs"] --> ETL["Triplet builder<br/>offline script"]
+    ETL --> Triplets["data/training/triplets.jsonl"]
+    Triplets --> Train["python scripts/train_reranker.py ..."]
+    Train --> ModelDir["models/cross-encoder-agro"]
+    ModelDir --> Reload["Hot reload into AGRO"]
+```

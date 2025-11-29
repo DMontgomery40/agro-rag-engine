@@ -66,6 +66,7 @@ The rest of this section is how you *trigger* that from the GUI, CLI, or API.
 
 The indexer is opinionated about what it considers “code” and “junk”.
 
+
 ??? collapsible "Details: file and directory filters (from `index_repo.py`)"
     ```python linenums="1"
     SOURCE_EXTS = {
@@ -226,6 +227,17 @@ curl "http://127.0.0.1:8012/api/index/stats"
 
 !!! warning
     Indexing is I/O and network heavy (BM25, embeddings, Qdrant). For large repos, prefer `index/start` + `index/status` instead of blocking on `index/run`.
+
+### 1.5 Automating Indexing
+
+You can set up Git hooks to automatically re-index your repo when you commit or switch branches. This keeps your RAG index fresh without manual intervention.
+
+<figure markdown="span">
+  ![Git Hooks Integration](../assets/images/git-hooks.png){ width="100%" }
+  <figcaption>Install git hooks to auto-trigger indexing on changes.</figcaption>
+</figure>
+
+This is configured via the **Settings** > **Git Integration** tab in the GUI.
 
 ---
 
@@ -400,6 +412,11 @@ Once at least one repo is indexed, you can start asking questions.
    - The **answer text**
    - The **confidence** score
    - The **top sources**: file paths, line ranges, and scores
+
+<figure markdown="span">
+  ![Chat Interface](../assets/images/chat.png){ width="100%" }
+  <figcaption>The Chat interface showing a RAG response with citations and source inspection.</figcaption>
+</figure>
 
 You should see citations pointing into `indexer/index_repo.py`, specifically the `should_index` function and the `SOURCE_EXTS` / `SKIP_DIRS` constants.
 

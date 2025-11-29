@@ -2,6 +2,36 @@
 
 This gets you from zero to a working AGRO stack as fast as possible.
 
+=== "Step 1: Welcome"
+    <figure markdown="span">
+      ![Step 1: Welcome](../assets/images/onboarding-step-1.png){ width="100%" }
+      <figcaption>The Onboarding Wizard welcomes you and explains the core concepts.</figcaption>
+    </figure>
+
+=== "Step 2: Add Code"
+    <figure markdown="span">
+      ![Step 2: Add Code](../assets/images/onboarding-step-2.png){ width="100%" }
+      <figcaption>Point AGRO at a local folder or a GitHub URL. No code leaves your machine unless you enable cloud models.</figcaption>
+    </figure>
+
+=== "Step 3: Build Indexes"
+    <figure markdown="span">
+      ![Step 3: Indexes](../assets/images/onboarding-step-3.png){ width="100%" }
+      <figcaption>AGRO scans your repo, builds a keyword index (offline), and optionally a dense vector index.</figcaption>
+    </figure>
+
+=== "Step 4: Golden Questions"
+    <figure markdown="span">
+      ![Step 4: Golden Questions](../assets/images/onboarding-step-4.png){ width="100%" }
+      <figcaption>Test retrieval quality immediately by asking questions against your codebase.</figcaption>
+    </figure>
+
+=== "Step 5: Tune & Save"
+    <figure markdown="span">
+      ![Step 5: Tune & Save](../assets/images/onboarding-step-5.png){ width="100%" }
+      <figcaption>Adjust speed vs. quality trade-offs and save your configuration as a profile.</figcaption>
+    </figure>
+
 ---
 
 ## 1. Prerequisites
@@ -95,6 +125,11 @@ Use any (or all) of these checks:
     You should see services like `api`, `qdrant`, `rag-redis`, `agro-grafana`, etc.
 
 === "API & GUI"
+
+    <figure markdown="span">
+      ![AGRO Dashboard Home](../assets/images/dashboard-home.png){ width="100%" }
+      <figcaption>The AGRO Dashboard gives you a quick system status overview and shortcuts to common actions.</figcaption>
+    </figure>
 
     - Open: http://127.0.0.1:8012/
     - Check API docs (Swagger): http://127.0.0.1:8012/docs

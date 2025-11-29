@@ -60,6 +60,7 @@ markdown_extensions:
 
 plugins:
   - search
+  - glightbox
   - mike:
       version_selector: true
       canonical_version: latest

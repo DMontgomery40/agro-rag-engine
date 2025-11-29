@@ -17,24 +17,24 @@ This page covers:
 
 ```mermaid
 flowchart LR
-    subgraph AGRO[:material-cog: AGRO Server]
+    subgraph AGRO["AGRO Server"]
         API[FastAPI app<br/>/api/*]
         Alerts[Alert webhook<br/>& monitoring APIs]
         Logs[(data/logs/*<br/>data/tracking/*)]
     end
 
-    subgraph Prometheus Stack
+    subgraph PrometheusStack["Prometheus Stack"]
         Prom[Prometheus]
         AM[Alertmanager]
     end
 
-    subgraph Logs Stack
+    subgraph LogsStack["Logs Stack"]
         Loki[Loki]
         Promtail[Promtail]
     end
 
-    subgraph UI[:material-monitor-dashboard: Grafana]
-        Dash[Dashboards<br/>(embedded + native)]
+    subgraph UI["Grafana"]
+        Dash[Dashboards<br/>embedded + native]
     end
 
     API -->|/metrics, /health, etc.| Prom
@@ -67,6 +67,11 @@ flowchart LR
 ---
 
 ## Embedded Grafana Dashboard
+
+<figure markdown="span">
+  ![Embedded Grafana in AGRO GUI](../assets/images/built-in-grafana.png){ width="100%" }
+  <figcaption>The embedded Grafana view lets you correlate metrics with RAG behavior without leaving the app.</figcaption>
+</figure>
 
 AGRO embeds Grafana directly into the UI via an `<iframe>`. You don’t have to remember another port, copy URLs, or juggle logins; you just click the **Monitoring** tab in the AGRO GUI and you’re looking at live dashboards.
 
@@ -111,6 +116,11 @@ At a high level, AGRO exports metrics for:
 ---
 
 ## Built‑in Dashboards
+
+<figure markdown="span">
+  ![AGRO Overview Dashboard](../assets/images/grafana-rag-stats.png){ width="100%" }
+  <figcaption>The main AGRO Overview dashboard showing request rates, latency, and system health.</figcaption>
+</figure>
 
 AGRO ships with a small but focused set of dashboards. You can modify them freely; they’re just Grafana JSON that lives under `infra/grafana/provisioning`.
 
@@ -256,6 +266,11 @@ Generic webhook payload example:
 ---
 
 ### Configuring alert notifications
+
+<figure markdown="span">
+  ![Alert Notifications Setup](../assets/images/alerts-setup.png){ width="80%" }
+  <figcaption>Configure Slack/Discord webhooks and severity filters directly in the GUI.</figcaption>
+</figure>
 
 There are two config layers:
 

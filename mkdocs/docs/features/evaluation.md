@@ -25,14 +25,14 @@ Mermaid view of the flow:
 
 ```mermaid
 flowchart LR
-    Q[Golden questions\n(data/evaluation_dataset.json)]
-    subgraph Eval Core
-      L[eval_loop.run_eval_with_results]\n:material-console:
-      R[search_routed / search_routed_multi]\n:material-magnify:
+    Q["Golden questions<br/>data/evaluation_dataset.json"]
+    subgraph EvalCore["Eval Core"]
+      L["eval_loop.run_eval_with_results"]
+      R["search_routed / search_routed_multi"]
     end
-    S[Eval Router\n(server/routers/eval.py)]\n:material-api:
-    F[Eval JSON files\n(data/evals/eval_*.json)]\n:material-file-json:
-    U[Eval UI / Drilldown]\n:material-monitor:
+    S["Eval Router<br/>server/routers/eval.py"]
+    F["Eval JSON files<br/>data/evals/eval_*.json"]
+    U[Eval UI / Drilldown]
 
     Q --> L
     L --> R
@@ -525,6 +525,11 @@ The UI uses this to:
 ---
 
 ## Eval Drilldown
+
+<figure markdown="span">
+  ![Eval Analysis & Regression Tracking](../assets/images/eval-analysis.png){ width="100%" }
+  <figcaption>The Eval Analysis view showing regression detection, root cause analysis, and side-by-side config comparison.</figcaption>
+</figure>
 
 The drilldown is where this stops being “just a number” and becomes actually useful.
 

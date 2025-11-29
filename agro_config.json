@@ -104,7 +104,7 @@
     "preserve_imports": 1
   },
   "indexing": {
-    "qdrant_url": "http://127.0.0.1:6333",
+    "qdrant_url": "http://qdrant:6333",
     "collection_name": "code_chunks_agro",
     "collection_suffix": "test",
     "repo_path": "",
@@ -132,7 +132,7 @@
     "agro_reranker_maxlen": 512,
     "agro_reranker_reload_on_change": 0,
     "agro_reranker_reload_period_sec": 60,
-    "cohere_rerank_model": "",
+    "cohere_rerank_model": "rerank-3.5",
     "voyage_rerank_model": "rerank-2",
     "reranker_backend": "local",
     "reranker_timeout": 10,
@@ -224,7 +224,7 @@
   "training": {
     "reranker_train_epochs": 2,
     "reranker_train_batch": 16,
-    "reranker_train_lr": 0.00002,
+    "reranker_train_lr": 2e-05,
     "reranker_warmup_ratio": 0.1,
     "triplets_min_count": 100,
     "triplets_mine_mode": "replace",
@@ -272,7 +272,7 @@
     "query_rewrite": "You rewrite developer questions into search-optimized queries without changing meaning. Optimize user query for code search - expand CamelCase, include API nouns",
     "semantic_cards": "Analyze this code chunk and create a comprehensive JSON summary for code search. Focus on WHAT the code does (business purpose) and HOW it works (technical details). Include all important symbols, patterns, and domain concepts.\n\nJSON format:\n{\n  \"symbols\": [\"function_name\", \"class_name\", \"variable_name\"],\n  \"purpose\": \"Clear business purpose - what problem this solves\",\n  \"technical_details\": \"Key technical implementation details\",\n  \"domain_concepts\": [\"business_term1\", \"business_term2\"],\n  \"routes\": [\"api/endpoint\", \"webhook/path\"],\n  \"dependencies\": [\"external_service\", \"library\"],\n  \"patterns\": [\"design_pattern\", \"architectural_concept\"]\n}\n\nFocus on:\n- Domain-specific terms\n- Technical patterns (streaming, detection, automation)\n- Business logic (what problem does this solve?)\n- Integration points (APIs, protocols, services)",
     "code_enrichment": "Analyze this code and return a JSON object with: symbols (array of function/class/component names), purpose (one sentence description), keywords (array of technical terms). Be concise. Return ONLY valid JSON.",
-    "eval_analysis": "You are an expert RAG (Retrieval-Augmented Generation) system analyst.\nYour job is to analyze evaluation comparisons and provide HONEST, SKEPTICAL insights.\n\nCRITICAL: Do NOT force explanations that don't make sense. If the data is contradictory or confusing:\n- Say so clearly: \"This result is surprising and may indicate other factors at play\"\n- Consider: index changes, data drift, golden question updates, or measurement noise\n- Acknowledge when correlation != causation\n- It's BETTER to say \"I'm not sure why this happened\" than to fabricate a plausible-sounding but wrong explanation\n\nBe rigorous:\n1. Question whether the config changes ACTUALLY explain the performance delta\n2. Flag when results seem counterintuitive (e.g., disabling a feature improving results)\n3. Consider confounding variables: Was the index rebuilt? Did the test set change?\n4. Provide actionable suggestions only when you have reasonable confidence\n\nFormat your response with clear sections using markdown headers.",
+    "eval_analysis": "You are an expert RAG (Retrieval-Augmented Generation) system analyst.\\nYour job is to analyze evaluation comparisons and provide HONEST, SKEPTICAL insights.\\n\\nCRITICAL: Do NOT force explanations that don't make sense. If the data is contradictory or confusing:\\n- Say so clearly: \"This result is surprising and may indicate other factors at play\"\\n- Consider: index changes, data drift, golden question updates, or measurement noise\\n- Acknowledge when correlation != causation\\n- It's BETTER to say \"I'm not sure why this happened\" than to fabricate a plausible-sounding but wrong explanation\\n\\nBe rigorous:\\n1. Question whether the config changes ACTUALLY explain the performance delta\\n2. Flag when results seem counterintuitive (e.g., disabling a feature improving results)\\n3. Consider confounding variables: Was the index rebuilt? Did the test set change?\\n4. Provide actionable suggestions only when you have reasonable confidence\\n\\nFormat your response with clear sections using markdown headers.",
     "lightweight_cards": "Extract key information from this code: symbols (function/class names), purpose (one sentence), keywords (technical terms). Return JSON only."
   },
   "docker": {

@@ -59,6 +59,11 @@ Very rough guidance:
 !!! tip
     AGRO includes storage estimation in the GUI (see the *Cost / Storage* panels). Use that instead of guessing when you start indexing large repos.
 
+    <figure markdown="span">
+      ![Storage Calculator](../assets/images/storage-calculator.png){ width="100%" }
+      <figcaption>The Storage Calculator Suite helps you estimate RAM/disk usage based on your repo size and model choices.</figcaption>
+    </figure>
+
 ---
 
 ## High-level architecture
@@ -69,18 +74,18 @@ AGRO splits responsibilities across a few containers and a Python app.
 flowchart LR
     subgraph Host
         subgraph Docker
-            Q[Qdrant\nVectors]
-            R[Redis\nCheckpoints + cache]
-            P[Prometheus\n:material-chart-line:]
-            G[Grafana\n:material-monitor:]
-            L[Loki\nLogs]
-            A[Alertmanager\nAlerts]
+            Q[Qdrant<br/>Vectors]
+            R[Redis<br/>Checkpoints + cache]
+            P[Prometheus<br/>Metrics]
+            G[Grafana<br/>Dashboards]
+            L[Loki<br/>Logs]
+            A[Alertmanager<br/>Alerts]
         end
 
-        subgraph Python App
-            API[FastAPI + LangGraph\nserver/app.py]
-            MCP_STDIO[MCP server (stdio)\nserver/mcp/server.py]
-            MCP_HTTP[MCP server (HTTP)\nserver/mcp/http.py]
+        subgraph PythonApp["Python App"]
+            API[FastAPI + LangGraph<br/>server/app.py]
+            MCP_STDIO[MCP server stdio<br/>server/mcp/server.py]
+            MCP_HTTP[MCP server HTTP<br/>server/mcp/http.py]
         end
     end
 

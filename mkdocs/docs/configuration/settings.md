@@ -69,11 +69,21 @@ Top‑level sections:
 | `evaluation`     | Evaluation dataset paths and multi‑query settings   |
 | `system_prompts` | System prompts for different internal agents        |
 
+<figure markdown="span">
+  ![System Prompts Configuration](../assets/images/system-prompts.png){ width="100%" }
+  <figcaption>Configure system prompts for Chat, Retrieval, and other agents directly in the UI.</figcaption>
+</figure>
+
 In the GUI, every field has a tooltip with:
 
 - A plain‑language explanation
 - Links to relevant docs or papers when applicable
 - Searchable descriptions so you don’t have to leave AGRO to understand a knob
+
+<figure markdown="span">
+  ![Parameter Glossary](../assets/images/help-glossary.png){ width="100%" }
+  <figcaption>The built-in Parameter Glossary helps you understand every configuration knob.</figcaption>
+</figure>
 
 ---
 
@@ -204,6 +214,15 @@ The GUI (and APIs) update AGRO settings via `ConfigRegistry.update_agro_config()
 6. Calls `self.reload()` so all services see the new values.
 
 This is wired to the GUI “Save config” flow.
+
+## Integrations
+
+AGRO provides a centralized UI to manage external integrations like MCP, LangSmith, and Grafana.
+
+<figure markdown="span">
+  ![Integrations & Channels](../assets/images/integrations.png){ width="100%" }
+  <figcaption>Configure MCP servers, LangSmith tracing, and Grafana connections in one place.</figcaption>
+</figure>
 
 ---
 
@@ -459,4 +478,24 @@ Below are the main sections, with key options. The GUI presents these with toolt
     | `embedding_retry_max`   | int    | 3                        | Max retries for embedding API. |
 
 ???+ collapsible "chunking"
-    **Model:** `ChunkingConfig
+    **Model:** `ChunkingConfig`  
+    **JSON path:** `chunking.*`
+    | Key                     | Type   | Default | Description |
+    |-------------------------|--------|---------|-------------|
+    | `chunk_size`            | int    | 900     | Target characters per chunk. |
+    | `chunk_overlap`         | int    | 300     | Overlap characters between chunks. |
+    | `language_aware`        | int    | 1       | Use AST-based chunking if available (0/1). |
+
+???+ collapsible "indexing"
+    **Model:** `IndexingConfig`  
+    **JSON path:** `indexing.*`
+
+    <figure markdown="span">
+      ![Indexing Settings](../assets/images/indexing-settings.png){ width="100%" }
+      <figcaption>Advanced indexing settings allow fine-tuning of chunking strategies, embedding models, and exclusions.</figcaption>
+    </figure>
+
+    | Key                     | Type   | Default | Description |
+    |-------------------------|--------|---------|-------------|
+    | `index_batch_size`      | int    | 100     | Batch size for Qdrant upserts. |
+    | `exclude_patterns`      | list   | []      | Additional glob patterns to exclude. |

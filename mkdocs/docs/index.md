@@ -1,8 +1,20 @@
-# AGRO: Another Good RAG Option
+---
+title: AGRO - Another Good RAG Option
+hide:
+  - toc
+---
 
-AGRO is a local‑first RAG engine workspace for codebases.
+<style>
+.md-content__inner h1:first-child { display: none; }
+</style>
 
-The name is a recursive acronym on purpose — “Another Good RAG Option” — in the same family as YAML, GNU, PHP. If that buys any credibility with greybeards, great. If not, it still runs locally and does real work.
+<figure markdown="span">
+  ![AGRO Banner](assets/agro-banner.svg){ width="100%" }
+</figure>
+
+<p align="center" style="font-size: 1.4em; margin-top: -1em;">
+<strong>A local‑first RAG engine workspace for codebases.</strong>
+</p>
 
 AGRO is built to answer one question well:
 
@@ -14,56 +26,121 @@ Everything else (MCP servers, GUI, TUI, evals, Grafana, etc.) exists to support 
 
 ## What AGRO is
 
-AGRO is a RAG engine focused on **code repositories**:
+??? info ":material-laptop: Local‑first"
+    **Qdrant + Redis + JSONL chunks on disk.** Works with local models (Ollama, vLLM, etc.) or any API model you point it at.
+    
+    - No cloud dependency required
+    - Full control over your data
+    - [:octicons-arrow-right-24: Setup guide](./getting-started/installation.md)
 
-- :material-laptop: **Local‑first**  
-  - Qdrant + Redis + JSONL chunks on disk  
-  - Works with local models (Ollama, vLLM, etc.) or any API model you point it at
-- :material-magnify-scan: **Hybrid search over code**  
-  - BM25, dense embeddings, cross‑encoder rerankers  
-  - Repo isolation, citations, and configurable routing between indexes
-- :material-graph-outline: **Self‑learning reranker**  
-  - Transformer model that trains on your feedback and click data  
-  - Full loop: `mine triplets → train → evaluate → promote`
-- :material-code-json: **MCP servers for tools like Claude Code / Codex**  
-  - Python and Node MCP implementations  
-  - HTTP, SSE, stdio, WebSocket transports  
-  - Per‑transport model + backend configuration
-- :material-view-dashboard: **Rich GUI + CLI**  
-  - Onboarding wizard, VSCode-in-GUI, profiles, evals, cost estimates  
-  - TUI / CLI chat for quick local experiments
-- :material-chart-line: **Embedded Grafana dashboards**  
-  - Qdrant / Redis / RAG metrics with alerts  
-  - Helps you see when indexing or retrieval is going sideways
+??? info ":material-magnify-scan: Hybrid search over code"
+    **BM25 + dense embeddings + cross‑encoder rerankers.** Repo isolation, citations, and configurable routing between indexes.
+    
+    - Sparse + dense + rerank pipeline
+    - Per-repo collection isolation
+    - [:octicons-arrow-right-24: Retrieval pipeline](./features/rag.md)
 
-AGRO is MIT-licensed, modular, and indexed on itself. You can literally open the chat tab and ask “how do I extend hybrid_search to add X?” and it will answer using its own source.
+??? info ":material-brain: Self‑learning reranker"
+    **Transformer model that trains on your feedback and click data.** Full loop: `mine triplets → train → evaluate → promote`
+    
+    - Hot-reload trained models
+    - Continuous improvement from usage
+    - [:octicons-arrow-right-24: Learning reranker](./features/learning-reranker.md)
+
+??? info ":material-connection: MCP servers for AI agents"
+    **Python and Node MCP implementations.** HTTP, SSE, stdio, WebSocket transports. Per‑transport model + backend config.
+    
+    - Claude Code / Codex ready
+    - Multiple transport options
+    - [:octicons-arrow-right-24: MCP integration](./features/mcp.md)
+
+??? info ":material-view-dashboard: Rich GUI + CLI"
+    **Onboarding wizard, VSCode-in-GUI, profiles, evals, cost estimates.** TUI / CLI chat for quick local experiments.
+    
+    - Full-featured web interface
+    - Terminal-first workflow support
+    - [:octicons-arrow-right-24: Configuration](./configuration/settings.md)
+
+??? info ":material-chart-line: Embedded Grafana dashboards"
+    **Qdrant / Redis / RAG metrics with alerts.** See when indexing or retrieval is going sideways before your users do.
+    
+    - Pre-configured dashboards
+    - Alerting on anomalies
+    - [:octicons-arrow-right-24: Monitoring](./operations/monitoring.md)
+
+!!! success "Self-documenting"
+    AGRO is **MIT-licensed**, modular, and indexed on itself. Open the chat tab and ask *"how do I extend hybrid_search to add X?"* — it will answer using its own source code.
 
 ---
 
 ## Why another RAG engine?
 
-Most generic RAG stacks are:
+!!! failure "The problem with generic RAG stacks"
 
-- centered on unstructured text, not code
-- tuned for “one big knowledge base,” not many repos with strict isolation
-- opaque about what knobs do and why
+    | | Problem |
+    |---|---|
+    | :material-close-circle:{ style="color: #ef5350" } | Centered on **unstructured text**, not code |
+    | :material-close-circle:{ style="color: #ef5350" } | Tuned for "one big knowledge base," not **many repos with strict isolation** |
+    | :material-close-circle:{ style="color: #ef5350" } | **Opaque** about what knobs do and why |
+    | :material-close-circle:{ style="color: #ef5350" } | **Evals are an afterthought** — or missing entirely. Good luck knowing if your changes helped or hurt. |
 
 AGRO is opinionated in a few ways:
 
-1. **Codebases are first‑class**  
-   - Language‑aware chunking (:material-code-tags: AST chunker)  
-   - Per‑repo indexes, routing, and strict isolation  
-   - “Local hydration” (read real files near retrieved chunks)
+=== ":material-code-tags: Codebases are first‑class"
 
-2. **Explainability is built‑in**  
-   - Every parameter in the GUI has a detailed tooltip  
-   - Tooltips link to official docs, papers, and internal docs  
-   - All of those are searchable inside AGRO itself
+    - **Language‑aware chunking** via AST chunker
+    - Per‑repo indexes, routing, and **strict isolation**
+    - "Local hydration" — read real files near retrieved chunks
 
-3. **You don’t have to use all the knobs**  
-   - Small repos often perform best with plain BM25  
-   - Semantic bells and whistles are there for when you hit scaling limits  
-   - Profiles let you keep a “simple” and a “fancy” setup side‑by‑side
+    ```python title="Example: AST-aware chunking"
+    # AGRO understands code structure, not just text
+    chunk = {
+        "file_path": "server/app.py",
+        "language": "python",
+        "start_line": 42,
+        "end_line": 78,
+        "type": "function",  # Not just "512 tokens"
+    }
+    ```
+
+=== ":material-tooltip-text: Explainability is built‑in"
+
+    - Every parameter in the GUI has a **detailed tooltip**
+    - Tooltips link to official docs, papers, and internal docs
+    - All of those are **searchable inside AGRO itself**
+
+    !!! tip "Tooltips everywhere"
+        Hover any setting in the GUI. You'll get an explanation, valid ranges, and often a link to the paper or code that explains *why* that knob exists.
+
+=== ":material-tune-vertical: You don't have to use all the knobs"
+
+    - Small repos often perform best with **plain BM25**
+    - Semantic bells and whistles are there when you hit scaling limits
+    - **Profiles** let you keep a "simple" and a "fancy" setup side‑by‑side
+
+    | Profile | Use case | Complexity |
+    |---------|----------|------------|
+    | `bm25-fast` | Small repos, quick lookups | :material-signal-cellular-1: Low |
+    | `hybrid-balanced` | Medium repos, mixed code + docs | :material-signal-cellular-2: Medium |
+    | `full-stack` | Large monorepos, semantic queries | :material-signal-cellular-3: High |
+
+=== ":material-clipboard-check: Evals that actually work"
+
+    - **Golden questions** in a simple JSON file — no PhD required
+    - One-click eval runs from the GUI or CLI
+    - **Regression tracking** so you know if that config change helped or hurt
+
+    !!! example "Dead simple eval format"
+        ```json
+        [
+          {
+            "q": "Where is hybrid_search implemented?",
+            "expect_paths": ["retrieval/hybrid_search.py"]
+          }
+        ]
+        ```
+        
+        Add questions when retrieval fails. Run evals. See if your changes fix it. That's it.
 
 ---
 
@@ -72,9 +149,9 @@ AGRO is opinionated in a few ways:
 ```mermaid
 flowchart LR
     subgraph Clients
-        A[CLI Chat\nlocal] 
-        B[CLI Chat\nstreaming]
-        C[AI Agents\nClaude Code / Codex]
+        A[CLI Chat<br/>local] 
+        B[CLI Chat<br/>streaming]
+        C[AI Agents<br/>Claude Code / Codex]
         D[Web GUI]
     end
 
@@ -86,21 +163,21 @@ flowchart LR
         D --> S3
     end
 
-    subgraph Server[:material-server: FastAPI + LangGraph]
-        S1 --> L[langgraph_app\n(iterative RAG)]
+    subgraph Server["FastAPI + LangGraph"]
+        S1 --> L[langgraph_app<br/>iterative RAG]
         S2 --> L
         S3 --> L
-        L --> H[hybrid_search\nBM25+dense+rerank]
+        L --> H[hybrid_search<br/>BM25+dense+rerank]
     end
 
     subgraph Indexes
-        H --> Q[Qdrant\nvectors]
-        H --> R[BM25S\nsparse]
-        H --> J[Local JSONL\nchunks/cards]
+        H --> Q[Qdrant<br/>vectors]
+        H --> R[BM25S<br/>sparse]
+        H --> J[Local JSONL<br/>chunks/cards]
     end
 
     subgraph Indexer
-        X[index_repo.py\nchunk + embed + upsert]
+        X[index_repo.py<br/>chunk + embed + upsert]
         X --> Q
         X --> R
         X --> J
@@ -109,9 +186,9 @@ flowchart LR
     X -. uses .-> Cfg[Config + Profiles]
     L -. uses .-> Cfg
 
-    style Server fill=#1e293b,stroke=#94a3b8,color=#e5e7eb
-    style Indexes fill=#020617,stroke=#64748b,color=#e5e7eb
-    style Indexer fill=#111827,stroke=#6b7280,color=#e5e7eb
+    style Server fill:#1e293b,stroke:#94a3b8,color:#e5e7eb
+    style Indexes fill:#020617,stroke:#64748b,color:#e5e7eb
+    style Indexer fill:#111827,stroke:#6b7280,color:#e5e7eb
 ```
 
 ---

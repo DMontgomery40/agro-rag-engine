@@ -11,6 +11,10 @@ import { EmbeddingMismatchWarning } from '@/components/ui/EmbeddingMismatchWarni
 import { useEmbeddingStatus } from '@/hooks/useEmbeddingStatus';
 import { useRepoStore } from '@/stores/useRepoStore';
 import { useConfigStore } from '@/stores';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 // Useful tips shown during response generation
 // Each tip has content and optional category for styling
@@ -978,24 +982,207 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
                   }}
                 >
                   <div style={{
-                    maxWidth: '78%',
-                    background: message.role === 'user' ? 'linear-gradient(90deg, var(--accent) 0%, var(--link) 100%)' : 'var(--bg-elev1)',
+                    maxWidth: message.role === 'user' ? '70%' : '85%',
+                    background: message.role === 'user' 
+                      ? 'linear-gradient(135deg, var(--accent) 0%, var(--link) 100%)' 
+                      : 'linear-gradient(135deg, var(--bg-elev1) 0%, var(--bg-elev2) 100%)',
                     color: message.role === 'user' ? 'var(--accent-contrast)' : 'var(--fg)',
-                    padding: '12px 16px',
-                    borderRadius: '12px',
+                    padding: message.role === 'user' ? '12px 16px' : '16px 20px',
+                    borderRadius: message.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
                     position: 'relative',
-                    boxShadow: message.role === 'user' ? '0 1px 6px rgba(0,0,0,0.15)' : 'none'
+                    boxShadow: message.role === 'user' 
+                      ? '0 2px 8px rgba(0,0,0,0.2)' 
+                      : '0 2px 12px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.05)',
+                    border: message.role === 'assistant' ? '1px solid var(--line)' : 'none'
                   }}>
-                    <div style={{ fontSize: '11px', opacity: 0.7, marginBottom: '6px' }}>{message.role === 'user' ? 'You' : 'Assistant'} · {new Date(message.timestamp).toLocaleTimeString()}</div>
-                    <div style={{
-                      fontSize: '13px',
-                      lineHeight: '1.6',
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word'
+                    <div style={{ 
+                      fontSize: '11px', 
+                      opacity: 0.7, 
+                      marginBottom: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
                     }}>
-                      {message.role === 'assistant' && showConfidence && message.confidence !== undefined ? `[Confidence: ${formatConfidence(message.confidence)}] ` : ''}
-                      {message.content}
+                      {message.role === 'assistant' && <span style={{ fontSize: '14px' }}>🤖</span>}
+                      {message.role === 'user' ? 'You' : 'Assistant'} · {new Date(message.timestamp).toLocaleTimeString()}
+                      {message.role === 'assistant' && message.meta?.repo && (
+                        <span style={{ 
+                          background: 'var(--accent)', 
+                          color: 'var(--accent-contrast)', 
+                          padding: '1px 6px', 
+                          borderRadius: '4px', 
+                          fontSize: '10px',
+                          fontWeight: 500
+                        }}>
+                          repo: {message.meta.repo}
+                        </span>
+                      )}
                     </div>
+                    
+                    {/* Confidence badge for assistant */}
+                    {message.role === 'assistant' && showConfidence && message.confidence !== undefined && (
+                      <div style={{
+                        display: 'inline-block',
+                        background: message.confidence > 0.7 ? 'var(--success)' : message.confidence > 0.4 ? 'var(--warn)' : 'var(--error)',
+                        color: '#000',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        fontWeight: 600,
+                        marginBottom: '10px'
+                      }}>
+                        Confidence: {formatConfidence(message.confidence)}
+                      </div>
+                    )}
+                    
+                    {/* Message content - markdown for assistant, plain for user */}
+                    {message.role === 'user' ? (
+                      <div style={{
+                        fontSize: '13px',
+                        lineHeight: '1.6',
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word'
+                      }}>
+                        {message.content}
+                      </div>
+                    ) : (
+                      <div className="chat-markdown" style={{
+                        fontSize: '13px',
+                        lineHeight: '1.7'
+                      }}>
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            code({ node, inline, className, children, ...props }: any) {
+                              const match = /language-(\w+)/.exec(className || '');
+                              const codeString = String(children).replace(/\n$/, '');
+                              return !inline && match ? (
+                                <div style={{ margin: '12px 0', borderRadius: '8px', overflow: 'hidden' }}>
+                                  <div style={{
+                                    background: '#1e1e2e',
+                                    padding: '6px 12px',
+                                    fontSize: '10px',
+                                    color: '#888',
+                                    borderBottom: '1px solid #333',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center'
+                                  }}>
+                                    <span>{match[1]}</span>
+                                    <button
+                                      onClick={() => navigator.clipboard.writeText(codeString)}
+                                      style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: '#888',
+                                        cursor: 'pointer',
+                                        fontSize: '10px'
+                                      }}
+                                    >
+                                      📋 Copy
+                                    </button>
+                                  </div>
+                                  <SyntaxHighlighter
+                                    style={oneDark}
+                                    language={match[1]}
+                                    PreTag="div"
+                                    customStyle={{
+                                      margin: 0,
+                                      padding: '12px',
+                                      fontSize: '12px',
+                                      background: '#1e1e2e'
+                                    }}
+                                    {...props}
+                                  >
+                                    {codeString}
+                                  </SyntaxHighlighter>
+                                </div>
+                              ) : (
+                                <code style={{
+                                  background: 'rgba(0,0,0,0.3)',
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  fontSize: '12px',
+                                  fontFamily: 'monospace'
+                                }} {...props}>
+                                  {children}
+                                </code>
+                              );
+                            },
+                            p({ children }) {
+                              return <p style={{ margin: '0 0 12px 0' }}>{children}</p>;
+                            },
+                            ul({ children }) {
+                              return <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>{children}</ul>;
+                            },
+                            ol({ children }) {
+                              return <ol style={{ margin: '8px 0', paddingLeft: '20px' }}>{children}</ol>;
+                            },
+                            li({ children }) {
+                              return <li style={{ marginBottom: '4px' }}>{children}</li>;
+                            },
+                            h1({ children }) {
+                              return <h1 style={{ fontSize: '18px', fontWeight: 600, margin: '16px 0 8px 0', color: 'var(--accent)' }}>{children}</h1>;
+                            },
+                            h2({ children }) {
+                              return <h2 style={{ fontSize: '16px', fontWeight: 600, margin: '14px 0 6px 0', color: 'var(--accent)' }}>{children}</h2>;
+                            },
+                            h3({ children }) {
+                              return <h3 style={{ fontSize: '14px', fontWeight: 600, margin: '12px 0 4px 0' }}>{children}</h3>;
+                            },
+                            strong({ children }) {
+                              return <strong style={{ fontWeight: 600, color: 'var(--fg)' }}>{children}</strong>;
+                            },
+                            a({ href, children }) {
+                              return <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--link)', textDecoration: 'underline' }}>{children}</a>;
+                            },
+                            blockquote({ children }) {
+                              return (
+                                <blockquote style={{
+                                  borderLeft: '3px solid var(--accent)',
+                                  margin: '12px 0',
+                                  padding: '8px 16px',
+                                  background: 'rgba(0,0,0,0.2)',
+                                  borderRadius: '0 8px 8px 0',
+                                  fontStyle: 'italic'
+                                }}>
+                                  {children}
+                                </blockquote>
+                              );
+                            },
+                            table({ children }) {
+                              return (
+                                <div style={{ overflowX: 'auto', margin: '12px 0' }}>
+                                  <table style={{ 
+                                    borderCollapse: 'collapse', 
+                                    width: '100%',
+                                    fontSize: '12px'
+                                  }}>
+                                    {children}
+                                  </table>
+                                </div>
+                              );
+                            },
+                            th({ children }) {
+                              return <th style={{ 
+                                border: '1px solid var(--line)', 
+                                padding: '8px', 
+                                background: 'var(--bg-elev2)',
+                                textAlign: 'left'
+                              }}>{children}</th>;
+                            },
+                            td({ children }) {
+                              return <td style={{ 
+                                border: '1px solid var(--line)', 
+                                padding: '8px' 
+                              }}>{children}</td>;
+                            }
+                          }}
+                        >
+                          {message.content}
+                        </ReactMarkdown>
+                      </div>
+                    )}
 
                     {showCitations && message.citations && message.citations.length > 0 && (
                       <div style={{

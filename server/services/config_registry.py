@@ -131,7 +131,7 @@ class ConfigRegistry:
         """
         with self._lock:
             if not self._loaded:
-                logger.warning("Config registry accessed before load(), loading now")
+                logger.debug("Config registry accessed before load(), loading now")
                 self.load()
             return self._config.get(key, default)
 

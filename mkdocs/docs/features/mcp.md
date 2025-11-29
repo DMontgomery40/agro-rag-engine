@@ -51,31 +51,31 @@ AGRO ships **two MCP server implementations** plus a small Node bridge:
 
 ```mermaid
 flowchart LR
-    subgraph AGRO["AGRO Core :material-code-braces: "]
-        A[LangGraph<br/>build_graph()] --> B[Hybrid Search<br/>search_routed_multi()]
-        B --> C[(Vector Store / BM25)]
+    subgraph AGRO["AGRO Core"]
+        A["LangGraph<br/>build_graph"] --> B["Hybrid Search<br/>search_routed_multi"]
+        B --> C["(Vector Store / BM25)"]
     end
 
-    subgraph MCP Stdio["Python MCP (stdio) :material-console: "]
-        S1[server/mcp/server.py]
+    subgraph MCPStdio["Python MCP - stdio"]
+        S1["server/mcp/server.py"]
         S1 -->|rag_answer / rag_search / rag_feedback| A
-        S1 -->|web_get / netlify_deploy| N1[Netlify API / Web Docs]
+        S1 -->|web_get / netlify_deploy| N1["Netlify API / Web Docs"]
     end
 
-    subgraph MCP HTTP["Python MCP (HTTP/SSE) :material-lan: "]
-        H1[server/mcp/http.py<br/>FastMCP("rag-service")]
+    subgraph MCPHTTP["Python MCP - HTTP/SSE"]
+        H1["server/mcp/http.py<br/>FastMCP rag-service"]
         H1 -->|answer / search| A
         H1 -->|netlify_deploy / web_get| N1
     end
 
-    subgraph Node Bridge["Node MCP Bridge :material-nodejs: "]
-        NJS[node_mcp/server.mjs]
-        NJS -->|/answer HTTP| API[AGRO HTTP API :8012]
+    subgraph NodeBridge["Node MCP Bridge"]
+        NJS["node_mcp/server.mjs"]
+        NJS -->|/answer HTTP| API["AGRO HTTP API :8012"]
     end
 
-    Claude["Claude Code / Codex :material-robot-outline: "] -->|MCP stdio| MCP Stdio
-    Claude -->|MCP HTTP/SSE| MCP HTTP
-    Claude -->|MCP HTTP/SSE| Node Bridge
+    Claude["Claude Code / Codex"] -->|MCP stdio| MCPStdio
+    Claude -->|MCP HTTP/SSE| MCPHTTP
+    Claude -->|MCP HTTP/SSE| NodeBridge
 ```
 
 ---
