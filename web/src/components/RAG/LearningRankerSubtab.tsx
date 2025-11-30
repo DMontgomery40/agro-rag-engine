@@ -67,7 +67,7 @@ export function LearningRankerSubtab() {
   const [modelPath, setModelPath] = useState<string>('models/cross-encoder-agro');
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   // logPath now uses Zustand get()/set() directly - no local state needed
-  const [tripletsPath, setTripletsPath] = useState<string>('data/training/triplets.jsonl');
+  // tripletsPath now uses Zustand get()/set() directly - no local state needed
   const [mineMode, setMineMode] = useState<string>('append');
   const [mineReset, setMineReset] = useState<string>('0');
   const [blendAlpha, setBlendAlpha] = useState<number>(0.7);
@@ -120,8 +120,7 @@ export function LearningRankerSubtab() {
   // Sync config values from backend on mount
   useEffect(() => {
     if (!loading) {
-      // logPath uses get() directly now
-      setTripletsPath(get('AGRO_TRIPLETS_PATH', 'data/training/triplets.jsonl'));
+      // logPath and tripletsPath use get() directly now
       setBlendAlpha(get('AGRO_RERANKER_ALPHA', 0.7));
       setMaxSeqLength(get('AGRO_RERANKER_MAXLEN', 512));
       setBatchSize(get('AGRO_RERANKER_BATCH', 16));
@@ -261,15 +260,7 @@ export function LearningRankerSubtab() {
     set('AGRO_RERANKER_MODEL_PATH', value);
   };
 
-  // logPath handlers removed - uses get()/set() directly
-
-  const handleTripletsPathChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setTripletsPath(e.target.value);
-  };
-
-  const handleTripletsPathBlur = () => {
-    set('AGRO_TRIPLETS_PATH', tripletsPath);
-  };
+  // logPath and tripletsPath handlers removed - uses get()/set() directly
 
   const handleMineModeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
@@ -391,7 +382,7 @@ export function LearningRankerSubtab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           log_path: get('AGRO_LOG_PATH', 'data/logs/queries.jsonl'),
-          triplets_path: tripletsPath,
+          triplets_path: get('AGRO_TRIPLETS_PATH', 'data/training/triplets.jsonl'),
           mode: mineMode,
           reset: mineReset === '1'
         })
@@ -415,7 +406,7 @@ export function LearningRankerSubtab() {
           epochs: trainEpochs,
           batch_size: trainBatchSize,
           max_length: trainMaxLength,
-          triplets_path: tripletsPath,
+          triplets_path: get('AGRO_TRIPLETS_PATH', 'data/training/triplets.jsonl'),
           output_path: modelPath,
           base_model: 'cross-encoder/ms-marco-MiniLM-L-12-v2'
         })
@@ -841,9 +832,8 @@ export function LearningRankerSubtab() {
               type="text"
               name="AGRO_TRIPLETS_PATH"
               placeholder="data/training/triplets.jsonl"
-              value={tripletsPath}
-              onChange={handleTripletsPathChange}
-              onBlur={handleTripletsPathBlur}
+              value={get('AGRO_TRIPLETS_PATH', 'data/training/triplets.jsonl')}
+              onChange={(e) => set('AGRO_TRIPLETS_PATH', e.target.value)}
             />
           </div>
           <div className="input-group">
