@@ -80,7 +80,7 @@ def _decorate_row(m: Dict[str, Any], comp_type: str, use_heuristics: bool = Fals
 
 
 def _infer_quality_score(row: Dict[str, Any], comp_type: str) -> Number:
-    """Heuristic quality when not provided in prices.json.
+    """Heuristic quality when not provided in models.json.
     Tries to be sensible for performance mode ranking.
     """
     prov = (row.get("provider") or "").lower()

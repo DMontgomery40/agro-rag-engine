@@ -1,5 +1,5 @@
 """
-Ensure /api/prices returns a real catalog (not the tiny stub) with GEN/EMB/RERANK coverage.
+Ensure /api/models returns a real catalog (not the tiny stub) with GEN/EMB/RERANK coverage.
 """
 
 from typing import Any, Dict, List, Set
@@ -26,8 +26,8 @@ def test_prices_not_stubbed():
     app = create_app()
     client = TestClient(app)
 
-    r = client.get("/api/prices")
-    assert r.status_code == 200, f"/api/prices returned {r.status_code}"
+    r = client.get("/api/models")
+    assert r.status_code == 200, f"/api/models returned {r.status_code}"
     data = r.json()
     models = data.get("models") or []
 

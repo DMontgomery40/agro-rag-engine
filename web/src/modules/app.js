@@ -118,7 +118,7 @@
     // ---------------- Prices & Cost ----------------
     async function loadPrices() {
         try {
-            const r = await fetch(api('/api/prices'));
+            const r = await fetch(api('/api/models'));
             state.prices = await r.json();
             populatePriceDatalists();
         } catch (e) {

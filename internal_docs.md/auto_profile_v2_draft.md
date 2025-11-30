@@ -360,9 +360,9 @@ except Exception as e:
 def _read_prices_fallback() -> Dict[str, Any]:
     # Try common locations; fall back to empty catalog
     candidates = [
-        os.path.join("gui", "prices.json"),
-        os.path.join("gui_phase_1", "gui", "prices.json"),
-        "prices.json"
+        os.path.join("gui", "models.json"),
+        os.path.join("gui_phase_1", "gui", "models.json"),
+        "models.json"
     ]
     for p in candidates:
         if os.path.exists(p):
@@ -408,9 +408,9 @@ except Exception as e:
 
 def _read_prices_fallback() -> Dict[str, Any]:
     candidates = [
-        os.path.join("gui", "prices.json"),
-        os.path.join("gui_phase_1", "gui", "prices.json"),
-        "prices.json"
+        os.path.join("gui", "models.json"),
+        os.path.join("gui_phase_1", "gui", "models.json"),
+        "models.json"
     ]
     for p in candidates:
         if os.path.exists(p):

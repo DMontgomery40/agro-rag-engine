@@ -1,7 +1,7 @@
 
 /**
  * Cost logic for AGRO GUI (browser-only, no bundler).
- * - Loads prices.json from the API (same origin) to match backend normalization.
+ * - Loads models.json from the API (same origin) to match backend normalization.
  * - Supports chat/completions, embeddings, and rerankers.
  * - Returns per-request cost breakdown.
  */
@@ -13,7 +13,7 @@ function normKey(s) {
   return String(s || '').trim().toLowerCase();
 }
 
-// Expect prices.json shape:
+// Expect models.json shape:
 // {
 //   "models": [
 //     { "provider": "openai", "model": "gpt-4o-mini", "input_per_1k": 0.15, "output_per_1k": 0.6, "unit": "1k_tokens" },
@@ -28,8 +28,8 @@ async function loadPrices() {
     return PRICE_CACHE.json;
   }
   const api = (window.CoreUtils && window.CoreUtils.api) ? window.CoreUtils.api : (path) => path;
-  const res = await fetch(api('/api/prices'), { cache: 'no-store' });
-  if (!res.ok) throw new Error(`Failed to load prices.json: ${res.status}`);
+  const res = await fetch(api('/api/models'), { cache: 'no-store' });
+  if (!res.ok) throw new Error(`Failed to load models.json: ${res.status}`);
   const json = await res.json();
   PRICE_CACHE.json = json;
   PRICE_CACHE.loadedAt = now;

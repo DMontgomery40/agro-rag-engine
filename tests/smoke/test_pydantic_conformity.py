@@ -33,8 +33,8 @@ def _prices_candidates() -> List[Path]:
     env_gui = os.getenv("GUI_DIR")
     cands: List[Path] = []
     if env_gui:
-        cands.append(Path(env_gui) / "prices.json")
-    cands.append(root / "web" / "public" / "prices.json")
+        cands.append(Path(env_gui) / "models.json")
+    cands.append(root / "web" / "public" / "models.json")
     return cands
 
 
@@ -52,7 +52,7 @@ def test_prices_pydantic_valid():
     from server.services.config_store import _classify_components
 
     prices_path = next((p for p in _prices_candidates() if p.exists()), None)
-    assert prices_path, "prices.json not found in expected locations"
+    assert prices_path, "models.json not found in expected locations"
     data_raw = _read_json(prices_path)
     # Explicitly normalize components to mirror runtime behavior
     normalized_models: list[dict[str, Any]] = []
@@ -64,7 +64,7 @@ def test_prices_pydantic_valid():
     data_raw["models"] = normalized_models
 
     cfg = PricesConfig.model_validate(data_raw)
-    assert cfg.models, "prices.json has no models"
+    assert cfg.models, "models.json has no models"
     # Ensure components are present after normalization
     comps_flat = set()
     has_embed = False
@@ -83,9 +83,9 @@ def test_prices_pydantic_valid():
     assert _norm(cfg.currency), "prices currency missing"
 
     # Ensure we have at least one model per component type to keep pickers alive
-    assert "GEN" in comps_flat, "prices.json missing any generative models"
-    assert has_embed, "prices.json missing any embedding models"
-    assert "RERANK" in comps_flat, "prices.json missing any rerank models"
+    assert "GEN" in comps_flat, "models.json missing any generative models"
+    assert has_embed, "models.json missing any embedding models"
+    assert "RERANK" in comps_flat, "models.json missing any rerank models"
 
 
 def test_layer_bonus_not_double_sourced():

@@ -105,8 +105,8 @@ Users must navigate to RAG → Retrieval to change ANY model, then return. This 
 | `/api/env/reload` | POST | Reload .env file | ❌ NO - Not exposed in GUI |
 | `/api/env/save` | POST | Save env variables | ✅ YES - Settings General uses this |
 | `/api/secrets/ingest` | POST | Ingest secrets file | ✅ YES - Settings Secrets uses this |
-| `/api/prices` | GET | Get pricing config | ❌ NO - Not in GUI |
-| `/api/prices/upsert` | POST | Save pricing | ❌ NO - Not in GUI |
+| `/api/models` | GET | Get pricing config | ❌ NO - Not in GUI |
+| `/api/models/upsert` | POST | Save pricing | ❌ NO - Not in GUI |
 | `/api/integrations/save` | POST | Save integration settings | ✅ YES - Settings Integrations uses this |
 
 ---
@@ -210,7 +210,7 @@ Add model picker UI components to:
 **Available but Not Used in GUI:**
 - `/api/config-schema` - Could provide dynamic forms
 - `/api/env/reload` - Could refresh config without restart
-- `/api/prices` and `/api/prices/upsert` - No pricing UI
+- `/api/models` and `/api/models/upsert` - No pricing UI
 
 ---
 

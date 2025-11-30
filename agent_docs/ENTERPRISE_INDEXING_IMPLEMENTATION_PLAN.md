@@ -33,7 +33,7 @@ The current indexer fails when any code chunk exceeds embedding model token limi
 
 **The work is split into TWO parallel tracks:**
 - **PART A (Agent 1):** Backend/Indexer — Token utilities, checkpointing, retry logic, index_repo.py modifications
-- **PART B (Agent 2):** Data + API + Frontend — prices.json enhancement, checkpoint API endpoints, SSE progress parsing, GUI resume UI
+- **PART B (Agent 2):** Data + API + Frontend — models.json enhancement, checkpoint API endpoints, SSE progress parsing, GUI resume UI
 
 ---
 
@@ -81,12 +81,12 @@ The original plan had several errors corrected by technical investigation:
 
 ---
 
-## CRITICAL PREREQUISITE: prices.json Enhancement
+## CRITICAL PREREQUISITE: models.json Enhancement
 
 **WHO:** Part B agent does this FIRST (it's in their domain)  
-**NOTIFY:** Part A agent can start immediately but will need updated prices.json before final testing
+**NOTIFY:** Part A agent can start immediately but will need updated models.json before final testing
 
-Add `max_tokens` AND `tokenizer_type` fields to ALL embedding and reranking models in `web/public/prices.json`.
+Add `max_tokens` AND `tokenizer_type` fields to ALL embedding and reranking models in `web/public/models.json`.
 
 ### CORRECTED Token Limits (Research-Validated):
 
@@ -273,7 +273,7 @@ Why char estimation for non-OpenAI:
 - Loading HuggingFace tokenizers adds latency and dependencies
 - Char estimation is conservative and safe - slightly over-splits rather than failing
 
-Token limits and tokenizer types are read from prices.json.
+Token limits and tokenizer types are read from models.json.
 """
 import hashlib
 import json
@@ -286,16 +286,16 @@ _prices_cache = None
 
 
 def _load_prices() -> Dict:
-    """Load prices.json with model metadata."""
+    """Load models.json with model metadata."""
     global _prices_cache
     if _prices_cache is not None:
         return _prices_cache
     
     # Try multiple locations
     search_paths = [
-        Path(__file__).parent.parent / "web" / "public" / "prices.json",
-        Path(__file__).parent.parent / "gui" / "prices.json",
-        Path(__file__).parent.parent / "prices.json",
+        Path(__file__).parent.parent / "web" / "public" / "models.json",
+        Path(__file__).parent.parent / "gui" / "models.json",
+        Path(__file__).parent.parent / "models.json",
     ]
     
     for path in search_paths:
@@ -306,13 +306,13 @@ def _load_prices() -> Dict:
             except Exception as e:
                 print(f"[token_utils] Warning: Could not load {path}: {e}")
     
-    print("[token_utils] Warning: prices.json not found, using defaults")
+    print("[token_utils] Warning: models.json not found, using defaults")
     _prices_cache = {"models": []}
     return _prices_cache
 
 
 def _get_model_info(model_name: str) -> Optional[Dict]:
-    """Get model info from prices.json using EXACT match only.
+    """Get model info from models.json using EXACT match only.
     
     IMPORTANT: No partial matching to avoid false positives.
     If model not found, returns None and caller uses provider defaults.
@@ -349,7 +349,7 @@ def get_tokenizer_type(model_name: str, provider: str = "openai") -> str:
     char estimation because loading model-specific tokenizers is complex
     and char estimation is safe (slightly pessimistic).
     """
-    # Check prices.json first
+    # Check models.json first
     model_info = _get_model_info(model_name)
     if model_info:
         tokenizer_type = model_info.get("tokenizer_type", "")
@@ -417,7 +417,7 @@ def get_max_tokens_for_model(model_name: str, provider: str = "openai") -> int:
         'nvidia': 32768,
     }
     
-    # Check prices.json first
+    # Check models.json first
     model_info = _get_model_info(model_name)
     if model_info and model_info.get("max_tokens"):
         # Apply 5% safety buffer
@@ -1390,8 +1390,8 @@ Update the final metadata save section:
 ## Agent 2 Responsibilities
 
 You are implementing data enhancement, API endpoints, and frontend changes. Your work is in:
-- `web/public/prices.json` (MODIFY)
-- `gui/prices.json` (MODIFY) - Keep in sync
+- `web/public/models.json` (MODIFY)
+- `gui/models.json` (MODIFY) - Keep in sync
 - `server/models/price_model.py` (NEW) - Pydantic validation
 - `server/routers/indexing.py` (MODIFY)
 - `server/routers/stream_logs.py` (MODIFY)
@@ -1402,11 +1402,11 @@ You are implementing data enhancement, API endpoints, and frontend changes. Your
 
 ## B.1 FILE: server/models/price_model.py (NEW)
 
-**Add Pydantic validation for prices.json entries:**
+**Add Pydantic validation for models.json entries:**
 
 ```python
 """
-Pydantic models for prices.json validation.
+Pydantic models for models.json validation.
 Ensures type safety for token limits and tokenizer types.
 """
 from typing import Optional, Literal, List
@@ -1414,7 +1414,7 @@ from pydantic import BaseModel, Field, validator
 
 
 class PriceEntry(BaseModel):
-    """Single entry in prices.json models array."""
+    """Single entry in models.json models array."""
     
     provider: str
     family: str
@@ -1452,7 +1452,7 @@ class PriceEntry(BaseModel):
 
 
 class PricesConfig(BaseModel):
-    """Root schema for prices.json."""
+    """Root schema for models.json."""
     
     models: List[PriceEntry]
     
@@ -1474,7 +1474,7 @@ class PricesConfig(BaseModel):
 
 
 def validate_prices_json(prices_data: dict) -> PricesConfig:
-    """Validate prices.json data and return typed config.
+    """Validate models.json data and return typed config.
     
     Raises:
         pydantic.ValidationError: If validation fails
@@ -1484,7 +1484,7 @@ def validate_prices_json(prices_data: dict) -> PricesConfig:
 
 ---
 
-## B.2 FILE: web/public/prices.json (MODIFY)
+## B.2 FILE: web/public/models.json (MODIFY)
 
 **Add `max_tokens` and `tokenizer_type` fields to ALL models.**
 
@@ -1787,7 +1787,7 @@ Here's the structure for each model type. You need to add these fields to EVERY 
 }
 ```
 
-**IMPORTANT:** Sync changes to `gui/prices.json` after updating!
+**IMPORTANT:** Sync changes to `gui/models.json` after updating!
 
 ---
 
@@ -2244,7 +2244,7 @@ def hybrid_search(query: str, repo: str, top_k: int = 10, ...) -> List[Dict]:
    - PricesConfig with helper methods
    - validate_prices_json() function
 
-□ B2. Update web/public/prices.json
+□ B2. Update web/public/models.json
    - Add max_tokens to ALL embedding models (correct values!)
    - Add max_tokens to ALL reranker models
    - Add tokenizer_type to ALL models
@@ -2252,8 +2252,8 @@ def hybrid_search(query: str, repo: str, top_k: int = 10, ...) -> List[Dict]:
    - Voyage = 32000 (NOT 16000)
    - Cohere embed = 512 (NOT 4096)
 
-□ B3. Sync gui/prices.json
-   - Copy all changes from web/public/prices.json
+□ B3. Sync gui/models.json
+   - Copy all changes from web/public/models.json
 
 □ B4. Modify server/routers/indexing.py
    - Add get_index_checkpoint() endpoint
@@ -2301,7 +2301,7 @@ def hybrid_search(query: str, repo: str, top_k: int = 10, ...) -> List[Dict]:
 
 ## Testing Order
 
-1. **Part B completes prices.json first** (Part A needs it for token limits)
+1. **Part B completes models.json first** (Part A needs it for token limits)
 2. Part A can start immediately with hardcoded defaults
 3. Both proceed in parallel
 4. Integration test after both complete
@@ -2309,7 +2309,7 @@ def hybrid_search(query: str, repo: str, top_k: int = 10, ...) -> List[Dict]:
 ## Full System Test
 
 ```bash
-# 1. Verify prices.json loads
+# 1. Verify models.json loads
 python -c "from indexer.token_utils import _load_prices; print(_load_prices())"
 
 # 2. Test token counting
@@ -2341,7 +2341,7 @@ python -c "from retrieval.hybrid_search import hybrid_search; print(hybrid_searc
 After both parts complete:
 
 ```
-□ prices.json has max_tokens AND tokenizer_type for all models
+□ models.json has max_tokens AND tokenizer_type for all models
 □ Voyage limit is 32000 (not 16000)
 □ Cohere embed limit is 512 (not 4096)
 □ Token limit lookup works for all providers

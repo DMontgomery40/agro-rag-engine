@@ -4187,8 +4187,8 @@ tests/config_migration_routers_smoke.py::test_config_values_are_readable PASSED
   - POST /api/secrets/ingest - Upload secrets file
   - GET /api/config - Get current config (with masking)
   - POST /api/config - Update configuration
-  - GET /api/prices - Get pricing data
-  - POST /api/prices/upsert - Update pricing entry
+  - GET /api/models - Get pricing data
+  - POST /api/models/upsert - Update pricing entry
 
 **Testing Results:**
 - ✅ Python syntax check: PASSED
@@ -5100,7 +5100,7 @@ Files Changed:
 
 Changes:
 - web/src/components/Chat/ChatSettings.tsx
-  - Added `modelOptions` state; fetches `/api/prices` and renders a dropdown when available; safe text input fallback otherwise.
+  - Added `modelOptions` state; fetches `/api/models` and renders a dropdown when available; safe text input fallback otherwise.
   - Added `#chat-temperature` numeric input (kept slider) for Playwright stability and accessibility.
   - Removed duplicate Top‑K control; kept single `#chat-top-k` with default 10.
   - Guarded effects and renders to prevent `ReferenceError: models is not defined` crash.
@@ -5126,7 +5126,7 @@ Verification (Playwright GUI, ?fast=1):
 
 Impact:
 - Eliminates Chat black-screen by guarding Settings and adding an error boundary.
-- Model dropdown now populated from live `/api/prices`; text input fallback ensures no-block.
+- Model dropdown now populated from live `/api/models`; text input fallback ensures no-block.
 - Chat Settings temperature test stable via `#chat-temperature`.
 - Quick Settings includes Fast Mode toggle for GUI smokes without altering profile/env.
 - Per-request overrides reliably take effect for model/Top‑K due to backend reloads.

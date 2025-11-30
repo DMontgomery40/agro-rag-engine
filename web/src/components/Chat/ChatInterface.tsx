@@ -318,7 +318,7 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
         console.error('[ChatInterface] Failed to load chat config:', e);
       }
       try {
-        const p = await fetch(api('/api/prices'));
+        const p = await fetch(api('/api/models'));
         if (p.ok) {
           const d = await p.json();
           const list = (d.models || [])

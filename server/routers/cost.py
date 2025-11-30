@@ -53,7 +53,7 @@ def _estimate_cost(
     rerank_provider: Optional[str] = None,
     rerank_model: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Estimate daily and monthly costs using web/public/prices.json."""
+    """Estimate daily and monthly costs using web/public/models.json."""
     rpd = max(1, int(requests_per_day or 0))
 
     # Generation

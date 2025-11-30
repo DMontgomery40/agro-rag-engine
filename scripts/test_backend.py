@@ -24,13 +24,13 @@ def main() -> int:
     c = TestClient(app)
 
     # Prices
-    r = c.get('/api/prices')
+    r = c.get('/api/models')
     assert r.status_code == 200, r.text
     models = r.json().get('models', [])
     print('prices models:', len(models))
 
     # Upsert a model
-    r = c.post('/api/prices/upsert', json={"provider":"local","model":"qwen3-coder:14b","unit":"request"})
+    r = c.post('/api/models/upsert', json={"provider":"local","model":"qwen3-coder:14b","unit":"request"})
     assert r.status_code == 200 and r.json().get('ok'), r.text
 
     # Cost estimate

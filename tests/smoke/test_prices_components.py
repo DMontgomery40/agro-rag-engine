@@ -19,18 +19,18 @@ def test_prices_have_components():
     app = _get_app()
     client = TestClient(app)
 
-    r = client.get("/api/prices")
-    assert r.status_code == 200, f"/api/prices returned {r.status_code}"
+    r = client.get("/api/models")
+    assert r.status_code == 200, f"/api/models returned {r.status_code}"
     data: Dict[str, Any] = r.json()
 
     assert isinstance(data, dict) and isinstance(data.get("models"), list), "prices payload shape invalid"
     models = data["models"]
-    assert len(models) > 0, "no models returned from /api/prices"
+    assert len(models) > 0, "no models returned from /api/models"
 
     # At least one generative model must be tagged GEN
     assert any(isinstance(m.get("components"), list) and ("GEN" in m.get("components", [])) for m in models), "no GEN models tagged"
 
-    # Common known examples from web/public/prices.json should classify
+    # Common known examples from web/public/models.json should classify
     # Embedding
     emb = next((m for m in models if m.get("model") == "text-embedding-3-small"), None)
     if emb:

@@ -61,7 +61,7 @@
   - Controls: GUI config form, secret field masking, keyword manager, repo configuration
   - Element IDs: `[name="*"]` form fields, `#repos-section`, `#kw-*-*`, `#exclude-*-*` (40+ dynamic IDs)
   - Event listeners: Save button, secret reveal toggle, keyword manager buttons
-  - API calls: `/api/config`, `/api/env/reload`, `/api/keywords/add`, `/api/repos/*/validate-path`, `/api/prices`
+  - API calls: `/api/config`, `/api/env/reload`, `/api/keywords/add`, `/api/repos/*/validate-path`, `/api/models`
   - Global state: `window.Config` namespace
   - Conflict level: **CRITICAL** - Form submission and validation logic
   - Must convert to: React form with validation library (react-hook-form)
@@ -286,7 +286,7 @@ Config Module IDs (config.js)
 - `POST /api/env/reload` - Reload environment
 - `POST /api/keywords/add` - Add keyword
 - `POST /api/repos/{repo}/validate-path` - Validate repo path
-- `GET /api/prices` - Get model prices
+- `GET /api/models` - Get model prices
 
 **Evaluation Endpoints:**
 - `POST /api/eval/run` - Start evaluation

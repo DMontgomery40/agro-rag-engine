@@ -2,7 +2,7 @@
 Smoke check to ensure configured models exist in the prices catalog.
 
 This guards against broken dropdowns caused by GEN/EMB/RERANK models
-referencing ids that are missing from prices.json.
+referencing ids that are missing from models.json.
 """
 
 from typing import Any, Dict, List
@@ -41,8 +41,8 @@ def test_config_models_exist_in_prices():
     app = create_app()
     client = TestClient(app)
 
-    prices_resp = client.get("/api/prices")
-    assert prices_resp.status_code == 200, "/api/prices unavailable"
+    prices_resp = client.get("/api/models")
+    assert prices_resp.status_code == 200, "/api/models unavailable"
     prices = prices_resp.json()
     models = prices.get("models") or []
     assert models, "prices catalog is empty"
@@ -74,7 +74,7 @@ def test_config_models_exist_in_prices():
             if rr_model:
                 assert _find_model(models, rr_model, "RERANK"), f"Local rerank model '{rr_model}' not in prices catalog"
         elif rr_backend == "learning":
-            # Learning reranker may not appear in prices.json; skip
+            # Learning reranker may not appear in models.json; skip
             pass
         else:
             # Unknown backend; assert nothing

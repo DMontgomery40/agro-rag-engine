@@ -43,7 +43,7 @@ export function Sidepanel() {
   const [dailyCost, setDailyCost] = useState('--');
   const [monthlyCost, setMonthlyCost] = useState('--');
   
-  // Model lists from prices.json
+  // Model lists from models.json
   const [providers, setProviders] = useState<string[]>([]);
   const [chatModels, setChatModels] = useState<string[]>([]);
   const [embedModels, setEmbedModels] = useState<string[]>([]);
@@ -57,7 +57,7 @@ export function Sidepanel() {
   const [storageTotal, setStorageTotal] = useState(100);
   const [storagePercent, setStoragePercent] = useState(0);
 
-  // Load providers and models from prices.json
+  // Load providers and models from models.json
   useEffect(() => {
     async function loadModels() {
       try {

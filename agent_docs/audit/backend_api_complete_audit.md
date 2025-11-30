@@ -68,7 +68,7 @@
 - **Frontend Call:** Likely (for importing secrets)
 - **Implementation:** Reads uploaded file, parses as text, delegates to `config_store`
 
-### 1.7 GET /api/prices
+### 1.7 GET /api/models
 - **File:** `/server/routers/config.py:45-47`
 - **Method:** GET
 - **Query Params:** None
@@ -76,9 +76,9 @@
 - **Pydantic:** No
 - **Reads agro_config.json:** YES - Via `cfg.prices_get()`
 - **Frontend Call:** YES - Chat component calls this
-- **Implementation:** Returns from `gui/prices.json` via `config_store`
+- **Implementation:** Returns from `gui/models.json` via `config_store`
 
-### 1.8 POST /api/prices/upsert
+### 1.8 POST /api/models/upsert
 - **File:** `/server/routers/config.py:50-52`
 - **Method:** POST
 - **Request Body:** JSON dict representing a price item
@@ -86,7 +86,7 @@
 - **Pydantic:** No - uses raw dict
 - **Reads/Writes agro_config.json:** YES - Via `cfg.prices_upsert(item)`
 - **Frontend Call:** Likely (for price management)
-- **Implementation:** Updates price entry in `gui/prices.json`
+- **Implementation:** Updates price entry in `gui/models.json`
 
 ### 1.9 POST /api/integrations/save
 - **File:** `/server/routers/config.py:55-58`
@@ -671,9 +671,9 @@
 - **Request Body:** JSON dict with provider, model, tokens_in/out, embeds, reranks, requests_per_day, etc.
 - **Response:** Cost breakdown dict with daily/monthly estimates
 - **Pydantic:** No
-- **Reads agro_config.json:** YES - Via `gui/prices.json` lookup
+- **Reads agro_config.json:** YES - Via `gui/models.json` lookup
 - **Frontend Call:** YES - Settings/cost estimation
-- **Implementation:** Calculates costs based on prices.json model pricing
+- **Implementation:** Calculates costs based on models.json model pricing
 
 ### 9.2 POST /api/cost/estimate_pipeline
 - **File:** `/server/routers/cost.py:140-142`
@@ -681,7 +681,7 @@
 - **Request Body:** Same as /api/cost/estimate
 - **Response:** Cost breakdown dict
 - **Pydantic:** No
-- **Reads agro_config.json:** YES - Via prices.json
+- **Reads agro_config.json:** YES - Via models.json
 - **Frontend Call:** YES
 - **Implementation:** Alias for cost_estimate, for pipeline-level estimation
 
@@ -735,7 +735,7 @@
 - **Request Body:** JSON dict with selection parameters
 - **Response:** `{"env": dict, "reason": str}` or 422 error
 - **Pydantic:** No
-- **Reads agro_config.json:** YES - Via prices.json for pricing
+- **Reads agro_config.json:** YES - Via models.json for pricing
 - **Frontend Call:** YES - Onboarding autoselect
 - **Implementation:** Uses `autoprofile.autoprofile()` to auto-select best profile
 

@@ -25,8 +25,8 @@ This page focuses on the public endpoints you’re most likely to use directly o
 | Env save      | POST   | `/api/env/save`              | Save env vars (raw)                           |
 | Config get    | GET    | `/api/config`                | Get current config                            |
 | Config set    | POST   | `/api/config`                | Set config + auto‑reload on critical changes  |
-| Prices        | GET    | `/api/prices`                | Get stored model price info                   |
-| Prices        | POST   | `/api/prices/upsert`         | Upsert a price entry                          |
+| Prices        | GET    | `/api/models`                | Get stored model price info                   |
+| Prices        | POST   | `/api/models/upsert`         | Upsert a price entry                          |
 | Integrations  | POST   | `/api/integrations/save`     | Save integrations (LangSmith, Grafana, etc.)  |
 | MCP key       | POST   | `/api/config/mcp_key`        | Save MCP API key                              |
 | Runtime mode  | GET    | `/api/config/runtime_mode`   | Get runtime mode                              |

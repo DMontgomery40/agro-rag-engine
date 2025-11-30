@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class PriceEntry(BaseModel):
-    """Single entry in prices.json."""
+    """Single entry in models.json."""
 
     provider: str = Field(default="", description="Provider identifier (e.g., openai, cohere)")
     family: Optional[str] = Field(default=None, description="Model family name")
@@ -36,7 +36,7 @@ class PriceEntry(BaseModel):
 
 
 class PricesConfig(BaseModel):
-    """Root schema for prices.json."""
+    """Root schema for models.json."""
 
     models: List[PriceEntry] = Field(default_factory=list)
     currency: str = Field(default="USD")

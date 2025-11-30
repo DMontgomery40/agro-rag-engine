@@ -29,8 +29,8 @@ export function useAppInit() {
 
         // Load initial data in parallel
         await Promise.all([
-          // Load prices.json for cost estimation
-          fetch(api('/api/prices'))
+          // Load models.json for cost estimation
+          fetch(api('/api/models'))
             .then(r => r.json())
             .then(prices => {
               if ((window as any).CoreUtils.state) {

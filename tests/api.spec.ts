@@ -18,7 +18,7 @@ test.describe('HTTP API', () => {
   });
 
   test('prices exposes models incl. embeddings + rerank', async ({ request }) => {
-    const res = await request.get('/api/prices');
+    const res = await request.get('/api/models');
     expect(res.ok()).toBeTruthy();
     const body = await res.json();
     const models = body.models as any[];

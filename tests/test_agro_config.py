@@ -17,8 +17,8 @@ import pytest
 from pydantic import ValidationError
 
 # Add project root to path
-repo_root = Path(__file__).parent.parent
-sys.path.insert(0, str(repo_root))
+_project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(_project_root))
 
 from server.models.agro_config_model import (
     AgroConfigRoot,

@@ -95,7 +95,7 @@
 
 ### chat.js
 - `POST /api/chat` - Send message
-- `GET /api/prices` - Get models
+- `GET /api/models` - Get models
 
 ### config.js
 - `GET /api/config` - Load
@@ -103,7 +103,7 @@
 - `POST /api/env/reload` - Reload
 - `POST /api/keywords/add` - Add keyword
 - `POST /api/repos/{name}/validate-path` - Validate
-- `GET /api/prices` - Get pricing
+- `GET /api/models` - Get pricing
 
 ### eval_runner.js
 - `POST /api/eval/run` - Start

@@ -459,10 +459,10 @@ def _normalize_prices(data: Dict[str, Any]) -> Dict[str, Any]:
     try:
         cfg = PricesConfig.model_validate(data)
     except ValidationError as exc:
-        logger.warning("prices.json validation failed, using defaults: %s", exc)
+        logger.warning("models.json validation failed, using defaults: %s", exc)
         cfg = PricesConfig.model_validate(_default_prices())
     except Exception as exc:
-        logger.warning("prices.json load error, using defaults: %s", exc)
+        logger.warning("models.json load error, using defaults: %s", exc)
         cfg = PricesConfig.model_validate(_default_prices())
 
     out: list[Dict[str, Any]] = []
@@ -483,12 +483,12 @@ def _normalize_prices(data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _prices_path_candidates() -> List[Path]:
-    """Ordered list of possible prices.json locations."""
+    """Ordered list of possible models.json locations."""
     root = repo_root()
     return [
-        root / "web" / "public" / "prices.json",
-        gui_dir() / "prices.json",
-        root / "prices.json",
+        root / "web" / "public" / "models.json",
+        gui_dir() / "models.json",
+        root / "models.json",
     ]
 
 
@@ -515,7 +515,7 @@ def prices_upsert(item: Dict[str, Any]) -> Dict[str, Any]:
     try:
         cfg = PricesConfig.model_validate(data)
     except ValidationError as exc:
-        logger.warning("prices.json validation failed on upsert, starting fresh: %s", exc)
+        logger.warning("models.json validation failed on upsert, starting fresh: %s", exc)
         cfg = PricesConfig()
     models: List[Dict[str, Any]] = [m.model_dump() for m in cfg.models]
     key = (str(item.get("provider")), str(item.get("model")))

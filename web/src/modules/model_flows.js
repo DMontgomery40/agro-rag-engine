@@ -11,7 +11,7 @@
 
   async function upsertPrice(entry){
     try{
-      await fetch(api('/api/prices/upsert'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(entry) });
+      await fetch(api('/api/models/upsert'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(entry) });
     }catch(e){ console.warn('Price upsert failed:', e); }
   }
 

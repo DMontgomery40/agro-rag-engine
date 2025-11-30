@@ -127,12 +127,12 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 
-@router.get("/api/prices")
+@router.get("/api/models")
 def get_prices():
     return cfg.prices_get()
 
 
-@router.post("/api/prices/upsert")
+@router.post("/api/models/upsert")
 def upsert_price(item: Dict[str, Any]) -> Dict[str, Any]:
     return cfg.prices_upsert(item)
 

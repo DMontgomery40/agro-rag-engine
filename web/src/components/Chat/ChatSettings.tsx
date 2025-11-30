@@ -116,7 +116,7 @@ export function ChatSettings() {
 
   const loadModelOptions = async () => {
     try {
-      const r = await fetch(api('/api/prices'));
+      const r = await fetch(api('/api/models'));
       if (!r.ok) return;
       const d = await r.json();
       const list: string[] = (d.models || [])

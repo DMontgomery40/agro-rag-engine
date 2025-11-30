@@ -92,10 +92,10 @@ export function useTooltips() {
       ]),
       GUI_DIR: L(
         'UI Public Directory',
-        'Directory for shared UI assets (prices.json, profile checkpoints) used by /api/prices and /api/profiles. Defaults to ./web/public. Point this to a writable volume if you keep pricing catalogs or profiles in sync at runtime; the React app reads from the same source.',
+        'Directory for shared UI assets (models.json, profile checkpoints) used by /api/models and /api/profiles. Defaults to ./web/public. Point this to a writable volume if you keep pricing catalogs or profiles in sync at runtime; the React app reads from the same source.',
         [
           ['Static Files (FastAPI)', 'https://fastapi.tiangolo.com/tutorial/static-files/'],
-          ['Prices catalog', '/web/prices.json'],
+          ['Prices catalog', '/web/models.json'],
           ['Profiles API', '/api/profiles']
         ],
         [['Recommended', 'info']]
@@ -342,32 +342,32 @@ export function useTooltips() {
       // Alias for React data-tooltip usage
       RERANKER_BACKEND: L(
         'Rerank Backend',
-        'Where reranking runs and what it costs.\n• Cloud (cohere/voyage/openai/etc.) — best quality; needs provider/model in prices.json and API key; per-call cost + latency.\n• Local/HF/Learning — on-host models (AGRO learning reranker or HF cross-encoder); no API cost; uses local GPU/CPU.\n• none/off — skip reranking, just hybrid fusion ordering.\nChoose cloud for highest quality when keys are available; choose local/hf/learning to avoid cost or stay offline.',
+        'Where reranking runs and what it costs.\n• Cloud (cohere/voyage/openai/etc.) — best quality; needs provider/model in models.json and API key; per-call cost + latency.\n• Local/HF/Learning — on-host models (AGRO learning reranker or HF cross-encoder); no API cost; uses local GPU/CPU.\n• none/off — skip reranking, just hybrid fusion ordering.\nChoose cloud for highest quality when keys are available; choose local/hf/learning to avoid cost or stay offline.',
         [
-          ['prices.json catalog (API)', '/api/prices'],
+          ['models.json catalog (API)', '/api/models'],
           ['AGRO Learning Reranker', '/docs/LEARNING_RERANKER.md']
         ],
         [['Rerank quality', 'info'], ['Cost impact', 'warn']]
       ),
       RERANKER_ACTIVE: L(
         'Active Reranker',
-        'Route reranking to local vs cloud.\n• local/learning — on-host (includes AGRO learning reranker)\n• cloud — uses provider/model from prices.json\n• none/off — disables rerank. If cloud is selected but provider/model are empty, rerank is effectively disabled.',
+        'Route reranking to local vs cloud.\n• local/learning — on-host (includes AGRO learning reranker)\n• cloud — uses provider/model from models.json\n• none/off — disables rerank. If cloud is selected but provider/model are empty, rerank is effectively disabled.',
         [],
         [['Required', 'info']]
       ),
       RERANKER_PROVIDER: L(
-        'Cloud Provider (prices.json)',
-        'Provider id for cloud reranking, loaded dynamically from prices.json via /api/prices. Examples: cohere, voyage, openai, or any custom provider you add. No hardcoded lists; extend prices.json to expose more providers.',
+        'Cloud Provider (models.json)',
+        'Provider id for cloud reranking, loaded dynamically from models.json via /api/models. Examples: cohere, voyage, openai, or any custom provider you add. No hardcoded lists; extend models.json to expose more providers.',
         [
-          ['prices.json catalog (API)', '/api/prices']
+          ['models.json catalog (API)', '/api/models']
         ],
-        [['prices.json-driven', 'info']]
+        [['models.json-driven', 'info']]
       ),
       RERANKER_CLOUD_MODEL: L(
         'Cloud Model',
-        'Provider-scoped rerank model id from prices.json. Examples: rerank-3.5 (cohere), rerank-2 (voyage), or any custom id you add. Model list comes from prices.json; add entries there to surface more options in this picker.',
+        'Provider-scoped rerank model id from models.json. Examples: rerank-3.5 (cohere), rerank-2 (voyage), or any custom id you add. Model list comes from models.json; add entries there to surface more options in this picker.',
         [
-          ['prices.json catalog (API)', '/api/prices']
+          ['models.json catalog (API)', '/api/models']
         ],
         [['Provider-scoped', 'info']]
       ),
