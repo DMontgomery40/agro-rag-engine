@@ -70,7 +70,7 @@ export function LearningRankerSubtab() {
   // tripletsPath now uses Zustand get()/set() directly - no local state needed
   const [mineMode, setMineMode] = useState<string>('append');
   const [mineReset, setMineReset] = useState<string>('0');
-  const [blendAlpha, setBlendAlpha] = useState<number>(0.7);
+  // blendAlpha now uses Zustand get()/set() directly
   const [maxSeqLength, setMaxSeqLength] = useState<number>(512);
   const [batchSize, setBatchSize] = useState<number>(16);
   const [rerankerTopN, setRerankerTopN] = useState<number>(50);
@@ -120,8 +120,7 @@ export function LearningRankerSubtab() {
   // Sync config values from backend on mount
   useEffect(() => {
     if (!loading) {
-      // logPath and tripletsPath use get() directly now
-      setBlendAlpha(get('AGRO_RERANKER_ALPHA', 0.7));
+      // logPath, tripletsPath, blendAlpha use get() directly now
       setMaxSeqLength(get('AGRO_RERANKER_MAXLEN', 512));
       setBatchSize(get('AGRO_RERANKER_BATCH', 16));
       setRerankerTopN(get('AGRO_RERANKER_TOPN', 50));
@@ -274,13 +273,7 @@ export function LearningRankerSubtab() {
     set('AGRO_RERANKER_MINE_RESET', value);
   };
 
-  const handleBlendAlphaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setBlendAlpha(parseFloat(e.target.value));
-  };
-
-  const handleBlendAlphaBlur = () => {
-    set('AGRO_RERANKER_ALPHA', blendAlpha);
-  };
+  // blendAlpha handlers removed - uses get()/set() directly
 
   const handleMaxSeqLengthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setMaxSeqLength(parseInt(e.target.value, 10));
@@ -891,7 +884,7 @@ export function LearningRankerSubtab() {
               <div>Model Path: <span>{rerankerInfo?.path || modelPath}</span></div>
               <div>Device: <span>{rerankerInfo?.device || '—'}</span></div>
               <div>
-                Alpha: <span>{rerankerInfo?.alpha || blendAlpha}</span> •
+                Alpha: <span>{rerankerInfo?.alpha || get('AGRO_RERANKER_ALPHA', 0.7)}</span> •
                 TopN: <span>{rerankerInfo?.topn || rerankerTopN}</span> •
                 Batch: <span>{rerankerInfo?.batch || batchSize}</span> •
                 MaxLen: <span>{rerankerInfo?.maxlen || maxSeqLength}</span>
@@ -909,12 +902,11 @@ export function LearningRankerSubtab() {
             <input
               type="number"
               name="AGRO_RERANKER_ALPHA"
-              value={blendAlpha}
+              value={get('AGRO_RERANKER_ALPHA', 0.7)}
               min="0.0"
               max="1.0"
               step="0.05"
-              onChange={handleBlendAlphaChange}
-              onBlur={handleBlendAlphaBlur}
+              onChange={(e) => set('AGRO_RERANKER_ALPHA', parseFloat(e.target.value))}
             />
           </div>
           <div className="input-group">
