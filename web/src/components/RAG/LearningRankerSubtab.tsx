@@ -71,7 +71,7 @@ export function LearningRankerSubtab() {
   const [mineMode, setMineMode] = useState<string>('append');
   const [mineReset, setMineReset] = useState<string>('0');
   // blendAlpha now uses Zustand get()/set() directly
-  const [maxSeqLength, setMaxSeqLength] = useState<number>(512);
+  // maxSeqLength now uses Zustand get()/set() directly
   const [batchSize, setBatchSize] = useState<number>(16);
   const [rerankerTopN, setRerankerTopN] = useState<number>(50);
   const [voyageRerankerModel, setVoyageRerankerModel] = useState<string>('rerank-2');
@@ -120,8 +120,7 @@ export function LearningRankerSubtab() {
   // Sync config values from backend on mount
   useEffect(() => {
     if (!loading) {
-      // logPath, tripletsPath, blendAlpha use get() directly now
-      setMaxSeqLength(get('AGRO_RERANKER_MAXLEN', 512));
+      // logPath, tripletsPath, blendAlpha, maxSeqLength use get() directly now
       setBatchSize(get('AGRO_RERANKER_BATCH', 16));
       setRerankerTopN(get('AGRO_RERANKER_TOPN', 50));
       setVoyageRerankerModel(get('VOYAGE_RERANK_MODEL', 'rerank-2'));
@@ -273,15 +272,7 @@ export function LearningRankerSubtab() {
     set('AGRO_RERANKER_MINE_RESET', value);
   };
 
-  // blendAlpha handlers removed - uses get()/set() directly
-
-  const handleMaxSeqLengthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setMaxSeqLength(parseInt(e.target.value, 10));
-  };
-
-  const handleMaxSeqLengthBlur = () => {
-    set('AGRO_RERANKER_MAXLEN', maxSeqLength);
-  };
+  // blendAlpha, maxSeqLength handlers removed - uses get()/set() directly
 
   const handleBatchSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setBatchSize(parseInt(e.target.value, 10));
@@ -887,7 +878,7 @@ export function LearningRankerSubtab() {
                 Alpha: <span>{rerankerInfo?.alpha || get('AGRO_RERANKER_ALPHA', 0.7)}</span> •
                 TopN: <span>{rerankerInfo?.topn || rerankerTopN}</span> •
                 Batch: <span>{rerankerInfo?.batch || batchSize}</span> •
-                MaxLen: <span>{rerankerInfo?.maxlen || maxSeqLength}</span>
+                MaxLen: <span>{rerankerInfo?.maxlen || get('AGRO_RERANKER_MAXLEN', 512)}</span>
               </div>
             </div>
           </div>
@@ -917,12 +908,11 @@ export function LearningRankerSubtab() {
             <input
               type="number"
               name="AGRO_RERANKER_MAXLEN"
-              value={maxSeqLength}
+              value={get('AGRO_RERANKER_MAXLEN', 512)}
               min="128"
               max="1024"
               step="64"
-              onChange={handleMaxSeqLengthChange}
-              onBlur={handleMaxSeqLengthBlur}
+              onChange={(e) => set('AGRO_RERANKER_MAXLEN', parseInt(e.target.value, 10))}
             />
           </div>
           <div className="input-group">
