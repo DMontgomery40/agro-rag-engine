@@ -73,7 +73,7 @@ export function LearningRankerSubtab() {
   // blendAlpha now uses Zustand get()/set() directly
   // maxSeqLength now uses Zustand get()/set() directly
   // batchSize now uses Zustand get()/set() directly
-  const [rerankerTopN, setRerankerTopN] = useState<number>(50);
+  // rerankerTopN now uses Zustand get()/set() directly
   const [voyageRerankerModel, setVoyageRerankerModel] = useState<string>('rerank-2');
   const [reloadOnChange, setReloadOnChange] = useState<string>('0');
   const [trainEpochs, setTrainEpochs] = useState<number>(2);
@@ -120,8 +120,7 @@ export function LearningRankerSubtab() {
   // Sync config values from backend on mount
   useEffect(() => {
     if (!loading) {
-      // logPath, tripletsPath, blendAlpha, maxSeqLength, batchSize use get() directly now
-      setRerankerTopN(get('AGRO_RERANKER_TOPN', 50));
+      // logPath, tripletsPath, blendAlpha, maxSeqLength, batchSize, rerankerTopN use get() directly now
       setVoyageRerankerModel(get('VOYAGE_RERANK_MODEL', 'rerank-2'));
       setTrainEpochs(get('RERANKER_TRAIN_EPOCHS', 2));
       setTrainBatchSize(get('RERANKER_TRAIN_BATCH', 16));
@@ -271,15 +270,7 @@ export function LearningRankerSubtab() {
     set('AGRO_RERANKER_MINE_RESET', value);
   };
 
-  // blendAlpha, maxSeqLength, batchSize handlers removed - uses get()/set() directly
-
-  const handleRerankerTopNChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setRerankerTopN(parseInt(e.target.value, 10));
-  };
-
-  const handleRerankerTopNBlur = () => {
-    set('AGRO_RERANKER_TOPN', rerankerTopN);
-  };
+  // blendAlpha, maxSeqLength, batchSize, rerankerTopN handlers removed - uses get()/set() directly
 
   const handleVoyageRerankerModelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setVoyageRerankerModel(e.target.value);
@@ -867,7 +858,7 @@ export function LearningRankerSubtab() {
               <div>Device: <span>{rerankerInfo?.device || '—'}</span></div>
               <div>
                 Alpha: <span>{rerankerInfo?.alpha || get('AGRO_RERANKER_ALPHA', 0.7)}</span> •
-                TopN: <span>{rerankerInfo?.topn || rerankerTopN}</span> •
+                TopN: <span>{rerankerInfo?.topn || get('AGRO_RERANKER_TOPN', 50)}</span> •
                 Batch: <span>{rerankerInfo?.batch || get('AGRO_RERANKER_BATCH', 16)}</span> •
                 MaxLen: <span>{rerankerInfo?.maxlen || get('AGRO_RERANKER_MAXLEN', 512)}</span>
               </div>
@@ -932,12 +923,11 @@ export function LearningRankerSubtab() {
             <input
               type="number"
               name="AGRO_RERANKER_TOPN"
-              value={rerankerTopN}
+              value={get('AGRO_RERANKER_TOPN', 50)}
               min="10"
               max="200"
               step="5"
-              onChange={handleRerankerTopNChange}
-              onBlur={handleRerankerTopNBlur}
+              onChange={(e) => set('AGRO_RERANKER_TOPN', parseInt(e.target.value, 10))}
             />
           </div>
           <div className="input-group">
