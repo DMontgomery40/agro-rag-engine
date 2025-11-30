@@ -66,7 +66,7 @@ export function LearningRankerSubtab() {
   const [rerankerEnabled, setRerankerEnabled] = useState<string>('0');
   const [modelPath, setModelPath] = useState<string>('models/cross-encoder-agro');
   const [availableModels, setAvailableModels] = useState<string[]>([]);
-  const [logPath, setLogPath] = useState<string>('data/logs/queries.jsonl');
+  // logPath now uses Zustand get()/set() directly - no local state needed
   const [tripletsPath, setTripletsPath] = useState<string>('data/training/triplets.jsonl');
   const [mineMode, setMineMode] = useState<string>('append');
   const [mineReset, setMineReset] = useState<string>('0');
@@ -120,7 +120,7 @@ export function LearningRankerSubtab() {
   // Sync config values from backend on mount
   useEffect(() => {
     if (!loading) {
-      setLogPath(get('AGRO_LOG_PATH', 'data/logs/queries.jsonl'));
+      // logPath uses get() directly now
       setTripletsPath(get('AGRO_TRIPLETS_PATH', 'data/training/triplets.jsonl'));
       setBlendAlpha(get('AGRO_RERANKER_ALPHA', 0.7));
       setMaxSeqLength(get('AGRO_RERANKER_MAXLEN', 512));
@@ -261,13 +261,7 @@ export function LearningRankerSubtab() {
     set('AGRO_RERANKER_MODEL_PATH', value);
   };
 
-  const handleLogPathChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setLogPath(e.target.value);
-  };
-
-  const handleLogPathBlur = () => {
-    set('AGRO_LOG_PATH', logPath);
-  };
+  // logPath handlers removed - uses get()/set() directly
 
   const handleTripletsPathChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTripletsPath(e.target.value);
@@ -396,7 +390,7 @@ export function LearningRankerSubtab() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          log_path: logPath,
+          log_path: get('AGRO_LOG_PATH', 'data/logs/queries.jsonl'),
           triplets_path: tripletsPath,
           mode: mineMode,
           reset: mineReset === '1'
@@ -832,9 +826,8 @@ export function LearningRankerSubtab() {
               type="text"
               name="AGRO_LOG_PATH"
               placeholder="data/logs/queries.jsonl"
-              value={logPath}
-              onChange={handleLogPathChange}
-              onBlur={handleLogPathBlur}
+              value={get('AGRO_LOG_PATH', 'data/logs/queries.jsonl')}
+              onChange={(e) => set('AGRO_LOG_PATH', e.target.value)}
             />
           </div>
         </div>
