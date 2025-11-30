@@ -23,7 +23,6 @@ export function DataQualitySubtab() {
   const [excludeDirs, setExcludeDirs] = useState('');
   const [excludePatterns, setExcludePatterns] = useState('');
   const [excludeKeywords, setExcludeKeywords] = useState('');
-  const [cardsMax, setCardsMax] = useState(100);  // Pydantic default: 100, min: 10
   const [enrichEnabled, setEnrichEnabled] = useState(true);
   const [buildInProgress, setBuildInProgress] = useState(false);
   const [currentStage, setCurrentStage] = useState('');
@@ -70,10 +69,7 @@ export function DataQualitySubtab() {
         }
         const data = await response.json();
         const env = data.env || {};
-        const cardsMaxValue = parseInt(env.CARDS_MAX ?? '100', 10);
-        if (!isNaN(cardsMaxValue) && cardsMaxValue >= 10) {
-          setCardsMax(cardsMaxValue);
-        }
+        // CARDS_MAX now uses Zustand get()/set() directly - no local state needed
         setExcludeDirs(env.CARDS_EXCLUDE_DIRS || '');
         setExcludePatterns(env.CARDS_EXCLUDE_PATTERNS || '');
         setExcludeKeywords(env.CARDS_EXCLUDE_KEYWORDS || '');
@@ -157,7 +153,7 @@ export function DataQualitySubtab() {
           exclude_dirs: excludeDirs.split(',').map(s => s.trim()).filter(Boolean),
           exclude_patterns: excludePatterns.split(',').map(s => s.trim()).filter(Boolean),
           exclude_keywords: excludeKeywords.split(',').map(s => s.trim()).filter(Boolean),
-          max: cardsMax,
+          max: get('CARDS_MAX', 100),
           enrich: enrichEnabled
         })
       });
@@ -507,11 +503,11 @@ export function DataQualitySubtab() {
               type="number"
               id="cards-max"
               name="CARDS_MAX"
-              value={cardsMax}
+              value={get('CARDS_MAX', 100)}
               onChange={(e) => {
                 const val = Number(e.target.value);
                 // Enforce Pydantic constraint: ge=10
-                setCardsMax(Math.max(10, val));
+                set('CARDS_MAX', Math.max(10, val));
               }}
               min="10"
               step="10"

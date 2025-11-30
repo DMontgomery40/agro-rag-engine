@@ -42,11 +42,13 @@ export function RepositoryConfig({ repos, selectedRepo, onRepoChange, onExcludeP
   useEffect(() => {
     if (!selectedRepo) {
       setRepoData(null);
-            return;
+      setLoading(false);
+      return;
     }
 
     const loadRepoData = async () => {
-            try {
+      setLoading(true);
+      try {
         const response = await fetch(api(`repos/${selectedRepo}`));
         const data = await response.json();
         if (data.ok && data.repo) {
@@ -65,7 +67,8 @@ export function RepositoryConfig({ repos, selectedRepo, onRepoChange, onExcludeP
       } catch (e) {
         console.error('Failed to load repo data:', e);
       } finally {
-              }
+        setLoading(false);
+      }
     };
 
     loadRepoData();

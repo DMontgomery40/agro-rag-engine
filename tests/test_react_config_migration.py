@@ -260,12 +260,21 @@ def test_no_bad_onchange_setters():
     )
 
 
-def test_config_usestate_has_sync_useeffect():
+def test_no_usestate_for_config_values():
     """
-    Test that useState config fields have useEffect sync from backend.
+    CRITICAL: Config values must use get() directly, NOT useState.
     
-    This verifies fix_config_init.py fixes were applied.
-    Uses EXACT same logic as fix_config_init.py.
+    Per CLAUDE.md: "I should NOT be adding local useState for config values - 
+    they should use get() and set() from the Zustand store"
+    
+    WRONG pattern (what fix scripts create - still incorrect):
+        const [cloudModel, setCloudModel] = useState('');
+        value={cloudModel}
+        onChange={(e) => set('RERANKER_CLOUD_MODEL', e.target.value)}
+    
+    CORRECT pattern:
+        value={get('RERANKER_CLOUD_MODEL', '')}
+        onChange={(e) => set('RERANKER_CLOUD_MODEL', e.target.value)}
     """
     repo_root = Path(__file__).parent.parent
     components_dir = repo_root / "web" / "src" / "components"
@@ -283,64 +292,80 @@ def test_config_usestate_has_sync_useeffect():
         if not USECONFIG_CALL_PATTERN.search(content):
             continue
         
-        # EXACT same logic as fix_config_init.py
-        # Check if already fixed
-        if CONFIG_SYNC_MARKER in content:
-            # Verify the sync useEffect actually calls get() for each field
-            config_fields = find_usestate_with_config(content)
-            if config_fields:
-                missing_get_calls = []
-                for state_var, setter_name, default_value, config_key in config_fields:
-                    # Look for pattern: setter(get('KEY', default))
-                    sync_pattern = re.compile(
-                        rf'{re.escape(setter_name)}\s*\(\s*get\s*\(\s*[\'"]{re.escape(config_key)}[\'"]',
-                        re.MULTILINE
-                    )
-                    if not sync_pattern.search(content):
-                        missing_get_calls.append({
-                            'setter': setter_name,
-                            'config_key': config_key,
-                            'expected': f"{setter_name}(get('{config_key}', {default_value}))"
-                        })
-                
-                if missing_get_calls:
-                    violations.append({
-                        'file': str(component_path.relative_to(repo_root)),
-                        'issue': 'sync_marker_exists_but_missing_get_calls',
-                        'fields': missing_get_calls
-                    })
+        # Find config keys used in set() calls
+        config_keys = find_config_keys_in_file(content)
+        
+        if not config_keys:
             continue
         
-        # Find config fields that need syncing (EXACT same as script)
-        config_fields = find_usestate_with_config(content)
+        component_violations = []
         
-        if config_fields:
+        # Check for useState declarations that correspond to config keys
+        for match in USESTATE_PATTERN.finditer(content):
+            state_var = match.group(1)
+            setter_name = match.group(2)
+            default_value = match.group(3)
+            
+            # Check if this state var has an associated config key
+            config_key = config_keys.get(state_var)
+            if not config_key:
+                # Try deriving from setter name (setXxx -> xxx)
+                derived_var = setter_name[3:4].lower() + setter_name[4:] if setter_name.startswith('set') else None
+                config_key = config_keys.get(derived_var) if derived_var else None
+            
+            if config_key:
+                component_violations.append({
+                    'type': 'useState_for_config',
+                    'state_var': state_var,
+                    'setter': setter_name,
+                    'config_key': config_key,
+                    'fix': f"Remove useState, use value={{get('{config_key}', {default_value.strip()})}}"
+                })
+        
+        # Check for value={stateVar} that should be value={get('KEY', default)}
+        value_pattern = re.compile(r'value=\{\s*(\w+)\s*\}')
+        for match in value_pattern.finditer(content):
+            state_var = match.group(1)
+            config_key = config_keys.get(state_var)
+            if config_key:
+                # Check if there's a get() on the same or nearby line
+                match_pos = match.start()
+                line_start = content.rfind('\n', 0, match_pos) + 1
+                line_end = content.find('\n', match.end())
+                if line_end == -1:
+                    line_end = len(content)
+                line_content = content[line_start:line_end]
+                
+                # If line uses value={stateVar} without get(), it's a violation
+                if f"get('{config_key}'" not in line_content and f'get("{config_key}"' not in line_content:
+                    line_num = content[:match_pos].count('\n') + 1
+                    component_violations.append({
+                        'type': 'value_uses_state_not_get',
+                        'line': line_num,
+                        'state_var': state_var,
+                        'config_key': config_key,
+                        'fix': f"Change value={{{state_var}}} to value={{get('{config_key}', default)}}"
+                    })
+        
+        if component_violations:
             violations.append({
                 'file': str(component_path.relative_to(repo_root)),
-                'issue': 'missing_sync_useeffect',
-                'fields': [
-                    {
-                        'setter': setter_name,
-                        'config_key': config_key,
-                        'default': default_value,
-                        'expected': f"{setter_name}(get('{config_key}', {default_value}))"
-                    }
-                    for state_var, setter_name, default_value, config_key in config_fields
-                ]
+                'issues': component_violations
             })
     
     assert len(violations) == 0, (
-        f"Found {len(violations)} components with config useState sync issues:\n" +
+        f"Found {len(violations)} components using useState for config values (should use get() directly):\n" +
         "\n".join(
             f"  {v['file']}:\n" +
-            (f"    Issue: {v['issue']}\n" if 'issue' in v else "") +
             "\n".join(
-                f"    - Missing: {f['expected']}" if 'expected' in f else f"    - {f['setter']} -> {f['config_key']}"
-                for f in v['fields']
+                f"    - {i['type']}: {i.get('state_var', '')} -> {i['config_key']}\n"
+                f"      Fix: {i['fix']}"
+                for i in v['issues']
             )
             for v in violations
         ) +
-        "\n\nRun: python fix_config_init.py <file.tsx>"
+        "\n\nPer CLAUDE.md: 'I should NOT be adding local useState for config values - "
+        "they should use get() and set() from the Zustand store'"
     )
 
 
@@ -381,8 +406,8 @@ def test_migrate_config_patterns():
         if re.search(r'\bloadConfig\s*\(', content):
             issues.append("Still has loadConfig() calls - should use useConfig hook")
         
-        # Note: value={stateVar} patterns are checked in test_config_usestate_has_sync_useeffect
-        # Both value={get('KEY', default)} and value={stateVar} with useEffect sync are valid
+        # Note: value={stateVar} patterns are checked in test_no_usestate_for_config_values
+        # Per CLAUDE.md, config values MUST use get() directly, not useState
         
         if issues:
             violations.append({
