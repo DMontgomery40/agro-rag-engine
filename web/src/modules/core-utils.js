@@ -18,20 +18,25 @@
    *   - NOTE: Falls back to window.location.origin only if served over HTTP(S)
    * ---/agentspec
    */
-  const API_BASE = (() => {
+  const API_ROOT = (() => {
     try {
       const u = new URL(window.location.href);
       const q = new URLSearchParams(u.search);
       const override = q.get('api');
       if (override) return override.replace(/\/$/, '');
-      // Prefer same-origin whenever we were served over HTTP(S)
       if (u.protocol.startsWith('http')) return u.origin;
-      // Fallback to local default
       return 'http://127.0.0.1:8012';
     } catch {
       return 'http://127.0.0.1:8012';
     }
   })();
+
+  const withApiSuffix = (base) => {
+    const trimmed = String(base || '').replace(/\/$/, '');
+    return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+  };
+
+  const API_BASE = withApiSuffix(API_ROOT);
 
   // Expose the resolved API base for diagnostics
   try { window.API_BASE = API_BASE; } catch {}
@@ -51,7 +56,12 @@
    *   - NOTE: API_BASE must be defined before api() calls
    * ---/agentspec
    */
-  const api = (p) => `${API_BASE}${p}`;
+  const api = (path = '') => {
+    const p = String(path || '');
+    if (p.startsWith('/api/')) return `${API_BASE}${p.slice(4)}`;
+    if (p.startsWith('/')) return `${API_BASE}${p}`;
+    return `${API_BASE}/${p}`;
+  };
 
   // Helper: Query selector (single element)
   /**

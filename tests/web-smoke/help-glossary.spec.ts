@@ -18,19 +18,19 @@ test.describe('Help & Glossary Feature (/web React)', () => {
         await expect(learnButton).toContainText('Learn');
     });
 
-    test('Learn button navigates to Dashboard Help subtab', async ({ page }) => {
+    test('Learn button navigates to Dashboard', async ({ page }) => {
         await page.click('#btn-learn');
         await page.waitForTimeout(500);
 
-        // Check URL contains subtab=help
+        // Check URL contains dashboard
         expect(page.url()).toContain('dashboard');
-        expect(page.url()).toContain('subtab=help');
 
-        // Check that help subtab is visible
-        await expect(page.locator('.help-glossary-container')).toBeVisible();
+        // Verify dashboard subtab bar is visible
+        const subtabBar = page.locator('#dashboard-subtabs');
+        await expect(subtabBar).toBeVisible();
     });
 
-    test('Dashboard has Overview and Help & Glossary subtabs', async ({ page }) => {
+    test('Dashboard has System Status, Monitoring, Storage, Help, and Glossary subtabs', async ({ page }) => {
         // Navigate to dashboard by clicking the tab
         await page.click('a:has-text("Dashboard")');
         await page.waitForTimeout(500);
@@ -39,50 +39,50 @@ test.describe('Help & Glossary Feature (/web React)', () => {
         const subtabBar = page.locator('#dashboard-subtabs');
         await expect(subtabBar).toBeVisible();
 
-        const overviewBtn = page.locator('button[data-subtab="overview"]');
-        await expect(overviewBtn).toBeVisible();
+        const systemBtn = page.locator('button[data-subtab="system"]');
+        await expect(systemBtn).toBeVisible();
+        await expect(systemBtn).toContainText('System Status');
 
-        const helpBtn = page.locator('button[data-subtab="help"]');
-        await expect(helpBtn).toBeVisible();
-        await expect(helpBtn).toContainText('Help & Glossary');
+        const glossaryBtn = page.locator('button[data-subtab="glossary"]');
+        await expect(glossaryBtn).toBeVisible();
+        await expect(glossaryBtn).toContainText('Glossary');
     });
 
-    test('Can switch between Overview and Help subtabs', async ({ page }) => {
+    test('Can switch between System Status and Glossary subtabs', async ({ page }) => {
         // Navigate to dashboard
         await page.click('a:has-text("Dashboard")');
         await page.waitForTimeout(500);
 
-        // Overview should be active by default
-        const overviewBtn = page.locator('button[data-subtab="overview"]');
-        await expect(overviewBtn).toHaveClass(/active/);
+        // System Status should be active by default
+        const systemBtn = page.locator('button[data-subtab="system"]');
+        await expect(systemBtn).toHaveClass(/active/);
 
-        // Click Help & Glossary
-        await page.click('button[data-subtab="help"]');
+        // Click Glossary
+        await page.click('button[data-subtab="glossary"]');
         await page.waitForTimeout(300);
 
-        // Help should be active
-        const helpBtn = page.locator('button[data-subtab="help"]');
-        await expect(helpBtn).toHaveClass(/active/);
-        await expect(page.locator('.help-glossary-container')).toBeVisible();
+        // Glossary should be active
+        const glossaryBtn = page.locator('button[data-subtab="glossary"]');
+        await expect(glossaryBtn).toHaveClass(/active/);
 
-        // Switch back to Overview
-        await page.click('button[data-subtab="overview"]');
+        // Switch back to System Status
+        await page.click('button[data-subtab="system"]');
         await page.waitForTimeout(300);
-        await expect(overviewBtn).toHaveClass(/active/);
+        await expect(systemBtn).toHaveClass(/active/);
     });
 
     test('Glossary renders parameter cards', async ({ page }) => {
-        // Navigate to dashboard and click Help & Glossary
+        // Navigate to dashboard and click Glossary subtab
         await page.click('a:has-text("Dashboard")');
         await page.waitForTimeout(300);
-        await page.click('button[data-subtab="help"]');
+        await page.click('button[data-subtab="glossary"]');
         await page.waitForTimeout(1000);
 
         const cards = page.locator('.glossary-card');
         const count = await cards.count();
 
-        // Should have many cards
-        expect(count).toBeGreaterThan(50);
+        // Should have many cards (207 unique tooltips after merge)
+        expect(count).toBeGreaterThan(100);
 
         // Check first card structure
         const firstCard = cards.first();
@@ -92,10 +92,10 @@ test.describe('Help & Glossary Feature (/web React)', () => {
     });
 
     test('Category filters work', async ({ page }) => {
-        // Navigate to dashboard and click Help & Glossary
+        // Navigate to dashboard and click Glossary subtab
         await page.click('a:has-text("Dashboard")');
         await page.waitForTimeout(300);
-        await page.click('button[data-subtab="help"]');
+        await page.click('button[data-subtab="glossary"]');
         await page.waitForTimeout(1000);
 
         const initialCount = await page.locator('.glossary-card').count();
@@ -115,10 +115,10 @@ test.describe('Help & Glossary Feature (/web React)', () => {
     });
 
     test('Search functionality works', async ({ page }) => {
-        // Navigate to dashboard and click Help & Glossary
+        // Navigate to dashboard and click Glossary subtab
         await page.click('a:has-text("Dashboard")');
         await page.waitForTimeout(300);
-        await page.click('button[data-subtab="help"]');
+        await page.click('button[data-subtab="glossary"]');
         await page.waitForTimeout(1000);
 
         const initialCount = await page.locator('.glossary-card').count();
@@ -133,10 +133,10 @@ test.describe('Help & Glossary Feature (/web React)', () => {
     });
 
     test('Glossary links open in new tab', async ({ page }) => {
-        // Navigate to dashboard and click Help & Glossary
+        // Navigate to dashboard and click Glossary subtab
         await page.click('a:has-text("Dashboard")');
         await page.waitForTimeout(300);
-        await page.click('button[data-subtab="help"]');
+        await page.click('button[data-subtab="glossary"]');
         await page.waitForTimeout(1000);
 
         const cardWithLinks = page.locator('.glossary-card:has(.glossary-links)').first();

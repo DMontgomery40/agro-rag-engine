@@ -66,7 +66,6 @@ function App() {
         // 1. Core utilities (must load first)
         await import('./modules/fetch-shim.js');
         await import('./modules/core-utils.js');
-        await import('./modules/api-base-override.js');
 
         // 2. UI helpers and theme (needed by many modules)
         await import('./modules/ui-helpers.js');
@@ -125,7 +124,6 @@ function App() {
           import('./modules/layout_fix.js'),
           import('./modules/live-terminal.js'),
           import('./modules/trace.js'),
-          import('./modules/alerts.js'),
           import('./modules/ux-feedback.js'),
           import('./modules/langsmith.js'),
           import('./modules/dino.js')
@@ -267,7 +265,7 @@ function App() {
               </div>
             )}
           >
-            <TabBar mobileOpen={mobileNavOpen} onNavigate={closeMobileNav} />
+          <TabBar mobileOpen={mobileNavOpen} onNavigate={closeMobileNav} />
           </ErrorBoundary>
 
           {/* Scrollable content wrapper */}
@@ -286,7 +284,7 @@ function App() {
                 </div>
               )}
             >
-              <TabRouter />
+            <TabRouter />
             </ErrorBoundary>
           </div>
 
@@ -340,7 +338,7 @@ function App() {
                 />
               )}
             >
-              <Sidepanel />
+            <Sidepanel />
             </ErrorBoundary>
           </div>
         </div>

@@ -15,15 +15,16 @@ interface RepositoryConfigProps {
 /**
  * ---agentspec
  * what: |
- *   Renders repository configuration UI. Syncs exclude paths from local input state to Zustand store via debounced updateRepo callback.
+ *   Repository config using Zustand stores. Gets repos/activeRepo from useRepoStore,
+ *   persists changes via useConfigStore.updateRepo(). Local state ONLY for debounced text inputs.
  *
  * why: |
- *   Separates transient UI state (text input) from persistent store state to avoid excessive re-renders and API calls during typing.
+ *   Single source of truth via Zustand; no duplicate state, fetch logic, or event listeners.
  *
  * guardrails:
- *   - DO NOT bypass debounce; direct store writes on every keystroke cause performance degradation
- *   - NOTE: repoData is reactive; local state must reconcile on activeRepo changes
- *   - ASK USER: Confirm debounce delay (ms) before deployment
+ *   - DO NOT use local useState for config values - derive from store
+ *   - NOTE: Local state ONLY for text input fields that need debouncing before save
+ *   - DO NOT duplicate API calls - use store actions exclusively
  * ---/agentspec
  */
 export function RepositoryConfig({ onExcludePathsChange }: RepositoryConfigProps) {
@@ -67,59 +68,45 @@ export function RepositoryConfig({ onExcludePathsChange }: RepositoryConfigProps
     setTimeout(() => { isInitializing.current = false; }, 100);
   }, [repoData?.name]); // Only re-sync when repo changes
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Debounced save for repo path. Compares input to store value, saves only if changed.
+   *
+   * why: |
+   *   Prevents excessive API calls on rapid typing; 1s debounce batches updates.
+   *
+   * guardrails:
+   *   - DO NOT save if value unchanged (prevents redundant writes)
+   *   - NOTE: Cleanup clears timeout on unmount/re-render
+   * ---/agentspec
+   */
   useEffect(() => {
     if (!repoData || isInitializing.current) return;
     if (repoData.path === repoPathInput) return;
     
-    /**
-     * ---agentspec
-     * what: |
-     *   Debounces repo path input changes (1s delay) and syncs to activeRepo via updateRepo. Cleanup clears timeout on unmount/dependency change.
-     *
-     * why: |
-     *   Debouncing prevents excessive API calls on rapid user input; cleanup prevents memory leaks from orphaned timers.
-     *
-     * guardrails:
-     *   - DO NOT call updateRepo synchronously; debounce protects against thrashing
-     *   - NOTE: isInitializing.current guard prevents updates during initialization phase
-     * ---/agentspec
-     */
     const timeoutId = setTimeout(() => {
       updateRepo(activeRepo, { path: repoPathInput });
     }, 1000);
     return () => clearTimeout(timeoutId);
   }, [repoPathInput, repoData, activeRepo, updateRepo]);
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Debounced save for keywords. Parses comma-separated, sorts, compares to store.
+   *
+   * why: |
+   *   Sort + compare prevents redundant saves for reordered input.
+   *
+   * guardrails:
+   *   - DO NOT save if keywords unchanged after normalization
+   * ---/agentspec
+   */
   useEffect(() => {
     if (!repoData || isInitializing.current) return;
     
-    /**
-     * ---agentspec
-     * what: |
-     *   Debounces keyword input (1s delay). Splits comma-separated string, trims, filters empties. Compares sorted keywords; calls updateRepo only if changed.
-     *
-     * why: |
-     *   Debounce prevents excessive updates on rapid typing; sorted comparison avoids redundant API calls for reordered identical keywords.
-     *
-     * guardrails:
-     *   - DO NOT call updateRepo if keywords unchanged (sorted comparison prevents this)
-     *   - NOTE: Cleanup function clears timeout on unmount/re-render
-     * ---/agentspec
-     */
     const timeoutId = setTimeout(() => {
-      /**
-       * ---agentspec
-       * what: |
-       *   Debounces keyword input changes (1s delay). Compares sorted current vs. new keywords; calls updateRepo only if different.
-       *
-       * why: |
-       *   Debouncing prevents excessive updates on rapid typing; sorting + string comparison avoids redundant API calls for reordered identical keywords.
-       *
-       * guardrails:
-       *   - DO NOT update if keywords are identical after sort (already implemented)
-       *   - NOTE: Cleanup function clears timeout on unmount; missing dependency on timeoutId is safe (closure captures it)
-       * ---/agentspec
-       */
       const keywordsArray = keywordsInput.split(',').map(s => s.trim()).filter(Boolean);
       const currentKeywords = (repoData.keywords || []).sort().join(',');
       const newKeywords = keywordsArray.sort().join(',');
@@ -130,36 +117,22 @@ export function RepositoryConfig({ onExcludePathsChange }: RepositoryConfigProps
     return () => clearTimeout(timeoutId);
   }, [keywordsInput, repoData, activeRepo, updateRepo]);
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Debounced save for path_boosts. Parses comma-separated, sorts, compares to store.
+   *
+   * why: |
+   *   Sort + compare prevents redundant saves for reordered input.
+   *
+   * guardrails:
+   *   - DO NOT save if boosts unchanged after normalization
+   * ---/agentspec
+   */
   useEffect(() => {
     if (!repoData || isInitializing.current) return;
     
-    /**
-     * ---agentspec
-     * what: |
-     *   Debounces path_boosts input (1s delay). Parses comma-separated string, sorts, compares to current boosts. Updates repo if changed.
-     *
-     * why: |
-     *   Debounce prevents excessive updates on rapid user input; sorting ensures idempotent comparison.
-     *
-     * guardrails:
-     *   - DO NOT update if sorted arrays match; prevents redundant writes
-     *   - NOTE: Clears timeout on unmount to avoid stale updates
-     * ---/agentspec
-     */
     const timeoutId = setTimeout(() => {
-      /**
-       * ---agentspec
-       * what: |
-       *   Debounces path_boosts input changes (1s delay). Parses comma-separated string, sorts, compares with current boosts, updates repo if changed.
-       *
-       * why: |
-       *   Debouncing prevents excessive updates on rapid user input; sorting ensures idempotent comparison.
-       *
-       * guardrails:
-       *   - DO NOT update if sorted arrays match; prevents redundant writes
-       *   - NOTE: Cleanup function clears timeout on unmount
-       * ---/agentspec
-       */
       const pathBoostsArray = pathBoostsInput.split(',').map(s => s.trim()).filter(Boolean);
       const currentBoosts = (repoData.path_boosts || []).sort().join(',');
       const newBoosts = pathBoostsArray.sort().join(',');
@@ -170,22 +143,22 @@ export function RepositoryConfig({ onExcludePathsChange }: RepositoryConfigProps
     return () => clearTimeout(timeoutId);
   }, [pathBoostsInput, repoData, activeRepo, updateRepo]);
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Debounced save for layer_bonuses JSON. Parses, validates, compares stringified.
+   *
+   * why: |
+   *   JSON parse validation prevents saving invalid data; stringify compare catches changes.
+   *
+   * guardrails:
+   *   - DO NOT save if JSON parse fails (silent skip)
+   *   - NOTE: Order-dependent equality check via stringify
+   * ---/agentspec
+   */
   useEffect(() => {
     if (!repoData || isInitializing.current) return;
     
-    /**
-     * ---agentspec
-     * what: |
-     *   Debounced JSON parser for layer_bonuses input. Parses string → object, compares with current state, updates repo if changed.
-     *
-     * why: |
-     *   Debounce prevents excessive updates on rapid input changes; JSON comparison avoids redundant writes.
-     *
-     * guardrails:
-     *   - DO NOT update if parsed value equals current state; prevents unnecessary repo calls
-     *   - NOTE: Silent fail on invalid JSON; empty string defaults to {}
-     * ---/agentspec
-     */
     const timeoutId = setTimeout(() => {
       try {
         const parsed = JSON.parse(layerBonusesInput || '{}');
@@ -209,15 +182,13 @@ export function RepositoryConfig({ onExcludePathsChange }: RepositoryConfigProps
   /**
    * ---agentspec
    * what: |
-   *   Adds/removes exclude paths from active repo config. Trims input, updates state, triggers callback.
+   *   Adds exclude path to repo config via store. Clears input, calls parent callback.
    *
    * why: |
-   *   Memoized callbacks prevent unnecessary re-renders; separation of add/remove logic keeps handlers focused.
+   *   Centralized save through Zustand store; callback notifies parent for UI sync.
    *
    * guardrails:
-   *   - DO NOT add empty strings; trim() check prevents whitespace-only paths
-   *   - NOTE: Requires activeRepo to exist; silently returns if missing
-   *   - ASK USER: Should removal also trigger onExcludePathsChange callback?
+   *   - DO NOT add empty strings; trim + validate before save
    * ---/agentspec
    */
   const handleAddExcludePath = useCallback(() => {
@@ -231,30 +202,16 @@ export function RepositoryConfig({ onExcludePathsChange }: RepositoryConfigProps
   /**
    * ---agentspec
    * what: |
-   *   Removes a path from excludePaths array, updates repo config, and triggers callback. Filters out matching path string.
+   *   Removes exclude path from repo config via store. Calls parent callback.
    *
    * why: |
-   *   Memoized callback prevents unnecessary re-renders; decouples UI state from parent via callback.
+   *   Centralized save through Zustand store; callback notifies parent for UI sync.
    *
    * guardrails:
    *   - DO NOT mutate excludePaths directly; use filter to create new array
-   *   - NOTE: Callback fires only if onExcludePathsChange is defined
    * ---/agentspec
    */
   const handleRemoveExcludePath = useCallback((path: string) => {
-    /**
-     * ---agentspec
-     * what: |
-     *   Removes a path from excludePaths array, updates repo config, triggers callback. Inputs: path string. Outputs: updated exclude_paths array.
-     *
-     * why: |
-     *   Decouples path removal logic from UI; allows parent to sync state via callback.
-     *
-     * guardrails:
-     *   - DO NOT mutate excludePaths directly; filter creates new array
-     *   - NOTE: Callback fires only if path exists in excludePaths
-     * ---/agentspec
-     */
     const newPaths = excludePaths.filter(p => p !== path);
     updateRepo(activeRepo, { exclude_paths: newPaths });
     onExcludePathsChange?.(newPaths);

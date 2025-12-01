@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ProfileManager } from './ProfileManager';
 import { ProfileEditor } from './ProfileEditor';
 import { useProfiles } from '../../hooks/useProfiles';
 import { useGlobalState } from '../../hooks/useGlobalState';
 import type { ProfileConfig, AutoProfilePayload } from '../../types';
+import { useAlertThresholdsStore, useAlertThresholdField } from '@/stores/useAlertThresholdsStore';
 
 /**
  * ProfilesTab Component
@@ -18,7 +19,6 @@ export default function ProfilesTab() {
     scanHardware,
     currentConfig,
     autoProfileResult,
-    checkpointConfig,
     isLoading
   } = useProfiles();
 
@@ -28,15 +28,23 @@ export default function ProfilesTab() {
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [activeSubtab, setActiveSubtab] = useState('budget');
 
-  // Alert thresholds state
-  const [alertThresholds, setAlertThresholds] = useState({
-    costBurnSpike: '',
-    tokenBurnSpike: '',
-    tokenBurnSustained: '',
-    monthlyBudget: '',
-    budgetWarning: '',
-    budgetCritical: ''
-  });
+  // Alert thresholds (shared store)
+  const loadAlertThresholds = useAlertThresholdsStore((state) => state.load);
+  const thresholdsLoaded = useAlertThresholdsStore((state) => state.loaded);
+  const thresholdsLoading = useAlertThresholdsStore((state) => state.loading && !state.loaded);
+  const saveAlertThresholds = useAlertThresholdsStore((state) => state.save);
+  const [costBurnSpike, setCostBurnSpike] = useAlertThresholdField('cost_burn_spike_usd_per_hour');
+  const [tokenBurnSpike, setTokenBurnSpike] = useAlertThresholdField('token_burn_spike_per_minute');
+  const [tokenBurnSustained, setTokenBurnSustained] = useAlertThresholdField('token_burn_sustained_per_minute');
+  const [monthlyBudget, setMonthlyBudget] = useAlertThresholdField('monthly_budget_usd');
+  const [budgetWarning, setBudgetWarning] = useAlertThresholdField('budget_warning_usd');
+  const [budgetCritical, setBudgetCritical] = useAlertThresholdField('budget_critical_usd');
+
+  useEffect(() => {
+    if (!thresholdsLoaded) {
+      loadAlertThresholds();
+    }
+  }, [thresholdsLoaded, loadAlertThresholds]);
 
   const showStatus = (text: string, type: 'success' | 'error') => {
     setStatusMessage({ text, type });
@@ -108,17 +116,17 @@ export default function ProfilesTab() {
 
   const handleSaveAlertThresholds = async () => {
     try {
-      const config: ProfileConfig = {
-        ALERT_COST_BURN_SPIKE_USD_PER_HOUR: alertThresholds.costBurnSpike,
-        ALERT_TOKEN_BURN_SPIKE_PER_MINUTE: alertThresholds.tokenBurnSpike,
-        ALERT_TOKEN_BURN_SUSTAINED_PER_MINUTE: alertThresholds.tokenBurnSustained,
-        ALERT_MONTHLY_BUDGET_USD: alertThresholds.monthlyBudget,
-        ALERT_BUDGET_WARNING_USD: alertThresholds.budgetWarning,
-        ALERT_BUDGET_CRITICAL_USD: alertThresholds.budgetCritical
-      };
-
-      await checkpointConfig();
-      showStatus('Alert thresholds saved successfully', 'success');
+      showStatus('Saving alert thresholds...', 'success');
+      const { updated } = await saveAlertThresholds([
+        'cost_burn_spike_usd_per_hour',
+        'token_burn_spike_per_minute',
+        'token_burn_sustained_per_minute',
+        'monthly_budget_usd',
+        'budget_warning_usd',
+        'budget_critical_usd'
+      ]);
+      const suffix = updated === 1 ? 'threshold' : 'thresholds';
+      showStatus(`Alert thresholds saved (${updated} ${suffix} updated)`, 'success');
     } catch (e) {
       showStatus(`Failed to save thresholds: ${e instanceof Error ? e.message : String(e)}`, 'error');
     }
@@ -181,8 +189,9 @@ export default function ProfilesTab() {
                 max="100"
                 step="0.01"
                 placeholder="0.10"
-                value={alertThresholds.costBurnSpike}
-                onChange={(e) => setAlertThresholds(prev => ({ ...prev, costBurnSpike: e.target.value }))}
+                value={costBurnSpike}
+                disabled={thresholdsLoading}
+                onChange={(e) => setCostBurnSpike(e.target.value)}
               />
               <p className="small" style={{ color: 'var(--fg-muted)', marginTop: '4px' }}>
                 Alert when hourly burn exceeds this amount
@@ -197,8 +206,9 @@ export default function ProfilesTab() {
                 max="100000"
                 step="100"
                 placeholder="5000"
-                value={alertThresholds.tokenBurnSpike}
-                onChange={(e) => setAlertThresholds(prev => ({ ...prev, tokenBurnSpike: e.target.value }))}
+                value={tokenBurnSpike}
+                disabled={thresholdsLoading}
+                onChange={(e) => setTokenBurnSpike(e.target.value)}
               />
               <p className="small" style={{ color: 'var(--fg-muted)', marginTop: '4px' }}>
                 Alert on sudden spike above this rate
@@ -216,8 +226,9 @@ export default function ProfilesTab() {
                 max="100000"
                 step="100"
                 placeholder="2000"
-                value={alertThresholds.tokenBurnSustained}
-                onChange={(e) => setAlertThresholds(prev => ({ ...prev, tokenBurnSustained: e.target.value }))}
+                value={tokenBurnSustained}
+                disabled={thresholdsLoading}
+                onChange={(e) => setTokenBurnSustained(e.target.value)}
               />
               <p className="small" style={{ color: 'var(--fg-muted)', marginTop: '4px' }}>
                 Alert if sustained for 15+ minutes
@@ -241,8 +252,9 @@ export default function ProfilesTab() {
                 max="10000"
                 step="1"
                 placeholder="500"
-                value={alertThresholds.monthlyBudget}
-                onChange={(e) => setAlertThresholds(prev => ({ ...prev, monthlyBudget: e.target.value }))}
+                value={monthlyBudget}
+                disabled={thresholdsLoading}
+                onChange={(e) => setMonthlyBudget(e.target.value)}
               />
               <p className="small" style={{ color: 'var(--fg-muted)', marginTop: '4px' }}>
                 Hard limit for monthly spending
@@ -257,8 +269,9 @@ export default function ProfilesTab() {
                 max="10000"
                 step="1"
                 placeholder="400"
-                value={alertThresholds.budgetWarning}
-                onChange={(e) => setAlertThresholds(prev => ({ ...prev, budgetWarning: e.target.value }))}
+                value={budgetWarning}
+                disabled={thresholdsLoading}
+                onChange={(e) => setBudgetWarning(e.target.value)}
               />
               <p className="small" style={{ color: 'var(--fg-muted)', marginTop: '4px' }}>
                 Alert when spending exceeds this
@@ -276,8 +289,9 @@ export default function ProfilesTab() {
                 max="10000"
                 step="1"
                 placeholder="450"
-                value={alertThresholds.budgetCritical}
-                onChange={(e) => setAlertThresholds(prev => ({ ...prev, budgetCritical: e.target.value }))}
+                value={budgetCritical}
+                disabled={thresholdsLoading}
+                onChange={(e) => setBudgetCritical(e.target.value)}
               />
               <p className="small" style={{ color: 'var(--fg-muted)', marginTop: '4px' }}>
                 Critical alert when spending exceeds this
@@ -372,6 +386,7 @@ export default function ProfilesTab() {
               className="small-button"
               id="btn-save-alert-thresholds"
               onClick={handleSaveAlertThresholds}
+              disabled={thresholdsLoading}
               style={{
                 background: 'var(--accent)',
                 color: 'var(--accent-contrast)',

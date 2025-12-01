@@ -2,7 +2,6 @@
 // Main dashboard with System Status, Monitoring, Storage, Help, and Glossary subtabs
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { DashboardSubtabs } from '../components/Dashboard/DashboardSubtabs';
 import { SystemStatusSubtab } from '../components/Dashboard/SystemStatusSubtab';
 import { MonitoringSubtab } from '../components/Dashboard/MonitoringSubtab';
@@ -11,8 +10,8 @@ import { HelpSubtab } from '../components/Dashboard/HelpSubtab';
 import { GlossarySubtab } from '../components/Dashboard/GlossarySubtab';
 
 export function Dashboard() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [activeSubtab, setActiveSubtab] = useState(() => searchParams.get('subtab') || 'system');
+  // Simple useState for subtab - matches RAGTab.tsx pattern (no URL sync to avoid infinite loops)
+  const [activeSubtab, setActiveSubtab] = useState('system');
 
   // Flag for legacy modules so they can avoid mutating React-rendered dashboard DOM
   useEffect(() => {
@@ -23,16 +22,6 @@ export function Dashboard() {
       window.dispatchEvent(new CustomEvent('react-dashboard-unmount'));
     };
   }, []);
-
-  // Listen for URL changes (e.g., deep links) and sync state; no URL writes to avoid loops
-  useEffect(() => {
-    const urlSubtab = searchParams.get('subtab');
-    if (urlSubtab && urlSubtab !== activeSubtab) {
-      setActiveSubtab(urlSubtab);
-    } else if (!urlSubtab && activeSubtab !== 'system') {
-      setActiveSubtab('system');
-    }
-  }, [searchParams, activeSubtab]);
 
   return (
     <div

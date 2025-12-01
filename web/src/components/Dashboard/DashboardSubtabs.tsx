@@ -1,8 +1,6 @@
 // AGRO - DashboardSubtabs Component
 // Subtab navigation for Dashboard tab
 
-import { useEffect } from 'react';
-
 interface DashboardSubtabsProps {
   activeSubtab: string;
   onSubtabChange: (subtab: string) => void;
@@ -17,12 +15,7 @@ export function DashboardSubtabs({ activeSubtab, onSubtabChange }: DashboardSubt
     { id: 'glossary', title: 'Glossary' }
   ];
 
-  // Ensure a default subtab is selected
-  useEffect(() => {
-    if (!activeSubtab) {
-      onSubtabChange('system');
-    }
-  }, [activeSubtab, onSubtabChange]);
+  // No defensive useEffect needed - parent initializes activeSubtab to 'system'
 
   return (
     <div

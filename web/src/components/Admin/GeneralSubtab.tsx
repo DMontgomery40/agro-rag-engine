@@ -50,6 +50,10 @@ export function GeneralSubtab() {
   const [webhookSevInfo, setWebhookSevInfo] = useState(false);
   const [webhookIncludeResolved, setWebhookIncludeResolved] = useState(true);
   const [webhookSaveStatus, setWebhookSaveStatus] = useState('');
+  const [slackWebhookHint, setSlackWebhookHint] = useState('');
+  const [discordWebhookHint, setDiscordWebhookHint] = useState('');
+  const [slackWebhookDirty, setSlackWebhookDirty] = useState(false);
+  const [discordWebhookDirty, setDiscordWebhookDirty] = useState(false);
 
   // MCP RAG Search
   const [mcpRagQuestion, setMcpRagQuestion] = useState('');
@@ -120,14 +124,38 @@ export function GeneralSubtab() {
 
   async function loadWebhookConfig() {
     try {
-      const { data } = await apiClient.get(api('/api/monitoring/webhooks/config'));
+      const { data } = await apiClient.get(api('/monitoring/webhooks/config'));
       if (data) {
+        // Slack webhook masking
+        if (data.slack_webhook_url && data.slack_webhook_url.startsWith('***')) {
+          setSlackWebhookHint(data.slack_webhook_url);
+          setSlackWebhookUrl('');
+          setSlackWebhookDirty(false);
+        } else {
+          setSlackWebhookHint('');
+          setSlackWebhookUrl(data.slack_webhook_url || '');
+          setSlackWebhookDirty(false);
+        }
+
+        if (data.discord_webhook_url && data.discord_webhook_url.startsWith('***')) {
+          setDiscordWebhookHint(data.discord_webhook_url);
+          setDiscordWebhookUrl('');
+          setDiscordWebhookDirty(false);
+        } else {
+          setDiscordWebhookHint('');
+          setDiscordWebhookUrl(data.discord_webhook_url || '');
+          setDiscordWebhookDirty(false);
+        }
+
         setWebhookEnabled(data.alert_notify_enabled !== false);
         const severities = (data.alert_notify_severities || 'critical,warning').split(',');
         setWebhookSevCritical(severities.includes('critical'));
         setWebhookSevWarning(severities.includes('warning'));
         setWebhookSevInfo(severities.includes('info'));
         setWebhookIncludeResolved(data.alert_include_resolved !== false);
+        if (typeof data.alert_webhook_timeout_seconds === 'number') {
+          setAlertWebhookTimeout(data.alert_webhook_timeout_seconds);
+        }
       }
     } catch (err) {
       console.error('Failed to load webhook config:', err);
@@ -186,17 +214,23 @@ export function GeneralSubtab() {
       if (webhookSevWarning) severities.push('warning');
       if (webhookSevInfo) severities.push('info');
 
-      const payload = {
-        slack_webhook_url: slackWebhookUrl,
-        discord_webhook_url: discordWebhookUrl,
+      const payload: Record<string, any> = {
         alert_notify_enabled: webhookEnabled,
-        alert_notify_severities: severities.join(','),
+        alert_notify_severities: (severities.length ? severities : ['critical']).join(','),
         alert_include_resolved: webhookIncludeResolved,
         alert_webhook_timeout_seconds: alertWebhookTimeout,
       };
 
-      await apiClient.post(api('/api/monitoring/webhooks/config'), payload);
+      if (slackWebhookDirty) {
+        payload.slack_webhook_url = slackWebhookUrl;
+      }
+      if (discordWebhookDirty) {
+        payload.discord_webhook_url = discordWebhookUrl;
+      }
+
+      await apiClient.post(api('/monitoring/webhooks/config'), payload);
       setWebhookSaveStatus('Saved successfully!');
+      await loadWebhookConfig();
       setTimeout(() => setWebhookSaveStatus(''), 3000);
     } catch (err) {
       console.error('Failed to save webhook config:', err);
@@ -470,12 +504,20 @@ export function GeneralSubtab() {
             <input
               type="password"
               value={slackWebhookUrl}
-              onChange={(e) => setSlackWebhookUrl(e.target.value)}
+              onChange={(e) => {
+                setSlackWebhookUrl(e.target.value);
+                setSlackWebhookDirty(true);
+              }}
               placeholder="https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXX"
             />
             <p className="small" style={{ color: 'var(--fg-muted)', marginTop: '4px' }}>
               Password field for security - not saved in browser
             </p>
+            {slackWebhookHint && !slackWebhookDirty && (
+              <p className="small" style={{ color: 'var(--fg-muted)', marginTop: '2px' }}>
+                Current value: {slackWebhookHint}
+              </p>
+            )}
           </div>
         </div>
 
@@ -485,12 +527,20 @@ export function GeneralSubtab() {
             <input
               type="password"
               value={discordWebhookUrl}
-              onChange={(e) => setDiscordWebhookUrl(e.target.value)}
+              onChange={(e) => {
+                setDiscordWebhookUrl(e.target.value);
+                setDiscordWebhookDirty(true);
+              }}
               placeholder="https://discordapp.com/api/webhooks/000000000000000000/XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
             />
             <p className="small" style={{ color: 'var(--fg-muted)', marginTop: '4px' }}>
               Password field for security - not saved in browser
             </p>
+            {discordWebhookHint && !discordWebhookDirty && (
+              <p className="small" style={{ color: 'var(--fg-muted)', marginTop: '2px' }}>
+                Current value: {discordWebhookHint}
+              </p>
+            )}
           </div>
         </div>
 

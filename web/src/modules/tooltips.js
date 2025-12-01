@@ -1366,6 +1366,368 @@
           ['Streaming API', 'https://platform.openai.com/docs/api-reference/streaming']
         ]
       ),
+
+      // === RESTORED MISSING TOOLTIPS (from old gui/js/tooltips.js commit 6a6ac9c) ===
+
+      // Advanced RAG Parameters
+      ADVANCED_RAG_TUNING: L(
+        'Advanced Parameters',
+        'Expert controls for fusion weighting, score bonuses, and iteration behavior. These significantly affect retrieval quality and performance. Change only if you understand trade-offs.',
+        [
+          ['RAG Tuning Guide', '/docs/RETRIEVAL.md#tuning']
+        ],
+        [['Expert', 'warn']]
+      ),
+
+      // Card & Filename Boosts
+      CARD_BONUS: L(
+        'Card Semantic Bonus',
+        'Score bonus when a result matches code "Cards" (semantic summaries from enrichment). Improves intent\u2011based retrieval (e.g., "where is auth handled?"). Requires ENRICH_CODE_CHUNKS.',
+        [
+          ['Cards Feature', '/docs/CARDS.md'],
+          ['Cards Builder', '/files/indexer/build_cards.py']
+        ],
+        [['Improves intent','info']]
+      ),
+      FILENAME_BOOST_EXACT: L(
+        'Filename Exact Match Multiplier',
+        'Score multiplier applied when the filename matches the query exactly (e.g., auth.py). Increase to prioritize file\u2011specific queries.',
+        [
+          ['Path Scoring', '/docs/RETRIEVAL.md#path-scoring']
+        ]
+      ),
+      FILENAME_BOOST_PARTIAL: L(
+        'Path Component Partial Match Multiplier',
+        'Score multiplier for matches in any path component (dir name or filename prefix). Useful for queries like "auth" that should find src/auth/... files.',
+        [
+          ['Path Scoring', '/docs/RETRIEVAL.md#path-scoring']
+        ]
+      ),
+
+      // Generation & Temperature
+      GEN_TEMPERATURE: L(
+        'Default Response Creativity',
+        'Global default temperature for generation. 0.0 = deterministic; small values (0.04\u20130.2) add slight variation in prose. Use per\u2011model tuning for creative tasks vs. code answers.',
+        [
+          ['Sampling Controls', 'https://platform.openai.com/docs/guides/text-generation'],
+          ['Nucleus/Top\u2011p', 'https://en.wikipedia.org/wiki/Nucleus_sampling']
+        ]
+      ),
+      GEN_MODEL_CHAT: L(
+        'Chat-Specific Model',
+        'Override model for Chat interface only. Leave empty to use GEN_MODEL. Useful for using a different model (e.g., faster/cheaper) specifically for interactive chat.',
+        [
+          ['OpenAI Models', 'https://platform.openai.com/docs/models'],
+          ['Ollama API', 'https://github.com/ollama/ollama/blob/main/docs/api.md']
+        ]
+      ),
+
+      // Multi-Query & Synonyms
+      MAX_QUERY_REWRITES: L(
+        'Multi\u2011Query Rewrites',
+        'Number of LLM\u2011generated query variations. Each variation runs hybrid retrieval; results are merged and reranked. Higher improves recall but increases latency and API cost. Typical: 2\u20134.',
+        [
+          ['Multi\u2011Query Retriever', 'https://python.langchain.com/docs/how_to/MultiQueryRetriever/'],
+          ['Multi\u2011Query RAG (paper)', 'https://arxiv.org/abs/2305.14283']
+        ],
+        [['Better recall','info'], ['Higher cost','warn']]
+      ),
+      USE_SEMANTIC_SYNONYMS: L(
+        'Semantic Synonyms Expansion',
+        'Expands queries with curated domain synonyms and abbreviations (e.g., auth \u2192 authentication, oauth, jwt). Complements LLM rewrites. Configure in data/semantic_synonyms.json.',
+        [
+          ['Synonym Config', '/files/data/semantic_synonyms.json'],
+          ['Synonym Guide', '/docs/RETRIEVAL.md#synonyms']
+        ]
+      ),
+
+      // Fusion & Scoring
+      RRF_K_DIV: L(
+        'Reciprocal Rank Fusion (K)',
+        'Fusion parameter for combining BM25 + vector rankings: score += 1/(K+rank). Lower K increases influence of lower ranks; higher K flattens. Typical: 30\u2013100 (60 recommended).',
+        [
+          ['RRF Paper', 'https://www.cs.cmu.edu/~jgc/publication/The_Influence_of_Random_Sampling_on_the_Performance_of_Ensembles.pdf'],
+          ['Hybrid Search', '/docs/RETRIEVAL.md#hybrid-search']
+        ]
+      ),
+      CONF_FALLBACK: L(
+        'Fallback Confidence Threshold',
+        'When initial retrieval confidence falls below this threshold, triggers a fallback with expanded query rewrites. Lower = more aggressive fallback. Typical: 0.5\u20130.7.',
+        [
+          ['RAG Retrieval', '/docs/RETRIEVAL.md']
+        ]
+      ),
+      LANGGRAPH_FINAL_K: L(
+        'LangGraph Final K',
+        'Documents retrieved for LangGraph pipeline in /answer. Separate from retrieval FINAL_K. Higher = more context, higher cost. Typical: 10\u201330.',
+        [
+          ['LangGraph', 'https://langchain-ai.github.io/langgraph/']
+        ]
+      ),
+
+      // Exclude & Paths
+      EXCLUDE_PATHS: L(
+        'Exclude Directories',
+        'Comma\u2011separated directories to exclude when building semantic Code Cards or indexing. Examples: node_modules, vendor, dist.',
+        [
+          ['Indexing Guide', '/docs/INDEXING.md']
+        ]
+      ),
+
+      // Code Cards
+      CODE_CARDS: L(
+        'Code Cards',
+        'High\u2011level semantic summaries of code chunks, built during enrichment. Cards enable intent\u2011based retrieval and better filtering for conceptual queries.',
+        [
+          ['Cards Feature', '/docs/CARDS.md'],
+          ['Cards Builder', '/files/indexer/build_cards.py']
+        ],
+        [['Improves intent','info']]
+      ),
+
+      // Chat Settings (React Chat)
+      CHAT_SETTINGS: L(
+        'Chat Configuration',
+        'Settings that control model, answer length, rewrite strategy, and retrieval size for the chat interface. These affect latency, cost, and answer quality.',
+        [
+          ['RAG Retrieval', '/docs/RETRIEVAL.md']
+        ],
+        [['Affects quality','info'], ['Affects latency','info']]
+      ),
+      CHAT_MAX_TOKENS: L(
+        'Max Response Tokens (Chat)',
+        'Upper bound on generated tokens for chat answers. ~4 chars \u2248 1 token. Higher values cost more and may slow responses.',
+        [
+          ['Tokenization Basics', 'https://huggingface.co/docs/transformers/main_classes/tokenizer']
+        ]
+      ),
+      CHAT_CONFIDENCE_THRESHOLD: L(
+        'Answer Confidence Threshold',
+        'Minimum retrieval confidence to return an answer without fallback. Lower values return more answers (risking guesses); higher values are conservative.',
+        [
+          ['Precision vs Recall', 'https://en.wikipedia.org/wiki/Precision_and_recall']
+        ]
+      ),
+      CHAT_TEMPERATURE: L(
+        'Response Creativity (Chat)',
+        'Controls randomness for chat answers. For code Q&A, prefer 0.0\u20130.3; for ideation, increase to 0.5\u20130.9.',
+        [
+          ['Sampling Controls', 'https://platform.openai.com/docs/guides/text-generation']
+        ]
+      ),
+      CHAT_SHOW_CITATIONS: L(
+        'Inline File References',
+        'Display source file paths and line numbers inline with the answer. Citations become clickable links to code locations.',
+        [
+          ['Retrieval Traceability', '/docs/RETRIEVAL.md#traceability']
+        ]
+      ),
+      CHAT_CONFIDENCE: L(
+        'Retrieval Confidence',
+        'Show a normalized confidence score (0\u20131) alongside answers to help judge reliability. Scores reflect retrieval confidence, not model certainty.',
+        [
+          ['Precision vs Recall', 'https://en.wikipedia.org/wiki/Precision_and_recall']
+        ]
+      ),
+      CHAT_AUTO_SCROLL: L(
+        'Auto\u2011Scroll to New Messages',
+        'Automatically scrolls the conversation to the newest message. Disable when reviewing earlier context while messages stream.',
+        [
+          ['ARIA Live Regions (UX)', 'https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/ARIA_Live_Regions']
+        ]
+      ),
+      CHAT_SYNTAX_HIGHLIGHT: L(
+        'Code Block Highlighting',
+        'Apply syntax highlighting to code blocks in responses. Improves readability in multi\u2011language projects. May increase render time on very long messages.',
+        [
+          ['Prism.js', 'https://prismjs.com/']
+        ],
+        [['UX','info']]
+      ),
+      CHAT_SYSTEM_PROMPT: L(
+        'Custom System Prompt',
+        'Override the default expert system prompt for Chat. Use to adjust tone, safety constraints, or provide domain instructions. Leave empty to use the built\u2011in AGRO RAG expert prompt.',
+        [
+          ['Prompt Engineering (Guide)', 'https://platform.openai.com/docs/guides/prompt-engineering']
+        ]
+      ),
+      CHAT_HISTORY: L(
+        'Chat History Storage',
+        'Controls how chat history is saved and loaded. History persists in browser localStorage only \u2014 no server storage for privacy.',
+        [
+          ['localStorage', 'https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage']
+        ],
+        [['Browser storage','info']]
+      ),
+      CHAT_HISTORY_ENABLED: L(
+        'Save Chat Messages',
+        'When enabled, messages are persisted to browser localStorage and restored on reload. Disable for ephemeral sessions or shared devices.',
+        [
+          ['localStorage', 'https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage']
+        ]
+      ),
+      CHAT_HISTORY_LIMIT: L(
+        'History Limit',
+        'Maximum number of messages to retain in local history. Older messages are pruned when the limit is reached. Typical range: 50\u20131000.',
+        [
+          ['Usability: History & Recall', 'https://www.nngroup.com/articles/search-logs/']
+        ]
+      ),
+      CHAT_HISTORY_LOAD_ON_START: L(
+        'Load History on Startup',
+        'Automatically loads and displays previous conversations when opening the Chat tab. Disable to start with a clean slate every session.',
+        [
+          ['localStorage', 'https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage']
+        ]
+      ),
+
+      // Chunking Parameters
+      CHUNK_SIZE: L(
+        'Chunk Size',
+        'Target size (in characters) for each indexed chunk. For AST chunking this acts as a guardrail when nodes are large. Larger chunks preserve more context but reduce recall; smaller chunks improve recall but may fragment semantics.',
+        [
+          ['LangChain: Text Splitters', 'https://python.langchain.com/docs/modules/data_connection/document_transformers/text_splitters/'],
+          ['Okapi BM25 (context windows)', 'https://en.wikipedia.org/wiki/Okapi_BM25']
+        ],
+        [['Affects recall/precision','info']]
+      ),
+      CHUNK_OVERLAP: L(
+        'Chunk Overlap',
+        'Number of characters overlapped between adjacent chunks. Overlap reduces boundary effects and improves recall at the cost of a larger index and slower indexing.',
+        [
+          ['LangChain: Text Splitters', 'https://python.langchain.com/docs/modules/data_connection/document_transformers/text_splitters/']
+        ]
+      ),
+
+      // Indexing Settings
+      INDEX_MAX_WORKERS: L(
+        'Index Max Workers',
+        'Maximum number of parallel workers used during indexing. Increase to speed up indexing on multi\u2011core machines; decrease if you observe system contention. A good starting point is CPU cores \u2212 1.',
+        [
+          ['concurrent.futures', 'https://docs.python.org/3/library/concurrent.futures.html'],
+          ['multiprocessing', 'https://docs.python.org/3/library/multiprocessing.html']
+        ],
+        [['Performance','info']]
+      ),
+      INDEXING_PROCESS: L(
+        'Indexing Process',
+        'Indexing prepares your code for retrieval: it chunks files, builds a BM25 sparse index, optionally generates dense embeddings, and writes vectors to Qdrant. Re\u2011run after significant code changes to keep answers fresh.',
+        [
+          ['Okapi BM25', 'https://en.wikipedia.org/wiki/Okapi_BM25'],
+          ['Qdrant Docs', 'https://qdrant.tech/documentation/']
+        ]
+      ),
+      INDEX_PROFILES: L(
+        'Index Profiles',
+        'Preset configurations for common workflows: shared (BM25\u2011only, fast), full (BM25 + embeddings, best quality), dev (small subset). Profiles change multiple parameters at once to match your goal.',
+        [
+          ['Indexing Guide', '/docs/INDEXING.md']
+        ],
+        [['Convenience','info']]
+      ),
+
+      // Ollama Timeouts
+      OLLAMA_REQUEST_TIMEOUT: L(
+        'Local Request Timeout (seconds)',
+        'Maximum total time to wait for a single local (Ollama) generation request to complete. Increase for long answers; decrease to fail fast on slow models or poor connectivity.',
+        [
+          ['Ollama API: Generate', 'https://github.com/ollama/ollama/blob/main/docs/api.md#generate-a-completion'],
+          ['HTTP Timeouts', 'https://developer.mozilla.org/en-US/docs/Web/HTTP/Timeouts']
+        ]
+      ),
+      OLLAMA_STREAM_IDLE_TIMEOUT: L(
+        'Local Stream Idle Timeout (seconds)',
+        'Maximum idle time allowed between streamed chunks from local (Ollama). If no tokens arrive within this window, the request aborts to prevent hanging streams.',
+        [
+          ['Streaming Basics', 'https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream'],
+          ['Ollama Streaming', 'https://github.com/ollama/ollama/blob/main/docs/api.md#streaming']
+        ]
+      ),
+
+      // Backend Selection
+      VECTOR_BACKEND: L(
+        'Vector Backend',
+        'Selects the vector search backend used for dense retrieval. Qdrant is the default/primary backend in AGRO and stores your embedding vectors for fast similarity search. Use this to switch between implementations when benchmarking or troubleshooting.',
+        [
+          ['Qdrant Docs', 'https://qdrant.tech/documentation/'],
+          ['LangChain Vector Stores', 'https://python.langchain.com/docs/integrations/vectorstores/']
+        ],
+        [['Core Setting','info']]
+      ),
+      RERANKER_BACKEND: L(
+        'Reranker Backend',
+        'Choose the reranking provider to reorder retrieved results by semantic relevance (cross-encoder). Options typically include Cohere Rerank, the built\u2011in AGRO Learning Reranker, or none. Reranking improves answer quality but adds latency.',
+        [
+          ['Cohere Rerank', 'https://docs.cohere.com/docs/rerank'],
+          ['Sentence\u2011Transformers (Cross\u2011Encoders)', 'https://www.sbert.net/examples/training/cross-encoder/README.html']
+        ],
+        [['Improves quality','info']]
+      ),
+      RERANK_INPUT_SNIPPET_CHARS: L(
+        'Rerank Snippet Length',
+        'Maximum characters from each candidate chunk sent to the reranker. Keeps payloads within provider limits and focuses scoring on the most relevant prefix. Typical range: 400-1200 chars. Use 400-600 when providers reject long inputs or latency is critical; 800-1200 when answers depend on longer doc/context blocks. If set too low, quality drops from missing context; too high increases latency and rerank cost per request.',
+        [
+          ['Voyage reranker token limits', 'https://docs.voyageai.com/docs/reranker'],
+          ['Cohere rerank context length', 'https://docs.cohere.com/docs/rerank']
+        ],
+        [['Affects latency/cost', 'warn'], ['Context guardrail', 'info']]
+      ),
+      RERANKER_TRAIN_MAX_LENGTH: L(
+        'Reranker Train Max Length',
+        'Maximum token length for reranker training examples. Longer sequences may improve context but require more memory and training time. Typical range: 256\u20131024.',
+        [
+          ['Transformers: Tokenization', 'https://huggingface.co/docs/transformers/main_classes/tokenizer']
+        ]
+      ),
+
+      // AGRO Learning Reranker
+      AGRO_RERANKER_ENABLED: L(
+        'Learning Reranker Enabled',
+        'Enable AGRO\u2019s built\u2011in Learning Reranker (cross\u2011encoder) for improved ordering of retrieved chunks. Requires a trained model checkpoint and triplets data for training/mining.',
+        [
+          ['AGRO: Learning Reranker', '/docs/LEARNING_RERANKER.md'],
+          ['Sentence\u2011Transformers', 'https://www.sbert.net/']
+        ],
+        [['Improves quality','info']]
+      ),
+      AGRO_RERANKER_MODEL_PATH: L(
+        'Reranker Model Path',
+        'Filesystem path to the trained reranker model checkpoint directory (relative paths recommended). The service loads weights from this path on startup or when reloaded.',
+        [
+          ['Model Checkpoints', 'https://huggingface.co/docs/transformers/main_classes/model#transformers.PreTrainedModel.from_pretrained']
+        ]
+      ),
+      AGRO_LOG_PATH: L(
+        'Reranker Log Path',
+        'Directory where the reranker writes logs and training progress. Useful for monitoring and resuming experiments. Ensure the path is writable by the server process.',
+        [
+          ['Python logging', 'https://docs.python.org/3/library/logging.html']
+        ]
+      ),
+      AGRO_TRIPLETS_PATH: L(
+        'Triplets Dataset Path',
+        'Path to mined triplets used for training the Learning Reranker. Triplets contain (query, positive, negative) examples. Keep under version control or in a reproducible data store.',
+        [
+          ['Triplet Loss', 'https://en.wikipedia.org/wiki/Triplet_loss'],
+          ['SBERT Training Data', 'https://www.sbert.net/examples/training/cross-encoder/README.html']
+        ]
+      ),
+      AGRO_RERANKER_MINE_MODE: L(
+        'Triplet Mining Mode',
+        'Strategy for mining training triplets: random, semi\u2011hard, or hard negatives. Harder negatives improve discriminative power but may be noisier and slower to mine.',
+        [
+          ['Hard Negative Mining', 'https://sbert.net/examples/training/quora_duplicate_questions/README.html']
+        ],
+        [['Advanced','info']]
+      ),
+      AGRO_RERANKER_MINE_RESET: L(
+        'Reset Triplets Before Mining',
+        'If enabled, deletes existing mined triplets before starting a new mining run. Use with caution to avoid losing curated datasets.',
+        [
+          ['Data Management', '/docs/LEARNING_RERANKER.md#mining']
+        ],
+        [['Destructive','warn']]
+      ),
     };
   }
 
