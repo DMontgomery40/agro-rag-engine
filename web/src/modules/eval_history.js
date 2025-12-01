@@ -28,6 +28,20 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Add eval run to history (called from eval_runner.js)
+/**
+ * ---agentspec
+ * what: |
+ *   Appends eval run entry (timestamp, config, rerank_backend, top1, topk metrics) to in-memory eval history. Returns updated history array.
+ *
+ * why: |
+ *   Centralizes eval result tracking for comparison across retrieval + reranking configurations.
+ *
+ * guardrails:
+ *   - DO NOT persist to disk here; caller owns storage strategy
+ *   - NOTE: Mutates history array; no rollback on failure
+ *   - ASK USER: Should history be capped (max entries) to prevent unbounded growth?
+ * ---/agentspec
+ */
 function addEvalRunToHistory(config, results) {
     const history = getEvalHistory();
 
@@ -55,6 +69,19 @@ function addEvalRunToHistory(config, results) {
 }
 
 // Get eval history from localStorage
+/**
+ * ---agentspec
+ * what: |
+ *   Retrieves evaluation history from localStorage. Returns parsed array or empty array on parse failure.
+ *
+ * why: |
+ *   Wraps localStorage access with error handling to prevent crashes on corrupted data.
+ *
+ * guardrails:
+ *   - DO NOT assume localStorage is always available; some browsers/contexts block it
+ *   - NOTE: Silent fallback to [] masks data loss; consider logging severity level
+ * ---/agentspec
+ */
 function getEvalHistory() {
     try {
         const stored = localStorage.getItem(EVAL_HISTORY_KEY);
@@ -66,6 +93,19 @@ function getEvalHistory() {
 }
 
 // Load and display eval history
+/**
+ * ---agentspec
+ * what: |
+ *   Loads evaluation history from storage and populates HTML table body. Reads from getEvalHistory(), renders rows into #eval-history-tbody. Returns early if tbody missing or history empty.
+ *
+ * why: |
+ *   Centralizes history retrieval and DOM rendering to avoid duplication across UI refresh cycles.
+ *
+ * guardrails:
+ *   - DO NOT assume tbody exists; guard with early return
+ *   - NOTE: Empty history renders placeholder row; verify getEvalHistory() returns array
+ * ---/agentspec
+ */
 function loadEvalHistory() {
     const history = getEvalHistory();
     const tbody = document.getElementById('eval-history-tbody');
@@ -178,6 +218,20 @@ function loadEvalHistory() {
 }
 
 // Seed eval history with tonight's results
+/**
+ * ---agentspec
+ * what: |
+ *   Seeds evaluation history with BM25 + Trained CE retrieval config. Records timestamp, rerank backend (local), and retrieval metrics (top1=28, topk=48, total=52).
+ *
+ * why: |
+ *   Establishes baseline retrieval performance snapshot for comparative eval tracking.
+ *
+ * guardrails:
+ *   - DO NOT modify timestamp; use UTC ISO 8601 only
+ *   - NOTE: top1 + topk must be ≤ total; validate before insert
+ *   - ASK USER: Confirm rerank_backend='local' is correct for your setup
+ * ---/agentspec
+ */
 function seedEvalHistory() {
     const history = [
         {

@@ -24,6 +24,20 @@ let chatMessages = [];
 let chatSettings = loadChatSettings();
 
 // Load settings from localStorage
+/**
+ * ---agentspec
+ * what: |
+ *   Loads chat settings from localStorage. Merges saved JSON with DEFAULT_CHAT_SETTINGS; returns merged object or defaults on parse failure.
+ *
+ * why: |
+ *   Graceful fallback ensures app never crashes on corrupted localStorage data.
+ *
+ * guardrails:
+ *   - DO NOT assume localStorage is always available; wrap in try-catch
+ *   - NOTE: Silent console.warn on parse error; consider user-facing alert if settings are critical
+ *   - DO NOT mutate DEFAULT_CHAT_SETTINGS; spread operator creates new object
+ * ---/agentspec
+ */
 function loadChatSettings() {
     try {
         const saved = localStorage.getItem('agro_chat_settings');
@@ -37,6 +51,20 @@ function loadChatSettings() {
 }
 
 // Save settings to localStorage
+/**
+ * ---agentspec
+ * what: |
+ *   Reads chat UI form fields (model, temperature, maxTokens, multiQuery, finalK, confidence). Parses & saves settings object.
+ *
+ * why: |
+ *   Centralizes settings persistence from DOM to prevent scattered state mutations.
+ *
+ * guardrails:
+ *   - DO NOT validate ranges here; add client-side constraints on inputs
+ *   - NOTE: Throws if DOM IDs missing; add existence checks before parse
+ *   - ASK USER: Where does this save? (localStorage, API, state?)
+ * ---/agentspec
+ */
 function saveChatSettings() {
     try {
         const settings = {
@@ -99,6 +127,19 @@ function saveChatSettings() {
 }
 
 // Reset settings to defaults
+/**
+ * ---agentspec
+ * what: |
+ *   Resets chat settings to defaults after user confirmation. Clears localStorage, reapplies defaults, shows success toast.
+ *
+ * why: |
+ *   Confirmation prevents accidental loss; localStorage removal ensures clean state on reload.
+ *
+ * guardrails:
+ *   - DO NOT reset without confirm() dialog; user must opt-in
+ *   - NOTE: applyChatSettings() must exist and handle empty/default state
+ * ---/agentspec
+ */
 function resetChatSettings() {
     if (!confirm('Reset all chat settings to defaults?')) return;
 
@@ -109,6 +150,20 @@ function resetChatSettings() {
 }
 
 // Apply settings to UI inputs
+/**
+ * ---agentspec
+ * what: |
+ *   Applies chat configuration settings (model, temperature, max_tokens, multi_query, finalK, confidence) to DOM elements by ID. Maps chatSettings object keys to element values.
+ *
+ * why: |
+ *   Centralizes UI state sync; single source of truth for chat config.
+ *
+ * guardrails:
+ *   - DO NOT assume elements exist; add null checks before assignment
+ *   - NOTE: Silent failure if element IDs missing; add error logging
+ *   - ASK USER: Should invalid settings reject or warn?
+ * ---/agentspec
+ */
 function applyChatSettings() {
     try {
         const elements = {
@@ -290,6 +345,19 @@ async function sendMessage() {
 }
 
 // Add a message to the chat
+/**
+ * ---agentspec
+ * what: |
+ *   Adds message DOM element to chat container. Accepts role, content, loading/error flags, history-save toggle. Removes empty-state placeholder on first message.
+ *
+ * why: |
+ *   Centralizes message rendering logic; prevents duplicate empty states and ensures consistent DOM structure.
+ *
+ * guardrails:
+ *   - DO NOT call without messagesContainer element present; will throw
+ *   - NOTE: saveToHistory flag controls persistence; set false for transient UI-only messages
+ * ---/agentspec
+ */
 function addMessage(role, content, isLoading = false, isError = false, saveToHistory = true) {
     const messagesContainer = document.getElementById('chat-messages');
 
@@ -348,6 +416,19 @@ function addMessage(role, content, isLoading = false, isError = false, saveToHis
 }
 
 // Remove a message by ID
+/**
+ * ---agentspec
+ * what: |
+ *   Removes message from DOM by ID and filters it from chatMessages array. Input: messageId string. Output: none (side effects only).
+ *
+ * why: |
+ *   Dual removal (DOM + state) ensures UI and data stay synchronized.
+ *
+ * guardrails:
+ *   - DO NOT remove without verifying messageId exists; silent failures hide bugs
+ *   - NOTE: No undo; deletion is permanent
+ * ---/agentspec
+ */
 function removeMessage(messageId) {
     const messageDiv = document.getElementById(messageId);
     if (messageDiv) {
@@ -357,6 +438,20 @@ function removeMessage(messageId) {
 }
 
 // Format assistant message with file links and code blocks
+/**
+ * ---agentspec
+ * what: |
+ *   Formats assistant message content by escaping HTML and auto-linking file paths with optional line ranges (e.g., server/app.py:123-145). Returns formatted string with clickable file references.
+ *
+ * why: |
+ *   Centralizes message rendering logic to prevent XSS while making code references navigable.
+ *
+ * guardrails:
+ *   - DO NOT execute regex without escapeHtml first; XSS risk
+ *   - NOTE: Requires window.lastChatEventId for click tracking; gracefully handles null
+ *   - ASK USER: Confirm file path regex covers all required extensions before deploy
+ * ---/agentspec
+ */
 function formatAssistantMessage(content) {
     let formatted = escapeHtml(content);
 
@@ -401,6 +496,19 @@ function formatAssistantMessage(content) {
 }
 
 // Clear all messages
+/**
+ * ---agentspec
+ * what: |
+ *   Clears chat message history after user confirmation. Resets messagesContainer to empty state with placeholder UI.
+ *
+ * why: |
+ *   Confirmation prevents accidental data loss; placeholder provides visual feedback.
+ *
+ * guardrails:
+ *   - DO NOT clear without confirm() dialog; user must opt-in
+ *   - NOTE: Clears DOM only; backend persistence not handled here
+ * ---/agentspec
+ */
 function clearChat() {
     if (!confirm('Clear all messages?')) return;
 
@@ -418,6 +526,19 @@ function clearChat() {
 }
 
 // Helper: escape HTML
+/**
+ * ---agentspec
+ * what: |
+ *   Escapes HTML special characters by setting textContent on a DOM element and reading innerHTML. Converts &, <, >, ", ' to safe entities.
+ *
+ * why: |
+ *   DOM-based escaping is browser-native and handles all edge cases without manual regex patterns.
+ *
+ * guardrails:
+ *   - DO NOT use on server-side; document.createElement only works in browsers
+ *   - NOTE: Slower than regex for bulk operations; acceptable for per-message escaping
+ * ---/agentspec
+ */
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
@@ -427,6 +548,20 @@ function escapeHtml(text) {
 // ========== HISTORY MANAGEMENT FUNCTIONS ==========
 
 // Save message to history
+/**
+ * ---agentspec
+ * what: |
+ *   Saves chat message to localStorage with role, content, messageId. Returns early if historyEnabled is false.
+ *
+ * why: |
+ *   Persists conversation state client-side; early exit prevents unnecessary writes when history disabled.
+ *
+ * guardrails:
+ *   - DO NOT assume localStorage is always available; wrap in try-catch for quota/permission errors
+ *   - NOTE: messageId collision risk if not globally unique; validate upstream
+ *   - DO NOT store sensitive data (PII, tokens) in localStorage
+ * ---/agentspec
+ */
 function saveMessageToHistory(role, content, messageId) {
     if (!chatSettings.historyEnabled) return;
 
@@ -455,6 +590,22 @@ function saveMessageToHistory(role, content, messageId) {
 }
 
 // Load chat history from localStorage and render it into the transcript
+/**
+ * ```
+ * ---agentspec
+ * what: |
+ *   Loads chat history from localStorage. Parses JSON, validates {role, content} structure, returns array or empty fallback.
+ *
+ * why: |
+ *   Graceful degradation: silent fail on parse error or missing key prevents UI crash.
+ *
+ * guardrails:
+ *   - DO NOT assume localStorage is available; wrap in try-catch
+ *   - NOTE: Empty array returned on any parse failure; no error thrown
+ *   - ASK USER: Add schema validation beyond structure check (e.g., role enum: "user"|"assistant")
+ * ---/agentspec
+ * ```
+ */
 function loadChatHistory() {
     if (!chatSettings.historyEnabled || !chatSettings.showHistoryOnLoad) return;
 
@@ -511,6 +662,20 @@ function loadChatHistory() {
 }
 
 // Render compact history list inside the History dropdown (last 20)
+/**
+ * ---agentspec
+ * what: |
+ *   Renders chat history dropdown by clearing DOM and rebuilding list. Preserves export/clear buttons; rebuilds item list above them.
+ *
+ * why: |
+ *   Separates DOM mutation (clear + rebuild) from button preservation to avoid re-binding event listeners.
+ *
+ * guardrails:
+ *   - DO NOT rebuild buttons; only list items above them
+ *   - NOTE: Assumes exportBtn and clearBtn exist; will silently fail if missing
+ *   - ASK USER: Should missing buttons throw error or warn?
+ * ---/agentspec
+ */
 function renderHistoryDropdown(history) {
     try {
         const dropdown = document.getElementById('history-dropdown');
@@ -570,6 +735,19 @@ function renderHistoryDropdown(history) {
 }
 
 // Clear chat history
+/**
+ * ---agentspec
+ * what: |
+ *   Clears localStorage chat history after user confirmation. Removes 'agro_chat_history' key, updates UI, shows success toast.
+ *
+ * why: |
+ *   Confirmation prevents accidental data loss; try-catch handles storage API failures gracefully.
+ *
+ * guardrails:
+ *   - DO NOT skip confirmation; irreversible operation
+ *   - NOTE: Silently fails if localStorage unavailable; consider retry logic for critical data
+ * ---/agentspec
+ */
 function clearChatHistory() {
     if (!confirm('Clear all saved chat history? This cannot be undone.')) return;
 
@@ -584,6 +762,20 @@ function clearChatHistory() {
 }
 
 // Export chat history as JSON
+/**
+ * ---agentspec
+ * what: |
+ *   Exports localStorage chat history to JSON file. Retrieves 'agro_chat_history', creates blob, triggers browser download with timestamped filename.
+ *
+ * why: |
+ *   Client-side export avoids server round-trip; localStorage access + blob URL pattern is standard for browser file downloads.
+ *
+ * guardrails:
+ *   - DO NOT assume localStorage exists; wrap in try-catch for private/incognito mode
+ *   - NOTE: URL.createObjectURL must be revoked (revokeObjectURL) to prevent memory leak
+ *   - DO NOT append/remove DOM elements without cleanup; remove anchor after click
+ * ---/agentspec
+ */
 function exportChatHistory() {
     try {
         const history = localStorage.getItem('agro_chat_history') || '[]';
@@ -604,6 +796,20 @@ function exportChatHistory() {
 }
 
 // Calculate and display storage usage
+/**
+ * ---agentspec
+ * what: |
+ *   Reads agro_chat_history from localStorage, calculates Blob size in KB, parses JSON, updates #chat-storage-display DOM element.
+ *
+ * why: |
+ *   Centralizes storage monitoring for chat history quota tracking.
+ *
+ * guardrails:
+ *   - DO NOT assume displayElement exists; check before update
+ *   - NOTE: Blob size may differ from string length due to encoding
+ *   - ASK USER: Should this clear history on quota exceeded?
+ * ---/agentspec
+ */
 function updateStorageDisplay() {
     try {
         const historyStr = localStorage.getItem('agro_chat_history') || '[]';
@@ -621,6 +827,20 @@ function updateStorageDisplay() {
 }
 
 // Auto-resize textarea
+/**
+ * ---agentspec
+ * what: |
+ *   Auto-resizes textarea height based on content scroll height, capped at 120px. Resets height to 'auto' before measuring to prevent stale values.
+ *
+ * why: |
+ *   Prevents layout shift and ensures textarea grows/shrinks with user input without exceeding viewport.
+ *
+ * guardrails:
+ *   - DO NOT remove 'auto' reset; scrollHeight requires it to measure accurately
+ *   - NOTE: 120px cap is hardcoded; make configurable if max-height varies
+ *   - ASK USER: Is this textarea managed by React? If yes, move logic to useEffect/useLayoutEffect
+ * ---/agentspec
+ */
 function autoResizeTextarea(textarea) {
     textarea.style.height = 'auto';
     const newHeight = Math.min(textarea.scrollHeight, 120);
@@ -628,6 +848,19 @@ function autoResizeTextarea(textarea) {
 }
 
 // Initialize chat UI and event listeners
+/**
+ * ---agentspec
+ * what: |
+ *   Initializes legacy chat UI only if React ChatInterface is not present. Checks for data-react-chat="true" marker; skips init if found.
+ *
+ * why: |
+ *   Prevents duplicate chat initialization and conflicts between legacy and React implementations.
+ *
+ * guardrails:
+ *   - DO NOT initialize if data-react-chat="true" exists; React owns the DOM
+ *   - NOTE: Relies on React component to set marker; undocumented contract
+ * ---/agentspec
+ */
 function initChatUI() {
     // Skip initialization if React ChatInterface is managing the chat
     // React component sets data-react-chat="true" on its container
@@ -707,6 +940,19 @@ function initChatUI() {
 }
 
 // Cleanup function for unmounting
+/**
+ * ---agentspec
+ * what: |
+ *   Cleanup function for chat UI. Logs unmount event; placeholder for future resource cleanup (timers, requests).
+ *
+ * why: |
+ *   Ensures graceful teardown when chat component unmounts; prevents memory leaks.
+ *
+ * guardrails:
+ *   - NOTE: Currently no-op; add actual cleanup (clearInterval, abort requests) before production
+ *   - DO NOT rely on this for critical resource management until implemented
+ * ---/agentspec
+ */
 function cleanupChatUI() {
     // Clear any pending requests or intervals
     // (Currently no cleanup needed, but placeholder for future)
@@ -715,6 +961,20 @@ function cleanupChatUI() {
 
 // Register with Navigation API
 if (typeof window !== 'undefined') {
+    /**
+     * ---agentspec
+     * what: |
+     *   Conditionally initializes chat UI when DOM elements exist or React signals readiness. Wraps initChatUI() in try-catch; logs warnings on failure.
+     *
+     * why: |
+     *   Defers initialization until chat UI is mounted, avoiding errors from missing DOM nodes during page load.
+     *
+     * guardrails:
+     *   - DO NOT initialize before DOM ready; causes null reference errors
+     *   - NOTE: Silently fails if initChatUI() throws; consider retry logic for transient failures
+     *   - ASK USER: Should failed init attempts retry, or log as fatal?
+     * ---/agentspec
+     */
     function tryInitOnVisible() {
         // Only initialize if chat UI is present in DOM
         if (document.getElementById('chat-input') || document.getElementById('tab-chat')) {

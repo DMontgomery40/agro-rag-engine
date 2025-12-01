@@ -3,13 +3,25 @@
 // Subtab navigation for RAG mega-tab
 
 import { useEffect } from 'react';
-import { useConfig } from '@/hooks';
 
 interface RAGSubtabsProps {
   activeSubtab: string;
   onSubtabChange: (subtab: string) => void;
 }
 
+/**
+ * ---agentspec
+ * what: |
+ *   Renders tabbed navigation for RAG pipeline stages. Takes activeSubtab ID and onSubtabChange callback; renders 6 subtab buttons (Data Quality, Retrieval, External Rerankers, Learning Ranker, Indexing, Evaluate).
+ *
+ * why: |
+ *   Centralizes RAG workflow UI into reusable component with consistent tab state management.
+ *
+ * guardrails:
+ *   - DO NOT hardcode subtab list; accept as prop for extensibility
+ *   - NOTE: Requires activeSubtab and onSubtabChange in parent state
+ * ---/agentspec
+ */
 export function RAGSubtabs({ activeSubtab, onSubtabChange }: RAGSubtabsProps) {
   const subtabs = [
     { id: 'data-quality', title: 'Data Quality' },

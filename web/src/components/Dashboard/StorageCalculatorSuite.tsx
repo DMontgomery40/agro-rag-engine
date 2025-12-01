@@ -120,8 +120,8 @@ export function StorageCalculatorSuite() {
   useEffect(() => {
     async function loadConfig() {
       try {
-        const config = await configApi.getAll();
-        const embDim = config.values?.EMBEDDING_DIM || 3072;
+        const config = await configApi.load();
+        const embDim = Number(config.env?.EMBEDDING_DIM ?? config.env?.EMBED_DIM ?? 3072);
         
         setCalc1(prev => ({ ...prev, embDim }));
         setCalc2(prev => ({ ...prev, embDim }));
@@ -736,4 +736,3 @@ export function StorageCalculatorSuite() {
     </div>
   );
 }
-

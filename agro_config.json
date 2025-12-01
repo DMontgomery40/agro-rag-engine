@@ -11,10 +11,10 @@
     "conf_any": 0.55,
     "eval_multi": 1,
     "query_expansion_enabled": 1,
-    "bm25_weight": 0.8,
+    "bm25_weight": 0.5582861807587417,
     "bm25_k1": 1.2,
     "bm25_b": 0.4,
-    "vector_weight": 0.2,
+    "vector_weight": 0.4417138192412582,
     "card_search_enabled": 1,
     "multi_query_m": 4,
     "use_semantic_synonyms": 1,
@@ -104,7 +104,7 @@
     "preserve_imports": 1
   },
   "indexing": {
-    "qdrant_url": "http://127.0.0.1:6333",
+    "qdrant_url": "http://qdrant:6333",
     "collection_name": "code_chunks_agro",
     "collection_suffix": "test",
     "repo_path": "",
@@ -134,7 +134,7 @@
     "agro_reranker_reload_period_sec": 60,
     "cohere_rerank_model": "rerank-3.5",
     "voyage_rerank_model": "rerank-2",
-    "reranker_backend": "local",
+    "reranker_backend": "cohere",
     "reranker_timeout": 10,
     "rerank_input_snippet_chars": 700,
     "transformers_trust_remote_code": 1
@@ -217,7 +217,7 @@
     "alert_notify_severities": "critical,warning",
     "langchain_endpoint": "https://api.smith.langchain.com",
     "langchain_project": "agro",
-    "langchain_tracing_v2": 0,
+    "langchain_tracing_v2": 1,
     "langtrace_api_host": "",
     "langtrace_project_id": ""
   },

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useConfig } from '@/hooks';
 
 // TypeScript interface for reranker info response
 interface RerankerInfo {
@@ -27,20 +26,48 @@ interface PriceModelEntry {
   unit?: string;
 }
 
+/**
+ * ---agentspec
+ * what: |
+ *   React component managing reranker backend selection (local vs cloud). Renders UI for provider/model config. State: rerankBackend, activeChoice, cloudProvider, cloudModel, voyageModel, cohereModel.
+ *
+ * why: |
+ *   Centralizes reranker config UI in one subtab; separates local vs cloud workflows via toggle.
+ *
+ * guardrails:
+ *   - DO NOT persist state to localStorage without explicit save handler
+ *   - NOTE: Cloud provider dropdown must populate before model selection enabled
+ *   - ASK USER: Validate selected models exist in provider API before submission
+ * ---/agentspec
+ */
 export function ExternalRerankersSubtab() {
-  const { get, set, loading, error, env } = useConfig();
   // State for each input field
   const [rerankBackend, setRerankBackend] = useState<string>('local');
   const [activeChoice, setActiveChoice] = useState<'local' | 'cloud'>('local');
   const [cloudProvider, setCloudProvider] = useState<string>('');
   const [cloudModel, setCloudModel] = useState<string>('');
+  const [voyageModel, setVoyageModel] = useState<string>('rerank-2');
+  const [rerankerModel, setRerankerModel] = useState<string>('');
   const [cohereModel, setCohereModel] = useState<string>('rerank-3.5');
+  const [cohereApiKey, setCohereApiKey] = useState<string>('');
   const [trustRemoteCode, setTrustRemoteCode] = useState<string>('1');
   const [snippetChars, setSnippetChars] = useState<number>(700);
   const [priceModels, setPriceModels] = useState<PriceModelEntry[]>([]);
   const [savingModel, setSavingModel] = useState<boolean>(false);
-  const [localError, setLocalError] = useState<string>('');
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Builds Set of unique provider strings from priceModels array + cloudProvider. Returns deduplicated provider options.
+   *
+   * why: |
+   *   useMemo prevents recalculation on every render; Set ensures uniqueness without manual deduplication.
+   *
+   * guardrails:
+   *   - DO NOT mutate opts Set after creation; return immutable reference
+   *   - NOTE: cloudProvider added unconditionally; validate upstream if optional
+   * ---/agentspec
+   */
   const providerOptions = useMemo(() => {
     const opts = new Set<string>();
     priceModels.forEach((m) => {
@@ -57,6 +84,19 @@ export function ExternalRerankersSubtab() {
     return Array.from(opts).sort();
   }, [priceModels, cloudProvider, rerankBackend]);
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Filters priceModels by selected cloudProvider, extracts unique model names. Returns deduplicated string array.
+   *
+   * why: |
+   *   Memoized to prevent recalculation on every render; dependency array ensures updates only when priceModels or cloudProvider change.
+   *
+   * guardrails:
+   *   - DO NOT filter if cloudProvider is null/empty; returns empty array
+   *   - NOTE: Deduplication via Set assumes model names are strings; null/undefined values filtered by .filter(Boolean)
+   * ---/agentspec
+   */
   const cloudModelOptions = useMemo(() => {
     const selected = (cloudProvider || '').toLowerCase();
     const options = priceModels
@@ -66,34 +106,50 @@ export function ExternalRerankersSubtab() {
     return Array.from(new Set(options));
   }, [priceModels, cloudProvider]);
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Builds backend options list by combining static base options with dynamic provider options. Filters duplicates, returns memoized array.
+   *
+   * why: |
+   *   Memoization prevents unnecessary recalculations on every render; dynamic filtering adapts to runtime provider availability.
+   *
+   * guardrails:
+   *   - DO NOT mutate providerOptions; filter creates new array
+   *   - NOTE: Assumes providerOptions is stable or wrapped in useMemo upstream
+   * ---/agentspec
+   */
   const backendOptions = useMemo(() => {
     const base = ['none', 'local', 'hf', 'learning'];
+    /**
+     * ---agentspec
+     * what: |
+     *   Merges base provider options with dynamic ones, filtering duplicates. Returns combined array.
+     *
+     * why: |
+     *   Ensures UI always displays base options plus any new provider options without redundancy.
+     *
+     * guardrails:
+     *   - DO NOT mutate providerOptions; filter creates new array
+     *   - NOTE: Depends on base array being stable; memoize if base changes frequently
+     * ---/agentspec
+     */
     const dynamic = providerOptions.filter((opt) => opt && !base.includes(opt));
     return [...base, ...dynamic];
   }, [providerOptions]);
 
   // State for reranker info display
   const [rerankerInfo, setRerankerInfo] = useState<RerankerInfo | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>('');
 
   const addModelDisabled = savingModel || !cloudProvider || !cloudModel;
 
   // Load current config on mount
   useEffect(() => {
+    loadConfig();
     loadPrices();
-    loadRerankerInfo();
   }, []);
-
-  const loadRerankerInfo = async () => {
-    try {
-      const response = await fetch('/api/reranker/info');
-      if (response.ok) {
-        const data = await response.json();
-        setRerankerInfo(data);
-      }
-    } catch (err) {
-      console.warn('[ExternalRerankersSubtab] Could not load reranker info:', err);
-    }
-  };
 
   useEffect(() => {
     if (!cloudProvider && providerOptions.length > 0) {
@@ -107,15 +163,20 @@ export function ExternalRerankersSubtab() {
     }
   }, [cloudModelOptions, cloudModel]);
 
-  // Sync config values from backend on mount
-  useEffect(() => {
-    if (!loading) {
-      setCloudModel(get('RERANKER_CLOUD_MODEL', ''));
-      setSnippetChars(get('RERANK_INPUT_SNIPPET_CHARS', 700));
-    }
-  }, [loading, get]);
-
-
+  /**
+   * ---agentspec
+   * what: |
+   *   Fetches pricing data from /api/models endpoint. Parses JSON response, extracts models array, filters for rerank entries. Returns PriceModelEntry[].
+   *
+   * why: |
+   *   Centralizes price data loading with defensive parsing to handle malformed API responses.
+   *
+   * guardrails:
+   *   - DO NOT assume data.models exists; validate Array.isArray() first
+   *   - NOTE: Throws on HTTP error or JSON parse failure
+   *   - ASK USER: Should 404 retry or fail-fast?
+   * ---/agentspec
+   */
   const loadPrices = async () => {
     try {
       const response = await fetch('/api/models');
@@ -132,6 +193,19 @@ export function ExternalRerankersSubtab() {
           unit: m.unit,
         }))
         .filter((m: PriceModelEntry) => {
+          /**
+           * ---agentspec
+           * what: |
+           *   Filters models.json entries for rerank capability. Returns array of models with provider, model name, and RERANK component or 'rerank' in name.
+           *
+           * why: |
+           *   Isolates rerank-enabled models to populate pricing UI without parsing entire catalog.
+           *
+           * guardrails:
+           *   - DO NOT assume models.json is always available; catch and log errors
+           *   - NOTE: Case-insensitive name matching; component check is case-sensitive (RERANK)
+           * ---/agentspec
+           */
           const comps = (m.components || []).map((c) => (typeof c === 'string' ? c.toUpperCase() : ''));
           const hasRerank = comps.includes('RERANK');
           const name = `${m.model || ''}`.toLowerCase();
@@ -141,14 +215,99 @@ export function ExternalRerankersSubtab() {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to load models.json';
       console.error('[ExternalRerankersSubtab] Error loading prices:', err);
-      setLocalError((prev) => prev || errorMsg);
+      setError((prev) => prev || errorMsg);
     }
   };
 
-  
+  /**
+   * ---agentspec
+   * what: |
+   *   Fetches config from /api/config endpoint. Sets error state on failure (non-2xx status). Clears prior errors on success.
+   *
+   * why: |
+   *   Centralizes config loading with consistent error handling and state reset.
+   *
+   * guardrails:
+   *   - DO NOT retry on 4xx; only network errors warrant retry
+   *   - NOTE: Throws on non-ok response; caller must handle Promise rejection
+   * ---/agentspec
+   */
+  const loadConfig = async () => {
+    try {
+      setError('');
+
+      // Fetch config
+      const response = await fetch('/api/config');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch config: ${response.status} ${response.statusText}`);
+      }
+      const data = await response.json();
+
+      // Extract values from env object
+      const env = data.env || {};
+      const backendRaw = (env.RERANKER_BACKEND || env.RERANK_BACKEND || 'local').toString();
+      const activeRaw = (env.RERANKER_ACTIVE || backendRaw || 'local').toString().toLowerCase();
+      const providerRaw = (env.RERANKER_PROVIDER || env.RERANKER_BACKEND || env.RERANK_BACKEND || '').toString().toLowerCase();
+      const normalizedBackend = backendRaw.toLowerCase() || 'local';
+      const providerValue = providerRaw || (normalizedBackend && !['local', 'hf', 'learning', 'none'].includes(normalizedBackend) ? normalizedBackend : cloudProvider || '');
+      const activeSelection = activeRaw === 'cloud' || (!['local', 'hf', 'learning', 'none'].includes(normalizedBackend) && providerValue) ? 'cloud' : 'local';
+      setActiveChoice(activeSelection as 'local' | 'cloud');
+      setCloudProvider(providerValue);
+      setRerankBackend(normalizedBackend);
+      setRerankerModel(env.RERANKER_MODEL || '');
+      const cohere = env.COHERE_RERANK_MODEL || 'rerank-3.5';
+      const voyage = env.VOYAGE_RERANK_MODEL || 'rerank-2';
+      setCohereModel(cohere);
+      setVoyageModel(voyage);
+      // Don't populate password field with masked value
+      setCohereApiKey(env.COHERE_API_KEY === '••••••••••••••••' ? '' : (env.COHERE_API_KEY || ''));
+      setTrustRemoteCode(env.TRANSFORMERS_TRUST_REMOTE_CODE || '1');
+      setSnippetChars(parseInt(env.RERANK_INPUT_SNIPPET_CHARS || '700', 10));
+      const cloudModelVal =
+        env.RERANKER_CLOUD_MODEL ||
+        (providerValue === 'voyage' ? voyage : undefined) ||
+        (providerValue === 'cohere' ? cohere : undefined) ||
+        (cloudModelOptions.length > 0 ? cloudModelOptions[0] : '') ||
+        cloudModel ||
+        'rerank-3.5';
+      setCloudModel(cloudModelVal);
+
+      // Fetch reranker info for display panel
+      const infoResponse = await fetch('/api/reranker/info');
+      if (infoResponse.ok) {
+        const info = await infoResponse.json();
+        // Prefer new schema if present
+        setRerankerInfo(info?.rerank_config ? info.rerank_config : info);
+      } else {
+        setRerankerInfo(null);
+      }
+
+      setLoading(false);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to load config';
+      console.error('[ExternalRerankersSubtab] Error loading config:', err);
+      setError(errorMsg);
+      setLoading(false);
+    }
+  };
+
+  /**
+   * ---agentspec
+   * what: |
+   *   POSTs environment config updates to /api/config. Accepts Record<string, any>, clears error state, returns fetch response.
+   *
+   * why: |
+   *   Centralizes config mutations with error handling for UI state consistency.
+   *
+   * guardrails:
+   *   - DO NOT validate envUpdates shape client-side; server must reject invalid keys
+   *   - NOTE: Clears error before request; fails silently if response not checked
+   *   - ASK USER: Add response.ok check and error setState on failure?
+   * ---/agentspec
+   */
   const updateConfigBatch = async (envUpdates: Record<string, any>) => {
     try {
-      setLocalError('');
+      setError('');
 
       const response = await fetch('/api/config', {
         method: 'POST',
@@ -156,6 +315,19 @@ export function ExternalRerankersSubtab() {
         body: JSON.stringify({ env: envUpdates })
       });
 
+      /**
+       * ---agentspec
+       * what: |
+       *   Parses JSON response from config update endpoint. Throws on HTTP error or error status. Reloads config via POST /api/env/reload.
+       *
+       * why: |
+       *   Ensures backend state syncs after config mutation; catches both network and application-level failures.
+       *
+       * guardrails:
+       *   - DO NOT skip reload; stale config causes inconsistent behavior
+       *   - NOTE: Silently defaults payload to {} on JSON parse failure; may mask malformed responses
+       * ---/agentspec
+       */
       const payload = await response.json().catch(() => ({}));
 
       if (!response.ok || payload?.status === 'error') {
@@ -167,45 +339,88 @@ export function ExternalRerankersSubtab() {
       await fetch('/api/env/reload', { method: 'POST' });
 
       // Reload config after update to get latest values
-       } catch (err) {
+      await loadConfig();
+    } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to update configuration';
       console.error('[ExternalRerankersSubtab] Error updating config:', err);
-      setLocalError(errorMsg);
+      setError(errorMsg);
     }
   };
 
-  
+  /**
+   * ---agentspec
+   * what: |
+   *   Updates single config key via batch API. Accepts key-value pair, calls updateConfigBatch wrapper.
+   *
+   * why: |
+   *   Convenience wrapper reduces boilerplate for single-key updates.
+   *
+   * guardrails:
+   *   - NOTE: Delegates to updateConfigBatch; no validation here
+   *   - ASK USER: Does updateConfigBatch handle async errors?
+   * ---/agentspec
+   */
+  const updateConfig = async (key: string, value: any) => {
+    return updateConfigBatch({ [key]: value });
+  };
+
+  /**
+   * ---agentspec
+   * what: |
+   *   Handles reranker backend selection. Updates config and syncs active reranker state based on backend choice.
+   *
+   * why: |
+   *   Centralizes backend switching logic to prevent inconsistent state between backend and active reranker.
+   *
+   * guardrails:
+   *   - DO NOT allow 'none' backend with active reranker; sets active to 'none'
+   *   - NOTE: Local/HF/learning backends auto-switch active to 'local'
+   * ---/agentspec
+   */
   const handleBackendChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setRerankBackend(value);
-    set('RERANKER_BACKEND', value);
+    updateConfig('RERANKER_BACKEND', value);
     if (value === 'local' || value === 'hf' || value === 'learning') {
       handleActiveChange('local');
     } else if (value === 'none') {
       setActiveChoice('local');
-      set('RERANKER_ACTIVE', 'none');
+      updateConfig('RERANKER_ACTIVE', 'none');
     } else {
       const providerValue = value.trim().toLowerCase();
       setCloudProvider(providerValue);
       handleActiveChange('cloud');
-      set('RERANKER_PROVIDER', providerValue);
+      updateConfig('RERANKER_PROVIDER', providerValue);
       const providerModels = priceModels
         .filter((m) => m.provider === providerValue)
         .map((m) => m.model)
         .filter(Boolean);
       if (providerModels.length > 0) {
         setCloudModel(providerModels[0]);
-        set('RERANKER_CLOUD_MODEL', providerModels[0]);
+        updateConfig('RERANKER_CLOUD_MODEL', providerModels[0]);
       }
     }
   };
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Toggles reranker between local/cloud modes. Updates config and backend state based on selection.
+   *
+   * why: |
+   *   Centralizes mode switching logic to prevent inconsistent state between UI choice and backend config.
+   *
+   * guardrails:
+   *   - DO NOT allow undefined cloudProvider; fallback to providerOptions[0]
+   *   - NOTE: Local mode always sets backend to 'local'; cloud mode requires valid provider
+   * ---/agentspec
+   */
   const handleActiveChange = (value: 'local' | 'cloud') => {
     setActiveChoice(value);
-    set('RERANKER_ACTIVE', value === 'local' ? 'local' : 'cloud');
+    updateConfig('RERANKER_ACTIVE', value === 'local' ? 'local' : 'cloud');
     if (value === 'local') {
       setRerankBackend('local');
-      set('RERANKER_BACKEND', 'local');
+      updateConfig('RERANKER_BACKEND', 'local');
     } else {
       const providerValue = cloudProvider || providerOptions[0] || 'cloud';
       if (!cloudProvider && providerValue) {
@@ -213,15 +428,30 @@ export function ExternalRerankersSubtab() {
       }
       setRerankBackend(providerValue);
       if (providerValue) {
-        set('RERANKER_PROVIDER', providerValue);
+        updateConfig('RERANKER_PROVIDER', providerValue);
       }
-      set('RERANKER_BACKEND', providerValue);
+      updateConfig('RERANKER_BACKEND', providerValue);
       if (cloudModel) {
-        set('RERANKER_CLOUD_MODEL', cloudModel);
+        updateConfig('RERANKER_CLOUD_MODEL', cloudModel);
       }
     }
   };
 
+  /**
+   * ```
+   * ---agentspec
+   * what: |
+   *   Normalizes cloud provider input, filters pricing models by provider, selects first available model or falls back to current/provider-default. Updates state.
+   *
+   * why: |
+   *   Ensures consistent provider matching and auto-selects compatible model on provider switch.
+   *
+   * guardrails:
+   *   - DO NOT allow invalid providers; validate against priceModels list
+   *   - NOTE: Fallback chain: providerModels[0] → cloudModel → provider-default → empty string
+   * ---/agentspec
+   * ```
+   */
   const handleCloudProviderChange = (value: string) => {
     const normalized = value.trim().toLowerCase();
     setCloudProvider(normalized);
@@ -229,36 +459,65 @@ export function ExternalRerankersSubtab() {
       .filter((m) => m.provider === normalized)
       .map((m) => m.model)
       .filter(Boolean);
-    const nextModel = providerModels[0] || cloudModel || (normalized === 'voyage' ? get('VOYAGE_RERANK_MODEL', '') : normalized === 'cohere' ? cohereModel : '');
+    const nextModel = providerModels[0] || cloudModel || (normalized === 'voyage' ? voyageModel : normalized === 'cohere' ? cohereModel : '');
     if (nextModel) {
       setCloudModel(nextModel);
     }
-    set('RERANKER_PROVIDER', normalized);
+    updateConfig('RERANKER_PROVIDER', normalized);
     // Keep backend in sync when cloud is active
     if (activeChoice === 'cloud') {
       setRerankBackend(normalized || 'cloud');
-      set('RERANKER_BACKEND', normalized || 'cloud');
+      updateConfig('RERANKER_BACKEND', normalized || 'cloud');
     }
     if (nextModel) {
-      set('RERANKER_CLOUD_MODEL', nextModel);
+      updateConfig('RERANKER_CLOUD_MODEL', nextModel);
       if (normalized === 'cohere') {
-        set('COHERE_RERANK_MODEL', nextModel);
+        updateConfig('COHERE_RERANK_MODEL', nextModel);
       } else if (normalized === 'voyage') {
-        set('VOYAGE_RERANK_MODEL', nextModel);
+        updateConfig('VOYAGE_RERANK_MODEL', nextModel);
       }
     }
   };
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Syncs cloud reranker model selection to config. On blur, updates RERANKER_CLOUD_MODEL and provider-specific model keys (COHERE_RERANK_MODEL or VOYAGE_RERANK_MODEL). Updates local state.
+   *
+   * why: |
+   *   Centralizes model config updates and keeps provider-specific keys in sync with UI selection.
+   *
+   * guardrails:
+   *   - DO NOT call updateConfig multiple times in sequence; batch updates
+   *   - NOTE: Assumes cloudProvider is already set; no validation
+   *   - ASK USER: Should blur trigger immediate API validation of model availability?
+   * ---/agentspec
+   */
   const handleCloudModelBlur = () => {
-    set('RERANKER_CLOUD_MODEL', cloudModel);
+    updateConfig('RERANKER_CLOUD_MODEL', cloudModel);
     if (cloudProvider === 'cohere') {
-      set('COHERE_RERANK_MODEL', cloudModel);
+      updateConfig('COHERE_RERANK_MODEL', cloudModel);
       setCohereModel(cloudModel);
     } else if (cloudProvider === 'voyage') {
-      set('VOYAGE_RERANK_MODEL', cloudModel);
+      updateConfig('VOYAGE_RERANK_MODEL', cloudModel);
+      setVoyageModel(cloudModel);
     }
   };
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Prompts user for rerank provider + model ID. Validates non-empty inputs. Adds to models.json via provider/model pair.
+   *
+   * why: |
+   *   UI-driven model registration avoids hardcoding; allows runtime config updates.
+   *
+   * guardrails:
+   *   - DO NOT validate provider against allowlist here; defer to models.json schema
+   *   - NOTE: window.prompt blocks; consider async modal for production
+   *   - ASK USER: Should provider/model be persisted to backend or local storage?
+   * ---/agentspec
+   */
   const handleAddRerankModel = async () => {
     if (addModelDisabled) return;
     const providerInput = window.prompt('Rerank provider (matches models.json provider id):', cloudProvider || providerOptions[0] || '');
@@ -289,26 +548,136 @@ export function ExternalRerankersSubtab() {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to add rerank model';
       console.error('[ExternalRerankersSubtab] Error adding rerank model:', err);
-      setLocalError(errorMsg);
+      setError(errorMsg);
     } finally {
       setSavingModel(false);
     }
   };
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Captures reranker model input changes and persists to config on blur. Input: React change event. Output: updated RERANKER_MODEL config value.
+   *
+   * why: |
+   *   Separates input capture (onChange) from persistence (onBlur) to avoid excessive config writes.
+   *
+   * guardrails:
+   *   - NOTE: No validation on model name; ASK USER if validation needed
+   *   - DO NOT persist on every keystroke; onBlur prevents thrashing
+   * ---/agentspec
+   */
+  const handleModelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setRerankerModel(value);
+  };
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Handles model blur event to persist reranker model config. Captures Cohere API key input changes into local state.
+   *
+   * why: |
+   *   Separates UI event handlers from config logic; blur triggers persistence, input change updates component state.
+   *
+   * guardrails:
+   *   - DO NOT persist API key on every keystroke; only on blur or explicit save
+   *   - NOTE: setCohereApiKey updates local state only; requires separate handler to persist to config
+   * ---/agentspec
+   */
+  const handleModelBlur = () => {
+    updateConfig('RERANKER_MODEL', rerankerModel);
+  };
+
+  /**
+   * ---agentspec
+   * what: |
+   *   Updates Cohere API key state on input change; persists to config on blur if non-empty.
+   *
+   * why: |
+   *   Separates input capture from persistence to avoid excessive config writes.
+   *
+   * guardrails:
+   *   - DO NOT validate API key format here; validation belongs in config layer
+   *   - NOTE: Empty keys are ignored on blur; no explicit error handling
+   * ---/agentspec
+   */
+  const handleCohereApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setCohereApiKey(value);
+  };
+
+  /**
+   * ---agentspec
+   * what: |
+   *   Saves Cohere API key to config on blur; updates trust_remote_code setting via dropdown. Inputs: user text/select changes. Outputs: config updates.
+   *
+   * why: |
+   *   Blur event defers save until user finishes editing; dropdown enforces valid trust_remote_code values.
+   *
+   * guardrails:
+   *   - DO NOT save empty cohereApiKey; check length before updateConfig
+   *   - NOTE: trust_remote_code value must be validated against allowed enum before persist
+   * ---/agentspec
+   */
+  const handleCohereApiKeyBlur = () => {
+    if (cohereApiKey) {
+      updateConfig('COHERE_API_KEY', cohereApiKey);
+    }
+  };
+
+  /**
+   * ---agentspec
+   * what: |
+   *   Handles two config updates: trust remote code (select dropdown) and snippet chars (numeric input). Updates local state and persists to config.
+   *
+   * why: |
+   *   Separates concerns: UI event handling from config persistence; allows independent validation per field.
+   *
+   * guardrails:
+   *   - DO NOT validate parseInt result; add isNaN check before setState
+   *   - NOTE: updateConfig called synchronously; no error handling if persist fails
+   * ---/agentspec
+   */
   const handleTrustRemoteCodeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setTrustRemoteCode(value);
-    set('TRANSFORMERS_TRUST_REMOTE_CODE', value);
+    updateConfig('TRANSFORMERS_TRUST_REMOTE_CODE', value);
   };
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Parses integer input from text field onChange, stores in state. onBlur persists to config via updateConfig('RERANK_INPUT_SNIPPET_CHARS', value).
+   *
+   * why: |
+   *   Deferred persistence (blur vs change) prevents excessive config writes during typing.
+   *
+   * guardrails:
+   *   - DO NOT validate range here; validate in updateConfig or schema layer
+   *   - NOTE: parseInt(base 10) silently returns NaN on invalid input; add fallback or error boundary
+   * ---/agentspec
+   */
   const handleSnippetCharsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10);
     setSnippetChars(value);
   };
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Saves RERANK_INPUT_SNIPPET_CHARS config on blur. Displays warning when rerankBackend is 'none'.
+   *
+   * why: |
+   *   Deferred config updates on blur reduce API calls; backend='none' warning prevents silent reranking failures.
+   *
+   * guardrails:
+   *   - DO NOT update config on every keystroke; blur batching only
+   *   - NOTE: Warning triggers only when rerankBackend === 'none'; verify backend state before render
+   * ---/agentspec
+   */
   const handleSnippetCharsBlur = () => {
-    set('RERANK_INPUT_SNIPPET_CHARS', snippetChars);
+    updateConfig('RERANK_INPUT_SNIPPET_CHARS', snippetChars);
   };
 
   // Show warning when backend is 'none'
@@ -327,7 +696,7 @@ export function ExternalRerankersSubtab() {
     backend: rerankBackend || 'local',
     provider: cloudProvider || '',
     cloud_model: cloudModel || '',
-    model_path: get('RERANKER_MODEL', ''),
+    model_path: rerankerModel || '',
     alpha: '—',
     topn: '—',
     batch: '—',
@@ -340,7 +709,7 @@ export function ExternalRerankersSubtab() {
   return (
     <>
       {/* Error Display */}
-      {(error || localError) && (
+      {error && (
         <div
           style={{
             marginBottom: '16px',
@@ -352,7 +721,7 @@ export function ExternalRerankersSubtab() {
             fontSize: '12px'
           }}
         >
-          <strong>Error:</strong> {error || localError}
+          <strong>Error:</strong> {error}
         </div>
       )}
 
@@ -429,7 +798,7 @@ export function ExternalRerankersSubtab() {
                 placeholder="e.g., rerank-3.5 or voyage-3"
                 value={cloudModel}
                 list="reranker-cloud-models"
-                onChange={(e) => set('RERANKER_CLOUD_MODEL', e.target.value)}
+                onChange={(e) => setCloudModel(e.target.value)}
                 onBlur={handleCloudModelBlur}
                 autoComplete="off"
               />
@@ -557,8 +926,9 @@ export function ExternalRerankersSubtab() {
               type="text"
               name="RERANKER_MODEL"
               placeholder="e.g., baai/bge-reranker-base or cross-encoder/ms-marco-*"
-              value={get('RERANKER_MODEL', '')}
-              onChange={(e) => set('RERANKER_MODEL', e.target.value)}
+              value={rerankerModel}
+              onChange={handleModelChange}
+              onBlur={handleModelBlur}
             />
           </div>
         </div>
@@ -617,12 +987,13 @@ export function ExternalRerankersSubtab() {
               onChange={(e) => {
                 const value = e.target.value;
                 setCloudModel(value);
-                set('RERANKER_CLOUD_MODEL', value);
+                updateConfig('RERANKER_CLOUD_MODEL', value);
                 if (cloudProvider === 'cohere') {
                   setCohereModel(value);
-                  set('COHERE_RERANK_MODEL', value);
+                  updateConfig('COHERE_RERANK_MODEL', value);
                 } else if (cloudProvider === 'voyage') {
-                  set('VOYAGE_RERANK_MODEL', value);
+                  setVoyageModel(value);
+                  updateConfig('VOYAGE_RERANK_MODEL', value);
                 }
               }}
             >
@@ -643,15 +1014,11 @@ export function ExternalRerankersSubtab() {
             <input
               type="password"
               name="COHERE_API_KEY"
-              placeholder={env['COHERE_API_KEY'] === '••••••••••••••••' ? '••••••••••••••••  (key saved)' : 'ck_...'}
-              value={get('COHERE_API_KEY', '')}
-              onChange={(e) => set('COHERE_API_KEY', e.target.value)}
+              placeholder="ck_..."
+              value={cohereApiKey}
+              onChange={handleCohereApiKeyChange}
+              onBlur={handleCohereApiKeyBlur}
             />
-            {env['COHERE_API_KEY'] === '••••••••••••••••' && (
-              <span style={{ fontSize: '11px', color: 'var(--ok)', marginTop: '4px' }}>
-                ✓ API key is saved in .env
-              </span>
-            )}
           </div>
         </div>
         </div>

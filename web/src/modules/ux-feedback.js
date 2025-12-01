@@ -18,6 +18,19 @@
     'use strict';
 
     // Check for reduced motion preference
+    /**
+     * ---agentspec
+     * what: |
+     *   Detects user's reduced-motion preference via matchMedia API. Returns boolean.
+     *
+     * why: |
+     *   Respects accessibility settings before applying animations.
+     *
+     * guardrails:
+     *   - DO NOT animate if prefersReducedMotion() returns true
+     *   - NOTE: matchMedia requires DOM; call only in browser context
+     * ---/agentspec
+     */
     const prefersReducedMotion = () => {
         return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     };
@@ -30,6 +43,19 @@
      * Creates a ripple effect at click position
      * @param {HTMLElement} element - Target element
      * @param {MouseEvent} event - Click event
+     */
+    /**
+     * ---agentspec
+     * what: |
+     *   Creates a ripple effect at click position on element. Skips if user prefers reduced motion.
+     *
+     * why: |
+     *   Respects accessibility preferences while providing visual feedback.
+     *
+     * guardrails:
+     *   - DO NOT create ripples if prefersReducedMotion() returns true; violates a11y
+     *   - NOTE: Requires getBoundingClientRect() for accurate coordinate mapping
+     * ---/agentspec
      */
     function createRipple(element, event) {
         // Skip if reduced motion is preferred
@@ -70,6 +96,19 @@
 
     /**
      * Attach ripple effect to all clickable elements
+     */
+    /**
+     * ---agentspec
+     * what: |
+     *   Initializes ripple effect event listeners on buttons and button-like elements. Targets 4 selector groups; excludes .no-ripple.
+     *
+     * why: |
+     *   Centralized selector logic prevents duplication across ripple handlers.
+     *
+     * guardrails:
+     *   - DO NOT attach listeners multiple times; call once on DOM ready
+     *   - NOTE: .no-ripple opt-out must be present in HTML before init
+     * ---/agentspec
      */
     function initRippleEffects() {
         // Target selectors
@@ -390,6 +429,19 @@
     /**
      * Enhance subtab bar reveal animations
      */
+    /**
+     * ---agentspec
+     * what: |
+     *   Marks all `.subtab-bar` elements with `data-state="visible"` on page load. Enables JS-driven reveal animations when parent tabs are clicked.
+     *
+     * why: |
+     *   Decouples initial DOM state from animation logic; allows CSS/JS to control visibility transitions independently.
+     *
+     * guardrails:
+     *   - DO NOT rely on this alone for tab state; parent tab click handlers must toggle data-state
+     *   - NOTE: Runs once at load; dynamic subtab insertion requires re-invocation
+     * ---/agentspec
+     */
     function enhanceSubtabReveal() {
         // Find all subtab bars
         const subtabBars = document.querySelectorAll('.subtab-bar');
@@ -409,6 +461,20 @@
 
     /**
      * Add pulse animation to health status based on state
+     */
+    /**
+     * ---agentspec
+     * what: |
+     *   Monitors DOM element #health-status for text mutations. Triggers callback on childList or characterData changes; extracts and lowercases text content.
+     *
+     * why: |
+     *   MutationObserver detects real-time health status updates without polling.
+     *
+     * guardrails:
+     *   - DO NOT assume observer auto-disconnects; call observer.disconnect() when done
+     *   - NOTE: Callback fires on every mutation; add debounce if text updates rapidly
+     *   - ASK USER: What action should trigger on status change? (Currently observes only)
+     * ---/agentspec
      */
     function enhanceHealthStatus() {
         const healthStatus = document.getElementById('health-status');
@@ -448,6 +514,20 @@
 
     /**
      * Listen for custom progress events from other modules
+     */
+    /**
+     * ---agentspec
+     * what: |
+     *   Attaches event listeners to window for 'index:progress' events. Extracts id, percent, message, eta from event.detail; shows/updates ProgressManager based on percent value (0 = show, ≥100 = complete).
+     *
+     * why: |
+     *   Decouples progress UI updates from indexing logic via event-driven architecture.
+     *
+     * guardrails:
+     *   - DO NOT assume event.detail exists; guard with || {}
+     *   - NOTE: Incomplete handler for percent ≥100 case (finalization logic missing)
+     *   - ASK USER: Should percent ≥100 call ProgressManager.hide(id) or ProgressManager.complete(id)?
+     * ---/agentspec
      */
     function setupProgressEventListeners() {
         // Listen for index progress events
@@ -490,6 +570,19 @@
 
     /**
      * Initialize all UX feedback systems
+     */
+    /**
+     * ---agentspec
+     * what: |
+     *   Initializes UX feedback system when DOM is ready. Defers execution until DOMContentLoaded fires if document still loading.
+     *
+     * why: |
+     *   Prevents race conditions by ensuring DOM elements exist before initialization logic runs.
+     *
+     * guardrails:
+     *   - DO NOT call init() synchronously at script load; defer to DOMContentLoaded
+     *   - NOTE: Recursive guard prevents double-binding if init() called before DOM ready
+     * ---/agentspec
      */
     function init() {
         // Wait for DOM to be ready

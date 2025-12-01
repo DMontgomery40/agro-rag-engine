@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { dockerApi } from '@/api';
-import type { DockerStatus, DockerContainer } from '@/types';
+import type { DockerStatus, DockerContainer } from '@web/types';
 
 interface DockerStore {
   status: DockerStatus | null;

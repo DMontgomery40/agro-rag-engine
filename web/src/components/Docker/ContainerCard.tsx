@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import type { DockerContainer } from '@/types';
+import type { DockerContainer } from '@web/types';
 
 interface ContainerCardProps {
   container: DockerContainer;

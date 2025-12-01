@@ -1,5 +1,5 @@
 import { apiClient, api } from './client';
-import type { DockerStatus, DockerContainer } from '@/types';
+import type { DockerStatus, DockerContainer } from '@web/types';
 
 export const dockerApi = {
   /**

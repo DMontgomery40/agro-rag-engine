@@ -28,6 +28,19 @@
     settings: { speed: 2, quality: 2, cloud: 1 }
   };
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Updates onboarding UI to step n. Validates bounds, toggles dot/step active/completed classes, syncs state.
+   *
+   * why: |
+   *   Centralized step navigation prevents inconsistent UI state across dots and step panels.
+   *
+   * guardrails:
+   *   - DO NOT allow n outside [1, maxStep]; silently return on invalid input
+   *   - NOTE: Assumes $$() returns NodeList; will fail if selector engine unavailable
+   * ---/agentspec
+   */
   function showOnboardStep(n){
     if (n < 1 || n > onboardingState.maxStep) return;
     onboardingState.step = n;
@@ -43,6 +56,20 @@
     try { localStorage.setItem('onboarding_step', String(n)); localStorage.setItem('onboarding_state', JSON.stringify(onboardingState)); } catch {}
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Advances onboarding to next step. On final step, saves completion state to server then navigates to 'start' tab via Navigation API (with Tabs fallback).
+   *
+   * why: |
+   *   Dual API support ensures compatibility across browser versions while persisting progress before navigation.
+   *
+   * guardrails:
+   *   - DO NOT navigate before saveOnboardingCompletion() completes; risk data loss
+   *   - NOTE: Fallback assumes window.Tabs exists; add error handling if unavailable
+   *   - ASK USER: Should saveOnboardingCompletion() be async/await to guarantee server sync before nav?
+   * ---/agentspec
+   */
   function nextOnboard(){
     if (onboardingState.step === onboardingState.maxStep){
       // Save completion state to server before navigating away
@@ -74,6 +101,20 @@
     showOnboardStep(onboardingState.step + 1);
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Manages onboarding UI state transitions and file indexing progress. Decrements step on back; runs async indexing with progress bar updates (scan → keywords stages).
+   *
+   * why: |
+   *   Centralizes onboarding flow control and indexing feedback in single handler to avoid scattered DOM mutations.
+   *
+   * guardrails:
+   *   - DO NOT proceed if indexing.running already true; prevents concurrent index jobs
+   *   - NOTE: Disables next button during indexing; re-enable on completion or error
+   *   - ASK USER: What happens on indexing failure? (current code incomplete)
+   * ---/agentspec
+   */
   function backOnboard(){ if (onboardingState.step > 1) showOnboardStep(onboardingState.step - 1); }
 
   async function startOnboardingIndexing(){
@@ -105,6 +146,20 @@
     }
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Updates onboarding UI state: progress bar width, stage badges (active/completed). Accepts stage name and progress percentage (0-100).
+   *
+   * why: |
+   *   Centralizes stage tracking logic to keep UI in sync with indexing state machine.
+   *
+   * guardrails:
+   *   - DO NOT call outside onboarding flow; assumes onboardingState.indexing exists
+   *   - NOTE: Stage order hardcoded as ['scan','keywords','smart']; changes require code update
+   *   - NOTE: askQuestion incomplete; only shows "Thinking..." state, no API call visible
+   * ---/agentspec
+   */
   function updateIndexStage(stage, progress){
     onboardingState.indexing.stage = stage; onboardingState.indexing.progress = progress;
     const bar = $('#onboard-index-bar'); if (bar) bar.style.width = progress + '%';
@@ -129,6 +184,20 @@
     catch(err){ panel.textContent = 'Error loading trace: ' + err.message; }
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Renders onboarding settings summary by mapping speed/quality/cloud enum values to config strings. Updates DOM #onboard-summary-content with three config lines.
+   *
+   * why: |
+   *   Centralizes settings→config translation; avoids scattered magic strings.
+   *
+   * guardrails:
+   *   - DO NOT use gpt-4o; only gpt-5 allowed (quality level 3 violates constraint)
+   *   - NOTE: Early return if summary element missing; silent fail
+   *   - ASK USER: Confirm gpt-4o-mini (quality=2) is permitted or upgrade to gpt-5
+   * ---/agentspec
+   */
   function updateSettingsSummary(){
     const summary = $('#onboard-summary-content'); if (!summary) return;
     const { speed, quality, cloud } = onboardingState.settings;
@@ -196,6 +265,20 @@
     }
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Initializes onboarding by retrieving current step from window.__onboardingFallbackStep or localStorage. Returns step number or undefined.
+   *
+   * why: |
+   *   Allows runtime override via global variable; falls back to persisted localStorage for resumable onboarding flow.
+   *
+   * guardrails:
+   *   - DO NOT assume localStorage is always available; wrap in try-catch for private/incognito modes
+   *   - NOTE: parseInt(savedStep, 10) prevents octal parsing; validate step is valid number before use
+   *   - ASK USER: Should invalid/missing steps default to 0 or throw?
+   * ---/agentspec
+   */
   function initOnboarding(){
     try{
       let stepOverride;
@@ -244,6 +327,19 @@
     } catch {}
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Ensures onboarding module initializes exactly once. Checks _initialized flag; calls initOnboarding() if false, sets flag true.
+   *
+   * why: |
+   *   Prevents duplicate initialization and side effects from repeated setup calls.
+   *
+   * guardrails:
+   *   - DO NOT call initOnboarding() directly; use ensureOnboardingInit() only
+   *   - NOTE: _initialized is module-scoped; no cross-window state sharing
+   * ---/agentspec
+   */
   function ensureOnboardingInit(){ if (!onboardingState._initialized){ initOnboarding(); onboardingState._initialized = true; } }
 
   window.Onboarding = { ensureOnboardingInit, initOnboarding, checkOnboardingCompletion, saveOnboardingCompletion };

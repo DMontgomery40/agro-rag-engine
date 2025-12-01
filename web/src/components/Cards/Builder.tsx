@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import type { CardsBuildOptions, CardsBuildStatus } from '@/types/cards';
+import type { CardsBuildOptions, CardsBuildStatus } from '@web/types/cards';
 import { useAPI } from '@/hooks/useAPI';
 
 interface BuilderProps {

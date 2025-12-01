@@ -4,6 +4,20 @@
 
   const BASE = window.location.origin + '/api';
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Polls for CoreUtils global availability, then sets API_BASE URL. Retries every 100ms until CoreUtils exists.
+   *
+   * why: |
+   *   Ensures CoreUtils loads before configuration to avoid race conditions.
+   *
+   * guardrails:
+   *   - DO NOT set API_BASE if CoreUtils missing; defer via setTimeout
+   *   - NOTE: Infinite retry loop if CoreUtils never loads; add max-attempt guard
+   *   - ASK USER: Should timeout after N retries instead of polling indefinitely?
+   * ---/agentspec
+   */
   function setupAPI() {
     if (!window.CoreUtils) {
       setTimeout(setupAPI, 100);

@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { dockerApi } from '@/api/docker';
 import { configApi } from '@/api/config';
 import { useAPI } from '@/hooks';
-import type { DockerStatus, DockerContainer } from '@/types';
+import type { DockerStatus, DockerContainer } from '@web/types';
 
 interface ServiceStatus {
   name: string;

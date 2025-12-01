@@ -6,7 +6,7 @@ import type {
   CardsBuildOptions,
   LastBuild,
   CardsBuildStatus
-} from '@/types/cards';
+} from '@web/types/cards';
 
 export function useCards() {
   const { api } = useAPI();

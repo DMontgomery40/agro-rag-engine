@@ -767,7 +767,7 @@
     // ---------------- Prices & Cost ----------------
     async function loadPrices() {
         try {
-            const r = await fetch(api('/api/prices'));
+            const r = await fetch(api('/api/models'));
             state.prices = await r.json();
             populatePriceDatalists();
         } catch (e) {
@@ -3004,7 +3004,7 @@
 
     async function upsertPrice(entry) {
         try {
-            await fetch(api('/api/prices/upsert'), {
+            await fetch(api('/api/models/upsert'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(entry)

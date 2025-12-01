@@ -377,6 +377,19 @@
     /**
      * Format and colorize log lines
      */
+    /**
+     * ---agentspec
+     * what: |
+     *   Formats raw log strings into HTML. Splits by newline, filters empty lines, builds formatted output string.
+     *
+     * why: |
+     *   Centralizes log display logic for consistent UI rendering across components.
+     *
+     * guardrails:
+     *   - DO NOT parse log content; only format structure
+     *   - NOTE: Returns muted placeholder if rawLogs is falsy
+     * ---/agentspec
+     */
     function formatLogs(rawLogs) {
         if (!rawLogs) return '<span style="color: var(--fg-muted);">No logs available</span>';
         
@@ -442,6 +455,19 @@
 
     /**
      * Escape HTML to prevent injection
+     */
+    /**
+     * ---agentspec
+     * what: |
+     *   Escapes HTML special characters by setting textContent on a DOM element, then reading innerHTML. Converts raw text → safe HTML string.
+     *
+     * why: |
+     *   Leverages browser's native HTML encoding; simpler than manual char-by-char replacement.
+     *
+     * guardrails:
+     *   - DO NOT use on already-HTML content; only raw text
+     *   - NOTE: Creates temporary DOM node; avoid in tight loops
+     * ---/agentspec
      */
     function escapeHtml(text) {
         const div = document.createElement('div');
@@ -725,6 +751,19 @@
 
     /**
      * Initialize Docker UI
+     */
+    /**
+     * ---agentspec
+     * what: |
+     *   Initializes Docker UI controls. Binds click handlers to refresh, up, down buttons. Triggers checkDockerStatus() on refresh.
+     *
+     * why: |
+     *   Centralizes event listener setup for Docker management interface.
+     *
+     * guardrails:
+     *   - DO NOT assume jQuery elements exist; check before binding
+     *   - NOTE: checkDockerStatus() must be defined before this runs
+     * ---/agentspec
      */
     function initDocker() {
         // Bind buttons

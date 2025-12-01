@@ -2,7 +2,7 @@
 // Provides accessible form inputs with proper labeling and validation
 
 import React from 'react';
-import type { CalculatorInputs, Calculator2Inputs } from '@/types/storage';
+import type { CalculatorInputs, Calculator2Inputs } from '@web/types/storage';
 
 interface CalculatorFormProps {
   inputs: CalculatorInputs | Calculator2Inputs;

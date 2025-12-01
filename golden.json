@@ -349,7 +349,7 @@
     "expect_paths": [
       "gui/js/cost_logic.js",
       "gui/js/storage-calculator.js",
-      "gui/prices.json",
+      "gui/models.json",
       "server/metrics.py",
       "gui/index.html"
     ]

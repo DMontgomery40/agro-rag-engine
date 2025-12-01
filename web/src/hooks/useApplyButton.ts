@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useConfigStore } from '@/stores';
 
 /**
  * Hook for managing the sidepanel Apply button
@@ -9,6 +10,14 @@ export function useApplyButton() {
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const baselineRef = useRef<string | null>(null);
+
+  // Local snapshots of Zustand store state (avoids adding an extra hook to App)
+  const [configSnapshot, setConfigSnapshot] = useState(useConfigStore.getState().config);
+  const [storeSaving, setStoreSaving] = useState(useConfigStore.getState().saving);
+  const [storeError, setStoreError] = useState<string | null>(
+    useConfigStore.getState().error ? String(useConfigStore.getState().error) : null
+  );
 
   // Track form changes to enable/disable Apply button
   useEffect(() => {
@@ -31,6 +40,54 @@ export function useApplyButton() {
     };
   }, []);
 
+  // Subscribe to Zustand store for config/saving/error without adding extra hooks
+  useEffect(() => {
+    const unsubConfig = useConfigStore.subscribe(
+      state => state.config,
+      cfg => {
+        setConfigSnapshot(cfg);
+        // set baseline if first time
+        if (cfg && !baselineRef.current) {
+          baselineRef.current = JSON.stringify(cfg);
+        }
+      }
+    );
+    const unsubSaving = useConfigStore.subscribe(
+      state => state.saving,
+      saving => setStoreSaving(saving)
+    );
+    const unsubError = useConfigStore.subscribe(
+      state => state.error,
+      err => setStoreError(err ? String(err) : null)
+    );
+    return () => {
+      unsubConfig();
+      unsubSaving();
+      unsubError();
+    };
+  }, []);
+
+  // Keep baseline snapshot for dirty comparison
+  useEffect(() => {
+    if (configSnapshot && !baselineRef.current) {
+      baselineRef.current = JSON.stringify(configSnapshot);
+    }
+  }, [configSnapshot]);
+
+  // Mark dirty when config diverges from baseline
+  useEffect(() => {
+    if (!configSnapshot || !baselineRef.current) return;
+    const snapshot = JSON.stringify(configSnapshot);
+    setIsDirty(snapshot !== baselineRef.current);
+  }, [configSnapshot]);
+
+  // Ensure config is loaded on mount
+  useEffect(() => {
+    if (!configSnapshot && !storeSaving) {
+      useConfigStore.getState().loadConfig().catch(() => {});
+    }
+  }, [configSnapshot, storeSaving]);
+
   const handleApply = useCallback(async () => {
     setIsSaving(true);
     setSaveError(null);
@@ -38,41 +95,45 @@ export function useApplyButton() {
     try {
       const w = window as any;
 
-      // Check if Config module is available
-      if (!w.Config || !w.Config.gatherConfigForm || !w.Config.saveConfig) {
-        throw new Error('Config module not loaded');
+      // Ensure we have the latest Pydantic-backed config
+      if (!useConfigStore.getState().config) {
+        await useConfigStore.getState().loadConfig();
+      }
+      const currentConfig = useConfigStore.getState().config;
+      if (!currentConfig) {
+        throw new Error('Configuration not loaded');
       }
 
-      // Gather form data using the legacy Config module
-      const formData = w.Config.gatherConfigForm();
+      // Start with Zustand/Pydantic config as source of truth
+      const mergedEnv = { ...(currentConfig.env || {}) };
+      let mergedRepos = currentConfig.repos || [];
 
-      // Get API helper
-      const api = w.CoreUtils?.api;
-      if (!api) {
-        throw new Error('CoreUtils.api not available');
+      // Merge any legacy DOM form data (if present)
+      if (w.Config?.gatherConfigForm) {
+        const legacy = w.Config.gatherConfigForm();
+        if (legacy === null) {
+          throw new Error('Invalid legacy form data');
+        }
+        if (legacy?.env) {
+          Object.assign(mergedEnv, legacy.env);
+        }
+        if (Array.isArray(legacy?.repos) && legacy.repos.length) {
+          mergedRepos = legacy.repos;
+        }
       }
 
-      // Save configuration
-      const response = await fetch(api('/api/config'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+      // Save via Pydantic/Zustand pipeline
+      await useConfigStore.getState().saveConfig({
+        env: mergedEnv,
+        repos: mergedRepos
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(errorData.detail || `HTTP ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      // Update state
-      if (w.CoreUtils && w.CoreUtils.state) {
-        w.CoreUtils.state.config = result;
-      }
-
-      // Emit success event
-      window.dispatchEvent(new CustomEvent('agro-config-saved', { detail: result }));
+      // Refresh snapshot after save
+      const savedConfig = useConfigStore.getState().config || {
+        env: mergedEnv,
+        repos: mergedRepos
+      };
+      baselineRef.current = JSON.stringify(savedConfig);
 
       setIsDirty(false);
       console.log('[useApplyButton] Configuration saved successfully');
@@ -82,7 +143,10 @@ export function useApplyButton() {
         w.showStatus('Settings saved successfully', 'success');
       }
 
-      return result;
+      // Emit success event for any listeners
+      window.dispatchEvent(new CustomEvent('agro-config-saved', { detail: savedConfig }));
+
+      return savedConfig;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       console.error('[useApplyButton] Failed to save configuration:', err);
@@ -116,8 +180,8 @@ export function useApplyButton() {
   return {
     handleApply,
     isDirty,
-    isSaving,
-    saveError,
+    isSaving: isSaving || storeSaving,
+    saveError: saveError || (storeError ? String(storeError) : null),
     markDirty,
     markClean
   };

@@ -15,6 +15,20 @@
     }catch(e){ console.warn('Price upsert failed:', e); }
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Prompts user for LLM provider and model ID. Returns {provider, model} or null if cancelled.
+   *
+   * why: |
+   *   Interactive UI for selecting generation model before workflow execution.
+   *
+   * guardrails:
+   *   - DO NOT validate model against agro_config.json here; defer to addGenModelFlow caller
+   *   - NOTE: Returns null on user cancel; caller must handle
+   *   - ASK USER: Should this pre-populate from current GEN_MODEL config?
+   * ---/agentspec
+   */
   function promptStr(msg, defVal=''){
     const v = window.prompt(msg, defVal);
     return v === null ? null : v.trim();

@@ -76,6 +76,20 @@
     }
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Renders card list to DOM. Maps cards array to HTML; displays "No matching cards" if empty. Attaches data attributes (filepath, line) to each card-item div.
+   *
+   * why: |
+   *   Centralizes card rendering logic; prevents null/undefined crashes with guard clause.
+   *
+   * guardrails:
+   *   - DO NOT assume cardsContainer exists; guard with getElementById check
+   *   - NOTE: Incomplete HTML (missing closing backtick/div); verify template literal closure
+   *   - ASK USER: Confirm card-item click handler exists; data attributes suggest event delegation needed
+   * ---/agentspec
+   */
   function renderCardsList(cards){
     const cardsContainer = document.getElementById('cards-viewer');
     if (!cardsContainer) return;
@@ -137,6 +151,20 @@
     renderCardsList(filtered);
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Dispatches cardNavigation event with file path and line number. Creates and displays a 3-second notification toast in bottom-right corner.
+   *
+   * why: |
+   *   Decouples navigation intent from UI rendering; event-driven allows external listeners to handle navigation logic independently.
+   *
+   * guardrails:
+   *   - DO NOT rely on notification DOM persistence; it auto-removes after 3s
+   *   - NOTE: Assumes CSS variables (--bg-elev2, --accent, --fg, --link) exist in host document
+   *   - ASK USER: Should navigation fail silently if event listener absent?
+   * ---/agentspec
+   */
   function jumpToLine(filePath, lineNumber){
     const event = new CustomEvent('cardNavigation', { detail: { file: filePath, line: lineNumber } });
     window.dispatchEvent(event);
@@ -228,6 +256,19 @@
     }
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Binds click/input handlers to card UI buttons (refresh, build, view-all) and search box. Prevents duplicate listener attachment via dataset flag.
+   *
+   * why: |
+   *   Idempotent binding prevents memory leaks from re-attaching listeners on DOM updates.
+   *
+   * guardrails:
+   *   - DO NOT bind without dataset.bound check; causes duplicate event listeners
+   *   - NOTE: Assumes button IDs exist; silently skips if missing
+   * ---/agentspec
+   */
   function bind(){
     const btnRefresh = document.getElementById('btn-cards-refresh');
     const btnBuild = document.getElementById('btn-cards-build');

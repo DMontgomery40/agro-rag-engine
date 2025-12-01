@@ -14,6 +14,20 @@
     /**
      * Populate index repo dropdown with available repos
      */
+    /**
+     * ---agentspec
+     * what: |
+     *   Populates HTML select#index-repo-select with repo options from state.config.repos. Returns early if select missing or config unavailable.
+     *
+     * why: |
+     *   Defensive checks prevent DOM errors and silent failures when config not yet loaded.
+     *
+     * guardrails:
+     *   - DO NOT assume state.config exists; guard with early return
+     *   - NOTE: Logs warning but does not throw; caller must handle empty dropdown
+     *   - ASK USER: Should missing config trigger error vs silent warn?
+     * ---/agentspec
+     */
     function populateIndexRepoDropdown() {
         const select = $('#index-repo-select');
         if (!select) return;
@@ -345,6 +359,19 @@
     /**
      * Initialize indexing UI
      */
+    /**
+     * ---agentspec
+     * what: |
+     *   Wraps Config.loadConfig to trigger repo dropdown population after config loads. Executes populateIndexRepoDropdown() post-initialization.
+     *
+     * why: |
+     *   Ensures dropdown data available only after Config ready; avoids race conditions.
+     *
+     * guardrails:
+     *   - DO NOT call populateIndexRepoDropdown() before Config.loadConfig completes; timing-dependent
+     *   - NOTE: Assumes window.Config exists; will silently fail if undefined
+     * ---/agentspec
+     */
     function initIndexing() {
         // Populate repo dropdown when config loads
         if (window.Config) {
@@ -408,6 +435,19 @@
     }
 
     // Cleanup function for unmounting
+    /**
+     * ---agentspec
+     * what: |
+     *   Clears polling interval and logs unmount. Stops active indexing operations on component teardown.
+     *
+     * why: |
+     *   Prevents memory leaks and orphaned timers when indexing module unloads.
+     *
+     * guardrails:
+     *   - DO NOT call without active pollInterval; null-check already present
+     *   - NOTE: Assumes pollInterval is module-scoped; verify no race conditions on rapid mount/unmount
+     * ---/agentspec
+     */
     function cleanupIndexing() {
         // Stop any polling intervals
         if (pollInterval) {
@@ -418,6 +458,19 @@
     }
 
     // Register with Navigation API
+    /**
+     * ---agentspec
+     * what: |
+     *   Registers 'rag-indexing' view with Navigation API. Mounts indexing UI and initializes index profiles module on view activation.
+     *
+     * why: |
+     *   Decouples view registration from initialization; allows lazy loading and modular profile setup.
+     *
+     * guardrails:
+     *   - DO NOT call initIndexing() if window.Navigation unavailable; check exists first
+     *   - NOTE: Assumes window.Navigation.registerView is synchronous; no error handling for mount failures
+     * ---/agentspec
+     */
     function registerIndexingView() {
         if (window.Navigation && typeof window.Navigation.registerView === 'function') {
             window.Navigation.registerView({

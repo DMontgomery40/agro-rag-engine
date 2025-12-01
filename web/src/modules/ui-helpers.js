@@ -8,6 +8,20 @@
   const $$ = window.CoreUtils?.$$ || ((s) => Array.from(document.querySelectorAll(s)));
 
   // ---------------- Collapsible Sections ----------------
+  /**
+   * ---agentspec
+   * what: |
+   *   Binds click handlers to collapsible headers. Toggles visibility of target sections by ID. Skips toggle if help icon clicked.
+   *
+   * why: |
+   *   Centralizes collapsible UI logic; prevents accidental collapse when interacting with tooltips.
+   *
+   * guardrails:
+   *   - DO NOT toggle if click originates from .tooltip-wrap; check e.target.closest()
+   *   - NOTE: Requires data-target attribute on headers; missing attribute silently fails
+   *   - ASK USER: Should collapse state persist across page reloads?
+   * ---/agentspec
+   */
   function bindCollapsibleSections() {
     const headers = $$('.collapsible-header');
 
@@ -55,6 +69,19 @@
     const selTop = $('#theme-mode');
     const selMisc = $('#misc-theme-mode');
 
+    /**
+     * ---agentspec
+     * what: |
+     *   Syncs theme selection across UI dropdowns and localStorage. Calls window.Theme.applyTheme(v) if available.
+     *
+     * why: |
+     *   Centralizes theme changes to prevent UI inconsistency and persist user preference.
+     *
+     * guardrails:
+     *   - DO NOT assume window.Theme exists; wrapped in typeof check
+     *   - NOTE: localStorage write silently fails in private/sandboxed contexts
+     * ---/agentspec
+     */
     function onThemeChange(src) {
       const v = src.value;
       if (selTop && selTop !== src) selTop.value = v;
@@ -71,6 +98,20 @@
   }
 
   // ---------------- Resizable Sidepanel ----------------
+  /**
+   * ---agentspec
+   * what: |
+   *   Binds mouse drag handler to resize-handle element. Tracks panel width between MIN_WIDTH (280px) and MAX_WIDTH (900px), persists to localStorage under 'agro-sidepanel-width'.
+   *
+   * why: |
+   *   Centralizes resize logic with persistent state to restore user preference on reload.
+   *
+   * guardrails:
+   *   - DO NOT allow width below 280px or above 900px; clamp to viewport % if needed
+   *   - NOTE: Requires .resize-handle DOM element; silently returns if missing
+   *   - NOTE: localStorage key 'agro-sidepanel-width' must match retrieval logic elsewhere
+   * ---/agentspec
+   */
   function bindResizableSidepanel() {
     const handle = $('.resize-handle');
     if (!handle) return;
@@ -105,12 +146,39 @@
     let startX = 0;
     let startWidth = 0;
 
+    /**
+     * ---agentspec
+     * what: |
+     *   Gets/sets CSS custom property --sidepanel-width. Reads from root, writes with viewport constraint (max 60% or MAX_WIDTH, whichever smaller).
+     *
+     * why: |
+     *   Centralizes width state in CSS var; viewport guard prevents layout breakage on resize.
+     *
+     * guardrails:
+     *   - DO NOT exceed 60% viewport width; hardMax enforces this
+     *   - NOTE: parseInt fallback to 400 if var unset or invalid
+     *   - ASK USER: Define MAX_WIDTH constant before use
+     * ---/agentspec
+     */
     function getCurrentWidth() {
       const rootStyle = getComputedStyle(document.documentElement);
       const widthStr = rootStyle.getPropertyValue('--sidepanel-width').trim();
       return parseInt(widthStr, 10) || 400;
     }
 
+    /**
+     * ---agentspec
+     * what: |
+     *   Clamps sidepanel width between MIN_WIDTH and 60% viewport, applies CSS variable, persists to localStorage.
+     *
+     * why: |
+     *   Prevents overflow while respecting user preference and viewport constraints.
+     *
+     * guardrails:
+     *   - DO NOT exceed 60% viewport; hardMax enforces this
+     *   - NOTE: localStorage persists across sessions; clear if needed
+     * ---/agentspec
+     */
     function setWidth(width) {
       const viewportMax = Math.floor(window.innerWidth * 0.6); // never exceed 60% of viewport
       const hardMax = Math.min(MAX_WIDTH, viewportMax);
@@ -146,18 +214,61 @@
   }
 
   // ---------------- Number Formatting ----------------
+  /**
+   * ---agentspec
+   * what: |
+   *   getNum: Retrieves numeric value from DOM element by ID, strips commas/spaces, parses as int. Returns 0 if missing/invalid.
+   *   setNum: Sets numeric value on DOM element by ID. No-op if element absent.
+   *
+   * why: |
+   *   Centralizes DOM number I/O with consistent parsing and null-safety.
+   *
+   * guardrails:
+   *   - DO NOT assume element exists; both functions silently fail if ID not found
+   *   - NOTE: getNum strips commas and whitespace; setNum does not format output
+   *   - ASK USER: Should setNum format output (e.g., add commas)?
+   * ---/agentspec
+   */
   function getNum(id) {
     const v = document.getElementById(id);
     if (!v) return 0;
     return parseInt((v.value || '').toString().replace(/,/g, '').replace(/\s/g, ''), 10) || 0;
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   setNum() sets numeric input value with US locale formatting. attachCommaFormatting() binds comma-formatting to input elements by ID list.
+   *
+   * why: |
+   *   Centralizes number formatting logic to ensure consistent locale-aware display across form inputs.
+   *
+   * guardrails:
+   *   - DO NOT call setNum() with non-existent IDs; silently returns but may mask bugs
+   *   - NOTE: toLocaleString() formats display only; underlying value remains numeric
+   *   - ASK USER: Should attachCommaFormatting() also handle input events for real-time formatting?
+   * ---/agentspec
+   */
   function setNum(id, n) {
     const el = document.getElementById(id);
     if (!el) return;
     el.value = (Number(n) || 0).toLocaleString('en-US');
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Attaches focus/blur listeners to DOM elements by ID. On focus, strips commas; on blur, reformats via getNum(). Modifies element.value in-place.
+   *
+   * why: |
+   *   Separates input sanitization (focus) from display formatting (blur) for UX without validation logic.
+   *
+   * guardrails:
+   *   - DO NOT call if elements don't exist; silently skips via early return
+   *   - NOTE: Depends on external getNum(id) function; behavior undefined if missing
+   *   - DO NOT use for accessibility-critical fields without ARIA labels
+   * ---/agentspec
+   */
   function attachCommaFormatting(ids) {
     ids.forEach(id => {
       const el = document.getElementById(id);
@@ -172,7 +283,35 @@
     });
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Converts daily token costs to per-request costs by dividing by requests-per-day (RPD). Updates cost-in and cost-out fields on input change.
+   *
+   * why: |
+   *   Enables bidirectional cost modeling: users enter daily budgets, system derives per-request rates.
+   *
+   * guardrails:
+   *   - DO NOT divide by zero; guards rpd > 0 before calculation
+   *   - NOTE: Uses Math.floor; rounds down, may underestimate per-request cost
+   *   - ASK USER: Should rounding mode be configurable (ceil/round)?
+   * ---/agentspec
+   */
   function wireDayConverters() {
+    /**
+     * ---agentspec
+     * what: |
+     *   Recalculates token costs by dividing daily in/out costs by requests-per-day (RPD). Updates cost-in and cost-out fields with floor division results.
+     *
+     * why: |
+     *   Normalizes daily costs to per-request basis for cost-per-token comparison.
+     *
+     * guardrails:
+     *   - DO NOT divide by zero; RPD must be > 0 before calculation
+     *   - NOTE: Uses floor division; fractional tokens truncated
+     *   - ASK USER: Should zero RPD show error or skip silently?
+     * ---/agentspec
+     */
     const recalc = () => {
       const rpd = getNum('cost-rpd');
       const inDay = getNum('cost-in-day');

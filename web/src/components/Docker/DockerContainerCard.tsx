@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { DockerContainer as DockerContainerType } from '@/types';
+import type { DockerContainer as DockerContainerType } from '@web/types';
 import { useDockerStore } from '@/stores';
 
 interface DockerContainerCardProps {

@@ -1,4 +1,4 @@
-import type { ErrorHelperOptions } from '@/types';
+import type { ErrorHelperOptions } from '@web/types';
 
 /**
  * Create a helpful error message with context, troubleshooting, and links

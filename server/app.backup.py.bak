@@ -1212,13 +1212,13 @@ def validate_repo_path(repo_name: str, payload: Dict[str, Any]) -> Dict[str, Any
             "raw": path_str
         }
 
-@app.get("/api/prices")
+@app.get("/api/models")
 def get_prices():
     prices_path = GUI_DIR / "prices.json"
     data = _read_json(prices_path, _default_prices())
     return JSONResponse(data)
 
-@app.post("/api/prices/upsert")
+@app.post("/api/models/upsert")
 def upsert_price(item: Dict[str, Any]) -> Dict[str, Any]:
     prices_path = GUI_DIR / "prices.json"
     data = _read_json(prices_path, {"models": []})

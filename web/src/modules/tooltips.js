@@ -1,6 +1,19 @@
 // GUI Tooltips: human-readable help + accurate links
 // Exposes window.Tooltips.{buildTooltipMap, attachTooltips}
 (function(){
+  /**
+   * ---agentspec
+   * what: |
+   *   Renders labeled tooltip HTML with optional badges and links. Inputs: label, body, links array, badges array. Outputs: formatted HTML string.
+   *
+   * why: |
+   *   Centralizes tooltip markup generation to avoid duplication across UI components.
+   *
+   * guardrails:
+   *   - DO NOT sanitize HTML; caller responsible for XSS prevention
+   *   - NOTE: Links open in new tab with noopener; badges use optional CSS class
+   * ---/agentspec
+   */
   function L(label, body, links, badges){
     const linkHtml = (links||[]).map(([txt, href]) => `<a href="${href}" target="_blank" rel="noopener">${txt}</a>`).join(' ');
     const badgeHtml = (badges||[]).map(([txt, cls]) => `<span class="tt-badge ${cls||''}">${txt}</span>`).join(' ');
@@ -8,6 +21,19 @@
     return `<span class=\"tt-title\">${label}</span>${badgesBlock}<div>${body}</div>` + (links && links.length ? `<div class=\"tt-links\">${linkHtml}</div>` : '');
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Builds tooltip metadata map for infrastructure config keys (QDRANT_URL, REDIS_URL, etc.). Returns object with descriptions, fallback behavior, and reference links.
+   *
+   * why: |
+   *   Centralizes UI hints and dependency docs to avoid duplication and keep config help in sync.
+   *
+   * guardrails:
+   *   - DO NOT assume external services are required; document graceful degradation (BM25 fallback, stateless mode)
+   *   - NOTE: Links must stay current; stale URLs break user navigation
+   * ---/agentspec
+   */
   function buildTooltipMap(){
     return {
       // Infrastructure & routing
@@ -1343,14 +1369,53 @@
     };
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Attaches hover/focus listeners to icon element. Shows/hides tooltip bubble with debounced hide delay.
+   *
+   * why: |
+   *   Centralizes tooltip lifecycle (show immediate, hide debounced) to prevent flicker on rapid mouse movement.
+   *
+   * guardrails:
+   *   - DO NOT clear timeout on hide(); only on show() to enforce debounce
+   *   - NOTE: hideTimeout persists across show/hide cycles; ensure cleanup on unmount
+   * ---/agentspec
+   */
   function attachTooltipListeners(icon, bubble, wrap) {
     let hideTimeout = null;
 
+    /**
+     * ---agentspec
+     * what: |
+     *   Controls tooltip visibility. show() adds 'tooltip-visible' class; hide() delays removal via setTimeout to allow mouse movement to tooltip.
+     *
+     * why: |
+     *   Timeout prevents flickering when user moves cursor between trigger and tooltip.
+     *
+     * guardrails:
+     *   - DO NOT call hide() without clearTimeout first; prevents stale timeouts
+     *   - NOTE: hideTimeout must be module-scoped or closure-captured
+     * ---/agentspec
+     */
     function show(){
       clearTimeout(hideTimeout);
       bubble.classList.add('tooltip-visible');
     }
 
+    /**
+     * ---agentspec
+     * what: |
+     *   Hides tooltip bubble after 150ms delay. Clears prior timeout to prevent race conditions.
+     *
+     * why: |
+     *   Delay allows user to move mouse from icon to tooltip without flickering.
+     *
+     * guardrails:
+     *   - DO NOT remove delay; causes tooltip to vanish mid-interaction
+     *   - NOTE: clearTimeout() prevents stacked hide calls
+     * ---/agentspec
+     */
     function hide(){
       // Delay hiding to allow moving mouse to tooltip
       clearTimeout(hideTimeout);
@@ -1385,6 +1450,20 @@
     });
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Attaches click/hover listeners to manually-created tooltip elements in DOM. Queries .tooltip-wrap, finds .help-icon and .tooltip-bubble children, binds show/hide behavior. Skips if already attached (checks dataset.tooltipAttached).
+   *
+   * why: |
+   *   Prevents double-binding and centralizes tooltip initialization for static HTML tooltips outside framework lifecycle.
+   *
+   * guardrails:
+   *   - DO NOT re-attach if dataset.tooltipAttached already set; causes duplicate listeners
+   *   - NOTE: Requires .tooltip-wrap > (.help-icon + .tooltip-bubble) structure
+   *   - ASK USER: Define show/hide behavior (click vs hover vs both)
+   * ---/agentspec
+   */
   function attachManualTooltips() {
     // Attach event listeners to any manually-created tooltips in HTML
     const manualTooltips = document.querySelectorAll('.tooltip-wrap');
@@ -1399,6 +1478,19 @@
     });
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Builds tooltip map, then attaches tooltips to form fields by name. Iterates DOM fields, matches labels, skips missing name/parent/label.
+   *
+   * why: |
+   *   Centralizes tooltip logic via map lookup; avoids inline hardcoding.
+   *
+   * guardrails:
+   *   - DO NOT attach tooltip if name, parent, or label missing; silently skip
+   *   - NOTE: Assumes .input-group wrapper and label sibling exist
+   * ---/agentspec
+   */
   function attachTooltips(){
     const map = buildTooltipMap();
     const fields = document.querySelectorAll('[name]');

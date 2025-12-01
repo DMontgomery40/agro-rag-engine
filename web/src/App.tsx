@@ -11,6 +11,8 @@ import { Sidepanel } from './components/Sidepanel';
 
 // UI Components
 import { EmbeddingMismatchWarning } from './components/ui/EmbeddingMismatchWarning';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { SubtabErrorFallback } from '@/components/ui/SubtabErrorFallback';
 
 // Hooks
 import { useAppInit, useModuleLoader, useApplyButton } from '@/hooks';
@@ -252,12 +254,40 @@ function App() {
         <div className="resize-handle"></div>
         <div className="content" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
           {/* Tab Bar - React Router navigation */}
-          <TabBar mobileOpen={mobileNavOpen} onNavigate={closeMobileNav} />
+          <ErrorBoundary
+            context="tab-bar"
+            fallback={({ error, reset }) => (
+              <div className="p-4">
+                <SubtabErrorFallback
+                  title="Navigation failed to render"
+                  context="The tab list crashed while initializing. Retry to re-mount navigation."
+                  error={error}
+                  onRetry={reset}
+                />
+              </div>
+            )}
+          >
+            <TabBar mobileOpen={mobileNavOpen} onNavigate={closeMobileNav} />
+          </ErrorBoundary>
 
           {/* Scrollable content wrapper */}
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {/* Routes - All tab routing */}
-            <TabRouter />
+            <ErrorBoundary
+              context="tab-router"
+              fallback={({ error, reset }) => (
+                <div className="p-6">
+                  <SubtabErrorFallback
+                    title="Unable to load tab content"
+                    context="The active route crashed during render. Retry to attempt a clean mount."
+                    error={error}
+                    onRetry={reset}
+                  />
+                </div>
+              )}
+            >
+              <TabRouter />
+            </ErrorBoundary>
           </div>
 
           {/* Apply All Changes button - Fixed footer outside scrollable area */}
@@ -299,7 +329,19 @@ function App() {
           </div>
           <div id="sidepanel-content" style={{flex: 1, overflowY: 'auto', padding: '20px'}}>
             {/* React Sidepanel component with all widgets */}
-            <Sidepanel />
+            <ErrorBoundary
+              context="sidepanel"
+              fallback={({ error, reset }) => (
+                <SubtabErrorFallback
+                  title="Sidepanel failed to render"
+                  context="An error inside the Settings sidepanel prevented it from mounting."
+                  error={error}
+                  onRetry={reset}
+                />
+              )}
+            >
+              <Sidepanel />
+            </ErrorBoundary>
           </div>
         </div>
       </div>

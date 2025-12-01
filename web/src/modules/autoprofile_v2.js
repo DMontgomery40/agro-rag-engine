@@ -1,4 +1,18 @@
 ;(function(){
+  /**
+   * ---agentspec
+   * what: |
+   *   Resolves API base URL from query param, window origin, or localhost fallback. Returns string.
+   *
+   * why: |
+   *   Centralizes URL resolution for environment-agnostic API client initialization.
+   *
+   * guardrails:
+   *   - DO NOT use hardcoded URLs; always call apiBase() at runtime
+   *   - NOTE: Query param 'api' takes precedence; strips trailing slash
+   *   - NOTE: Falls back to 127.0.0.1:8012 if URL parsing fails
+   * ---/agentspec
+   */
   function apiBase(){
     try{
       const u = new URL(window.location.href);
@@ -9,11 +23,53 @@
       return 'http://127.0.0.1:8012';
     }catch{ return 'http://127.0.0.1:8012'; }
   }
+  /**
+   * ---agentspec
+   * what: |
+   *   Reads UI form state (mode, budget override, providers). Returns parsed config object with mode string, numeric budget, provider array.
+   *
+   * why: |
+   *   Centralizes form input extraction to prevent scattered DOM queries and type coercion bugs.
+   *
+   * guardrails:
+   *   - DO NOT assume budget input is valid number; parseFloat returns NaN on invalid input
+   *   - NOTE: Provider array built from DOM elements; order depends on DOM traversal
+   *   - ASK USER: Should invalid budget override silently default to 0 or reject form submission?
+   * ---/agentspec
+   */
   function api(path){ return apiBase() + path; }
   async function getConfig(){
     try{ const r = await fetch(api('/api/config')); return await r.json(); }catch{ return { env:{}, repos:[] }; }
   }
+  /**
+   * ---agentspec
+   * what: |
+   *   Reads UI form state (mode, budget, providers, regions, compliance, heuristics). Returns object with parsed values: mode string, budget number, prov array, regions array, compliance array, heur boolean.
+   *
+   * why: |
+   *   Centralizes form extraction logic; handles CSV parsing and null/empty defaults consistently.
+   *
+   * guardrails:
+   *   - DO NOT assume form elements exist; use optional chaining (?.) to prevent crashes
+   *   - NOTE: csvToList trims whitespace and filters empty strings; regions/compliance may be empty arrays
+   *   - ASK USER: Validate budget override range before use; no bounds checking here
+   * ---/agentspec
+   */
   function csvToList(s){ return (String(s||'').split(',').map(x=>x.trim()).filter(Boolean)); }
+  /**
+   * ---agentspec
+   * what: |
+   *   Reads UI form inputs (mode, budget, providers, regions, compliance, heuristics). Returns object with parsed values: mode string, budgetOverride number, prov array, regions array, compliance array, heur boolean.
+   *
+   * why: |
+   *   Centralizes form state extraction to decouple UI from business logic.
+   *
+   * guardrails:
+   *   - DO NOT assume form elements exist; use optional chaining (?.) to prevent crashes
+   *   - NOTE: csvToList() must handle empty/null strings gracefully
+   *   - DO NOT validate values here; validation belongs in caller
+   * ---/agentspec
+   */
   function readAdvanced(){
     const mode = document.getElementById('apv2-mode')?.value || 'balanced';
     const budgetOverride = parseFloat(document.getElementById('apv2-budget')?.value || '');
@@ -36,6 +92,20 @@
     };
     return { mode, budgetOverride, prov, regions, compliance, heur, workload: wl, slo };
   }
+  /**
+   * ---agentspec
+   * what: |
+   *   Displays loading spinner in profile placeholder. Sets innerHTML with animated border and status text. Inputs: DOM element IDs. Outputs: Visual loading state.
+   *
+   * why: |
+   *   Provides immediate UX feedback during async profile selection with v2 engine.
+   *
+   * guardrails:
+   *   - DO NOT inject untrusted content; innerHTML used only for controlled markup
+   *   - NOTE: Requires CSS vars (--line, --accent) and @keyframes spin defined globally
+   *   - NOTE: Assumes profile-placeholder element exists; no null check
+   * ---/agentspec
+   */
   function setPlaceholderLoading(){
     const placeholder = document.getElementById('profile-placeholder');
     const results = document.getElementById('profile-results-content');
@@ -50,8 +120,37 @@
     }
     if (results) results.style.display='none';
   }
+  /**
+   * ---agentspec
+   * what: |
+   *   Wraps fetch() with configurable timeout. Returns Promise<Response>. Rejects on timeout or network error.
+   *
+   * why: |
+   *   Prevents hanging requests; fetch() lacks native timeout support.
+   *
+   * guardrails:
+   *   - DO NOT set timeout < 1000ms; network latency will cause false failures
+   *   - NOTE: Clears timeout on both success and error paths
+   *   - ASK USER: Confirm timeout value (default 12000ms) fits your SLA
+   * ---/agentspec
+   */
   function setPhase(msg){ try{ const el=document.getElementById('apv2-phase'); if (el) el.textContent=msg; }catch{}
   }
+  /**
+   * ---agentspec
+   * what: |
+   *   fetchWithTimeout wraps fetch() with configurable timeout (default 12s). Returns Promise<Response> or rejects on timeout/network error.
+   *   renderResult updates DOM element #profile-results-content with scan results. Inputs: env, reason, scan, budget.
+   *
+   * why: |
+   *   Timeout wrapper prevents hung requests; renderResult centralizes result display logic.
+   *
+   * guardrails:
+   *   - DO NOT set timeout < 5000ms; network latency risk
+   *   - NOTE: clearTimeout must fire on both success and error paths to prevent memory leaks
+   *   - ASK USER: What should renderResult do if #profile-results-content missing?
+   * ---/agentspec
+   */
   function fetchWithTimeout(resource, opts){
     const { timeout=12000, ...rest } = (opts||{});
     return new Promise((resolve, reject)=>{
@@ -59,6 +158,20 @@
       fetch(resource, rest).then((res)=>{ clearTimeout(id); resolve(res); }, (err)=>{ clearTimeout(id); reject(err); });
     });
   }
+  /**
+   * ---agentspec
+   * what: |
+   *   Renders profile scan results to DOM. Takes env, reason, scan, budget; outputs HTML to #profile-results-content. Binds tooltips if available.
+   *
+   * why: |
+   *   Centralizes result rendering logic and defers tooltip binding to ProfileRenderer module for separation of concerns.
+   *
+   * guardrails:
+   *   - DO NOT render if ProfileRenderer unavailable; silent fail acceptable
+   *   - NOTE: Assumes #profile-results-content exists; no fallback if missing
+   *   - ASK USER: What should happen if bindTooltips fails?
+   * ---/agentspec
+   */
   function renderResult(env, reason, scan, budget){
     const results = document.getElementById('profile-results-content');
     const placeholder = document.getElementById('profile-placeholder');
@@ -109,6 +222,19 @@
     const adv = readAdvanced();
 
     // Fallbacks from cost panel when Advanced fields are blank
+    /**
+     * ---agentspec
+     * what: |
+     *   Parses numeric cost/workload inputs from DOM elements. Coerces to finite numbers or undefined. Populates adv.workload object if keys missing.
+     *
+     * why: |
+     *   Centralizes input validation and fallback logic to prevent NaN propagation in cost calculations.
+     *
+     * guardrails:
+     *   - DO NOT overwrite existing adv.workload keys; only fill undefined slots
+     *   - NOTE: numOrUndef returns undefined for non-finite values (NaN, Infinity)
+     * ---/agentspec
+     */
     function numOrUndef(v){ const n = Number(v); return Number.isFinite(n) ? n : undefined; }
     const costIn   = numOrUndef(document.getElementById('cost-in')?.value);
     const costOut  = numOrUndef(document.getElementById('cost-out')?.value);

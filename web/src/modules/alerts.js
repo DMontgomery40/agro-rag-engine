@@ -12,7 +12,34 @@
         return;
     }
 
+    /**
+     * ---agentspec
+     * what: |
+     *   Detects React dashboard DOM elements via data attribute and containment check. Returns boolean indicating if node belongs to dashboard root.
+     *
+     * why: |
+     *   Isolates dashboard-scoped DOM queries to prevent cross-context element selection.
+     *
+     * guardrails:
+     *   - DO NOT rely on window.__AGRO_REACT_DASHBOARD__ alone; requires actual DOM root
+     *   - NOTE: Returns false if root missing or node not contained; no error thrown
+     * ---/agentspec
+     */
     const getReactDashboardRoot = () => document.querySelector('[data-react-dashboard="true"]');
+    /**
+     * ---agentspec
+     * what: |
+     *   Checks if DOM node belongs to React Dashboard. Maps HTML alert threshold field IDs to backend keys for cost/token burn monitoring.
+     *
+     * why: |
+     *   Isolates dashboard scope detection and centralizes field naming to prevent ID-key mismatches.
+     *
+     * guardrails:
+     *   - DO NOT assume root exists; guard against null/undefined window.__AGRO_REACT_DASHBOARD__
+     *   - NOTE: THRESHOLD_FIELDS incomplete; add all backend mappings before production
+     *   - ASK USER: Confirm alert thresholds match backend schema
+     * ---/agentspec
+     */
     const isReactDashboardElement = (node) => {
         const root = getReactDashboardRoot();
         return Boolean((window.__AGRO_REACT_DASHBOARD__ || root) && node && root && root.contains(node));
@@ -82,6 +109,19 @@
 
     /**
      * Populate alert threshold input fields
+     */
+    /**
+     * ---agentspec
+     * what: |
+     *   Populates alert threshold form fields from data object. Maps THRESHOLD_FIELDS keys to DOM elements, sets field.value if data key exists.
+     *
+     * why: |
+     *   Centralizes threshold initialization logic; reduces repetitive field-by-field assignments.
+     *
+     * guardrails:
+     *   - DO NOT assume data[dataKey] is valid number; validate before use
+     *   - NOTE: Silent fail if fieldId selector returns null; add error logging
+     * ---/agentspec
      */
     function populateAlertThresholds(data) {
         Object.entries(THRESHOLD_FIELDS).forEach(([fieldId, dataKey]) => {
@@ -271,6 +311,20 @@
     /**
      * Gather alert threshold values from form
      */
+    /**
+     * ---agentspec
+     * what: |
+     *   Collects alert threshold values from DOM fields. Iterates THRESHOLD_FIELDS map, extracts non-empty values, converts to float, returns update object.
+     *
+     * why: |
+     *   Centralizes threshold gathering logic; parseFloat ensures numeric type for API/storage.
+     *
+     * guardrails:
+     *   - DO NOT skip validation; parseFloat('abc') returns NaN silently
+     *   - NOTE: Empty/null/undefined values excluded; falsy '0' will be skipped
+     *   - ASK USER: Should '0' threshold be allowed or treated as unset?
+     * ---/agentspec
+     */
     function gatherAlertThresholds() {
         const update = {};
 
@@ -384,6 +438,20 @@
 
     /**
      * Populate webhook configuration form
+     */
+    /**
+     * ---agentspec
+     * what: |
+     *   Populates webhook configuration form fields from data object. Maps 7 config keys (Slack URL, Discord URL, enabled flag, severity levels, resolved flag) to DOM elements via $() selector.
+     *
+     * why: |
+     *   Centralizes webhook config binding to prevent scattered DOM mutations and enable reuse across init/update flows.
+     *
+     * guardrails:
+     *   - DO NOT assume $() selector exists; will throw if elements missing
+     *   - NOTE: No validation of URLs or boolean coercion; caller must sanitize data
+     *   - DO NOT call without ensuring DOM is ready
+     * ---/agentspec
      */
     function populateWebhookConfig(data) {
         const slack = $('webhook_slack_url');

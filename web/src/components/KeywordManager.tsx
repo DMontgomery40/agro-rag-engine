@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useConfigStore } from '@/stores';
-import type { Repository } from '@/types';
+import type { Repository } from '@web/types';
 
 interface KeywordManagerProps {
   repo: Repository;

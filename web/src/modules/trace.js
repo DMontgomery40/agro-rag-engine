@@ -4,11 +4,37 @@
 
   const api = (window.CoreUtils && window.CoreUtils.api) ? window.CoreUtils.api : (p=>p);
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Formats tabular data into aligned ASCII tables. Takes rows array + headers array; returns markdown code block with padded columns.
+   *
+   * why: |
+   *   Calculates column widths once, then pads all cells uniformly for readable console/markdown output.
+   *
+   * guardrails:
+   *   - DO NOT call without headers; widths calculation requires column count
+   *   - NOTE: Coerces all values to strings; null/undefined become empty strings
+   * ---/agentspec
+   */
   function _fmtTable(rows, headers){
     const cols = headers.length;
     const widths = new Array(cols).fill(0);
     const all = [headers].concat(rows);
     all.forEach(r => r.forEach((c,i)=>{ widths[i] = Math.max(widths[i], String(c||'').length); }));
+    /**
+     * ---agentspec
+     * what: |
+     *   Fetches latest trace from API endpoint. Returns JSON trace object; optionally filters by repo query param.
+     *
+     * why: |
+     *   Centralizes trace retrieval with repo-aware routing for debugging agent execution.
+     *
+     * guardrails:
+     *   - DO NOT assume repo selector exists; check repoSel before accessing .value
+     *   - NOTE: Throws on network failure or non-200 response; add error handler
+     * ---/agentspec
+     */
     const line = (r)=> r.map((c,i)=> String(c||'').padEnd(widths[i])).join('  ');
     return ['```', line(headers), line(widths.map(w=>'-'.repeat(w))), ...rows.map(line), '```'].join('\n');
   }

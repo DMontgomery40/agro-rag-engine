@@ -9,8 +9,8 @@ import type {
   Calculator2Results,
   OptimizationPlan,
   PrecisionResults
-} from '../types/storage';
-import { formatBytes } from '../utils/formatters';
+} from '@web/types/storage';
+import { formatBytes } from '@web/utils/formatters';
 
 /**
  * Hook for Calculator 1: Full Storage Requirements

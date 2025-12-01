@@ -6227,7 +6227,7 @@
                                             <label>Heuristic Quality Fallback</label>
                                             <div style="display:flex;align-items:center;gap:10px;">
                                                 <input type="checkbox" id="apv2-heuristics" style="width:auto;">
-                                                <span style="font-size:12px;color:var(--fg-muted);">Use heuristics when prices.json lacks quality_score (advanced)</span>
+                                                <span style="font-size:12px;color:var(--fg-muted);">Use heuristics when models.json lacks quality_score (advanced)</span>
                                             </div>
                                         </div>
                                     </div>

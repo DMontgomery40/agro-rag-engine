@@ -76,6 +76,20 @@
     200: { name: 'Enterprise', color: 'var(--accent)', badge: 'MAXIMUM PERFORMANCE' }
   };
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Renders profile results UI block. Takes profile, scan, budget objects; outputs HTML string with tier name, badge, styling.
+   *
+   * why: |
+   *   Centralizes tier-based UI rendering to avoid duplicating TIER_INFO lookups and style logic.
+   *
+   * guardrails:
+   *   - DO NOT mutate profile/scan/budget; read-only
+   *   - NOTE: Assumes TIER_INFO[budget] exists or falls back to 'Custom'
+   *   - ASK USER: Validate tierInfo.color is valid CSS var before render
+   * ---/agentspec
+   */
   function renderProfileResults(profile, scan, budget) {
     const tierInfo = TIER_INFO[budget] || { name: 'Custom', color: 'var(--fg-muted)', badge: 'CUSTOM CONFIG' };
     

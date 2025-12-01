@@ -9,6 +9,19 @@
 const PRICE_CACHE = { json: null, loadedAt: 0 };
 const PRICE_TTL_MS = 60_000;
 
+/**
+ * ---agentspec
+ * what: |
+ *   Normalizes string keys to lowercase trimmed form. Accepts any input, returns normalized string or empty string.
+ *
+ * why: |
+ *   Consistent key comparison across case-insensitive lookups.
+ *
+ * guardrails:
+ *   - DO NOT assume non-string inputs are valid; coerce via String() first
+ *   - NOTE: Returns empty string for null/undefined, not error
+ * ---/agentspec
+ */
 function normKey(s) {
   return String(s || '').trim().toLowerCase();
 }
@@ -36,6 +49,20 @@ async function loadPrices() {
   return json;
 }
 
+/**
+ * ---agentspec
+ * what: |
+ *   Classifies model pricing schema by field presence. Returns model type (embed, rerank, or chat) based on numeric pricing fields.
+ *
+ * why: |
+ *   Routing logic needs type detection before pricing calculations; field-based classification avoids model name parsing.
+ *
+ * guardrails:
+ *   - DO NOT rely on field order; check all conditions before returning
+ *   - NOTE: embed/rerank checked first; chat is fallback for models with partial pricing data
+ *   - ASK USER: Handle models with multiple pricing types (e.g., embed + chat)?
+ * ---/agentspec
+ */
 function getModelType(model) {
   // Determine model type based on available fields
   // Use != null to catch both null and undefined, and check for actual numeric values
@@ -52,6 +79,20 @@ function getModelType(model) {
   return null;
 }
 
+/**
+ * ---agentspec
+ * what: |
+ *   Searches pricing models array for exact provider+model match (normalized keys). Returns matched model object with computed type field.
+ *
+ * why: |
+ *   Normalization ensures case-insensitive matching; type computation centralizes model classification logic.
+ *
+ * guardrails:
+ *   - DO NOT assume models array exists; check prices?.models first
+ *   - NOTE: Returns undefined if no match found; caller must handle
+ *   - ASK USER: Should fallback to partial match if exact match fails?
+ * ---/agentspec
+ */
 function getModelSpec(prices, providerName, modelName) {
   const models = prices?.models || [];
   const prov = normKey(providerName);
@@ -94,6 +135,20 @@ function getModelSpec(prices, providerName, modelName) {
  * @param {number} [opt.embed_tokens]  - for embed
  * @param {number} [opt.requests]      - for rerank (number of calls)
  * @returns {Object} { costUSD, detail }
+ */
+/**
+ * ---agentspec
+ * what: |
+ *   Computes unit cost (USD) for a model. Takes prices dict, provider, model name. Returns {costUSD, detail} or error if model unknown.
+ *
+ * why: |
+ *   Centralizes cost lookup logic; normalizes provider key and validates model existence before calculation.
+ *
+ * guardrails:
+ *   - DO NOT assume model exists; always check spec before accessing pricing fields
+ *   - NOTE: Returns costUSD=0 with error detail on unknown model; does not throw
+ *   - ASK USER: How should missing pricing tiers be handled (default to 0 or throw)?
+ * ---/agentspec
  */
 function computeUnitCost(prices, opt) {
   const provider = normKey(opt.provider);
@@ -215,7 +270,35 @@ export const CostLogic = {
 
   // Read form inputs and estimate cost via backend API
   async estimateFromUI(apiBase) {
+    /**
+     * ---agentspec
+     * what: |
+     *   Reads form inputs (provider, model, token counts) from DOM. Returns payload object with gen_provider, gen_model, tokens_in, tokens_out.
+     *
+     * why: |
+     *   Centralizes form parsing; all values sourced from Pydantic config, no hardcoded defaults except fallback integers.
+     *
+     * guardrails:
+     *   - DO NOT use hardcoded model/provider names; trim and validate against config
+     *   - NOTE: parseInt defaults to 0 if parse fails; ensure upstream validation
+     *   - ASK USER: Validate gen_provider and gen_model against allowed list before submission
+     * ---/agentspec
+     */
     function readInt(id, d){ const el=document.getElementById(id); const v=el?el.value:''; const n=parseInt(v||'',10); return Number.isFinite(n)?n:(d||0); }
+    /**
+     * ---agentspec
+     * what: |
+     *   Reads cost config from DOM elements (provider, model, token counts, embedding provider). Returns payload object for pricing calculation.
+     *
+     * why: |
+     *   Centralizes DOM reads with fallbacks; Pydantic config is source of truth, not hardcoded defaults.
+     *
+     * guardrails:
+     *   - DO NOT use hardcoded fallbacks; all values must come from Pydantic config
+     *   - NOTE: readInt() must validate non-negative integers; readStr() trims whitespace
+     *   - ASK USER: Confirm embed_provider is required or optional in payload
+     * ---/agentspec
+     */
     function readStr(id, d){ const el=document.getElementById(id); const v=el?el.value:''; return (v||d||'').toString(); }
 
     // All values come from Pydantic config - no hardcoded fallbacks

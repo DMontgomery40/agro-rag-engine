@@ -23,6 +23,19 @@
     /**
      * Show RAG subtab navigation
      */
+    /**
+     * ---agentspec
+     * what: |
+     *   Toggles RAG subtab bar visibility. Selects #rag-subtabs element and sets display to 'flex' if present.
+     *
+     * why: |
+     *   Encapsulates DOM manipulation for conditional UI state management.
+     *
+     * guardrails:
+     *   - DO NOT assume #rag-subtabs exists; check prevents null errors
+     *   - NOTE: Uses jQuery; ensure $ is available in scope
+     * ---/agentspec
+     */
     function showRagSubtabs() {
         const subtabBar = $('#rag-subtabs');
         if (subtabBar) {
@@ -33,6 +46,19 @@
     /**
      * Hide RAG subtab navigation
      */
+    /**
+     * ---agentspec
+     * what: |
+     *   Hides RAG subtab bar by setting display to 'none'. Selects element via jQuery ID selector.
+     *
+     * why: |
+     *   Conditional UI hiding for RAG workflow state management.
+     *
+     * guardrails:
+     *   - DO NOT assume #rag-subtabs exists; add null check before style mutation
+     *   - NOTE: jQuery selector returns falsy if element missing; current code will error on .style access
+     * ---/agentspec
+     */
     function hideRagSubtabs() {
         const subtabBar = $('#rag-subtabs');
         if (subtabBar) {
@@ -42,6 +68,20 @@
 
     /**
      * Switch to a RAG subtab
+     */
+    /**
+     * ---agentspec
+     * what: |
+     *   Switches RAG UI subtab by name. Activates RAG main tab, deactivates all tab-content elements, then marks target subtab active.
+     *
+     * why: |
+     *   Centralizes tab-switching logic to prevent orphaned active states across multiple tab groups.
+     *
+     * guardrails:
+     *   - DO NOT assume subtabName element exists; add null check before classList.add()
+     *   - NOTE: Deactivates ALL .tab-content; verify this doesn't hide unrelated tabs
+     *   - ASK USER: Should inactive subtabs be hidden (display:none) or just unmarked (active class removed)?
+     * ---/agentspec
      */
     function switchRagSubtab(subtabName) {
         console.log(`[RAG] Switching to subtab: ${subtabName}`);
@@ -78,6 +118,20 @@
 
     /**
      * Handle main tab changes
+     */
+    /**
+     * ---agentspec
+     * what: |
+     *   Handles tab navigation to RAG section. Activates RAG container, displays subtabs, removes active class from all tab-content elements, then adds active class to RAG tab.
+     *
+     * why: |
+     *   Ensures only one tab is visually active and RAG subtabs are available when RAG tab is selected.
+     *
+     * guardrails:
+     *   - DO NOT call showRagSubtabs() before DOM query; may fail if subtabs not yet rendered
+     *   - NOTE: Removes active from ALL .tab-content; verify no other tabs need simultaneous active state
+     *   - ASK USER: Should inactive tabs be hidden (display:none) instead of just removing active class?
+     * ---/agentspec
      */
     function handleTabChange(tabId) {
         if (tabId === 'rag') {
@@ -149,6 +203,19 @@
 
     /**
      * Initialize RAG navigation
+     */
+    /**
+     * ---agentspec
+     * what: |
+     *   Initializes RAG navigation listener. Subscribes to 'nav:tab-change' events and routes tab switches to handleTabChange(tabId).
+     *
+     * why: |
+     *   Decouples navigation logic from UI; event-driven pattern allows async tab handling.
+     *
+     * guardrails:
+     *   - DO NOT assume events object exists; guard with null check
+     *   - NOTE: handleTabChange() must be defined before init() call
+     * ---/agentspec
      */
     function init() {
         console.log('[RAG] Initializing RAG navigation');

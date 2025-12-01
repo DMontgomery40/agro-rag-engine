@@ -100,6 +100,19 @@ async function runEvaluation() {
 }
 
 // Show progress UI
+/**
+ * ---agentspec
+ * what: |
+ *   Displays evaluation progress UI. Shows progress bar, hides results/comparison panels, sets status text to "Initializing..." and width to 0%.
+ *
+ * why: |
+ *   Centralizes UI state transitions for eval workflow; prevents inconsistent visibility states.
+ *
+ * guardrails:
+ *   - DO NOT call before eval starts; assumes DOM elements exist
+ *   - NOTE: Depends on window.UXFeedback; incomplete initialization check
+ * ---/agentspec
+ */
 function showEvalProgress() {
     document.getElementById('eval-progress').style.display = 'block';
     document.getElementById('eval-results').style.display = 'none';
@@ -118,6 +131,20 @@ function showEvalProgress() {
 }
 
 // Start polling for status
+/**
+ * ---agentspec
+ * what: |
+ *   Polls /api/eval/status endpoint at fixed interval. Clears prior interval, fetches JSON status, checks running flag.
+ *
+ * why: |
+ *   Interval-based polling for simple state synchronization without WebSocket overhead.
+ *
+ * guardrails:
+ *   - DO NOT poll without clearing prior interval; prevents interval stack-up
+ *   - NOTE: No backoff on failure; will retry indefinitely
+ *   - ASK USER: Should failed polls trigger exponential backoff or circuit breaker?
+ * ---/agentspec
+ */
 function startPolling() {
     if (evalPollingInterval) clearInterval(evalPollingInterval);
 
@@ -212,6 +239,19 @@ async function loadEvalResults() {
 }
 
 // Render evaluation results
+/**
+ * ---agentspec
+ * what: |
+ *   Renders evaluation metrics (top-1 and top-k accuracy) to DOM. Converts decimal accuracies to percentages, displays results section.
+ *
+ * why: |
+ *   Centralizes metric formatting and visibility toggle for consistent UI updates.
+ *
+ * guardrails:
+ *   - DO NOT assume evalResults is populated; check exists before access
+ *   - NOTE: Mutates DOM directly; consider event-driven updates for testability
+ * ---/agentspec
+ */
 function renderEvalResults() {
     if (!evalResults) return;
 
@@ -270,6 +310,20 @@ function renderEvalResults() {
 }
 
 // Render individual question result
+/**
+ * ---agentspec
+ * what: |
+ *   Renders retrieval evaluation result (question + top-1/top-k hits). Returns HTML card with color-coded pass/fail border and metrics.
+ *
+ * why: |
+ *   Centralizes result formatting; consistent styling via CSS variables.
+ *
+ * guardrails:
+ *   - DO NOT trust r.top1_hit/r.topk_hit without validation; sanitize input
+ *   - NOTE: escapeHtml() required to prevent XSS on r.question
+ *   - DO NOT assume isFailure maps 1:1 to hit status; document mapping
+ * ---/agentspec
+ */
 function renderQuestionResult(r, isFailure) {
     const top1Color = r.top1_hit ? 'var(--ok)' : 'var(--err)';
     const topkColor = r.topk_hit ? 'var(--ok)' : 'var(--warn)';
@@ -365,6 +419,19 @@ async function compareWithBaseline() {
 }
 
 // Render comparison results
+/**
+ * ---agentspec
+ * what: |
+ *   Renders evaluation comparison UI. Takes delta object (top1, topk metrics), calculates percentage deltas, displays in #eval-comparison container.
+ *
+ * why: |
+ *   Centralizes metric formatting and DOM rendering to avoid scattered percentage calculations.
+ *
+ * guardrails:
+ *   - DO NOT assume data.delta exists; validate before access
+ *   - NOTE: Assumes #eval-comparison element present in DOM
+ * ---/agentspec
+ */
 function renderComparison(data) {
     const container = document.getElementById('eval-comparison');
     container.style.display = 'block';
@@ -457,6 +524,19 @@ function renderComparison(data) {
 }
 
 // Export results
+/**
+ * ---agentspec
+ * what: |
+ *   Exports evalResults object to JSON file. Creates blob, generates download URL, triggers browser download.
+ *
+ * why: |
+ *   Standard client-side export pattern for structured data persistence.
+ *
+ * guardrails:
+ *   - DO NOT export if evalResults is null/undefined; alert user first
+ *   - NOTE: Uses URL.createObjectURL; clean up with revokeObjectURL if memory-critical
+ * ---/agentspec
+ */
 function exportEvalResults() {
     if (!evalResults) {
         alert('No results to export');
@@ -476,12 +556,39 @@ function exportEvalResults() {
 }
 
 // Helper functions
+/**
+ * ---agentspec
+ * what: |
+ *   Escapes HTML special chars via textContent/innerHTML. Shows dismissible toast notifications with color-coded type (success/error/info).
+ *
+ * why: |
+ *   textContent prevents XSS; toast provides non-blocking user feedback.
+ *
+ * guardrails:
+ *   - DO NOT use innerHTML directly on user input; textContent sanitizes first
+ *   - NOTE: Toast color depends on CSS vars (--ok, --err, --link); verify defined
+ *   - ASK USER: Add toast auto-dismiss timeout?
+ * ---/agentspec
+ */
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 }
 
+/**
+ * ---agentspec
+ * what: |
+ *   Creates and displays a toast notification. Accepts message string and type ('info'|'success'|'error'). Renders fixed-position div with color mapped to type.
+ *
+ * why: |
+ *   Centralizes toast UI logic; reusable across app for consistent notifications.
+ *
+ * guardrails:
+ *   - DO NOT call without message; toast will be empty
+ *   - NOTE: Uses CSS custom properties (--ok, --err, --link, --panel); ensure defined in root scope
+ * ---/agentspec
+ */
 function showToast(message, type = 'info') {
     const color = type === 'success' ? 'var(--ok)' : type === 'error' ? 'var(--err)' : 'var(--link)';
     const toast = document.createElement('div');

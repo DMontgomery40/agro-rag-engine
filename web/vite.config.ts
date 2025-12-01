@@ -16,6 +16,9 @@ export default defineConfig({
       '@/types': path.resolve(__dirname, './src/types'),
       '@/api': path.resolve(__dirname, './src/api'),
       '@/utils': path.resolve(__dirname, './src/utils'),
+      '@web': path.resolve(__dirname, './src'),
+      '@web/types': path.resolve(__dirname, './src/types'),
+      '@web/utils': path.resolve(__dirname, './src/utils'),
     },
   },
   server: {

@@ -99,7 +99,7 @@ export function ExternalRerankersSubtab() {
 
   const loadPrices = async () => {
     try {
-      const response = await fetch('/api/prices');
+      const response = await fetch('/api/models');
       if (!response.ok) {
         throw new Error(`Failed to fetch prices: ${response.status} ${response.statusText}`);
       }
@@ -120,7 +120,7 @@ export function ExternalRerankersSubtab() {
         });
       setPriceModels(rerankEntries);
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Failed to load prices.json';
+      const errorMsg = err instanceof Error ? err.message : 'Failed to load models.json';
       console.error('[ExternalRerankersSubtab] Error loading prices:', err);
       setError((prev) => prev || errorMsg);
     }
@@ -305,9 +305,9 @@ export function ExternalRerankersSubtab() {
 
   const handleAddRerankModel = async () => {
     if (addModelDisabled) return;
-    const providerInput = window.prompt('Rerank provider (matches prices.json provider id):', cloudProvider || providerOptions[0] || '');
+    const providerInput = window.prompt('Rerank provider (matches models.json provider id):', cloudProvider || providerOptions[0] || '');
     if (!providerInput) return;
-    const modelInput = window.prompt('Rerank model ID to add to prices.json:', cloudModel || '');
+    const modelInput = window.prompt('Rerank model ID to add to models.json:', cloudModel || '');
     if (!modelInput) return;
     const provider = providerInput.trim().toLowerCase();
     const model = modelInput.trim();
@@ -315,7 +315,7 @@ export function ExternalRerankersSubtab() {
 
     try {
       setSavingModel(true);
-      await fetch('/api/prices/upsert', {
+      await fetch('/api/models/upsert', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ provider, model, components: ['RERANK'], unit: '1k_tokens' })
@@ -426,7 +426,7 @@ export function ExternalRerankersSubtab() {
         </h3>
         <p style={{ fontSize: '13px', color: 'var(--fg-muted)', marginBottom: '20px', lineHeight: '1.6' }}>
           Choose which reranker to use for improving retrieval results. You can use the built-in AGRO Learning Reranker (recommended),
-          an alternative local model, or an external API service. Cloud providers and models are sourced live from <code style={{ background: 'var(--card-bg)', padding: '2px 6px', borderRadius: '3px' }}>prices.json</code> via <code style={{ background: 'var(--card-bg)', padding: '2px 6px', borderRadius: '3px' }}>/api/prices</code>—no hardcoded lists.
+          an alternative local model, or an external API service. Cloud providers and models are sourced live from <code style={{ background: 'var(--card-bg)', padding: '2px 6px', borderRadius: '3px' }}>models.json</code> via <code style={{ background: 'var(--card-bg)', padding: '2px 6px', borderRadius: '3px' }}>/api/models</code>—no hardcoded lists.
         </p>
 
         {/* Active Choice */}
@@ -461,7 +461,7 @@ export function ExternalRerankersSubtab() {
           </div>
           <div className="input-group">
             <label>
-              Cloud Provider (prices.json)
+              Cloud Provider (models.json)
               <span className="help-icon" data-tooltip="RERANKER_PROVIDER">?</span>
             </label>
             <select
@@ -470,7 +470,7 @@ export function ExternalRerankersSubtab() {
               onChange={(e) => handleCloudProviderChange(e.target.value)}
             >
               {providerOptions.length === 0 ? (
-                <option value="">Add a rerank provider in prices.json</option>
+                <option value="">Add a rerank provider in models.json</option>
               ) : (
                 providerOptions.map((opt) => (
                   <option key={opt} value={opt}>
@@ -500,7 +500,7 @@ export function ExternalRerankersSubtab() {
                 type="button"
                 onClick={handleAddRerankModel}
                 disabled={addModelDisabled}
-                data-tooltip="Add this provider/model to prices.json and save it"
+                data-tooltip="Add this provider/model to models.json and save it"
                 style={{
                   padding: '8px 12px',
                   borderRadius: '6px',
@@ -666,13 +666,13 @@ export function ExternalRerankersSubtab() {
             🌐 External API Rerankers
           </h4>
           <p style={{ fontSize: '12px', color: 'var(--fg-muted)', marginBottom: '16px', lineHeight: '1.5' }}>
-            Use cloud-based reranking APIs instead of local models. Provider/model options come from <code style={{ background: 'var(--card-bg)', padding: '2px 6px', borderRadius: '3px' }}>prices.json</code>; add entries above to extend the catalog without code changes.
+            Use cloud-based reranking APIs instead of local models. Provider/model options come from <code style={{ background: 'var(--card-bg)', padding: '2px 6px', borderRadius: '3px' }}>models.json</code>; add entries above to extend the catalog without code changes.
           </p>
 
           <div className="input-row">
           <div className="input-group">
             <label>
-              Cloud Model (prices.json, provider-scoped)
+              Cloud Model (models.json, provider-scoped)
               <span className="help-icon" data-tooltip="RERANKER_CLOUD_MODEL">?</span>
             </label>
             <select

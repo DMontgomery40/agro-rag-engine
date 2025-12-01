@@ -4,25 +4,50 @@
 // Fully wired to repos.json for all repository configuration
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useConfig } from '@/hooks';
 import { useAPI } from '@/hooks';
 import { RepositoryConfig } from './RepositoryConfig';
 import { LiveTerminal } from '../LiveTerminal/LiveTerminal';
 import { TerminalService } from '@/services/TerminalService';
 import { useRepoStore } from '@/stores/useRepoStore';
 
+/**
+ * ---agentspec
+ * what: |
+ *   Renders data quality UI subtab. Maps centralized repo store to repo names; manages selectedRepo, excludeDirs, excludePatterns state.
+ *
+ * why: |
+ *   Centralizes repo state via useRepoStore to avoid duplication across tabs.
+ *
+ * guardrails:
+ *   - DO NOT fetch repos directly; use storeLoadRepos for consistency
+ *   - NOTE: repos derived from storeRepos.map(r => r.name); sync state if store updates
+ * ---/agentspec
+ */
 export function DataQualitySubtab() {
-  const { get, set, loading, error } = useConfig();
   const { api } = useAPI();
-  const [localError, setLocalError] = useState<string>('');
   
   // Use centralized repo store
   const { repos: storeRepos, activeRepo, loadRepos: storeLoadRepos } = useRepoStore();
+  /**
+   * ---agentspec
+   * what: |
+   *   React component managing repository indexing UI. Accepts repo selection, exclusion filters (dirs/patterns/keywords), card limit, enrichment toggle. Tracks build progress & stage.
+   *
+   * why: |
+   *   Centralizes indexing config state to decouple UI from API calls and enable real-time progress feedback.
+   *
+   * guardrails:
+   *   - DO NOT allow cardsMax < 10 or > Pydantic limit; validate before submit
+   *   - NOTE: enrichEnabled defaults true; confirm user intent if toggled off
+   *   - ASK USER: Clarify excludePatterns format (regex vs glob) before implementation
+   * ---/agentspec
+   */
   const repos = storeRepos.map(r => r.name);
   const [selectedRepo, setSelectedRepo] = useState('');
   const [excludeDirs, setExcludeDirs] = useState('');
   const [excludePatterns, setExcludePatterns] = useState('');
   const [excludeKeywords, setExcludeKeywords] = useState('');
+  const [cardsMax, setCardsMax] = useState(100);  // Pydantic default: 100, min: 10
   const [enrichEnabled, setEnrichEnabled] = useState(true);
   const [buildInProgress, setBuildInProgress] = useState(false);
   const [currentStage, setCurrentStage] = useState('');
@@ -36,6 +61,7 @@ export function DataQualitySubtab() {
   const [keywordsBoost, setKeywordsBoost] = useState<number>(1.3);
   const [keywordsAutoGenerate, setKeywordsAutoGenerate] = useState<number>(1);
   const [keywordsRefreshHours, setKeywordsRefreshHours] = useState<number>(24);
+  const [error, setError] = useState<string>('');
 
   // Keyword generation state
   const [keywordsGenerating, setKeywordsGenerating] = useState<boolean>(false);
@@ -60,6 +86,20 @@ export function DataQualitySubtab() {
 
   // Load cards filters + keywords config from backend
   useEffect(() => {
+    /**
+     * ---agentspec
+     * what: |
+     *   Fetches cards config from API endpoint. On success, extracts env object; on failure (non-2xx or parse error), logs warning and returns undefined.
+     *
+     * why: |
+     *   Graceful degradation: app continues with defaults if config unavailable, avoiding hard failures on network/API issues.
+     *
+     * guardrails:
+     *   - DO NOT throw on fetch failure; silent fallback to defaults required
+     *   - NOTE: Only extracts env; ignores other config fields
+     *   - ASK USER: Should 404 vs 5xx be handled differently?
+     * ---/agentspec
+     */
     const loadCardsConfig = async () => {
       try {
         const response = await fetch(api('config'));
@@ -69,7 +109,10 @@ export function DataQualitySubtab() {
         }
         const data = await response.json();
         const env = data.env || {};
-        // CARDS_MAX now uses Zustand get()/set() directly - no local state needed
+        const cardsMaxValue = parseInt(env.CARDS_MAX ?? '100', 10);
+        if (!isNaN(cardsMaxValue) && cardsMaxValue >= 10) {
+          setCardsMax(cardsMaxValue);
+        }
         setExcludeDirs(env.CARDS_EXCLUDE_DIRS || '');
         setExcludePatterns(env.CARDS_EXCLUDE_PATTERNS || '');
         setExcludeKeywords(env.CARDS_EXCLUDE_KEYWORDS || '');
@@ -85,21 +128,74 @@ export function DataQualitySubtab() {
     loadCardsConfig();
   }, [api]);
 
-  
+
+  /**
+   * ---agentspec
+   * what: |
+   *   POSTs config key-value pair to /config endpoint. Takes key string and value any; returns response JSON.
+   *
+   * why: |
+   *   Centralizes config updates via API to maintain server-side state consistency.
+   *
+   * guardrails:
+   *   - DO NOT validate value type client-side; server enforces schema
+   *   - NOTE: Clears error state before request; fails silently if response is non-JSON
+   *   - ASK USER: Add retry logic or timeout handling?
+   * ---/agentspec
+   */
+  const updateConfig = async (key: string, value: any) => {
+    try {
+      setError('');
+
+      const response = await fetch(api('config'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ env: { [key]: value } })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to save ${key}: ${response.status}`);
+      }
+
+      // Reload config to ensure backend picks up changes
+      await fetch(api('env/reload'), { method: 'POST' });
+
+      console.log(`[DataQualitySubtab] Successfully saved ${key} = ${value}`);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : `Failed to save ${key}`;
+      console.error(`[DataQualitySubtab] Error saving ${key}:`, err);
+      setError(errorMsg);
+    }
+  };
+
   /**
    * Generate keywords for the selected repository
    * Calls /api/keywords/generate endpoint
    */
+  /**
+   * ---agentspec
+   * what: |
+   *   Generates keywords for selected repository. Validates repo selection, sets loading state, updates UI with generation status.
+   *
+   * why: |
+   *   Centralizes keyword generation trigger with validation and user feedback.
+   *
+   * guardrails:
+   *   - DO NOT proceed without selectedRepo; return early with error message
+   *   - NOTE: Sets three state vars (generating flag, status text, count reset) atomically
+   * ---/agentspec
+   */
   const handleGenerateKeywords = async () => {
     if (!selectedRepo) {
-      setLocalError('Please select a repository first');
+      setError('Please select a repository first');
       return;
     }
 
     setKeywordsGenerating(true);
     setKeywordsGenerateStatus('Generating keywords...');
     setGeneratedKeywordsCount(null);
-    setLocalError('');
+    setError('');
 
     try {
       const response = await fetch(api('keywords/generate'), {
@@ -118,18 +214,31 @@ export function DataQualitySubtab() {
       } else {
         const errorMsg = data.error || data.detail || 'Unknown error generating keywords';
         setKeywordsGenerateStatus(`✗ Error: ${errorMsg}`);
-        setLocalError(errorMsg);
+        setError(errorMsg);
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to generate keywords';
       setKeywordsGenerateStatus(`✗ Failed: ${errorMsg}`);
-      setLocalError(errorMsg);
+      setError(errorMsg);
       console.error('[DataQualitySubtab] Keyword generation error:', err);
     } finally {
       setKeywordsGenerating(false);
     }
   };
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Initiates card-building workflow. Sets UI state (buildInProgress, progressRepo, showTerminal) and connects to SSE stream via terminal instance.
+   *
+   * why: |
+   *   Centralizes build trigger logic with consistent state management and terminal output streaming.
+   *
+   * guardrails:
+   *   - DO NOT assume window.terminal_cards_terminal exists; add null check before access
+   *   - NOTE: SSE connection must be established before build starts or stream will miss initial output
+   * ---/agentspec
+   */
   const handleBuildCards = async () => {
     setBuildInProgress(true);
     setProgressRepo(selectedRepo);
@@ -153,7 +262,7 @@ export function DataQualitySubtab() {
           exclude_dirs: excludeDirs.split(',').map(s => s.trim()).filter(Boolean),
           exclude_patterns: excludePatterns.split(',').map(s => s.trim()).filter(Boolean),
           exclude_keywords: excludeKeywords.split(',').map(s => s.trim()).filter(Boolean),
-          max: get('CARDS_MAX', 100),
+          max: cardsMax,
           enrich: enrichEnabled
         })
       });
@@ -177,7 +286,7 @@ export function DataQualitySubtab() {
   return (
     <div id="tab-rag-data-quality" className="rag-subtab-content active">
       {/* Error Display */}
-      {(error || localError) && (
+      {error && (
         <div
           style={{
             marginBottom: '16px',
@@ -189,7 +298,7 @@ export function DataQualitySubtab() {
             fontSize: '12px'
           }}
         >
-          <strong>Error:</strong> {error || localError}
+          <strong>Error:</strong> {error}
         </div>
       )}
 
@@ -236,9 +345,6 @@ export function DataQualitySubtab() {
       <div className="settings-section">
         <h3>Repository Configuration</h3>
         <RepositoryConfig
-          repos={repos}
-          selectedRepo={selectedRepo}
-          onRepoChange={setSelectedRepo}
           onExcludePathsChange={(paths) => {
             // Sync exclude_paths changes from RepositoryConfig to Cards Builder field
             setExcludeDirs(paths.join(', '));
@@ -269,7 +375,8 @@ export function DataQualitySubtab() {
               min="10"
               max="500"
               step="10"
-              onChange={(e) => set('KEYWORDS_MAX_PER_REPO', parseInt(e.target.value, 10))}
+              onChange={(e) => setKeywordsMaxPerRepo(parseInt(e.target.value, 10))}
+              onBlur={() => updateConfig('KEYWORDS_MAX_PER_REPO', keywordsMaxPerRepo)}
             />
           </div>
           <div className="input-group">
@@ -285,7 +392,8 @@ export function DataQualitySubtab() {
               min="1"
               max="10"
               step="1"
-              onChange={(e) => set('KEYWORDS_MIN_FREQ', parseInt(e.target.value, 10))}
+              onChange={(e) => setKeywordsMinFreq(parseInt(e.target.value, 10))}
+              onBlur={() => updateConfig('KEYWORDS_MIN_FREQ', keywordsMinFreq)}
             />
           </div>
         </div>
@@ -304,7 +412,8 @@ export function DataQualitySubtab() {
               min="1.0"
               max="3.0"
               step="0.1"
-              onChange={(e) => set('KEYWORDS_BOOST', parseFloat(e.target.value))}
+              onChange={(e) => setKeywordsBoost(parseFloat(e.target.value))}
+              onBlur={() => updateConfig('KEYWORDS_BOOST', keywordsBoost)}
             />
           </div>
           <div className="input-group">
@@ -319,7 +428,7 @@ export function DataQualitySubtab() {
               onChange={(e) => {
                 const value = parseInt(e.target.value, 10);
                 setKeywordsAutoGenerate(value);
-                set('KEYWORDS_AUTO_GENERATE', value);
+                updateConfig('KEYWORDS_AUTO_GENERATE', value);
               }}
             >
               <option value="1">Enabled</option>
@@ -342,7 +451,8 @@ export function DataQualitySubtab() {
               min="1"
               max="168"
               step="1"
-              onChange={(e) => set('KEYWORDS_REFRESH_HOURS', parseInt(e.target.value, 10))}
+              onChange={(e) => setKeywordsRefreshHours(parseInt(e.target.value, 10))}
+              onBlur={() => updateConfig('KEYWORDS_REFRESH_HOURS', keywordsRefreshHours)}
             />
           </div>
         </div>
@@ -444,7 +554,8 @@ export function DataQualitySubtab() {
               name="CARDS_EXCLUDE_DIRS"
               placeholder="e.g., node_modules, vendor, dist"
               value={excludeDirs}
-              onChange={(e) => set('CARDS_EXCLUDE_DIRS', e.target.value)}
+              onChange={(e) => setExcludeDirs(e.target.value)}
+              onBlur={() => updateConfig('CARDS_EXCLUDE_DIRS', excludeDirs)}
               style={{ width: '100%' }}
             />
             <p className="small" style={{ color: 'var(--fg-muted)' }}>
@@ -465,7 +576,8 @@ export function DataQualitySubtab() {
               name="CARDS_EXCLUDE_PATTERNS"
               placeholder="e.g., .test.js, .spec.ts, .min.js"
               value={excludePatterns}
-              onChange={(e) => set('CARDS_EXCLUDE_PATTERNS', e.target.value)}
+              onChange={(e) => setExcludePatterns(e.target.value)}
+              onBlur={() => updateConfig('CARDS_EXCLUDE_PATTERNS', excludePatterns)}
               style={{ width: '100%' }}
             />
             <p className="small" style={{ color: 'var(--fg-muted)' }}>
@@ -486,7 +598,8 @@ export function DataQualitySubtab() {
               name="CARDS_EXCLUDE_KEYWORDS"
               placeholder="e.g., deprecated, legacy, TODO"
               value={excludeKeywords}
-              onChange={(e) => set('CARDS_EXCLUDE_KEYWORDS', e.target.value)}
+              onChange={(e) => setExcludeKeywords(e.target.value)}
+              onBlur={() => updateConfig('CARDS_EXCLUDE_KEYWORDS', excludeKeywords)}
               style={{ width: '100%' }}
             />
             <p className="small" style={{ color: 'var(--fg-muted)' }}>
@@ -503,12 +616,13 @@ export function DataQualitySubtab() {
               type="number"
               id="cards-max"
               name="CARDS_MAX"
-              value={get('CARDS_MAX', 100)}
+              value={cardsMax}
               onChange={(e) => {
                 const val = Number(e.target.value);
                 // Enforce Pydantic constraint: ge=10
-                set('CARDS_MAX', Math.max(10, val));
+                setCardsMax(Math.max(10, val));
               }}
+              onBlur={() => updateConfig('CARDS_MAX', cardsMax)}
               min="10"
               step="10"
               style={{ maxWidth: '160px' }}
@@ -524,7 +638,7 @@ export function DataQualitySubtab() {
                 id="cards-enrich-gui"
                 name="CARDS_ENRICH"
                 checked={enrichEnabled}
-                onChange={(e) => set('CARDS_ENRICH', e.target.checked)}
+                onChange={(e) => setEnrichEnabled(e.target.checked)}
               />{' '}
               Enrich with AI
             </label>

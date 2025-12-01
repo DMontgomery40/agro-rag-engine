@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { configApi } from '@/api/config';
 import { apiClient, api } from '@/api/client';
 import { useTooltips } from '@/hooks/useTooltips';
-import type { AppConfig, EnvConfig } from '@/types';
+import type { AppConfig, EnvConfig } from '@web/types';
 
 export function GeneralSubtab() {
   // Theme & Appearance

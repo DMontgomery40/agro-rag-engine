@@ -3,6 +3,20 @@
 // This script corrects the DOM at runtime without changing styles.
 (function(){
   'use strict';
+  /**
+   * ---agentspec
+   * what: |
+   *   Fixes sidepanel DOM placement by moving it to direct child of layout after content. Queries .layout, .content, .sidepanel; relocates sidepanel if not already positioned correctly.
+   *
+   * why: |
+   *   Ensures consistent DOM hierarchy for CSS layout rules (flexbox/grid) to work predictably.
+   *
+   * guardrails:
+   *   - DO NOT assume .layout exists; returns silently if missing
+   *   - NOTE: Mutates DOM; call only after page fully loaded
+   *   - DO NOT use on dynamically injected content without re-running
+   * ---/agentspec
+   */
   function fixSidepanelPlacement(){
     try{
       var layout = document.querySelector('.layout');

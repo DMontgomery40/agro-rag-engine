@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useConfig } from '@/hooks';
 import { LiveTerminal, LiveTerminalHandle } from '../LiveTerminal/LiveTerminal';
 import { TerminalService } from '@/services/TerminalService';
 import { useRepoStore } from '@/stores/useRepoStore';
@@ -32,8 +31,21 @@ interface RepoInfo {
   branch?: string;
 }
 
+/**
+ * ---agentspec
+ * what: |
+ *   React component managing two indexing workflows: simple (repo URL + dense flag) and advanced (repo + embedding type selection). Renders UI for both modes with state management.
+ *
+ * why: |
+ *   Separates simple vs. advanced indexing flows to reduce cognitive load and support progressive disclosure.
+ *
+ * guardrails:
+ *   - DO NOT persist state across unmounts; use sessionStorage if needed
+ *   - NOTE: embeddingType defaults to 'openai'; validate against allowed types before API call
+ *   - ASK USER: Should advanced mode support custom embedding models?
+ * ---/agentspec
+ */
 export function IndexingSubtab() {
-  const { get, set, loading, error } = useConfig();
   // Simple indexing state
   const [simpleRepo, setSimpleRepo] = useState<string>('');
   const [simpleDense, setSimpleDense] = useState<boolean>(true);
@@ -41,6 +53,7 @@ export function IndexingSubtab() {
 
   // Advanced indexing state
   const [indexRepo, setIndexRepo] = useState<string>('');
+  const [embeddingType, setEmbeddingType] = useState<string>('openai');
   const [skipDense, setSkipDense] = useState<string>('0');
   const [enrichChunks, setEnrichChunks] = useState<string>('0');
   const [indexStatus, setIndexStatus] = useState<string>('Ready to index...');
@@ -56,6 +69,8 @@ export function IndexingSubtab() {
   // Advanced settings state
   const [outDirBase, setOutDirBase] = useState<string>('./out');
   const [collectionName, setCollectionName] = useState<string>('');
+  const [chunkSize, setChunkSize] = useState<number>(1000);
+  const [chunkOverlap, setChunkOverlap] = useState<number>(200);
   const [astOverlapLines, setAstOverlapLines] = useState<number>(20);
   const [maxChunkSize, setMaxChunkSize] = useState<number>(2000000);
   const [minChunkChars, setMinChunkChars] = useState<number>(50);
@@ -70,6 +85,9 @@ export function IndexingSubtab() {
   const [indexMaxFileSizeMb, setIndexMaxFileSizeMb] = useState<number>(10);
 
   // Embedding model picker state (NEW - REQUIRED)
+  const [embeddingModel, setEmbeddingModel] = useState<string>('text-embedding-3-large');
+  const [embeddingDim, setEmbeddingDim] = useState<number>(3072);
+  const [voyageModel, setVoyageModel] = useState<string>('voyage-code-3');
   const [embeddingModelLocal, setEmbeddingModelLocal] = useState<string>('all-MiniLM-L6-v2');
   const [embeddingBatchSize, setEmbeddingBatchSize] = useState<number>(64);
   const [embeddingMaxTokens, setEmbeddingMaxTokens] = useState<number>(8000);
@@ -79,16 +97,55 @@ export function IndexingSubtab() {
 
   // Repository list - use centralized store
   const { repos: storeRepos, activeRepo, loadRepos: storeLoadRepos } = useRepoStore();
+  /**
+   * ---agentspec
+   * what: |
+   *   Maps store repos to {name, path, branch} objects. Manages UI state for repo selection, branch tracking, terminal visibility, and terminal ref access via callback.
+   *
+   * why: |
+   *   Centralizes repo metadata transformation and provides unified terminal access pattern (ref or global fallback).
+   *
+   * guardrails:
+   *   - DO NOT assume terminalRef.current exists; fallback to window.terminal_indexing_terminal required
+   *   - NOTE: Global terminal access is anti-pattern; migrate to context/provider
+   * ---/agentspec
+   */
   const repos = storeRepos.map(r => ({ name: r.name, path: r.path || '', branch: r.branch }));
   const [currentRepo, setCurrentRepo] = useState<string>('');
   const [currentBranch, setCurrentBranch] = useState<string>('');
   const [terminalVisible, setTerminalVisible] = useState<boolean>(false);
   const terminalRef = useRef<LiveTerminalHandle>(null);
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Retrieves terminal instance from ref or global fallback. Resets terminal state: shows, clears, sets title.
+   *
+   * why: |
+   *   Centralizes terminal access pattern; handles both local ref and global singleton gracefully.
+   *
+   * guardrails:
+   *   - DO NOT assume terminal exists; all calls use optional chaining (?.)
+   *   - NOTE: Global fallback `window.terminal_indexing_terminal` is last resort only
+   * ---/agentspec
+   */
   const getTerminal = useCallback(() => {
     return terminalRef.current || (window as any).terminal_indexing_terminal;
   }, []);
 
+  /**
+   * ---agentspec
+   * what: |
+   *   resetTerminal clears terminal, shows it, sets title. appendTerminalLine writes line to terminal. Both use getTerminal() hook to access terminal instance.
+   *
+   * why: |
+   *   Encapsulates terminal mutations behind callbacks to decouple UI logic from terminal API.
+   *
+   * guardrails:
+   *   - DO NOT call if getTerminal() returns null; add null checks
+   *   - NOTE: Assumes terminal supports show(), clear(), setTitle(), write() methods
+   * ---/agentspec
+   */
   const resetTerminal = useCallback((title: string) => {
     const t = getTerminal();
     t?.show?.();
@@ -96,11 +153,37 @@ export function IndexingSubtab() {
     t?.setTitle?.(title);
   }, [getTerminal]);
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Two terminal utility hooks. appendTerminalLine appends text to terminal; updateTerminalProgress updates progress bar with percent + optional message.
+   *
+   * why: |
+   *   Encapsulates terminal ref access + optional chaining to prevent null errors in render.
+   *
+   * guardrails:
+   *   - DO NOT call if getTerminal() returns null; methods are optional
+   *   - NOTE: Progress percent should be 0–100
+   * ---/agentspec
+   */
   const appendTerminalLine = useCallback((line: string) => {
     const t = getTerminal();
     t?.appendLine?.(line);
   }, [getTerminal]);
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Updates terminal progress bar with percent + optional message. Calls terminal's updateProgress method if available.
+   *
+   * why: |
+   *   Encapsulates terminal ref access; useCallback prevents unnecessary re-renders.
+   *
+   * guardrails:
+   *   - DO NOT call if terminal ref is null; method guards with optional chaining
+   *   - NOTE: Message param is optional; percent alone is valid
+   * ---/agentspec
+   */
   const updateTerminalProgress = useCallback((percent: number, message?: string) => {
     const t = getTerminal();
     t?.updateProgress?.(percent, message);
@@ -108,6 +191,7 @@ export function IndexingSubtab() {
 
   // Load config on mount
   useEffect(() => {
+    loadConfig();
     if (storeRepos.length === 0) {
       storeLoadRepos();
     }
@@ -121,14 +205,98 @@ export function IndexingSubtab() {
       setCurrentRepo(initialRepo);
       setSimpleRepo(initialRepo);
       setIndexRepo(initialRepo);
+      /**
+       * ---agentspec
+       * what: |
+       *   Fetches config from /api/config endpoint. Parses JSON response into data object.
+       *
+       * why: |
+       *   Centralizes config loading at component mount for consistent app state initialization.
+       *
+       * guardrails:
+       *   - DO NOT assume response.ok; add error handling for failed requests
+       *   - NOTE: Blocks render until config loads; consider async boundary
+       * ---/agentspec
+       */
       const repo = repos.find(r => r.name === initialRepo);
       setCurrentBranch(repo?.branch || '—');
     }
   }, [repos, activeRepo, currentRepo]);
 
-  
+  /**
+   * ---agentspec
+   * what: |
+   *   Fetches config from /api/config endpoint. Extracts env object and sets embedding type/model state. Returns Promise<void>.
+   *
+   * why: |
+   *   Centralizes config loading at app startup; decouples client state from hardcoded defaults.
+   *
+   * guardrails:
+   *   - DO NOT assume response.json() succeeds; add error handling
+   *   - NOTE: Sets state synchronously; no validation of env values
+   *   - ASK USER: Should invalid EMBEDDING_TYPE values trigger fallback or error?
+   * ---/agentspec
+   */
+  const loadConfig = async () => {
+    try {
+      const response = await fetch('/api/config');
+      const data = await response.json();
+      const env = data.env || {};
+
+      // Load embedding settings
+      setEmbeddingType(env.EMBEDDING_TYPE || 'openai');
+      setEmbeddingModel(env.EMBEDDING_MODEL || 'text-embedding-3-large');
+      setEmbeddingDim(parseInt(env.EMBEDDING_DIM || '3072', 10));
+      setVoyageModel(env.VOYAGE_MODEL || 'voyage-code-3');
+      setEmbeddingModelLocal(env.EMBEDDING_MODEL_LOCAL || 'all-MiniLM-L6-v2');
+      setEmbeddingBatchSize(parseInt(env.EMBEDDING_BATCH_SIZE || '64', 10));
+      setEmbeddingMaxTokens(parseInt(env.EMBEDDING_MAX_TOKENS || '8000', 10));
+      setEmbeddingCacheEnabled(env.EMBEDDING_CACHE_ENABLED || '1');
+      setEmbeddingTimeout(parseInt(env.EMBEDDING_TIMEOUT || '30', 10));
+      setEmbeddingRetryMax(parseInt(env.EMBEDDING_RETRY_MAX || '3', 10));
+
+      // Load chunking settings
+      setChunkSize(parseInt(env.CHUNK_SIZE || '1000', 10));
+      setChunkOverlap(parseInt(env.CHUNK_OVERLAP || '200', 10));
+      setAstOverlapLines(parseInt(env.AST_OVERLAP_LINES || '20', 10));
+      setMaxChunkSize(parseInt(env.MAX_CHUNK_SIZE || '2000000', 10));
+      setMinChunkChars(parseInt(env.MIN_CHUNK_CHARS || '50', 10));
+      setGreedyFallbackTarget(parseInt(env.GREEDY_FALLBACK_TARGET || '800', 10));
+      setChunkingStrategy(env.CHUNKING_STRATEGY || 'ast');
+      setPreserveImports(env.PRESERVE_IMPORTS || '1');
+
+      // Load indexing settings
+      setOutDirBase(env.OUT_DIR_BASE || './out');
+      setCollectionName(env.COLLECTION_NAME || '');
+      setIndexingBatchSize(parseInt(env.INDEXING_BATCH_SIZE || '100', 10));
+      setIndexingWorkers(parseInt(env.INDEXING_WORKERS || '4', 10));
+      setBm25Tokenizer(env.BM25_TOKENIZER || 'stemmer');
+      setBm25StemmerLang(env.BM25_STEMMER_LANG || 'english');
+      setIndexExcludedExts(env.INDEX_EXCLUDED_EXTS || '.png,.jpg,.gif,.ico,.svg,.woff,.ttf');
+      setIndexMaxFileSizeMb(parseInt(env.INDEX_MAX_FILE_SIZE_MB || '10', 10));
+      setSkipDense(env.SKIP_DENSE || '0');
+      setEnrichChunks(env.ENRICH_CODE_CHUNKS || '0');
+    } catch (error) {
+      console.error('Failed to load config:', error);
+    }
+  };
+
   // Repos are now loaded via the store - see useEffect above
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Fetches index statistics from /api/index/stats endpoint. Sets response data to indexStats state; logs errors silently.
+   *
+   * why: |
+   *   Encapsulates API call for stats retrieval with error handling to prevent UI crashes.
+   *
+   * guardrails:
+   *   - DO NOT silently swallow errors; add user-facing error state
+   *   - NOTE: No retry logic; transient failures will fail silently
+   *   - ASK USER: Add loading state during fetch?
+   * ---/agentspec
+   */
   const loadIndexStats = async () => {
     try {
       const response = await fetch('/api/index/stats');
@@ -139,6 +307,19 @@ export function IndexingSubtab() {
     }
   };
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Validates repo selection, starts indexing process, displays terminal output. Sets UI state flags (running, visible) and resets terminal log.
+   *
+   * why: |
+   *   Centralizes pre-flight checks and state management before delegating to indexing backend.
+   *
+   * guardrails:
+   *   - DO NOT index without repo selection; alert user first
+   *   - NOTE: Terminal visibility tied to indexing start; ensure cleanup on error
+   * ---/agentspec
+   */
   const handleSimpleIndex = async () => {
     if (!simpleRepo) {
       alert('Please select a repository');
@@ -187,6 +368,19 @@ export function IndexingSubtab() {
     }
   };
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Validates repo selection, starts indexing process, displays terminal output. Sets UI state flags (indexRunning, terminalVisible) and resets terminal with repo name.
+   *
+   * why: |
+   *   Centralizes indexing trigger logic with validation and UI coordination in one handler.
+   *
+   * guardrails:
+   *   - DO NOT index without repo selection; alert user first
+   *   - NOTE: Assumes resetTerminal() exists and accepts string argument
+   * ---/agentspec
+   */
   const handleStartIndexing = async () => {
     if (!indexRepo) {
       alert('Please select a repository');
@@ -235,6 +429,19 @@ export function IndexingSubtab() {
     }
   };
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Stops active indexing by disconnecting SSE stream. Sets indexing flags to false, appends stop message to terminal.
+   *
+   * why: |
+   *   Backend auto-terminates process on client disconnect; UI state sync prevents orphaned operations.
+   *
+   * guardrails:
+   *   - DO NOT call if indexing already stopped; check setIndexRunning state first
+   *   - NOTE: Terminal message uses ANSI yellow (\x1b[33m); ensure TerminalService supports color codes
+   * ---/agentspec
+   */
   const handleStopIndexing = async () => {
     // Disconnect the SSE stream; backend terminates the process when client disconnects
     TerminalService.disconnect('indexing_terminal');
@@ -244,6 +451,19 @@ export function IndexingSubtab() {
     appendTerminalLine('\x1b[33mIndexing stopped by user.\x1b[0m');
   };
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Saves embedding configuration (type, model, dimensions, Voyage model) to env object. Triggers async save with error handling.
+   *
+   * why: |
+   *   Centralizes embedding config updates in one handler to prevent scattered state mutations.
+   *
+   * guardrails:
+   *   - DO NOT save without validation; embeddingDim must be numeric
+   *   - NOTE: Assumes env object exists; will fail silently if undefined
+   * ---/agentspec
+   */
   const handleSaveSettings = async () => {
     try {
       const config = {
@@ -297,6 +517,20 @@ export function IndexingSubtab() {
     }
   };
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Applies configuration profile (shared/full) by setting environment variables. Maps profile name to key-value pairs and updates runtime config.
+   *
+   * why: |
+   *   Centralizes profile logic; avoids scattered conditional config across codebase.
+   *
+   * guardrails:
+   *   - DO NOT mutate profiles object after apply; treat as immutable
+   *   - NOTE: Async wrapper; ensure caller awaits before using new config
+   *   - ASK USER: Persist to .env or memory-only?
+   * ---/agentspec
+   */
   const handleApplyProfile = async () => {
     const profiles: Record<string, any> = {
       shared: {
@@ -328,12 +562,26 @@ export function IndexingSubtab() {
 
       if (response.ok) {
         alert(`Applied ${activeProfile} profile`);
+        await loadConfig();
       }
     } catch (error) {
       console.error('Failed to apply profile:', error);
     }
   };
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Refreshes index statistics by calling loadIndexStats(). Triggers async stats reload on user action.
+   *
+   * why: |
+   *   Decouples UI refresh trigger from data-fetch logic; allows manual stats updates without page reload.
+   *
+   * guardrails:
+   *   - DO NOT call loadIndexStats() without await; stats may be stale
+   *   - NOTE: EmbeddingMismatchWarning must render before stats to surface critical mismatches
+   * ---/agentspec
+   */
   const handleRefreshStats = async () => {
     await loadIndexStats();
   };
@@ -352,6 +600,19 @@ export function IndexingSubtab() {
             value={currentRepo}
             onChange={(e) => {
               setCurrentRepo(e.target.value);
+              /**
+               * ---agentspec
+               * what: |
+               *   Renders dropdown menu of repos. On selection, updates currentBranch state from repo.branch. Returns JSX option elements.
+               *
+               * why: |
+               *   Decouples repo selection from branch display; allows independent state management.
+               *
+               * guardrails:
+               *   - DO NOT assume repo.branch exists; fallback to '—' prevents undefined
+               *   - NOTE: Loading state blocks interaction until repos array populated
+               * ---/agentspec
+               */
               const repo = repos.find(r => r.name === e.target.value);
               setCurrentBranch(repo?.branch || '—');
             }}
@@ -465,8 +726,8 @@ export function IndexingSubtab() {
             </label>
             <select
               name="EMBEDDING_TYPE"
-              value={get('EMBEDDING_TYPE', 'openai')}
-              onChange={(e) => set('EMBEDDING_TYPE', e.target.value)}
+              value={embeddingType}
+              onChange={(e) => setEmbeddingType(e.target.value)}
               style={{ background: 'var(--bg-elev2)', color: 'var(--fg)', border: '1px solid var(--line)', padding: '8px', borderRadius: '4px' }}
             >
               <option value="openai">OpenAI (text-embedding-3-large)</option>
@@ -686,7 +947,7 @@ export function IndexingSubtab() {
               name="COLLECTION_NAME"
               placeholder="code_chunks_{'{repo}'}"
               value={collectionName}
-              onChange={(e) => set('COLLECTION_NAME', e.target.value)}
+              onChange={(e) => setCollectionName(e.target.value)}
             />
             <p className="small" style={{ color: 'var(--fg-muted)' }}>Qdrant collection name (leave empty for auto)</p>
           </div>
@@ -704,8 +965,8 @@ export function IndexingSubtab() {
               type="text"
               id="EMBEDDING_MODEL"
               name="EMBEDDING_MODEL"
-              value={get('EMBEDDING_MODEL', '')}
-              onChange={(e) => set('EMBEDDING_MODEL', e.target.value)}
+              value={embeddingModel}
+              onChange={(e) => setEmbeddingModel(e.target.value)}
             />
           </div>
           <div className="input-group">
@@ -717,8 +978,8 @@ export function IndexingSubtab() {
               type="number"
               id="EMBEDDING_DIM"
               name="EMBEDDING_DIM"
-              value={get('EMBEDDING_DIM', 1536)}
-              onChange={(e) => set('EMBEDDING_DIM', parseInt(e.target.value, 10))}
+              value={embeddingDim}
+              onChange={(e) => setEmbeddingDim(parseInt(e.target.value, 10))}
               min={512}
               max={3072}
               step={256}
@@ -736,8 +997,8 @@ export function IndexingSubtab() {
               type="text"
               id="VOYAGE_MODEL"
               name="VOYAGE_MODEL"
-              value={get('VOYAGE_MODEL', '')}
-              onChange={(e) => set('VOYAGE_MODEL', e.target.value)}
+              value={voyageModel}
+              onChange={(e) => setVoyageModel(e.target.value)}
             />
           </div>
           <div className="input-group">
@@ -750,7 +1011,7 @@ export function IndexingSubtab() {
               id="EMBEDDING_MODEL_LOCAL"
               name="EMBEDDING_MODEL_LOCAL"
               value={embeddingModelLocal}
-              onChange={(e) => set('EMBEDDING_MODEL_LOCAL', e.target.value)}
+              onChange={(e) => setEmbeddingModelLocal(e.target.value)}
             />
           </div>
         </div>
@@ -766,7 +1027,7 @@ export function IndexingSubtab() {
               id="EMBEDDING_BATCH_SIZE"
               name="EMBEDDING_BATCH_SIZE"
               value={embeddingBatchSize}
-              onChange={(e) => set('EMBEDDING_BATCH_SIZE', parseInt(e.target.value, 10))}
+              onChange={(e) => setEmbeddingBatchSize(parseInt(e.target.value, 10))}
               min={1}
               max={256}
               step={8}
@@ -782,7 +1043,7 @@ export function IndexingSubtab() {
               id="EMBEDDING_MAX_TOKENS"
               name="EMBEDDING_MAX_TOKENS"
               value={embeddingMaxTokens}
-              onChange={(e) => set('EMBEDDING_MAX_TOKENS', parseInt(e.target.value, 10))}
+              onChange={(e) => setEmbeddingMaxTokens(parseInt(e.target.value, 10))}
               min={512}
               max={8192}
               step={512}
@@ -800,7 +1061,7 @@ export function IndexingSubtab() {
               id="EMBEDDING_CACHE_ENABLED"
               name="EMBEDDING_CACHE_ENABLED"
               value={embeddingCacheEnabled}
-              onChange={(e) => set('EMBEDDING_CACHE_ENABLED', e.target.value)}
+              onChange={(e) => setEmbeddingCacheEnabled(e.target.value)}
             >
               <option value="1">Enabled</option>
               <option value="0">Disabled</option>
@@ -816,7 +1077,7 @@ export function IndexingSubtab() {
               id="EMBEDDING_TIMEOUT"
               name="EMBEDDING_TIMEOUT"
               value={embeddingTimeout}
-              onChange={(e) => set('EMBEDDING_TIMEOUT', parseInt(e.target.value, 10))}
+              onChange={(e) => setEmbeddingTimeout(parseInt(e.target.value, 10))}
               min={5}
               max={120}
               step={5}
@@ -835,7 +1096,7 @@ export function IndexingSubtab() {
               id="EMBEDDING_RETRY_MAX"
               name="EMBEDDING_RETRY_MAX"
               value={embeddingRetryMax}
-              onChange={(e) => set('EMBEDDING_RETRY_MAX', parseInt(e.target.value, 10))}
+              onChange={(e) => setEmbeddingRetryMax(parseInt(e.target.value, 10))}
               min={1}
               max={5}
               step={1}
@@ -854,8 +1115,8 @@ export function IndexingSubtab() {
             <input
               type="number"
               name="CHUNK_SIZE"
-              value={get('CHUNK_SIZE', 512)}
-              onChange={(e) => set('CHUNK_SIZE', parseInt(e.target.value, 10))}
+              value={chunkSize}
+              onChange={(e) => setChunkSize(parseInt(e.target.value, 10))}
               min={100}
               max={4000}
               step={100}
@@ -869,8 +1130,8 @@ export function IndexingSubtab() {
             <input
               type="number"
               name="CHUNK_OVERLAP"
-              value={get('CHUNK_OVERLAP', 50)}
-              onChange={(e) => set('CHUNK_OVERLAP', parseInt(e.target.value, 10))}
+              value={chunkOverlap}
+              onChange={(e) => setChunkOverlap(parseInt(e.target.value, 10))}
               min={0}
               max={1000}
               step={50}
@@ -889,7 +1150,7 @@ export function IndexingSubtab() {
               id="AST_OVERLAP_LINES"
               name="AST_OVERLAP_LINES"
               value={astOverlapLines}
-              onChange={(e) => set('AST_OVERLAP_LINES', parseInt(e.target.value, 10))}
+              onChange={(e) => setAstOverlapLines(parseInt(e.target.value, 10))}
               min={0}
               max={100}
               step={5}
@@ -905,7 +1166,7 @@ export function IndexingSubtab() {
               id="MAX_CHUNK_SIZE"
               name="MAX_CHUNK_SIZE"
               value={maxChunkSize}
-              onChange={(e) => set('MAX_CHUNK_SIZE', parseInt(e.target.value, 10))}
+              onChange={(e) => setMaxChunkSize(parseInt(e.target.value, 10))}
               min={10000}
               max={10000000}
               step={100000}
@@ -924,7 +1185,7 @@ export function IndexingSubtab() {
               id="MIN_CHUNK_CHARS"
               name="MIN_CHUNK_CHARS"
               value={minChunkChars}
-              onChange={(e) => set('MIN_CHUNK_CHARS', parseInt(e.target.value, 10))}
+              onChange={(e) => setMinChunkChars(parseInt(e.target.value, 10))}
               min={10}
               max={500}
               step={10}
@@ -940,7 +1201,7 @@ export function IndexingSubtab() {
               id="GREEDY_FALLBACK_TARGET"
               name="GREEDY_FALLBACK_TARGET"
               value={greedyFallbackTarget}
-              onChange={(e) => set('GREEDY_FALLBACK_TARGET', parseInt(e.target.value, 10))}
+              onChange={(e) => setGreedyFallbackTarget(parseInt(e.target.value, 10))}
               min={200}
               max={2000}
               step={100}
@@ -958,7 +1219,7 @@ export function IndexingSubtab() {
               id="CHUNKING_STRATEGY"
               name="CHUNKING_STRATEGY"
               value={chunkingStrategy}
-              onChange={(e) => set('CHUNKING_STRATEGY', e.target.value)}
+              onChange={(e) => setChunkingStrategy(e.target.value)}
             >
               <option value="ast">AST-based</option>
               <option value="greedy">Greedy</option>
@@ -974,7 +1235,7 @@ export function IndexingSubtab() {
               id="PRESERVE_IMPORTS"
               name="PRESERVE_IMPORTS"
               value={preserveImports}
-              onChange={(e) => set('PRESERVE_IMPORTS', e.target.value)}
+              onChange={(e) => setPreserveImports(e.target.value)}
             >
               <option value="1">Yes</option>
               <option value="0">No</option>
@@ -995,7 +1256,7 @@ export function IndexingSubtab() {
               id="INDEXING_BATCH_SIZE"
               name="INDEXING_BATCH_SIZE"
               value={indexingBatchSize}
-              onChange={(e) => set('INDEXING_BATCH_SIZE', parseInt(e.target.value, 10))}
+              onChange={(e) => setIndexingBatchSize(parseInt(e.target.value, 10))}
               min={10}
               max={1000}
               step={10}
@@ -1011,7 +1272,7 @@ export function IndexingSubtab() {
               id="INDEXING_WORKERS"
               name="INDEXING_WORKERS"
               value={indexingWorkers}
-              onChange={(e) => set('INDEXING_WORKERS', parseInt(e.target.value, 10))}
+              onChange={(e) => setIndexingWorkers(parseInt(e.target.value, 10))}
               min={1}
               max={16}
               step={1}
@@ -1062,7 +1323,7 @@ export function IndexingSubtab() {
               id="INDEX_EXCLUDED_EXTS"
               name="INDEX_EXCLUDED_EXTS"
               value={indexExcludedExts}
-              onChange={(e) => set('INDEX_EXCLUDED_EXTS', e.target.value)}
+              onChange={(e) => setIndexExcludedExts(e.target.value)}
             />
           </div>
           <div className="input-group">
@@ -1075,7 +1336,7 @@ export function IndexingSubtab() {
               id="INDEX_MAX_FILE_SIZE_MB"
               name="INDEX_MAX_FILE_SIZE_MB"
               value={indexMaxFileSizeMb}
-              onChange={(e) => set('INDEX_MAX_FILE_SIZE_MB', parseInt(e.target.value, 10))}
+              onChange={(e) => setIndexMaxFileSizeMb(parseInt(e.target.value, 10))}
               min={1}
               max={100}
               step={1}

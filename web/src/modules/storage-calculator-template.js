@@ -1,6 +1,19 @@
 // Storage Calculator HTML Template
 // This function generates the HTML structure for the storage calculator
 
+/**
+ * ---agentspec
+ * what: |
+ *   Renders HTML storage calculator UI for AGRO RAG system. Displays configuration inputs and memory planning tools.
+ *
+ * why: |
+ *   Centralizes storage estimation UI in single reusable function.
+ *
+ * guardrails:
+ *   - DO NOT hardcode user data; accept config as parameter
+ *   - NOTE: Returns raw HTML string; sanitize before DOM insertion
+ * ---/agentspec
+ */
 function getStorageCalculatorHTML() {
     return `
         <div class="storage-calc-wrapper">

@@ -15,6 +15,20 @@
    * @param {string} options.context - Additional context (optional)
    * @returns {string} HTML string for error display
    */
+  /**
+   * ---agentspec
+   * what: |
+   *   Constructs structured error object with title, message, causes, fixes, links, context. Returns formatted error for user display.
+   *
+   * why: |
+   *   Centralizes error formatting to ensure consistent, actionable error messages across application.
+   *
+   * guardrails:
+   *   - DO NOT expose internal stack traces; sanitize before passing to createHelpfulError
+   *   - NOTE: All fields optional; provide at least title + message for clarity
+   *   - ASK USER: Should fixes array include code snippets or links only?
+   * ---/agentspec
+   */
   function createHelpfulError(options) {
     const {
       title = 'An error occurred',
@@ -86,6 +100,19 @@
   /**
    * Create a compact inline error message (for status lines)
    */
+  /**
+   * ---agentspec
+   * what: |
+   *   Generates inline error HTML with title and optional links. Returns formatted error string with anchor tags.
+   *
+   * why: |
+   *   Centralizes error UI formatting to avoid duplication across error handlers.
+   *
+   * guardrails:
+   *   - DO NOT inject unsanitized user input into href or label; XSS risk
+   *   - NOTE: Relies on caller to validate link URLs before passing
+   * ---/agentspec
+   */
   function createInlineError(title, options = {}) {
     const { links = [] } = options;
 
@@ -101,6 +128,19 @@
 
   /**
    * Create an alert-style error message with help
+   */
+  /**
+   * ---agentspec
+   * what: |
+   *   Constructs formatted error alert string. Takes title + optional message, causes, fixes, links. Returns prefixed text block.
+   *
+   * why: |
+   *   Centralizes error formatting for consistent UI presentation across alerts.
+   *
+   * guardrails:
+   *   - DO NOT mutate options object; use destructuring only
+   *   - NOTE: Prepends ❌ emoji; ensure terminal/UI supports Unicode
+   * ---/agentspec
    */
   function createAlertError(title, options = {}) {
     const { message = '', causes = [], fixes = [], links = [] } = options;
@@ -128,6 +168,20 @@
 
   /**
    * Escape HTML to prevent XSS
+   */
+  /**
+   * ---agentspec
+   * what: |
+   *   Escapes HTML special characters by setting textContent on a DOM element and reading innerHTML. Input: string. Output: escaped HTML string.
+   *
+   * why: |
+   *   Browser's native HTML parser handles all edge cases safely without regex fragility.
+   *
+   * guardrails:
+   *   - DO NOT use regex-based escaping; DOM method is safer
+   *   - NOTE: Only works in browser environment (requires document.createElement)
+   *   - DO NOT rely on this for security-critical contexts; use established libraries
+   * ---/agentspec
    */
   function escapeHtml(text) {
     const div = document.createElement('div');

@@ -1,5 +1,5 @@
 import { apiClient, api } from './client';
-import type { AppConfig, EnvConfig, ConfigUpdate, KeywordCatalog } from '@/types';
+import type { AppConfig, EnvConfig, ConfigUpdate, KeywordCatalog } from '@web/types';
 
 export const configApi = {
   /**

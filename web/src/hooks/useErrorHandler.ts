@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
-import { createAlertError, createHelpfulError, createInlineError } from '@/utils/errorHelpers';
-import type { ErrorHelperOptions } from '@/types';
+import { createAlertError, createHelpfulError, createInlineError } from '@web/utils/errorHelpers';
+import type { ErrorHelperOptions } from '@web/types';
 
 /**
  * Hook for creating helpful error messages

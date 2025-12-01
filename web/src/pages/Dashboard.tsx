@@ -12,7 +12,7 @@ import { GlossarySubtab } from '../components/Dashboard/GlossarySubtab';
 
 export function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeSubtab, setActiveSubtab] = useState(searchParams.get('subtab') || 'system');
+  const [activeSubtab, setActiveSubtab] = useState(() => searchParams.get('subtab') || 'system');
 
   // Flag for legacy modules so they can avoid mutating React-rendered dashboard DOM
   useEffect(() => {
@@ -24,20 +24,13 @@ export function Dashboard() {
     };
   }, []);
 
-  // Update URL when subtab changes
-  useEffect(() => {
-    if (activeSubtab !== 'system') {
-      setSearchParams({ subtab: activeSubtab });
-    } else {
-      setSearchParams({});
-    }
-  }, [activeSubtab, setSearchParams]);
-
-  // Listen for URL changes (e.g., from Learn button in topbar)
+  // Listen for URL changes (e.g., deep links) and sync state; no URL writes to avoid loops
   useEffect(() => {
     const urlSubtab = searchParams.get('subtab');
     if (urlSubtab && urlSubtab !== activeSubtab) {
       setActiveSubtab(urlSubtab);
+    } else if (!urlSubtab && activeSubtab !== 'system') {
+      setActiveSubtab('system');
     }
   }, [searchParams, activeSubtab]);
 

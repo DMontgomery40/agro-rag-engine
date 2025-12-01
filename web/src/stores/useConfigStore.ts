@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { configApi } from '@/api';
-import type { AppConfig, EnvConfig, ConfigUpdate, KeywordCatalog, Repository } from '@/types';
+import type { AppConfig, EnvConfig, ConfigUpdate, KeywordCatalog, Repository } from '@web/types';
 
 interface ConfigStore {
   config: AppConfig | null;

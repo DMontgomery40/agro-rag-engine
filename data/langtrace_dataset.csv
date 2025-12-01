@@ -308,7 +308,7 @@ golden_34,Where are the cost calculation utilities for token usage?,"1. /Users/d
 4. /Users/davidmontgomery/agro-rag-engine/gui/js/cost_logic.js
 5. /Users/davidmontgomery/agro-rag-engine/public/agro/app.js","Expected files:
   - gui/js/cost.js
-  - gui/prices.json
+  - gui/models.json
   - server/metrics.py
   - gui/index.html",agro,false
 golden_35,How does the dashboard tab render system status?,"1. /Users/davidmontgomery/agro-rag-engine/gui/js/index_status.js

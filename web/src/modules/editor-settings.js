@@ -77,6 +77,19 @@
    * Get current settings from cache
    * @returns {Object} Current settings
    */
+  /**
+   * ---agentspec
+   * what: |
+   *   Returns shallow copy of settingsCache object. Checks if editor embedding is enabled via boolean flag.
+   *
+   * why: |
+   *   Shallow copy prevents external mutation of cached settings; boolean check provides simple feature gate.
+   *
+   * guardrails:
+   *   - NOTE: Shallow copy does not protect nested objects from mutation
+   *   - ASK USER: Should embedding state be persisted or computed on-demand?
+   * ---/agentspec
+   */
   function getSettings() {
     return { ...settingsCache };
   }
@@ -84,6 +97,19 @@
   /**
    * Check if editor embedding is enabled
    * @returns {boolean} Whether embedding is enabled
+   */
+  /**
+   * ---agentspec
+   * what: |
+   *   Checks if embedding is enabled by reading CI env var, then DOM checkbox. Returns boolean.
+   *
+   * why: |
+   *   CI environments must disable embedding; fallback to user checkbox preference.
+   *
+   * guardrails:
+   *   - DO NOT enable embedding in CI (CI=1/true/yes disables)
+   *   - NOTE: DOM query returns undefined if field missing; treat as falsy
+   * ---/agentspec
    */
   function isEmbeddingEnabled() {
     // Check environment variable first (from config)
@@ -104,6 +130,19 @@
   /**
    * Update embedding checkbox when settings change
    * @param {boolean} enabled - Whether embedding should be enabled
+   */
+  /**
+   * ---agentspec
+   * what: |
+   *   Updates checkbox UI element for embedding toggle. Sets checked state based on enabled boolean parameter.
+   *
+   * why: |
+   *   Decouples UI state sync from business logic; single responsibility for DOM mutation.
+   *
+   * guardrails:
+   *   - DO NOT assume checkbox exists; guard with null check already present
+   *   - NOTE: Only updates UI; does not persist to server
+   * ---/agentspec
    */
   function updateEmbeddingUI(enabled) {
     const checkbox = document.querySelector('[name="EDITOR_EMBED_ENABLED"]');

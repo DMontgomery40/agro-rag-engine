@@ -5,6 +5,19 @@
 let _rerankerTerminal = null;
 let _lastOutputLineCount = 0;
 
+/**
+ * ---agentspec
+ * what: |
+ *   Initializes LiveTerminal instance for reranker output. Checks window.LiveTerminal availability; creates singleton _rerankerTerminal if missing.
+ *
+ * why: |
+ *   Deferred initialization prevents errors when LiveTerminal script loads asynchronously.
+ *
+ * guardrails:
+ *   - DO NOT reinitialize if _rerankerTerminal already exists; check singleton first
+ *   - NOTE: Logs warning if LiveTerminal unavailable; caller must retry
+ * ---/agentspec
+ */
 function initRerankerTerminal() {
     if (!window.LiveTerminal) {
         console.warn('[reranker] LiveTerminal not loaded yet, will initialize later');
@@ -272,6 +285,20 @@ async function getRerankerStatus() {
 
 let statusPollInterval = null;
 
+/**
+ * ---agentspec
+ * what: |
+ *   Starts polling loop for status updates. Initializes terminal UI if needed, then displays it. Guards against duplicate polling with interval check.
+ *
+ * why: |
+ *   Prevents multiple concurrent poll loops; centralizes terminal setup.
+ *
+ * guardrails:
+ *   - DO NOT call repeatedly without checking statusPollInterval; causes duplicate timers
+ *   - NOTE: initRerankerTerminal() must be idempotent
+ *   - ASK USER: What triggers polling stop? (missing stopStatusPolling call)
+ * ---/agentspec
+ */
 function startStatusPolling() {
     if (statusPollInterval) return;
 
@@ -329,6 +356,20 @@ function startStatusPolling() {
     }, 1000);
 }
 
+/**
+ * ---agentspec
+ * what: |
+ *   Updates DOM element #reranker-status with task progress or result. Sets text content and color based on running/result state.
+ *
+ * why: |
+ *   Centralizes UI state updates for reranker operations; decouples status logic from DOM manipulation.
+ *
+ * guardrails:
+ *   - DO NOT assume #reranker-status exists; early return prevents crashes
+ *   - NOTE: Color uses CSS variable --accent; verify it's defined in stylesheet
+ *   - ASK USER: Should failed results (status.result.ok === false) display error color?
+ * ---/agentspec
+ */
 function updateRerankerStatusUI(status) {
     const statusEl = document.getElementById('reranker-status');
     if (!statusEl) return;
@@ -351,6 +392,19 @@ function updateRerankerStatusUI(status) {
     }
 }
 
+/**
+ * ---agentspec
+ * what: |
+ *   Updates DOM element with mining task results. Parses result.output for triplet/event counts via regex, writes to #reranker-mine-result div.
+ *
+ * why: |
+ *   Centralizes result rendering logic; regex extraction decouples parsing from display.
+ *
+ * guardrails:
+ *   - DO NOT assume result.output format; add fallback if regex fails to match
+ *   - NOTE: Silent fail if mineDiv missing; consider console.warn for debugging
+ * ---/agentspec
+ */
 function updateTaskResults(status) {
     const task = status.task;
     const result = status.result;
@@ -394,6 +448,20 @@ function updateTaskResults(status) {
     }
 }
 
+/**
+ * ---agentspec
+ * what: |
+ *   Parses reranker metrics (MRR@all, Hit@K) from output string via regex. Displays results in DOM element #reranker-metrics-display.
+ *
+ * why: |
+ *   Decouples metric extraction from display logic; regex patterns isolate numeric values from formatted output.
+ *
+ * guardrails:
+ *   - DO NOT assume output format is stable; add fallback parsing if format changes
+ *   - NOTE: Silent fail if metricsDiv missing or output null; consider logging
+ *   - ASK USER: Should invalid/missing metrics trigger error vs silent skip?
+ * ---/agentspec
+ */
 function parseAndDisplayMetrics(output) {
     const metricsDiv = document.getElementById('reranker-metrics-display');
     if (!metricsDiv || !output) return;
@@ -444,6 +512,19 @@ function parseAndDisplayMetrics(output) {
     }
 }
 
+/**
+ * ---agentspec
+ * what: |
+ *   Updates DOM element #reranker-triplet-count with triplet count and accent color. Reads count param, writes textContent and inline style.
+ *
+ * why: |
+ *   Centralizes UI state updates for reranker triplet display; prevents scattered DOM mutations.
+ *
+ * guardrails:
+ *   - DO NOT assume element exists; guard with null check already present
+ *   - NOTE: Uses inline style; consider CSS class for maintainability at scale
+ * ---/agentspec
+ */
 function updateTripletCount(count) {
     const countDiv = document.getElementById('reranker-triplet-count');
     if (countDiv) {
@@ -969,6 +1050,19 @@ async function runSmokeTest() {
 
 // ============ INITIALIZE ============
 
+/**
+ * ---agentspec
+ * what: |
+ *   Initializes reranker UI. Attaches click handler to mine button; disables button, updates text to "Mining...", then calls mineTriplets().
+ *
+ * why: |
+ *   Centralizes UI event binding and state management for mining workflow.
+ *
+ * guardrails:
+ *   - DO NOT re-enable button if mineTriplets() fails; add error handler
+ *   - NOTE: Assumes reranker-mine-btn exists; will silently skip if missing
+ * ---/agentspec
+ */
 function initRerankerUI() {
     // Mine button
     const mineBtn = document.getElementById('reranker-mine-btn');
@@ -1071,6 +1165,19 @@ function initRerankerUI() {
 }
 
 // Register with Navigation API
+/**
+ * ---agentspec
+ * what: |
+ *   Registers a reranker view with Navigation API. Mounts UI on callback, logs mount event.
+ *
+ * why: |
+ *   Decouples view registration from initialization; allows Navigation to control lifecycle.
+ *
+ * guardrails:
+ *   - DO NOT assume window.Navigation exists; guard with typeof check
+ *   - NOTE: initRerankerUI() must be defined before mount() is called
+ * ---/agentspec
+ */
 function registerRerankerView() {
     if (window.Navigation && typeof window.Navigation.registerView === 'function') {
         window.Navigation.registerView({

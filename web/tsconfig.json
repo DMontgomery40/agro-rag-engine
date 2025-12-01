@@ -25,10 +25,12 @@
       "@/hooks/*": ["./src/hooks/*"],
       "@/types/*": ["./src/types/*"],
       "@/api/*": ["./src/api/*"],
-      "@/utils/*": ["./src/utils/*"]
+      "@/utils/*": ["./src/utils/*"],
+      "@web/*": ["./src/*"],
+      "@web/types/*": ["./src/types/*"],
+      "@web/utils/*": ["./src/utils/*"]
     }
   },
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
-

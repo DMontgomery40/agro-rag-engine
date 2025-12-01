@@ -54,6 +54,20 @@
      * Populate config form fields from data
      * @param {Object} data - Config data with env and repos
      */
+    /**
+     * ---agentspec
+     * what: |
+     *   Populates HTML form fields from env object. Iterates over key-value pairs, matches to form inputs by name attribute, sets values (handles checkboxes).
+     *
+     * why: |
+     *   Centralizes config hydration logic; decouples data structure from DOM manipulation.
+     *
+     * guardrails:
+     *   - DO NOT assume all env keys have corresponding form fields; silently skip missing fields
+     *   - NOTE: Checkbox handling incomplete; only iterates, does not set checked state
+     *   - ASK USER: Should non-checkbox fields validate type before assignment?
+     * ---/agentspec
+     */
     function populateConfigForm(data) {
         const env = data.env || {};
 
@@ -446,6 +460,20 @@
      * Gather form data into config update object
      * @returns {Object|null} Config update object or null if validation fails
      */
+    /**
+     * ---agentspec
+     * what: |
+     *   Collects environment variables from form fields (excluding repo_* fields). Builds update object with env dict and repos array.
+     *
+     * why: |
+     *   Separates env config from repo config by filtering field name prefixes.
+     *
+     * guardrails:
+     *   - DO NOT assume all form fields are env vars; filter repo_* prefix correctly
+     *   - NOTE: Incomplete—missing value extraction logic and repos population
+     *   - ASK USER: Should null/empty env values be included or skipped?
+     * ---/agentspec
+     */
     function gatherConfigForm() {
         const update = { env: {}, repos: [] };
 
@@ -557,6 +585,19 @@
     }
 
     // Split initialization based on which view is active
+    /**
+     * ---agentspec
+     * what: |
+     *   Initializes config retrieval view. Loads config, calls initModelFlows if available. Prepares UI for RAG retrieval workflows.
+     *
+     * why: |
+     *   Centralizes startup logic for retrieval-specific initialization in one entry point.
+     *
+     * guardrails:
+     *   - DO NOT assume initModelFlows exists; guard with typeof check (already done)
+     *   - NOTE: Future retrieval UI init belongs here, not scattered in handlers
+     * ---/agentspec
+     */
     function initConfigRetrieval() {
         console.log('[config.js] Initializing for rag-retrieval view');
         loadConfig();
@@ -565,6 +606,19 @@
         // Future: Add retrieval-specific UI initialization here
     }
 
+    /**
+     * ---agentspec
+     * what: |
+     *   Initializes profiles UI view. Loads config; prepares DOM for profile management. Registers with Navigation system if available.
+     *
+     * why: |
+     *   Centralizes UI setup to coordinate with profile_logic.js and cost_logic.js modules.
+     *
+     * guardrails:
+     *   - DO NOT assume window.Navigation exists; check before calling registerView
+     *   - NOTE: Future expansion point for profiles-specific initialization
+     * ---/agentspec
+     */
     function initProfilesUI() {
         console.log('[config.js] Initializing for profiles view');
         loadConfig();

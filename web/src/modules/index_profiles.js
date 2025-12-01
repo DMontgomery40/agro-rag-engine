@@ -52,6 +52,20 @@
     /**
      * Update profile description based on selection
      */
+    /**
+     * ---agentspec
+     * what: |
+     *   Updates DOM element #profile-description with text from PROFILES[profileKey]. Reads selected value from #index-profile-select dropdown.
+     *
+     * why: |
+     *   Decouples profile data (PROFILES object) from UI rendering via key-based lookup.
+     *
+     * guardrails:
+     *   - DO NOT assume select.value exists; validate profileKey before PROFILES lookup
+     *   - NOTE: Returns early if DOM elements missing; silent failure—consider logging
+     *   - ASK USER: Should missing profile keys throw or default to empty string?
+     * ---/agentspec
+     */
     function updateProfileDescription() {
         const select = $('#index-profile-select');
         const descEl = $('#profile-description');
@@ -141,6 +155,19 @@
 
     /**
      * Initialize index profiles UI
+     */
+    /**
+     * ---agentspec
+     * what: |
+     *   Initializes index profile UI by binding change event to dropdown and apply button. Triggers updateProfileDescription on selection change.
+     *
+     * why: |
+     *   Centralizes event setup for profile management UI in one init function.
+     *
+     * guardrails:
+     *   - DO NOT assume DOM elements exist; add null checks before addEventListener
+     *   - NOTE: applyBtn bound but never used; remove or implement click handler
+     * ---/agentspec
      */
     function initIndexProfiles() {
         // Bind events

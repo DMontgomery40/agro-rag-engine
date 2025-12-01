@@ -92,12 +92,12 @@ export function RetrievalSubtab() {
 
   const loadModels = async () => {
     try {
-      const response = await fetch('/api/prices');
+      const response = await fetch('/api/models');
       const data = await response.json();
       const models = data.models.map((m: any) => m.model);
       setAvailableModels(models);
     } catch (error) {
-      console.error('Failed to load models from /api/prices:', error);
+      console.error('Failed to load models from /api/models:', error);
     }
   };
 

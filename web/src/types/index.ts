@@ -1,3 +1,4 @@
+// Shared front-end types mirrored from backend Pydantic models and used by Zustand stores
 // Core API Types
 export interface ApiResponse<T> {
   data?: T;
@@ -51,11 +52,14 @@ export interface EnvConfig {
 
 export interface Repository {
   name: string;
-  path: string;
+  path?: string;
+  slug?: string;
+  branch?: string;
   default?: boolean;
+  exclude_paths?: string[];
   keywords?: string[];
   path_boosts?: string[];
-  layer_bonuses?: Record<string, number>;
+  layer_bonuses?: Record<string, Record<string, number>>;
 }
 
 export interface KeywordCatalog {
