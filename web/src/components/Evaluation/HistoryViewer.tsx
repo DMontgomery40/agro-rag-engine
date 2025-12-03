@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { useEvalHistory } from '@/hooks/useEvalHistory';
+import { useEvalHistory, EvalHistoryEntry } from '@/hooks/useEvalHistory';
 import { useUIHelpers } from '@/hooks/useUIHelpers';
-import { EvalHistoryEntry } from '@/services/EvaluationService';
 
 interface HistoryViewerProps {
   className?: string;
@@ -42,25 +41,31 @@ export const HistoryViewer: React.FC<HistoryViewerProps> = ({ className = '' }) 
   };
 
   const getConfigDisplay = (entry: EvalHistoryEntry) => {
-    if (entry.rerank_backend === 'local') {
+    if (entry.reranker_mode === 'local') {
       return {
-        display: 'BM25 + Trained CE',
+        display: 'BM25 + Local CE',
         color: 'var(--accent)',
         bg: 'rgba(var(--accent-rgb), 0.1)'
       };
-    } else if (entry.rerank_backend === 'cohere') {
+    } else if (entry.reranker_mode === 'cloud') {
       return {
-        display: 'BM25 + Cohere CE',
+        display: `BM25 + ${entry.reranker_cloud_provider || 'Cloud'} CE`,
         color: 'var(--link)',
         bg: 'rgba(var(--link-rgb), 0.1)'
       };
-    } else {
+    } else if (entry.reranker_mode === 'learning') {
       return {
-        display: 'BM25-only',
-        color: 'var(--fg-muted)',
-        bg: 'transparent'
+        display: 'BM25 + AGRO Learning CE',
+        color: 'var(--success)',
+        bg: 'rgba(var(--success-rgb), 0.1)'
       };
     }
+    // none or missing
+    return {
+      display: 'BM25 Only',
+      color: 'var(--fg-muted)',
+      bg: 'rgba(var(--fg-muted-rgb), 0.1)'
+    };
   };
 
   const getTop5Color = (pct: number) => {
@@ -405,9 +410,9 @@ export const HistoryViewer: React.FC<HistoryViewerProps> = ({ className = '' }) 
               </div>
 
               <div>
-                <div style={{ color: 'var(--fg-muted)', marginBottom: '4px' }}>Rerank Backend</div>
+                <div style={{ color: 'var(--fg-muted)', marginBottom: '4px' }}>Reranker Mode</div>
                 <div style={{ color: 'var(--fg)' }}>
-                  {selectedRun.rerank_backend || 'none'}
+                  {selectedRun.reranker_mode || 'none'}
                 </div>
               </div>
 

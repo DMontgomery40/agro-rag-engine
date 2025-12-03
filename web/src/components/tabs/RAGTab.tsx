@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { RAGSubtabs } from '@/components/RAG/RAGSubtabs';
 import { DataQualitySubtab } from '@/components/RAG/DataQualitySubtab';
 import { RetrievalSubtab } from '@/components/RAG/RetrievalSubtab';
-import { ExternalRerankersSubtab } from '@/components/RAG/ExternalRerankersSubtab';
+import { RerankerConfigSubtab } from '@/components/RAG/RerankerConfigSubtab';
 import { LearningRankerSubtab } from '@/components/RAG/LearningRankerSubtab';
 import { IndexingSubtab } from '@/components/RAG/IndexingSubtab';
 import { EvaluateSubtab } from '@/components/RAG/EvaluateSubtab';
@@ -65,8 +65,8 @@ export default function RAGTab() {
         <RetrievalSubtab />
       </div>
 
-      <div id="tab-rag-external-rerankers" className={`rag-subtab-content ${activeSubtab === 'external-rerankers' ? 'active' : ''}`}>
-        <ExternalRerankersSubtab />
+      <div id="tab-rag-reranker-config" className={`rag-subtab-content ${activeSubtab === 'reranker-config' ? 'active' : ''}`}>
+        <RerankerConfigSubtab />
       </div>
 
       <div id="tab-rag-learning-ranker" className={`rag-subtab-content ${activeSubtab === 'learning-ranker' ? 'active' : ''}`}>

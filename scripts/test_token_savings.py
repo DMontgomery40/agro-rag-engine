@@ -129,7 +129,7 @@ def measure_rag_python(question: str, repo: str, top_k: int = 10):
 def measure_rag_mcp(question: str, repo: str, top_k: int = 10):
     """
     Simulate MCP tool call (what Claude Code actually uses).
-    This calls the same backend as direct Python but through MCP layer.
+    This calls the same retrieval pipeline as the direct Python path but through the MCP layer.
     """
     try:
         from server.mcp.server import MCPServer

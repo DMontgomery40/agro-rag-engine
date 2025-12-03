@@ -261,14 +261,16 @@ export function Sidepanel() {
       if (costRerankProvider) {
         const p = costRerankProvider.toLowerCase();
         if (p === 'cohere') {
-          envUpdates.RERANK_BACKEND = 'cloud';
-          envUpdates.COHERE_RERANK_MODEL = costRerankModel;
+          envUpdates.RERANKER_MODE = 'cloud';
+          envUpdates.RERANKER_CLOUD_PROVIDER = 'cohere';
+          envUpdates.RERANKER_CLOUD_MODEL = costRerankModel;
         } else if (p === 'voyage') {
-          envUpdates.RERANK_BACKEND = 'cloud';
-          envUpdates.VOYAGE_RERANK_MODEL = costRerankModel;
+          envUpdates.RERANKER_MODE = 'cloud';
+          envUpdates.RERANKER_CLOUD_PROVIDER = 'voyage';
+          envUpdates.RERANKER_CLOUD_MODEL = costRerankModel;
         } else if (['local', 'ollama', 'huggingface'].includes(p)) {
-          envUpdates.RERANK_BACKEND = 'local';
-          envUpdates.RERANK_MODEL = costRerankModel;
+          envUpdates.RERANKER_MODE = 'local';
+          envUpdates.RERANKER_LOCAL_MODEL = costRerankModel;
         }
       }
 

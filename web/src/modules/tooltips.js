@@ -231,6 +231,38 @@
       COHERE_RERANK_MODEL: L('Cohere Rerank Model', 'Cohere rerank model name (e.g., rerank-3.5). Check the provider docs for the latest list and pricing.', [
         ['Cohere Docs: Models', 'https://docs.cohere.com/docs/models']
       ]),
+
+      // Unified Reranker Configuration (4 modes)
+      RERANKER_MODE: L(
+        'Reranker Mode',
+        'Controls which reranking approach is used. Four options:\n\n• none: Disabled—BM25 + vector fusion only, no cross-encoder scoring.\n• local: Any local reranker model you provide (BGE, Jina, etc.).\n• learning: AGRO self-training cross-encoder that improves with your usage patterns.\n• cloud: External API reranking (Cohere, Voyage, Jina).\n\nRecommended: Start with "learning" to leverage AGRO\'s adaptive improvements, or "cloud" for lowest latency if you have API budget.',
+        [
+          ['Cross-Encoder Overview', 'https://www.sbert.net/examples/applications/cross-encoder/README.html'],
+          ['Learning Reranker Docs', '/docs/LEARNING_RERANKER.md']
+        ],
+        [['Controls reranking behavior', 'info']]
+      ),
+      RERANKER_CLOUD_PROVIDER: L(
+        'Cloud Rerank Provider',
+        'When RERANKER_MODE=cloud, specifies which API provider to use for reranking. Options: cohere, voyage, jina. Each provider has different pricing and model options—see models.json for available models. Requires the corresponding API key (COHERE_API_KEY, VOYAGE_API_KEY, etc.).',
+        [
+          ['Cohere Rerank', 'https://docs.cohere.com/reference/rerank'],
+          ['Voyage Rerank', 'https://docs.voyageai.com/docs/reranker'],
+          ['Jina Rerank', 'https://jina.ai/reranker/']
+        ],
+        [['Requires API key', 'warn']]
+      ),
+      RERANKER_LOCAL_MODEL: L(
+        'Local Reranker Model',
+        'When RERANKER_MODE=local, specifies the model to load. Can be:\n• A HuggingFace model ID (e.g., BAAI/bge-reranker-v2-m3)\n• A local filesystem path (e.g., /models/my-reranker)\n• Any sentence-transformers compatible model\n\nPopular options: BAAI/bge-reranker-v2-m3 (high quality), jinaai/jina-reranker-v1-base-en, cross-encoder/ms-marco-MiniLM-L-12-v2 (fast).',
+        [
+          ['BGE Reranker', 'https://huggingface.co/BAAI/bge-reranker-v2-m3'],
+          ['Jina Reranker', 'https://huggingface.co/jinaai/jina-reranker-v1-base-en'],
+          ['SBERT Cross-Encoders', 'https://www.sbert.net/docs/cross_encoder/pretrained_models.html']
+        ],
+        [['Free (no API costs)', 'info'], ['Requires download', 'warn']]
+      ),
+
       RERANKER_MODEL: L(
         'Local Reranker (HF)',
         'HuggingFace model name or path for local reranking when RERANK_BACKEND=local or hf. Common options: "cross-encoder/ms-marco-MiniLM-L-6-v2" (fast, good quality), "BAAI/bge-reranker-base" (higher quality, slower), or path to your fine-tuned model like "models/cross-encoder-agro". Local reranking is free but slower than Cohere. Ensure model is downloaded before use.',

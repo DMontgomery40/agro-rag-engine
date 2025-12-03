@@ -88,7 +88,7 @@ export class RerankService {
     if (!eventId || !docId) return;
 
     try {
-      await fetch(`${this.apiBase}/api/reranker/click`, {
+      await fetch(`${this.apiBase}/reranker/click`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ event_id: eventId, doc_id: docId })
@@ -103,7 +103,7 @@ export class RerankService {
    * Submit user feedback (thumbs, stars, or note)
    */
   async submitFeedback(feedback: FeedbackSignal): Promise<void> {
-    const response = await fetch(`${this.apiBase}/api/feedback`, {
+    const response = await fetch(`${this.apiBase}/feedback`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -122,7 +122,7 @@ export class RerankService {
    * Mine triplets from user feedback
    */
   async mineTriplets(): Promise<{ ok: boolean; output?: string; error?: string }> {
-    const response = await fetch(`${this.apiBase}/api/reranker/mine`, {
+    const response = await fetch(`${this.apiBase}/reranker/mine`, {
       method: 'POST'
     });
 
@@ -137,7 +137,7 @@ export class RerankService {
    * Train reranker model
    */
   async trainModel(options: TrainingOptions = {}): Promise<{ ok: boolean; output?: string; error?: string }> {
-    const response = await fetch(`${this.apiBase}/api/reranker/train`, {
+    const response = await fetch(`${this.apiBase}/reranker/train`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(options)
@@ -154,7 +154,7 @@ export class RerankService {
    * Evaluate trained model
    */
   async evaluateModel(): Promise<{ ok: boolean; output?: string; error?: string }> {
-    const response = await fetch(`${this.apiBase}/api/reranker/evaluate`, {
+    const response = await fetch(`${this.apiBase}/reranker/evaluate`, {
       method: 'POST'
     });
 
@@ -170,7 +170,7 @@ export class RerankService {
    */
   async getStatus(): Promise<RerankerStatus> {
     try {
-      const response = await fetch(`${this.apiBase}/api/reranker/status`);
+      const response = await fetch(`${this.apiBase}/reranker/status`);
       const data = await response.json();
       return data;
     } catch (error) {
@@ -188,7 +188,7 @@ export class RerankService {
    * Get reranker configuration info
    */
   async getInfo(): Promise<RerankerInfo> {
-    const response = await fetch(`${this.apiBase}/api/reranker/info`);
+    const response = await fetch(`${this.apiBase}/reranker/info`);
     if (!response.ok) {
       throw new Error('Failed to get reranker info');
     }
@@ -199,7 +199,7 @@ export class RerankService {
    * Get query logs count
    */
   async getLogsCount(): Promise<{ count: number }> {
-    const response = await fetch(`${this.apiBase}/api/reranker/logs/count`);
+    const response = await fetch(`${this.apiBase}/reranker/logs/count`);
     return await response.json();
   }
 
@@ -207,7 +207,7 @@ export class RerankService {
    * Get triplets count
    */
   async getTripletsCount(): Promise<{ count: number }> {
-    const response = await fetch(`${this.apiBase}/api/reranker/triplets/count`);
+    const response = await fetch(`${this.apiBase}/reranker/triplets/count`);
     return await response.json();
   }
 
@@ -215,7 +215,7 @@ export class RerankService {
    * Get cost statistics
    */
   async getCosts(): Promise<{ total_24h: number; avg_per_query: number }> {
-    const response = await fetch(`${this.apiBase}/api/reranker/costs`);
+    const response = await fetch(`${this.apiBase}/reranker/costs`);
     return await response.json();
   }
 
@@ -223,7 +223,7 @@ export class RerankService {
    * Get no-hit queries (queries that returned no results)
    */
   async getNoHits(): Promise<{ queries: Array<{ query: string; ts: string }> }> {
-    const response = await fetch(`${this.apiBase}/api/reranker/nohits`);
+    const response = await fetch(`${this.apiBase}/reranker/nohits`);
     return await response.json();
   }
 
@@ -231,7 +231,7 @@ export class RerankService {
    * Get query logs
    */
   async getLogs(): Promise<{ logs: any[] }> {
-    const response = await fetch(`${this.apiBase}/api/reranker/logs`);
+    const response = await fetch(`${this.apiBase}/reranker/logs`);
     return await response.json();
   }
 
@@ -239,7 +239,7 @@ export class RerankService {
    * Download query logs
    */
   async downloadLogs(): Promise<Blob> {
-    const response = await fetch(`${this.apiBase}/api/reranker/logs/download`);
+    const response = await fetch(`${this.apiBase}/reranker/logs/download`);
     if (!response.ok) {
       throw new Error('Failed to download logs');
     }
@@ -250,7 +250,7 @@ export class RerankService {
    * Clear all query logs
    */
   async clearLogs(): Promise<void> {
-    const response = await fetch(`${this.apiBase}/api/reranker/logs/clear`, {
+    const response = await fetch(`${this.apiBase}/reranker/logs/clear`, {
       method: 'POST'
     });
     if (!response.ok) {
@@ -262,7 +262,7 @@ export class RerankService {
    * Setup nightly automation job
    */
   async setupNightlyJob(time: string): Promise<{ ok: boolean; error?: string }> {
-    const response = await fetch(`${this.apiBase}/api/reranker/cron/setup`, {
+    const response = await fetch(`${this.apiBase}/reranker/cron/setup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ time })
@@ -274,7 +274,7 @@ export class RerankService {
    * Remove nightly automation job
    */
   async removeNightlyJob(): Promise<{ ok: boolean; error?: string }> {
-    const response = await fetch(`${this.apiBase}/api/reranker/cron/remove`, {
+    const response = await fetch(`${this.apiBase}/reranker/cron/remove`, {
       method: 'POST'
     });
     return await response.json();
@@ -284,7 +284,7 @@ export class RerankService {
    * Save current model as baseline
    */
   async saveBaseline(): Promise<{ ok: boolean; error?: string }> {
-    const response = await fetch(`${this.apiBase}/api/reranker/baseline/save`, {
+    const response = await fetch(`${this.apiBase}/reranker/baseline/save`, {
       method: 'POST'
     });
     return await response.json();
@@ -294,7 +294,7 @@ export class RerankService {
    * Compare current model with baseline
    */
   async compareBaseline(): Promise<BaselineComparison> {
-    const response = await fetch(`${this.apiBase}/api/reranker/baseline/compare`);
+    const response = await fetch(`${this.apiBase}/reranker/baseline/compare`);
     return await response.json();
   }
 
@@ -302,7 +302,7 @@ export class RerankService {
    * Rollback to baseline model
    */
   async rollbackModel(): Promise<{ ok: boolean; error?: string }> {
-    const response = await fetch(`${this.apiBase}/api/reranker/rollback`, {
+    const response = await fetch(`${this.apiBase}/reranker/rollback`, {
       method: 'POST'
     });
     return await response.json();
@@ -312,7 +312,7 @@ export class RerankService {
    * Run smoke test
    */
   async runSmokeTest(query: string): Promise<SmokeTestResult> {
-    const response = await fetch(`${this.apiBase}/api/reranker/smoketest`, {
+    const response = await fetch(`${this.apiBase}/reranker/smoketest`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query })

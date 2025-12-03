@@ -20,9 +20,9 @@ export const TuneStep: React.FC = () => {
     };
 
     const qualityMap: Record<number, string> = {
-      1: 'RERANK_BACKEND=none, GEN_MODEL=local',
-      2: 'RERANK_BACKEND=local, GEN_MODEL=gpt-4o-mini',
-      3: 'RERANK_BACKEND=cohere, GEN_MODEL=gpt-4o, CONF_TOP1=0.55',
+      1: 'RERANKER_MODE=none, GEN_MODEL=local',
+      2: 'RERANKER_MODE=local, GEN_MODEL=ollama',
+      3: 'RERANKER_MODE=cloud, RERANKER_CLOUD_PROVIDER=cohere, GEN_MODEL=gpt-5, CONF_TOP1=0.55',
     };
 
     const cloudMap: Record<number, string> = {

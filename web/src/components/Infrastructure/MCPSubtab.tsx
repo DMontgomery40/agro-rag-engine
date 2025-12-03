@@ -1,9 +1,11 @@
 // AGRO - MCP Subtab Component
 // MCP Server connection and configuration
+// MCP_API_KEY is configured in .env only - never written programmatically
 
 import { useState, useEffect } from 'react';
 import { configApi } from '@/api/config';
 import { useTooltips } from '@/hooks/useTooltips';
+import { ApiKeyStatus } from '@/components/ui/ApiKeyStatus';
 
 interface MCPServer {
   name: string;
@@ -39,7 +41,7 @@ export function MCPSubtab() {
     { name: 'MCP HTTP Server', url: 'http://127.0.0.1:8013/mcp', status: 'unknown' }
   ]);
   const [serverUrl, setServerUrl] = useState('http://127.0.0.1:8013/mcp');
-  const [apiKey, setApiKey] = useState('');
+  // apiKey is in .env only - not stored in React state
   const [testResult, setTestResult] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -199,18 +201,8 @@ export function MCPSubtab() {
         }
       });
 
-      // Save API key if provided
-      if (apiKey.trim()) {
-        const result = await configApi.saveMCPKey(apiKey);
-        if (result.status === 'success') {
-          setActionMessage('MCP settings and API key saved successfully! Restart the MCP server for changes to take effect.');
-          setApiKey(''); // Clear for security
-        } else {
-          setActionMessage(`Settings saved but API key failed: ${result.message || 'Unknown error'}`);
-        }
-      } else {
-        setActionMessage('MCP settings saved successfully! Restart the MCP server for changes to take effect.');
-      }
+      // API key must be configured in .env file directly - never saved via GUI
+      setActionMessage('MCP settings saved! MCP_API_KEY must be configured in .env file. Restart the MCP server for changes to take effect.');
     } catch (error: any) {
       setActionMessage(`Error saving MCP settings: ${error.message}`);
     } finally {
@@ -406,24 +398,7 @@ export function MCPSubtab() {
 
         <div className="input-row">
           <div className="input-group">
-            <label dangerouslySetInnerHTML={{ __html: tooltips.MCP_API_KEY }} />
-            <input
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="Enter API key if required"
-              style={{
-                width: '100%',
-                padding: '8px',
-                background: 'var(--input-bg)',
-                border: '1px solid var(--line)',
-                borderRadius: '4px',
-                color: 'var(--fg)'
-              }}
-            />
-            <p className="small" style={{ color: 'var(--fg-muted)', marginTop: '4px' }}>
-              Optional authentication key
-            </p>
+            <ApiKeyStatus keyName="MCP_API_KEY" label="MCP API Key" />
           </div>
         </div>
 

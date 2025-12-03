@@ -19,12 +19,22 @@ SECRET_FIELDS = {
     'COHERE_API_KEY', 'VOYAGE_API_KEY', 'LANGSMITH_API_KEY',
     'LANGCHAIN_API_KEY', 'LANGTRACE_API_KEY', 'NETLIFY_API_KEY',
     'OAUTH_TOKEN', 'GRAFANA_API_KEY', 'GRAFANA_AUTH_TOKEN',
-    'MCP_API_KEY'
+    'MCP_API_KEY', 'JINA_API_KEY', 'DEEPSEEK_API_KEY', 'MISTRAL_API_KEY',
+    'XAI_API_KEY', 'GROQ_API_KEY', 'FIREWORKS_API_KEY'
 }
 
 
-def _atomic_write_text(path: Path, content: str) -> None:
+def _atomic_write_text(path: Path, content: str, max_retries: int = 3) -> None:
+    """Atomically write text to a file with fallback for Docker volume mounts.
+    
+    Docker Desktop on macOS can fail with 'Device or resource busy' on os.replace()
+    when the file is being watched. We try atomic first, then fall back to direct write.
+    """
+    import time
+    
     path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Try atomic write first (safe against corruption on crash)
     fd, tmp_path_str = tempfile.mkstemp(dir=path.parent, prefix=path.name, suffix=".tmp")
     tmp_path = Path(tmp_path_str)
     try:
@@ -32,12 +42,31 @@ def _atomic_write_text(path: Path, content: str) -> None:
             fh.write(content)
             fh.flush()
             os.fsync(fh.fileno())
-        os.replace(tmp_path, path)
+        
+        # Try os.replace with retries
+        for attempt in range(max_retries):
+            try:
+                os.replace(tmp_path, path)
+                return  # Success
+            except OSError as e:
+                if e.errno == 16:  # EBUSY - Device or resource busy
+                    time.sleep(0.05 * (attempt + 1))
+                else:
+                    raise
+        
+        # Atomic failed - fall back to direct write (less safe but works on Docker)
+        # This can cause brief inconsistency if read during write, but won't corrupt
+        logger.warning(f"Atomic write failed for {path}, falling back to direct write")
+        with open(path, 'w', encoding='utf-8') as fh:
+            fh.write(content)
+            fh.flush()
+            os.fsync(fh.fileno())
+            
     finally:
         if tmp_path.exists():
             try:
                 tmp_path.unlink()
-            except FileNotFoundError:
+            except (FileNotFoundError, OSError):
                 pass
 
 
@@ -60,6 +89,11 @@ def env_reload() -> Dict[str, Any]:
 
 
 def secrets_ingest(text: str, persist: bool) -> Dict[str, Any]:
+    """Ingest secrets from uploaded text - RUNTIME ONLY, NEVER writes to .env.
+    
+    User must manually edit .env file to persist secrets.
+    This only applies them to os.environ for the current session.
+    """
     applied: Dict[str, str] = {}
     for line in text.splitlines():
         s = line.strip()
@@ -73,64 +107,45 @@ def secrets_ingest(text: str, persist: bool) -> Dict[str, Any]:
         os.environ[k] = v
         applied[k] = v
 
-    saved = False
+    # NEVER write to .env - user must manually edit it
+    # The persist parameter is ignored - we never persist secrets programmatically
     if persist:
-        env_path = repo_root() / ".env"
-        existing: Dict[str, str] = {}
-        if env_path.exists():
-            for ln in env_path.read_text().splitlines():
-                if not ln.strip() or ln.strip().startswith("#") or "=" not in ln:
-                    continue
-                kk, vv = ln.split("=", 1)
-                existing[kk.strip()] = vv.strip()
-        existing.update(applied)
-        _atomic_write_text(env_path, "\n".join(f"{k}={existing[k]}" for k in sorted(existing.keys())) + "\n")
-        saved = True
+        logger.warning("secrets_ingest: persist=True ignored - .env is NEVER written programmatically")
 
-    return {"ok": True, "applied": sorted(applied.keys()), "persisted": saved}
+    return {
+        "ok": True, 
+        "applied": sorted(applied.keys()), 
+        "persisted": False,  # Always false - we never write to .env
+        "message": "Secrets applied to runtime only. To persist, manually edit .env file."
+    }
 
 
 def save_mcp_key(key: str) -> Dict[str, Any]:
-    """Save MCP API key to .env file.
+    """Apply MCP API key to runtime - NEVER writes to .env.
+    
+    User must manually add MCP_API_KEY to .env file to persist.
+    This only applies it to os.environ for the current session.
 
     Args:
         key: MCP API key value
 
     Returns:
         Success status
-
-    Security:
-        - Key is written to .env (not logged)
-        - Updates both file and os.environ for immediate effect
     """
     try:
-        env_path = repo_root() / ".env"
-
-        # Read existing .env
-        existing: Dict[str, str] = {}
-        if env_path.exists():
-            for line in env_path.read_text().splitlines():
-                if not line.strip() or line.strip().startswith("#") or "=" not in line:
-                    continue
-                k, v = line.split("=", 1)
-                existing[k.strip()] = v.strip()
-
-        # Update or append MCP_API_KEY
+        # NEVER write to .env - only apply to os.environ for runtime
         key_name = "MCP_API_KEY"
-        existing[key_name] = key
-
-        # Write back atomically
-        _atomic_write_text(env_path, "\n".join(f"{k}={existing[k]}" for k in sorted(existing.keys())) + "\n")
-
-        # Update os.environ for immediate effect
         os.environ[key_name] = key
 
-        logger.info("MCP API key saved successfully")  # Don't log the actual key!
-        return {"status": "success", "message": "MCP API key saved"}
+        logger.info("MCP API key applied to runtime (NOT persisted to .env)")
+        return {
+            "status": "success", 
+            "message": "MCP API key applied to runtime. To persist, manually add to .env file."
+        }
 
     except Exception as e:
-        logger.error(f"Failed to save MCP key: {e}")  # Don't log the actual key!
-        return {"status": "error", "message": "Failed to save API key"}
+        logger.error(f"Failed to apply MCP key: {e}")
+        return {"status": "error", "message": "Failed to apply API key"}
 
 
 def _effective_rerank_mode() -> Dict[str, Any]:
@@ -274,9 +289,11 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
     env_updates: Dict[str, Any] = dict(payload.get("env") or {})
     repos_updates: List[Dict[str, Any]] = list(payload.get("repos") or [])
 
-    # Split env_updates into agro_config and .env based on AGRO_CONFIG_KEYS
+    # ALL config updates go to agro_config.json - NEVER write to .env
+    # .env is for secrets ONLY and must be manually edited by user
     agro_config_updates = {k: v for k, v in env_updates.items() if k in AGRO_CONFIG_KEYS}
-    env_file_updates = {k: v for k, v in env_updates.items() if k not in AGRO_CONFIG_KEYS}
+    # Non-AGRO keys go to os.environ for runtime only, NOT persisted to .env
+    runtime_only_updates = {k: v for k, v in env_updates.items() if k not in AGRO_CONFIG_KEYS}
     validation_error: Optional[str] = None
 
     # Update agro_config.json if there are relevant updates
@@ -301,45 +318,25 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
             "repos_count": 0
         }
 
-    # Backup .env
-    env_path = root / ".env"
-    if env_path.exists() and env_file_updates:
-        from datetime import datetime
-        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        backup_path = root / f".env.backup-{timestamp}"
-        try:
-            import shutil
-            shutil.copy2(env_path, backup_path)
-        except Exception as e:
-            logger.warning(".env backup failed: %s", e)
-
-    # Upsert .env in memory copy (only for non-AGRO keys)
-    existing: Dict[str, str] = {}
-    if env_path.exists():
-        for line in env_path.read_text().splitlines():
-            if not line.strip() or line.strip().startswith("#") or "=" not in line:
-                continue
-            k, v = line.split("=", 1)
-            existing[k.strip()] = v.strip()
-    for k, v in env_file_updates.items():
-        if v is None:
-            existing.pop(k, None)
-        else:
-            existing[k] = str(v)
-        # also apply to process env
+    # NEVER WRITE TO .env - it is for secrets only and must be manually edited
+    # Apply runtime-only updates to os.environ (NOT persisted)
+    for k, v in runtime_only_updates.items():
+        # Skip masked values entirely
+        if v == '••••••••••••••••' or str(v).startswith('••••'):
+            continue
         if v is None:
             os.environ.pop(k, None)
         else:
             os.environ[k] = str(v)
-
-    # Write .env if there were updates
-    if env_file_updates:
-        _atomic_write_text(env_path, "\n".join(f"{k}={existing[k]}" for k in sorted(existing.keys())) + "\n")
+    
+    # Log what we did NOT persist
+    if runtime_only_updates:
+        logger.info(f"Applied {len(runtime_only_updates)} runtime-only updates (NOT persisted to .env)")
 
     # Upsert repos.json
     repos_path = root / "repos.json"
     cfg = _read_json(repos_path, {"default_repo": None, "repos": []})
-    default_repo = env_file_updates.get("REPO") or cfg.get("default_repo")
+    default_repo = runtime_only_updates.get("REPO") or cfg.get("default_repo")
     by_name: Dict[str, Dict[str, Any]] = {str(r.get("name")): r for r in cfg.get("repos", []) if r.get("name")}
     for r in repos_updates:
         name = str(r.get("name") or "").strip()
@@ -365,7 +362,7 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     return {
         "status": "success",
-        "applied_env_keys": sorted(existing.keys()),
+        "applied_runtime_keys": sorted(runtime_only_updates.keys()),  # NOT persisted to .env
         "applied_agro_config_keys": sorted(agro_config_updates.keys()),
         "repos_count": len(new_cfg.get("repos", []))
     }
@@ -481,13 +478,13 @@ def _normalize_prices(data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def prices_get() -> Dict[str, Any]:
-    raw = _read_json(gui_dir() / "prices.json", {"models": []})
+    raw = _read_json(gui_dir() / "models.json", {"models": []})
     data = raw if (raw and isinstance(raw, dict) and raw.get("models")) else _default_prices()
     return _normalize_prices(data)
 
 
 def prices_upsert(item: Dict[str, Any]) -> Dict[str, Any]:
-    prices_path = gui_dir() / "prices.json"
+    prices_path = gui_dir() / "models.json"
     data = _read_json(prices_path, {"models": []})
     models: List[Dict[str, Any]] = list(data.get("models", []))
     key = (str(item.get("provider")), str(item.get("model")))
@@ -645,13 +642,7 @@ def config_schema() -> Dict[str, Any]:
         },
     }
 
-    SECRET_FIELDS = {
-        'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GOOGLE_API_KEY',
-        'COHERE_API_KEY', 'VOYAGE_API_KEY', 'LANGSMITH_API_KEY',
-        'LANGCHAIN_API_KEY', 'LANGTRACE_API_KEY', 'NETLIFY_API_KEY',
-        'OAUTH_TOKEN', 'GRAFANA_API_KEY', 'GRAFANA_AUTH_TOKEN',
-        'MCP_API_KEY'
-    }
+    # Use global SECRET_FIELDS (defined at module top)
 
     ed = _read_editor_settings()
     registry = get_config_registry()

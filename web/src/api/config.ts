@@ -11,17 +11,17 @@ export const configApi = {
   },
 
   /**
-   * Reload environment variables from .env file
+   * Reload configuration from agro_config.json (triggers backend re-read)
    */
-  async reloadEnv(): Promise<void> {
+  async reloadConfig(): Promise<void> {
     await apiClient.post(api('/env/reload'));
   },
 
   /**
-   * Save environment configuration
+   * Save configuration to agro_config.json
    */
-  async saveEnv(env: Partial<EnvConfig>): Promise<void> {
-    await apiClient.post(api('/env/save'), { env });
+  async saveConfigPartial(config: Partial<EnvConfig>): Promise<void> {
+    await apiClient.post(api('/env/save'), { env: config });
   },
 
   /**

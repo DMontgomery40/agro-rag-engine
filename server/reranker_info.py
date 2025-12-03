@@ -12,28 +12,48 @@ def reranker_info():
     get_reranker()
     lr_info = get_reranker_info()
     rr_info = get_rerank_config_info()
-
-    merged = {
-        "reranker_mode": rr_info.get("reranker_mode"),
-        "reranker_cloud_provider": rr_info.get("reranker_cloud_provider"),
-        "reranker_cloud_model": rr_info.get("reranker_cloud_model"),
-        "reranker_local_model": rr_info.get("reranker_local_model"),
-        "path": lr_info.get("path") or rr_info.get("model_path"),
-        "resolved_path": rr_info.get("model_path"),
-        "device": lr_info.get("device"),
-        "alpha": rr_info.get("alpha", lr_info.get("alpha")),
-        "topn": rr_info.get("topn", lr_info.get("topn")),
-        "batch": rr_info.get("batch", lr_info.get("batch")),
-        "maxlen": rr_info.get("maxlen", lr_info.get("maxlen")),
-        "snippet_chars": rr_info.get("snippet_chars"),
-        "trust_remote_code": rr_info.get("trust_remote_code"),
+    
+    mode = rr_info.get("reranker_mode", "none")
+    
+    # Base fields always included
+    result = {
+        "reranker_mode": mode,
     }
-
-    return {
-        **merged,
-        "learning_reranker": lr_info,
-        "rerank_config": rr_info,
-    }
+    
+    # Mode-specific fields - only return what's relevant
+    if mode == "cloud":
+        result.update({
+            "reranker_cloud_provider": rr_info.get("reranker_cloud_provider"),
+            "reranker_cloud_model": rr_info.get("reranker_cloud_model"),
+            "topn": rr_info.get("topn"),
+            "timeout": rr_info.get("timeout"),
+        })
+    elif mode == "local":
+        result.update({
+            "reranker_local_model": rr_info.get("reranker_local_model"),
+            "device": lr_info.get("device"),  # Device only for local/learning
+            "topn": rr_info.get("topn"),
+            "snippet_chars": rr_info.get("snippet_chars"),
+            "trust_remote_code": rr_info.get("trust_remote_code"),
+        })
+    elif mode == "learning":
+        result.update({
+            "path": lr_info.get("path") or rr_info.get("model_path"),
+            "resolved_path": lr_info.get("resolved_path"),
+            "device": lr_info.get("device"),
+            "alpha": rr_info.get("alpha", lr_info.get("alpha")),
+            "topn": rr_info.get("topn", lr_info.get("topn")),
+            "batch": rr_info.get("batch", lr_info.get("batch")),
+            "maxlen": rr_info.get("maxlen", lr_info.get("maxlen")),
+            "snippet_chars": rr_info.get("snippet_chars"),
+        })
+    # mode == "none" - just return reranker_mode, nothing else needed
+    
+    # Always include learning_reranker and rerank_config for debugging
+    result["learning_reranker"] = lr_info
+    result["rerank_config"] = rr_info
+    
+    return result
 
 @router.get("/api/reranker/available")
 def reranker_available_options():

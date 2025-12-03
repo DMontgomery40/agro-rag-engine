@@ -202,7 +202,7 @@
     const summary = $('#onboard-summary-content'); if (!summary) return;
     const { speed, quality, cloud } = onboardingState.settings;
     const speedMap = { 1:'MAX_QUERY_REWRITES=1, LANGGRAPH_FINAL_K=10', 2:'MAX_QUERY_REWRITES=2, LANGGRAPH_FINAL_K=15', 3:'MAX_QUERY_REWRITES=3, LANGGRAPH_FINAL_K=20', 4:'MAX_QUERY_REWRITES=4, LANGGRAPH_FINAL_K=25' };
-    const qualityMap = { 1:'RERANK_BACKEND=none, GEN_MODEL=local', 2:'RERANK_BACKEND=local, GEN_MODEL=gpt-4o-mini', 3:'RERANK_BACKEND=cohere, GEN_MODEL=gpt-4o, CONF_TOP1=0.55' };
+    const qualityMap = { 1:'RERANKER_MODE=none, GEN_MODEL=local', 2:'RERANKER_MODE=local, GEN_MODEL=gpt-4o-mini', 3:'RERANKER_MODE=cloud, RERANKER_CLOUD_PROVIDER=cohere, GEN_MODEL=gpt-4o, CONF_TOP1=0.55' };
     const cloudMap = { 1:'EMBEDDING_TYPE=local, VECTOR_BACKEND=qdrant (local)', 2:'EMBEDDING_TYPE=openai, VECTOR_BACKEND=qdrant (cloud)' };
     summary.innerHTML = `<div>Speed: ${speedMap[speed]||'default'}</div><div>Quality: ${qualityMap[quality]||'default'}</div><div>Cloud: ${cloudMap[cloud]||'default'}</div>`;
   }
@@ -210,7 +210,7 @@
   async function saveAsProject(){
     const name = prompt('Enter a name for this project:'); if (!name || !name.trim()) return;
     const { speed, quality, cloud } = onboardingState.settings;
-    const profile = { name: name.trim(), sources: onboardingState.projectDraft, settings: { MAX_QUERY_REWRITES: speed, LANGGRAPH_FINAL_K: 10 + (speed*5), RERANK_BACKEND: quality===1?'none':(quality===2?'local':'cohere'), GEN_MODEL: quality===1?'local':'gpt-4o-mini', EMBEDDING_TYPE: cloud===1?'local':'openai' }, golden: onboardingState.questions.map(q=>q.text) };
+    const profile = { name: name.trim(), sources: onboardingState.projectDraft, settings: { MAX_QUERY_REWRITES: speed, LANGGRAPH_FINAL_K: 10 + (speed*5), RERANKER_MODE: quality===1?'none':(quality===2?'local':'cloud'), RERANKER_CLOUD_PROVIDER: quality===3?'cohere':'', GEN_MODEL: quality===1?'local':'gpt-4o-mini', EMBEDDING_TYPE: cloud===1?'local':'openai' }, golden: onboardingState.questions.map(q=>q.text) };
     try{ const res = await fetch(api('/api/profiles/save'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(profile) }); if (!res.ok) throw new Error('Failed to save project'); alert('Project saved successfully!'); await fetch(api('/api/profiles/apply'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ profile_name: name.trim() }) }); }
     catch(err){ console.error('Save project error:', err); alert('Error saving project: ' + err.message); }
   }

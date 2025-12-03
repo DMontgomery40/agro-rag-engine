@@ -92,6 +92,27 @@ async def api_secrets_ingest(
     return cfg.secrets_ingest(text, do_persist)
 
 
+@router.get("/api/secrets/check")
+def check_secrets(keys: str = Query(default="")) -> Dict[str, bool]:
+    """Check if secret keys are configured (without exposing values).
+    
+    Args:
+        keys: Comma-separated list of key names to check (e.g., "OPENAI_API_KEY,COHERE_API_KEY")
+    
+    Returns:
+        Dict mapping key names to boolean (True if configured and non-empty)
+    """
+    import os
+    result = {}
+    for key in keys.split(","):
+        key = key.strip()
+        if key:
+            value = os.environ.get(key, "")
+            # Key is "configured" if it exists and is not empty or masked
+            result[key] = bool(value and not value.startswith("••••"))
+    return result
+
+
 @router.get("/api/config")
 def get_config(unmask: bool = Query(default=False)) -> Dict[str, Any]:
     return cfg.get_config(unmask=bool(unmask))

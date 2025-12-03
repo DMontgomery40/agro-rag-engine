@@ -132,15 +132,30 @@ export function useConfig() {
     }
 
     saveTimeoutRef.current = setTimeout(async () => {
-      const toSave = { ...pendingUpdates.current };
+      const rawUpdates = { ...pendingUpdates.current };
       pendingUpdates.current = {};
+      
+      // CRITICAL: Filter out masked secrets - they would destroy real keys in .env!
+      const toSave: Record<string, any> = {};
+      for (const [k, v] of Object.entries(rawUpdates)) {
+        if (v === '••••••••••••••••' || String(v).startsWith('••••')) {
+          console.warn(`[useConfig] Skipping masked value for ${k}`);
+          continue;
+        }
+        toSave[k] = v;
+      }
+      
+      if (Object.keys(toSave).length === 0) {
+        console.log('[useConfig] No values to save after filtering masked secrets');
+        return;
+      }
       
       try {
         // Use the centralized configApi which handles routing for dev/docker
         await configApi.saveConfig({ env: toSave });
         
-        // Reload to get any backend-normalized values
-        await configApi.reloadEnv();
+        // Reload to get any backend-normalized values from agro_config.json
+        await configApi.reloadConfig();
         await loadConfig();
         
         console.log('[useConfig] Saved:', Object.keys(toSave));
@@ -176,9 +191,9 @@ export function useConfig() {
     Object.entries(allUpdates).forEach(([k, v]) => updateEnv(k, v));
     
     try {
-      // Save via configApi
+      // Save via configApi to agro_config.json
       await configApi.saveConfig({ env: allUpdates });
-      await configApi.reloadEnv();
+      await configApi.reloadConfig();
       await loadConfig();
       
       console.log('[useConfig] Saved immediately:', Object.keys(allUpdates));
@@ -195,11 +210,11 @@ export function useConfig() {
   }, [updateEnv, loadConfig]);
 
   /**
-   * Reload config from backend
+   * Reload config from agro_config.json
    */
   const reload = useCallback(async () => {
     setValidationError(null);
-    await configApi.reloadEnv();
+    await configApi.reloadConfig();
     return loadConfig();
   }, [loadConfig]);
 

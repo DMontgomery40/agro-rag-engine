@@ -37,8 +37,8 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   loadConfig: async () => {
     set({ loading: true, error: null });
     try {
-      // Reload env first
-      await configApi.reloadEnv().catch(() => {});
+      // Reload from agro_config.json first
+      await configApi.reloadConfig().catch(() => {});
       const config = await configApi.load();
       set({ config, loading: false, error: null });
     } catch (error) {
@@ -80,12 +80,13 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   },
 
   reloadEnv: async () => {
+    // DEPRECATED: Use loadConfig() instead. This exists for backwards compatibility.
     try {
-      await configApi.reloadEnv();
+      await configApi.reloadConfig();
       await get().loadConfig();
     } catch (error) {
       set({
-        error: error instanceof Error ? error.message : 'Failed to reload environment'
+        error: error instanceof Error ? error.message : 'Failed to reload configuration'
       });
     }
   },

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useConfigStore } from '@/stores';
+import { ApiKeyStatus } from '@/components/ui/ApiKeyStatus';
 
 interface MCPServer {
   name: string;
@@ -11,16 +12,14 @@ interface MCPServer {
 export function Integrations() {
   const { config, loadConfig, saveEnv, saving } = useConfigStore();
 
-  // LangSmith
+  // LangSmith (API keys are in .env only)
   const [langSmithEnabled, setLangSmithEnabled] = useState(false);
-  const [langSmithApiKey, setLangSmithApiKey] = useState('');
   const [langSmithProject, setLangSmithProject] = useState('agro');
   const [langSmithEndpoint, setLangSmithEndpoint] = useState('https://api.smith.langchain.com');
 
-  // Grafana
+  // Grafana (API keys are in .env only)
   const [grafanaEnabled, setGrafanaEnabled] = useState(false);
   const [grafanaDashboardUrl, setGrafanaDashboardUrl] = useState('http://localhost:3000');
-  const [grafanaApiKey, setGrafanaApiKey] = useState('');
 
   // VS Code Extension
   const [vscodeEnabled, setVscodeEnabled] = useState(false);
@@ -32,14 +31,12 @@ export function Integrations() {
   const [newMcpName, setNewMcpName] = useState('');
   const [newMcpPort, setNewMcpPort] = useState('');
 
-  // Notification settings
+  // Notification settings (webhook URLs are in .env only)
   const [enableNotifications, setEnableNotifications] = useState(false);
   const [notifyCritical, setNotifyCritical] = useState(true);
   const [notifyWarning, setNotifyWarning] = useState(true);
   const [notifyInfo, setNotifyInfo] = useState(false);
   const [includeResolved, setIncludeResolved] = useState(false);
-  const [slackWebhookUrl, setSlackWebhookUrl] = useState('');
-  const [discordWebhookUrl, setDiscordWebhookUrl] = useState('');
 
   // MCP & Channels settings
   const [httpResponsesModel, setHttpResponsesModel] = useState('');

@@ -288,8 +288,9 @@ export function useOnboarding() {
       settings: {
         MAX_QUERY_REWRITES: speed,
         LANGGRAPH_FINAL_K: 10 + speed * 5,
-        RERANK_BACKEND: quality === 1 ? 'none' : quality === 2 ? 'local' : 'cohere',
-        GEN_MODEL: quality === 1 ? 'local' : 'gpt-4o-mini',
+        RERANKER_MODE: quality === 1 ? 'none' : quality === 2 ? 'local' : 'cloud',
+        RERANKER_CLOUD_PROVIDER: quality === 3 ? 'cohere' : '',
+        GEN_MODEL: quality === 1 ? 'local' : 'gpt-5',
         EMBEDDING_TYPE: cloud === 1 ? 'local' : 'openai',
       },
       golden: state.questions.map((q) => q.text),
