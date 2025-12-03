@@ -1,12 +1,17 @@
 """
 Shared reranker configuration loader.
 
-This consolidates the legacy env families:
-- Retrieval: RERANK_BACKEND, RERANKER_MODEL, RERANK_INPUT_SNIPPET_CHARS
-- API/GUI:   AGRO_RERANKER_* (model path, alpha, topN, batch, etc.)
+Configuration flows through Pydantic (agro_config.json -> config_registry):
+- RERANKER_MODE: 'cloud' | 'local' | 'learning' | 'none'
+- RERANKER_CLOUD_PROVIDER: 'cohere' | 'voyage' | 'jina' (when mode='cloud')
+- RERANKER_CLOUD_MODEL: model name for cloud provider
+- RERANKER_LOCAL_MODEL: path or HF identifier for local models
+- AGRO_RERANKER_*: alpha, topN, batch, maxlen, etc.
 
-The loader is read-only. Callers should continue to update environment
-variables via existing endpoints/UI to remain ADA-compliant.
+API keys (secrets) remain in .env: COHERE_API_KEY, VOYAGE_API_KEY, etc.
+
+The loader is read-only. Callers should update configuration via
+agro_config.json and the GUI to remain ADA-compliant.
 """
 
 from __future__ import annotations
@@ -43,7 +48,10 @@ def _env_float(name: str, default: str) -> float:
 @dataclass(frozen=True)
 class RerankerSettings:
     enabled: bool
-    backend: str  # "local" | "cohere" | "none"
+    mode: str  # 'cloud' | 'local' | 'learning' | 'none'
+    provider: str  # 'cohere' | 'voyage' | 'jina' | '' (empty if not cloud)
+    cloud_model: str  # model for whatever cloud provider is selected
+    local_model: str  # local HuggingFace cross-encoder model
     local_model_dir: Optional[Path]
     hf_model_id: str
     alpha: float
@@ -52,8 +60,7 @@ class RerankerSettings:
     batch_size: int
     max_length: int
     snippet_chars: int
-    cohere_model: str
-    cohere_api_key_present: bool
+    cloud_api_key_present: bool
     reload_on_change: bool
     reload_period_sec: int
     source_env: Dict[str, str]
@@ -61,11 +68,13 @@ class RerankerSettings:
     @property
     def metrics_label(self) -> str:
         """Label for Prometheus/Grafana."""
-        if self.backend == "cohere":
-            return f"cohere:{self.cohere_model}"
+        if self.mode == "cloud":
+            return f"{self.provider}:{self.cloud_model}"
+        if self.mode == "learning":
+            return "learning:cross-encoder-agro"
         if self.local_model_dir is not None:
             return str(self.local_model_dir)
-        return self.hf_model_id
+        return self.local_model or self.hf_model_id
 
 
 def _resolve_local_model_path(path_value: str) -> Optional[Path]:
@@ -91,28 +100,70 @@ def load_settings() -> RerankerSettings:
         return val
 
     enabled = _env_bool("AGRO_RERANKER_ENABLED", "1")
-    backend_env = (_get("RERANK_BACKEND", "local") or "local").strip().lower()
 
-    cohere_key = _get("COHERE_API_KEY", "")
-    cohere_model = _get("COHERE_RERANK_MODEL", "rerank-3.5")
+    # Read RERANKER_MODE
+    mode = _get("RERANKER_MODE", "").strip().lower()
+    if not mode:
+        raise ValueError(
+            "RERANKER_MODE must be set to one of: 'cloud', 'local', 'learning', 'none'"
+        )
+    if mode not in {"cloud", "local", "learning", "none"}:
+        raise ValueError(
+            f"RERANKER_MODE='{mode}' is invalid. "
+            f"Must be one of: 'cloud', 'local', 'learning', 'none'"
+        )
 
-    backend = backend_env if enabled else "none"
-    if backend == "cohere" and not cohere_key.strip():
-        # Fall back gracefully if key missing
-        backend = "local"
+    if not enabled:
+        mode = "none"
 
-    model_path_env = _get("AGRO_RERANKER_MODEL_PATH", "models/cross-encoder-agro")
-    local_model_dir = _resolve_local_model_path(model_path_env)
+    # Read provider and models
+    provider = _get("RERANKER_CLOUD_PROVIDER", "").strip().lower()
+    cloud_model = _get("RERANKER_CLOUD_MODEL", "").strip()
+    local_model = _get("RERANKER_LOCAL_MODEL", "").strip()
 
-    hf_fallback = _get("RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L-12-v2")
-    if local_model_dir is None:
-        hf_model_id = model_path_env or hf_fallback
+    # Validate based on mode
+    cloud_api_key_present = False
+
+    if mode == "cloud":
+        if not provider:
+            raise ValueError(
+                f"RERANKER_MODE='{mode}' requires RERANKER_CLOUD_PROVIDER to be set"
+            )
+        if not cloud_model:
+            raise ValueError(
+                f"RERANKER_MODE='{mode}' with RERANKER_CLOUD_PROVIDER='{provider}' "
+                f"requires RERANKER_CLOUD_MODEL to be set"
+            )
+        api_key_env = f"{provider.upper()}_API_KEY"
+        api_key = _get(api_key_env, "")
+        if not api_key.strip():
+            raise ValueError(
+                f"RERANKER_MODE='{mode}' with RERANKER_CLOUD_PROVIDER='{provider}' "
+                f"requires {api_key_env} environment variable to be set"
+            )
+        cloud_api_key_present = True
+
+    elif mode == "local":
+        if not local_model:
+            raise ValueError(
+                f"RERANKER_MODE='{mode}' requires RERANKER_LOCAL_MODEL to be set"
+            )
+
+    elif mode == "learning":
+        # Learning mode uses AGRO cross encoder
+        local_model = "models/cross-encoder-agro"
+
+    # Resolve local model path for learning/local modes
+    if mode in {"learning", "local"}:
+        local_model_dir = _resolve_local_model_path(local_model)
     else:
-        hf_model_id = hf_fallback
+        local_model_dir = None
+
+    hf_model_id = local_model
 
     alpha = _env_float("AGRO_RERANKER_ALPHA", "0.7")
     top_n_local = max(0, _env_int("AGRO_RERANKER_TOPN", "50"))
-    top_n_cloud = max(1, _env_int("COHERE_RERANK_TOP_N", "50"))
+    top_n_cloud = max(1, _env_int("RERANKER_CLOUD_TOP_N", "50"))
     batch_size = max(1, _env_int("AGRO_RERANKER_BATCH", "16"))
     max_length = max(1, _env_int("AGRO_RERANKER_MAXLEN", "512"))
     snippet_chars = max(1, _env_int("RERANK_INPUT_SNIPPET_CHARS", "600"))
@@ -120,8 +171,11 @@ def load_settings() -> RerankerSettings:
     reload_period_sec = max(1, _env_int("AGRO_RERANKER_RELOAD_PERIOD_SEC", "60"))
 
     return RerankerSettings(
-        enabled=enabled and backend != "none",
-        backend=backend,
+        enabled=enabled and mode != "none",
+        mode=mode,
+        provider=provider,
+        cloud_model=cloud_model,
+        local_model=local_model,
         local_model_dir=local_model_dir,
         hf_model_id=hf_model_id,
         alpha=alpha,
@@ -130,8 +184,7 @@ def load_settings() -> RerankerSettings:
         batch_size=batch_size,
         max_length=max_length,
         snippet_chars=snippet_chars,
-        cohere_model=cohere_model,
-        cohere_api_key_present=bool(cohere_key.strip()),
+        cloud_api_key_present=cloud_api_key_present,
         reload_on_change=reload_on_change,
         reload_period_sec=reload_period_sec,
         source_env=raw_env,

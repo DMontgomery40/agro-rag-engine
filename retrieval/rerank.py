@@ -313,16 +313,34 @@ def rerank_results(query: str, results: List[Dict[str, Any]], top_k: int = 10, t
     settings = _load_settings_if_enabled()
 
     if settings:
-        backend = settings.backend
-        backend = _normalize_backend(backend) or 'local'
-        enabled = settings.enabled and backend != "none"
+        mode = settings.mode
+        provider = settings.provider
+        cloud_model = settings.cloud_model
+        enabled = settings.enabled and mode != "none"
         model_name = resolve_model_target(settings)
         metrics_label = settings.metrics_label
         snippet_local = settings.snippet_chars
-        snippet_cohere = settings.snippet_chars
-        cohere_model = settings.cohere_model or 'rerank-3.5'
-        cohere_top_n = settings.top_n_cloud
-        cohere_key_present = settings.cohere_api_key_present
+        snippet_cloud = settings.snippet_chars
+        cloud_top_n = settings.top_n_cloud
+        cloud_api_key_present = settings.cloud_api_key_present
+
+        # Pydantic-style validation for cloud mode
+        if mode == 'cloud':
+            if not provider:
+                raise ValueError(
+                    f"RERANKER_MODE='{mode}' requires RERANKER_CLOUD_PROVIDER to be set"
+                )
+            if not cloud_model:
+                raise ValueError(
+                    f"RERANKER_MODE='{mode}' with RERANKER_CLOUD_PROVIDER='{provider}' "
+                    f"requires RERANKER_CLOUD_MODEL to be set"
+                )
+            if not cloud_api_key_present:
+                api_key_env = f"{provider.upper()}_API_KEY"
+                raise ValueError(
+                    f"RERANKER_MODE='{mode}' with RERANKER_CLOUD_PROVIDER='{provider}' "
+                    f"requires {api_key_env} environment variable to be set"
+                )
     else:
         # Use cached config values from unified RERANKER_MODE
         cfg = _resolve_env_strategy()
