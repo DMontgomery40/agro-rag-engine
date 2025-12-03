@@ -1,8 +1,8 @@
 // AGRO - Glossary Subtab
 // Searchable glossary of all RAG configuration parameters
-// Merges tooltips from both React hook AND legacy window.Tooltips for full coverage
+// Uses useTooltips hook (Zustand) which loads from tooltips.js - SINGLE SOURCE OF TRUTH
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useTooltips } from '@/hooks/useTooltips';
 import './HelpGlossary.css';
 
@@ -105,63 +105,20 @@ function categorizeTooltip(paramName: string): string {
 export function GlossarySubtab() {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentFilter, setCurrentFilter] = useState('all');
-  const [legacyTooltips, setLegacyTooltips] = useState<Record<string, string>>({});
-  const [legacyLoaded, setLegacyLoaded] = useState(false);
-  
-  // Use React useTooltips hook (primary source - newer, preferred)
-  const { tooltips: reactTooltips, loading: reactLoading } = useTooltips();
 
-  // Also load legacy window.Tooltips for backwards compatibility
-  useEffect(() => {
-    const loadLegacy = () => {
-      const legacyModule = (window as any).Tooltips;
-      if (legacyModule && legacyModule.buildTooltipMap) {
-        try {
-          const map = legacyModule.buildTooltipMap();
-          setLegacyTooltips(map || {});
-        } catch (e) {
-          console.warn('[GlossarySubtab] Failed to load legacy tooltips:', e);
-        }
-      }
-      setLegacyLoaded(true);
-    };
+  // SINGLE SOURCE OF TRUTH: useTooltips hook loads from Zustand store
+  // which reads from window.Tooltips.buildTooltipMap() (tooltips.js)
+  const { tooltips, loading } = useTooltips();
 
-    // Try immediately
-    loadLegacy();
-    
-    // Retry after delay if not available yet
-    if (!(window as any).Tooltips) {
-      const timeout = setTimeout(loadLegacy, 1000);
-      return () => clearTimeout(timeout);
-    }
-  }, []);
-
-  // Merge tooltips: React takes priority, legacy fills gaps
-  const mergedTooltips = useMemo(() => {
-    const merged: Record<string, string> = {};
-    
-    // First add all legacy tooltips
-    for (const [key, value] of Object.entries(legacyTooltips)) {
-      merged[key] = value;
-    }
-    
-    // Then overlay React tooltips (priority - overwrites duplicates)
-    for (const [key, value] of Object.entries(reactTooltips || {})) {
-      merged[key] = value;
-    }
-    
-    return merged;
-  }, [reactTooltips, legacyTooltips]);
-
-  // Build glossary items from merged tooltips
+  // Build glossary items from tooltips
   const allItems = useMemo(() => {
-    if (Object.keys(mergedTooltips).length === 0) {
+    if (Object.keys(tooltips).length === 0) {
       return [];
     }
 
     const items: GlossaryItem[] = [];
 
-    for (const [paramName, html] of Object.entries(mergedTooltips)) {
+    for (const [paramName, html] of Object.entries(tooltips)) {
       const parsed = parseTooltipHTML(html as string);
       const category = categorizeTooltip(paramName);
 
@@ -182,9 +139,7 @@ export function GlossarySubtab() {
     });
 
     return items;
-  }, [mergedTooltips]);
-  
-  const loading = reactLoading && !legacyLoaded;
+  }, [tooltips]);
 
   // Filter items
   const filteredItems = useMemo(() => {

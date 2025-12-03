@@ -2,7 +2,7 @@
   "retrieval": {
     "rrf_k_div": 60,
     "langgraph_final_k": 20,
-    "max_query_rewrites": 4,
+    "max_query_rewrites": 3,
     "fallback_confidence": 0.55,
     "final_k": 10,
     "eval_final_k": 5,
@@ -16,7 +16,7 @@
     "bm25_b": 0.4,
     "vector_weight": 0.4417138192412582,
     "card_search_enabled": 1,
-    "multi_query_m": 4,
+    "multi_query_m": 3,
     "use_semantic_synonyms": 1,
     "topk_dense": 75,
     "topk_sparse": 75,
@@ -36,7 +36,7 @@
     "retrieval": 0.15,
     "indexer": 0.15,
     "vendor_penalty": -0.1,
-    "freshness_bonus": 0.1,
+    "freshness_bonus": 0.2,
     "intent_matrix": {
       "gui": {
         "gui": 1.2,
@@ -104,7 +104,7 @@
     "preserve_imports": 1
   },
   "indexing": {
-    "qdrant_url": "http://qdrant:6333",
+    "qdrant_url": "http://127.0.0.1:6333",
     "collection_name": "code_chunks_agro",
     "collection_suffix": "test",
     "repo_path": "",
@@ -124,7 +124,7 @@
     "reranker_active": "cloud",
     "reranker_provider": "cohere",
     "reranker_cloud_model": "rerank-3.5",
-    "reranker_model": "rerank-3.5",
+    "reranker_model": "agro/cross-encoder-model",
     "agro_reranker_enabled": 0,
     "agro_reranker_alpha": 0.7,
     "agro_reranker_topn": 50,
@@ -134,13 +134,13 @@
     "agro_reranker_reload_period_sec": 60,
     "cohere_rerank_model": "rerank-3.5",
     "voyage_rerank_model": "rerank-2",
-    "reranker_backend": "cohere",
+    "reranker_backend": "local",
     "reranker_timeout": 10,
     "rerank_input_snippet_chars": 700,
     "transformers_trust_remote_code": 1
   },
   "generation": {
-    "gen_model": "gpt-5.1",
+    "gen_model": "gpt-5",
     "gen_temperature": 0.22,
     "gen_max_tokens": 2048,
     "gen_top_p": 1.0,
@@ -210,7 +210,7 @@
     "alert_include_resolved": 1,
     "alert_webhook_timeout": 5,
     "log_level": "INFO",
-    "tracing_mode": "langsmith",
+    "tracing_mode": "local",
     "trace_auto_ls": 1,
     "trace_retention": 50,
     "agro_log_path": "data/logs/queries.jsonl",

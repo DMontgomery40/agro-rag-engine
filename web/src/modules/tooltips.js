@@ -1728,6 +1728,273 @@
         ],
         [['Destructive','warn']]
       ),
+
+      // === MIGRATED FROM useTooltips.ts (React-only tooltips now unified) ===
+
+      // Path Overrides
+      REPO_ROOT: L(
+        'Repository Root Override',
+        'Override the auto-detected project root directory. AGRO normally detects the repository root automatically by walking up from the current working directory to find .git or pyproject.toml. Use this setting when running in Docker, when AGRO is installed outside the repository, or when you need to force a specific root path. Leave empty to use auto-detection. Example: /workspace/myproject',
+        [
+          ['Path Resolution', 'https://en.wikipedia.org/wiki/Path_(computing)#Absolute_and_relative_paths'],
+          ['Docker Volume Mounts', 'https://docs.docker.com/storage/volumes/'],
+          ['Project Structure', '/docs/DIRECTORY_STRUCTURE.md']
+        ],
+        [['Optional', 'info'], ['Docker-friendly', 'info']]
+      ),
+      FILES_ROOT: L(
+        'Files Root Override',
+        'Override the root directory for the /files HTTP mount point. This setting controls where the FastAPI static file server looks for files when serving requests to /files/*. By default, AGRO uses the repository root. Set this when you need to serve files from a different location, such as a mounted volume in Docker, a shared NFS mount, or a custom data directory. Example: /mnt/shared/agro-files',
+        [
+          ['Static Files (FastAPI)', 'https://fastapi.tiangolo.com/tutorial/static-files/'],
+          ['File Serving', '/docs/FILE_SERVING.md'],
+          ['Docker Volumes', 'https://docs.docker.com/storage/volumes/#use-a-volume-with-docker-compose']
+        ],
+        [['Optional', 'info'], ['Advanced', 'warn']]
+      ),
+      GUI_DIR: L(
+        'UI Public Directory',
+        'Directory for shared UI assets (models.json, profile checkpoints) used by /api/models and /api/profiles. Defaults to ./web/public. Point this to a writable volume if you keep pricing catalogs or profiles in sync at runtime; the React app reads from the same source.',
+        [
+          ['Static Files (FastAPI)', 'https://fastapi.tiangolo.com/tutorial/static-files/'],
+          ['Prices catalog', '/web/models.json'],
+          ['Profiles API', '/api/profiles']
+        ],
+        [['Recommended', 'info']]
+      ),
+      DOCS_DIR: L(
+        'Documentation Directory',
+        'Path to the documentation directory containing markdown files, API references, and user guides. This directory is served at /docs/* by the FastAPI static file handler, making documentation accessible through the web interface. Used by the built-in documentation viewer and help system. Default is ./docs. Change this if you have moved your documentation to a custom location or are using a shared docs directory across multiple projects.',
+        [
+          ['Documentation Index', '/docs/README.md'],
+          ['API Reference', '/docs/API_REFERENCE.md'],
+          ['Static File Serving', 'https://fastapi.tiangolo.com/tutorial/static-files/']
+        ],
+        [['Optional', 'info']]
+      ),
+
+      // Eval UI Elements
+      EVAL_LOGS_TERMINAL: L(
+        'Evaluation Logs Terminal',
+        'Open the sliding terminal to stream raw evaluation output (question-by-question) and verify the exact settings used for the last run.',
+        [
+          ['Evaluation Guide', '/docs/EVALUATION.md']
+        ],
+        [['Live output', 'info']]
+      ),
+      EVAL_PRIMARY_RUN: L(
+        'Primary Run (AFTER)',
+        'Select the evaluation run to analyze. This is typically the most recent run you want to inspect. When comparing, this is the "AFTER" run showing your latest configuration changes. The accuracy metrics and question results will be displayed from this run.',
+        [
+          ['Evaluation Guide', '/docs/EVALUATION.md']
+        ],
+        [['Required', 'info']]
+      ),
+      EVAL_COMPARE_RUN: L(
+        'Compare With (BEFORE)',
+        'Optionally select a previous evaluation run to compare against. This enables the configuration diff view showing exactly what parameters changed between runs, and highlights regressions (questions that got worse) vs improvements. The AI Analysis will use both runs to provide root cause analysis and recommendations.',
+        [
+          ['Evaluation Guide', '/docs/EVALUATION.md']
+        ],
+        [['Optional', 'info'], ['Enables AI Analysis', 'success']]
+      ),
+      EVAL_ANALYSIS_SUBTAB: L(
+        'Eval Analysis',
+        'View and compare RAG evaluation runs. Analyze retrieval accuracy metrics, see question-by-question results, compare configuration changes between runs, and get AI-powered insights on performance regressions and recommendations.',
+        [
+          ['Evaluation Guide', '/docs/EVALUATION.md']
+        ],
+        [['Deep-dive analysis', 'info']]
+      ),
+      SYSTEM_PROMPTS_SUBTAB: L(
+        'System Prompts',
+        'Edit LLM system prompts that control RAG pipeline behavior. These prompts are used for query expansion, chat responses, semantic card generation, code enrichment, and eval analysis. Changes are saved to agro_config.json and take effect immediately.',
+        [
+          ['Prompt Engineering', 'https://www.anthropic.com/news/prompt-engineering']
+        ],
+        [['Live reload', 'success']]
+      ),
+      RUN_EVAL_ANALYSIS: L(
+        'Run RAG Evaluation',
+        'Execute the full RAG evaluation suite using your current configuration settings. This runs all golden questions through the retrieval pipeline and measures Top-1 and Top-K accuracy. A live terminal will slide down showing real-time progress, and results will automatically appear in the Eval Analysis view when complete.',
+        [
+          ['Evaluation Guide', '/docs/EVALUATION.md'],
+          ['Golden Questions', '/data/golden.json']
+        ],
+        [['Uses current config', 'info'], ['~1-5 min runtime', 'warn']]
+      ),
+      INDEX_LOGS_TERMINAL: L(
+        'Indexing Logs Terminal',
+        'Open the sliding terminal to stream raw indexer output with the exact repo/skip_dense/enrich settings used for the run.',
+        [
+          ['Indexing Guide', '/docs/INDEXING.md']
+        ],
+        [['Live output', 'info']]
+      ),
+      DASHBOARD_INDEX_PANEL: L(
+        'Index Readiness',
+        'Live embedding config, indexing cost, and storage requirements pulled directly from /api/index/status. Updates automatically every 30 seconds and mirrors the legacy GUI layout exactly.',
+        [],
+        [['Auto-refresh', 'info']]
+      ),
+
+      // MCP Extended
+      MCP_SERVER_URL: L(
+        'MCP Server URL',
+        'Complete URL for the HTTP MCP server. Combines host, port, and path into a single endpoint that MCP clients connect to.',
+        [
+          ['Docs: Remote MCP', '/docs/REMOTE_MCP.md'],
+          ['Model Context Protocol', 'https://modelcontextprotocol.io']
+        ]
+      ),
+      MCP_API_KEY: L(
+        'MCP API Key (Optional)',
+        'Authentication key for securing MCP server access. Stored in .env file. Leave empty to disable authentication (not recommended for production).',
+        [
+          ['MCP Security Guide', '/docs/REMOTE_MCP.md']
+        ],
+        [['Stored in .env', 'security']]
+      ),
+
+      // Monitoring & Alerts
+      ERROR_RATE_THRESHOLD: L(
+        'Error Rate Threshold (%)',
+        'Percentage threshold for triggering error rate alerts. When the error rate across all requests exceeds this percentage over a 5-minute window, Grafana will trigger an alert. Typical values: 5% for production (strict), 10-15% for development. Set lower for critical systems, higher for experimental features.',
+        [
+          ['Grafana Alerting', 'https://grafana.com/docs/grafana/latest/alerting/'],
+          ['SLOs and Error Budgets', 'https://sre.google/sre-book/service-level-objectives/']
+        ],
+        [['Performance', 'warn']]
+      ),
+      TIMEOUT_ERRORS_THRESHOLD: L(
+        'Timeout Errors (per 5 min)',
+        'Maximum number of timeout errors allowed in a 5-minute window before triggering an alert. Timeout errors indicate requests that took too long and were forcibly terminated. Common causes: slow LLM APIs, overloaded database, network issues. Typical values: 10-20 for production, 50+ for development.',
+        [
+          ['Timeout Best Practices', 'https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/']
+        ],
+        [['Reliability', 'err']]
+      ),
+      RATE_LIMIT_ERRORS_THRESHOLD: L(
+        'Rate Limit Errors (per 5 min)',
+        'Maximum number of rate limit errors (HTTP 429) allowed in a 5-minute window. Rate limits protect against excessive API usage and prevent cost overruns. Common sources: OpenAI API, Cohere, Voyage AI. If this alert fires frequently, consider upgrading API tier or implementing request batching.',
+        [
+          ['Rate Limiting (OpenAI)', 'https://platform.openai.com/docs/guides/rate-limits'],
+          ['Backoff Strategies', 'https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/']
+        ],
+        [['Cost Control', 'warn']]
+      ),
+      ENDPOINT_CALL_FREQUENCY: L(
+        'Endpoint Call Frequency (calls/min)',
+        'Alert when a single API endpoint receives this many calls per minute. Detects infinite loops, polling gone wrong, or DDoS-like patterns. For example, if /api/search is called 100 times/min for 2+ minutes, something is likely wrong. Typical values: 10-30 calls/min for normal usage, 100+ for high-traffic production.',
+        [
+          ['API Rate Patterns', '/docs/API_MONITORING.md']
+        ],
+        [['Anomaly Detection', 'warn']]
+      ),
+      ENDPOINT_SUSTAINED_DURATION: L(
+        'Sustained Frequency Duration (minutes)',
+        'How long the high call frequency must be sustained before triggering an alert. Prevents false positives from legitimate bursts. For example, if frequency threshold is 20 calls/min and duration is 2 minutes, the endpoint must receive 20+ calls/min for 2 consecutive minutes to alert. Typical values: 2-5 minutes for quick detection, 10+ for noise reduction.',
+        [
+          ['Alert Design Patterns', 'https://grafana.com/docs/grafana/latest/alerting/fundamentals/']
+        ],
+        [['Anomaly Detection', 'warn']]
+      ),
+      COHERE_RERANK_CALLS: L(
+        'Cohere Rerank Calls (calls/min)',
+        'Alert when Cohere reranking API is called this many times per minute. Reranking is expensive ($1-2 per 1M tokens) and high call rates can quickly increase costs. Normal usage: 5-10 calls/min. If this spikes to 50+, check for loops or unnecessary reranking. Consider caching rerank results or using local reranker instead.',
+        [
+          ['Cohere Pricing', 'https://cohere.com/pricing'],
+          ['Reranking Strategy', '/docs/RERANKING.md']
+        ],
+        [['Cost Control', 'warn'], ['API Usage', 'info']]
+      ),
+
+      // Chat Extended
+      CHAT_STREAM_INCLUDE_THINKING: L(
+        'Include Thinking in Stream',
+        'When enabled and using a thinking/reasoning model (like Anthropic Claude with extended thinking or OpenAI o-series), the model\'s reasoning process will be streamed to the UI before the final answer. This provides transparency into how the model arrived at its conclusion but increases response length. Disable if you only want final answers without reasoning traces.',
+        [
+          ['Anthropic Extended Thinking', 'https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking'],
+          ['OpenAI Reasoning Models', 'https://platform.openai.com/docs/guides/reasoning']
+        ],
+        [['Advanced', 'info']]
+      ),
+      CHAT_DEFAULT_MODEL: L(
+        'Default Chat Model',
+        'Default LLM model used for chat when not overridden per-request. Common options: gpt-4o-mini (fast/cheap), gpt-4o (balanced), claude-3-5-sonnet (high quality), or local Ollama models. Per-request model overrides take precedence.',
+        [
+          ['OpenAI Models', 'https://platform.openai.com/docs/models'],
+          ['Anthropic Models', 'https://docs.anthropic.com/en/docs/about-claude/models']
+        ]
+      ),
+      CHAT_STREAM_TIMEOUT: L(
+        'Stream Timeout (seconds)',
+        'Maximum time in seconds to wait for a streaming chat response to complete. If the stream doesn\'t finish within this time, the connection will be closed. Increase for complex queries that require longer generation times. Default: 120 seconds (2 minutes). Range: 30-600 seconds.',
+        [
+          ['HTTP Timeouts', 'https://developer.mozilla.org/en-US/docs/Web/API/fetch#options']
+        ],
+        [['Affects reliability', 'info']]
+      ),
+      CHAT_THINKING_BUDGET_TOKENS: L(
+        'Thinking Budget Tokens',
+        'Maximum number of tokens allocated for the model\'s internal reasoning/thinking process when using thinking-enabled models like Anthropic Claude with extended thinking. Higher budgets allow deeper reasoning but increase latency and cost. Only applies when using models that support extended thinking. Default: 10,000 tokens. Range: 1,000-100,000.',
+        [
+          ['Anthropic Thinking Budget', 'https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#budget-tokens']
+        ],
+        [['Cost', 'warning']]
+      ),
+
+      // Reranker Extended
+      RERANKER_ACTIVE: L(
+        'Active Reranker',
+        'Route reranking to local vs cloud.\n\u2022 local/learning \u2014 on-host (includes AGRO learning reranker)\n\u2022 cloud \u2014 uses provider/model from models.json\n\u2022 none/off \u2014 disables rerank. If cloud is selected but provider/model are empty, rerank is effectively disabled.',
+        [],
+        [['Required', 'info']]
+      ),
+      RERANKER_PROVIDER: L(
+        'Cloud Provider (models.json)',
+        'Provider id for cloud reranking, loaded dynamically from models.json via /api/models. Examples: cohere, voyage, openai, or any custom provider you add. No hardcoded lists; extend models.json to expose more providers.',
+        [
+          ['models.json catalog (API)', '/api/models']
+        ],
+        [['models.json-driven', 'info']]
+      ),
+      RERANKER_CLOUD_MODEL: L(
+        'Cloud Model',
+        'Provider-scoped rerank model id from models.json. Examples: rerank-3.5 (cohere), rerank-2 (voyage), or any custom id you add. Model list comes from models.json; add entries there to surface more options in this picker.',
+        [
+          ['models.json catalog (API)', '/api/models']
+        ],
+        [['Provider-scoped', 'info']]
+      ),
+      RERANKER_TIMEOUT: L(
+        'Reranker Timeout',
+        'Timeout (seconds) for cloud reranker HTTP calls. Larger timeouts reduce false failures on slow providers; smaller timeouts fail fast when endpoints are slow or unreachable. Applies only to cloud backends.',
+        [],
+        [['Reliability', 'info']]
+      ),
+
+      // Embedding Status
+      EMBEDDING_MISMATCH: L(
+        'Embedding Type Mismatch',
+        'Your current embedding configuration differs from what was used to create your index. This is a CRITICAL issue that will cause search to return completely irrelevant results. Embeddings are mathematical representations of text in high-dimensional vector space - when you use different embedding models, these vectors exist in incompatible spaces and cannot be meaningfully compared. Think of it like trying to search a French dictionary using Spanish words - the dimensions and meaning of the numbers don\'t align. You must either: (1) Re-index your code with the current embedding type, or (2) Change your embedding configuration back to match what the index was built with.',
+        [
+          ['What are Embeddings?', 'https://platform.openai.com/docs/guides/embeddings'],
+          ['Vector Space Explained', 'https://en.wikipedia.org/wiki/Vector_space'],
+          ['Semantic Search', 'https://www.pinecone.io/learn/semantic-search/'],
+          ['Embedding Model Comparison', 'https://huggingface.co/spaces/mteb/leaderboard']
+        ],
+        [['Critical', 'err'], ['Requires Action', 'warn']]
+      ),
+      EMBEDDING_MATCH: L(
+        'Embedding Configuration Valid',
+        'Your current embedding configuration matches what was used to create the index. Search results will be accurate and relevant. The vectors in your index are compatible with queries generated using your current embedding model.',
+        [
+          ['Embedding Guide', '/docs/EMBEDDING.md'],
+          ['Retrieval Configuration', '/docs/RETRIEVAL.md']
+        ],
+        [['Valid', 'info']]
+      ),
     };
   }
 
@@ -1982,3 +2249,4 @@
 
   window.Tooltips = { buildTooltipMap, attachTooltips, attachManualTooltips };
 })();
+

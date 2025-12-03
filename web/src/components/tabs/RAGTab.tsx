@@ -19,7 +19,6 @@ export default function RAGTab() {
   useEffect(() => {
     const initDataQuality = () => {
       try { (window as any).Config?.loadConfig?.(); } catch {}
-      try { (window as any).initCards?.(); } catch {}
       try { (window as any).initCardsBuilder?.(); } catch {}
       try { (window as any).initKeywords?.(); } catch {}
     };

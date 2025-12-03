@@ -292,7 +292,7 @@
           const finalData = JSON.parse(ev.data||'{}');
           showCompletionStatus(finalData);
           if (window.showStatus) window.showStatus('✓ Cards built successfully', 'success');
-          if (window.Cards?.load) await window.Cards.load();
+          window.dispatchEvent(new Event('agro:cards:refresh'));
         });
         es.addEventListener('error', (_ev) => { console.log('[cards_builder] SSE error, falling back to polling'); });
         es.addEventListener('cancelled', (_ev) => {
@@ -309,7 +309,7 @@
             if ((s.status||'')==='done'){
               stopCardsStreams();
               showCompletionStatus(s);
-              if (window.Cards?.load) await window.Cards.load();
+              window.dispatchEvent(new Event('agro:cards:refresh'));
               if (window.showStatus) window.showStatus('✓ Cards built successfully', 'success');
             }
             if ((s.status||'')==='error'){

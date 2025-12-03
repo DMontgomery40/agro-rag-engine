@@ -107,7 +107,6 @@ function App() {
           import('./modules/vscode.js'),
           import('./modules/onboarding.js'),
           import('./modules/index-display.js'),
-          import('./modules/cards.js'),
           import('./modules/cards_builder.js'),
           import('./modules/cost_logic.js'),
           import('./modules/storage-calculator-template.js'),

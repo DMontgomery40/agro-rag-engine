@@ -24,3 +24,4 @@
 - Playwright artifacts under `test-results/` were cleaned before the commit; you’ll need to regenerate them locally if you investigate failing tests.
 - `.gitattributes` now contains the LFS rule for snapshots; don’t remove it unless you reconfigure LFS.
 
+

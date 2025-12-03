@@ -299,3 +299,4 @@ class LegacyChatPayload(BaseModel):
             stream=False,
             include_reasoning=False
         )
+

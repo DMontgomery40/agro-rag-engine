@@ -46,7 +46,7 @@ export function Reranker() {
   };
 
   const handleCompare = async () => {
-    if (!query.trim() || !documents.trim() || selected Rerankers.length === 0) {
+    if (!query.trim() || !documents.trim() || selectedRerankers.length === 0) {
       setError('Please provide a query, documents, and select at least one reranker');
       return;
     }

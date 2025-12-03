@@ -3,12 +3,28 @@
 // Repository configuration and Code Cards Builder with 37 element IDs
 // Fully wired to repos.json for all repository configuration
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAPI } from '@/hooks';
 import { RepositoryConfig } from './RepositoryConfig';
-import { LiveTerminal } from '../LiveTerminal/LiveTerminal';
-import { TerminalService } from '@/services/TerminalService';
 import { useRepoStore } from '@/stores/useRepoStore';
+import { CardsViewer } from './CardsViewer';
+import { CardsBuilderPanel } from './CardsBuilderPanel';
+
+type CardItem = {
+  file_path: string;
+  start_line?: number;
+  purpose?: string;
+  symbols?: string[];
+  technical_details?: string;
+  domain_concepts?: string[];
+};
+
+declare global {
+  interface Window {
+    Cards?: { load: () => Promise<void> | void };
+    initCards?: () => void;
+  }
+}
 
 /**
  * ---agentspec
@@ -49,11 +65,6 @@ export function DataQualitySubtab() {
   const [excludeKeywords, setExcludeKeywords] = useState('');
   const [cardsMax, setCardsMax] = useState(100);  // Pydantic default: 100, min: 10
   const [enrichEnabled, setEnrichEnabled] = useState(true);
-  const [buildInProgress, setBuildInProgress] = useState(false);
-  const [currentStage, setCurrentStage] = useState('');
-  const [progressRepo, setProgressRepo] = useState('');
-  const [showTerminal, setShowTerminal] = useState(false);
-  const terminalRef = useRef<any>(null);
 
   // Keywords Manager state
   const [keywordsMaxPerRepo, setKeywordsMaxPerRepo] = useState<number>(50);
@@ -223,63 +234,6 @@ export function DataQualitySubtab() {
       console.error('[DataQualitySubtab] Keyword generation error:', err);
     } finally {
       setKeywordsGenerating(false);
-    }
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Initiates card-building workflow. Sets UI state (buildInProgress, progressRepo, showTerminal) and connects to SSE stream via terminal instance.
-   *
-   * why: |
-   *   Centralizes build trigger logic with consistent state management and terminal output streaming.
-   *
-   * guardrails:
-   *   - DO NOT assume window.terminal_cards_terminal exists; add null check before access
-   *   - NOTE: SSE connection must be established before build starts or stream will miss initial output
-   * ---/agentspec
-   */
-  const handleBuildCards = async () => {
-    setBuildInProgress(true);
-    setProgressRepo(selectedRepo);
-    setShowTerminal(true);
-
-    try {
-      // Show terminal and connect to SSE stream
-      const terminal = (window as any).terminal_cards_terminal;
-      if (terminal) {
-        terminal.show();
-        terminal.clear();
-        terminal.setTitle(`Building Cards: ${selectedRepo}`);
-      }
-
-      // Start the build
-      const response = await fetch(api('cards/build'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          repo: selectedRepo,
-          exclude_dirs: excludeDirs.split(',').map(s => s.trim()).filter(Boolean),
-          exclude_patterns: excludePatterns.split(',').map(s => s.trim()).filter(Boolean),
-          exclude_keywords: excludeKeywords.split(',').map(s => s.trim()).filter(Boolean),
-          max: cardsMax,
-          enrich: enrichEnabled
-        })
-      });
-
-      if (response.ok) {
-        // Connect to SSE stream for real logs
-        TerminalService.streamBuildLogs('cards_terminal', 'cards', selectedRepo);
-      } else {
-        throw new Error(`Build failed: ${response.statusText}`);
-      }
-    } catch (e) {
-      console.error('Failed to start cards build:', e);
-      const terminal = (window as any).terminal_cards_terminal;
-      if (terminal) {
-        terminal.appendLine(`\x1b[31mError: ${e}\x1b[0m`);
-      }
-      setBuildInProgress(false);
     }
   };
 
@@ -774,89 +728,27 @@ export function DataQualitySubtab() {
           </div>
         </div>
 
-        {/* Cards Terminal - Real SSE Streaming */}
-        {showTerminal && (
-          <LiveTerminal
-            ref={terminalRef}
-            id="cards_terminal"
-            title={`Building Cards: ${selectedRepo}`}
-            initialContent={[
-              '\x1b[32m✓\x1b[0m Starting cards build...',
-              `\x1b[34mRepository:\x1b[0m ${selectedRepo}`,
-              `\x1b[34mExclude Dirs:\x1b[0m ${excludeDirs || 'none'}`,
-              'Waiting for server connection...'
-            ]}
-            onClose={() => {
-              setShowTerminal(false);
-              TerminalService.disconnect('cards_terminal');
-            }}
-          />
-        )}
-
         {/* Action Buttons */}
-        <div className="input-row" style={{ marginBottom: '16px' }}>
-          <div className="input-group">
-            <button
-              id="btn-cards-build"
-              onClick={handleBuildCards}
-              disabled={buildInProgress}
-              style={{
-                width: '100%',
-                background: buildInProgress ? 'var(--fg-muted)' : 'var(--accent)',
-                color: buildInProgress ? 'var(--bg)' : 'var(--accent-contrast)',
-                border: 'none',
-                padding: '12px',
-                borderRadius: '6px',
-                fontSize: '14px',
-                fontWeight: 700,
-                cursor: buildInProgress ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {buildInProgress ? 'Building...' : '⚡ Build Cards'}
-            </button>
-          </div>
-          <div className="input-group">
-            <button id="btn-cards-refresh" className="small-button" style={{ width: '100%' }}>
-              🔄 Refresh
-            </button>
-          </div>
-          <div className="input-group">
-            <button id="btn-cards-view-all" className="small-button" style={{ width: '100%' }}>
-              👁️ View All Cards
-            </button>
-          </div>
-        </div>
+        <CardsBuilderPanel
+          api={api}
+          repos={repos}
+          selectedRepo={selectedRepo}
+          onSelectRepo={setSelectedRepo}
+          excludeDirs={excludeDirs}
+          onChangeExcludeDirs={setExcludeDirs}
+          excludePatterns={excludePatterns}
+          onChangeExcludePatterns={setExcludePatterns}
+          excludeKeywords={excludeKeywords}
+          onChangeExcludeKeywords={setExcludeKeywords}
+          cardsMax={cardsMax}
+          onChangeCardsMax={setCardsMax}
+          enrichEnabled={enrichEnabled}
+          onChangeEnrich={setEnrichEnabled}
+          onUpdateConfig={updateConfig}
+          onError={setError}
+        />
 
-        {/* Cards Viewer */}
-        <div
-          id="cards-viewer-container"
-          style={{
-            display: 'none',
-            background: 'var(--card-bg)',
-            border: '1px solid var(--line)',
-            borderRadius: '8px',
-            padding: '16px',
-            marginTop: '16px',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <h4 style={{ margin: 0 }}>Code Cards</h4>
-            <div id="cards-last-build" className="mono" style={{ fontSize: '11px', color: 'var(--fg-muted)' }}>
-              Last build: —
-            </div>
-          </div>
-          <div
-            id="cards-viewer"
-            style={{
-              maxHeight: '400px',
-              overflowY: 'auto',
-              fontFamily: "'SF Mono', monospace",
-              fontSize: '12px',
-            }}
-          >
-            Click "View All Cards" to display cards
-          </div>
-        </div>
+        <CardsViewer api={api} />
       </div>
     </div>
   );

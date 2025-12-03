@@ -244,3 +244,4 @@ User is extremely frustrated. Multiple reminders to read CLAUDE.md were ignored.
 3. **The API caching issue is the top priority** - why does the API return different values than direct Python execution?
 4. **Full Pydantic wiring front-to-back is incomplete** - audit all frontend components
 
+
