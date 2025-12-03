@@ -243,8 +243,23 @@ def autoprofile(request: Dict[str, Any], prices: Dict[str, Any]) -> Tuple[Dict[s
     else:
         env["EMBEDDING_DIM"] = str(int(_safe_num(winner_emb.get("output_dimension"), 512)))
     prov_rer = str((winner_rer.get("provider") or "cohere")).lower()
-    env["RERANK_BACKEND"] = "cohere" if prov_rer == "cohere" else ("local" if prov_rer in {"local", "hf"} else prov_rer)
-    env["COHERE_RERANK_MODEL"] = str(winner_rer.get("model") or "")
+    
+    # Unified reranker config - mode/provider/cloud_model
+    if prov_rer in {"local", "hf"}:
+        env["RERANKER_MODE"] = "local"
+        env["RERANKER_CLOUD_PROVIDER"] = ""
+        env["RERANKER_CLOUD_MODEL"] = ""
+        env["RERANKER_LOCAL_MODEL"] = str(winner_rer.get("model") or "")
+    elif prov_rer in {"cohere", "voyage", "jina"}:
+        env["RERANKER_MODE"] = "cloud"
+        env["RERANKER_CLOUD_PROVIDER"] = prov_rer
+        env["RERANKER_CLOUD_MODEL"] = str(winner_rer.get("model") or "")
+        env["RERANKER_LOCAL_MODEL"] = ""
+    else:
+        env["RERANKER_MODE"] = "none"
+        env["RERANKER_CLOUD_PROVIDER"] = ""
+        env["RERANKER_CLOUD_MODEL"] = ""
+        env["RERANKER_LOCAL_MODEL"] = ""
 
     debug = {
         "workload": wl,

@@ -9,14 +9,15 @@ _config_registry = get_config_registry()
 
 @router.get("/api/reranker/info")
 def reranker_info():
-    # trigger lazy load / hot-reload check if needed
     get_reranker()
     lr_info = get_reranker_info()
     rr_info = get_rerank_config_info()
 
-    # Backward-compatible top-level fields for UI display
     merged = {
-        "enabled": rr_info.get("enabled", lr_info.get("enabled", False)),
+        "reranker_mode": rr_info.get("reranker_mode"),
+        "reranker_cloud_provider": rr_info.get("reranker_cloud_provider"),
+        "reranker_cloud_model": rr_info.get("reranker_cloud_model"),
+        "reranker_local_model": rr_info.get("reranker_local_model"),
         "path": lr_info.get("path") or rr_info.get("model_path"),
         "resolved_path": rr_info.get("model_path"),
         "device": lr_info.get("device"),
@@ -24,13 +25,8 @@ def reranker_info():
         "topn": rr_info.get("topn", lr_info.get("topn")),
         "batch": rr_info.get("batch", lr_info.get("batch")),
         "maxlen": rr_info.get("maxlen", lr_info.get("maxlen")),
-        "backend": rr_info.get("backend"),
-        "provider": rr_info.get("provider"),
-        "cloud_model": rr_info.get("cloud_model"),
         "snippet_chars": rr_info.get("snippet_chars"),
         "trust_remote_code": rr_info.get("trust_remote_code"),
-        "cohere_model": rr_info.get("cohere_model"),
-        "voyage_model": rr_info.get("voyage_model"),
     }
 
     return {
@@ -41,46 +37,67 @@ def reranker_info():
 
 @router.get("/api/reranker/available")
 def reranker_available_options():
-    """
-    Returns list of available reranker options based on user's .env configuration.
-    Used by the GUI to populate the Run Eval dropdown dynamically.
-    """
+    """Returns available reranker options for GUI dropdown."""
     options = []
-
     cfg = _config_registry
 
-    # Check if local cross-encoder is enabled
-    agro_reranker_enabled = cfg.get_int("AGRO_RERANKER_ENABLED", 0) == 1
-    agro_model_path = cfg.get_str("AGRO_RERANKER_MODEL_PATH", "models/cross-encoder-agro")
-
-    if agro_reranker_enabled:
+    # Local model
+    local_model_path = cfg.get_str("RERANKER_LOCAL_MODEL", "")
+    if local_model_path and os.path.exists(local_model_path):
         options.append({
-            "id": "cross-encoder",
-            "label": "⚙️ Cross-Encoder (Local)",
-            "description": f"Local model: {agro_model_path}",
-            "backend": "local"
+            "id": "local",
+            "label": "⚙️ Local Model",
+            "description": f"Model: {local_model_path}",
+            "reranker_mode": "local"
         })
 
-    # Check if Cohere API key is set
-    cohere_api_key = os.getenv("COHERE_API_KEY", "")  # secret stays in env
-    cohere_model = cfg.get_str("COHERE_RERANK_MODEL", "rerank-3.5")
+    # Learning model (AGRO cross-encoder)
+    learning_path = cfg.get_str("AGRO_RERANKER_MODEL_PATH", "models/cross-encoder-agro")
+    if os.path.exists(learning_path):
+        options.append({
+            "id": "learning",
+            "label": "🧠 AGRO Cross-Encoder",
+            "description": "Self-learning reranker",
+            "reranker_mode": "learning"
+        })
 
-    if cohere_api_key and cohere_api_key.strip():
+    # Cloud: Cohere
+    if os.getenv("COHERE_API_KEY", "").strip():
+        cloud_model = cfg.get_str("RERANKER_CLOUD_MODEL", "rerank-3.5")
         options.append({
             "id": "cohere",
-            "label": "☁️ Cohere Reranker",
-            "description": f"Cloud model: {cohere_model}",
-            "backend": "cohere"
+            "label": "☁️ Cohere",
+            "description": f"Cloud: {cloud_model}",
+            "reranker_mode": "cloud",
+            "reranker_cloud_provider": "cohere"
         })
 
-    # Only include "no reranking" if user has multiple rerankers (for comparison)
-    # If they only have one, don't confuse them with a "none" option
-    if len(options) > 1:
+    # Cloud: Voyage
+    if os.getenv("VOYAGE_API_KEY", "").strip():
         options.append({
-            "id": "none",
-            "label": "🚫 None (Skip Reranking)",
-            "description": "Evaluate without reranking - raw retrieval scores only",
-            "backend": "none"
+            "id": "voyage",
+            "label": "☁️ Voyage",
+            "description": "Voyage AI",
+            "reranker_mode": "cloud",
+            "reranker_cloud_provider": "voyage"
         })
+
+    # Cloud: Jina
+    if os.getenv("JINA_API_KEY", "").strip():
+        options.append({
+            "id": "jina",
+            "label": "☁️ Jina",
+            "description": "Jina AI",
+            "reranker_mode": "cloud",
+            "reranker_cloud_provider": "jina"
+        })
+
+    # None
+    options.append({
+        "id": "none",
+        "label": "🚫 None",
+        "description": "Skip reranking",
+        "reranker_mode": "none"
+    })
 
     return {"options": options, "count": len(options)}

@@ -85,6 +85,34 @@ export interface ConfigUpdate {
   repos?: Repository[];
 }
 
+// Reranker Types (Pydantic-compliant)
+export interface RerankerConfig {
+  reranker_mode: 'cloud' | 'local' | 'learning' | 'none';
+  reranker_cloud_provider: 'cohere' | 'voyage' | 'jina' | '';
+  reranker_cloud_model: string;
+  reranker_local_model: string;
+}
+
+export interface RerankerOption {
+  id: string;
+  label: string;
+  description: string;
+  reranker_mode: RerankerConfig['reranker_mode'];
+  reranker_cloud_provider?: RerankerConfig['reranker_cloud_provider'];
+}
+
+export interface RerankerInfo extends RerankerConfig {
+  path?: string;
+  resolved_path?: string;
+  device?: string;
+  alpha?: number;
+  topn?: number;
+  batch?: number;
+  maxlen?: number;
+  snippet_chars?: number;
+  trust_remote_code?: boolean;
+}
+
 // Error Helper Types
 export interface ErrorHelperOptions {
   title?: string;

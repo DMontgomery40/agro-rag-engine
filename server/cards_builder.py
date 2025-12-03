@@ -21,21 +21,32 @@ try:
 except ImportError:
     _config_registry = None
 
-# Cached enrichment parameters
-_CARDS_ENRICH_DEFAULT = None
-_CARDS_MAX = None
-_ENRICH_CODE_CHUNKS = None
-_ENRICH_TIMEOUT = None
-_OUT_DIR_BASE = None
-_EMBEDDING_TYPE = None
-_ENRICH_MODEL = None
-_GEN_MODEL = None
-_RERANK_BACKEND = None
-_COHERE_RERANK_MODEL = None
-_RERANKER_MODEL = None
-_CARDS_EXCLUDE_DIRS: List[str] = []
-_CARDS_EXCLUDE_PATTERNS: List[str] = []
-_CARDS_EXCLUDE_KEYWORDS: List[str] = []
+# Cached enrichment parameters - Pydantic naming
+_cards_enrich_default = None
+_cards_max = None
+_enrich_code_chunks = None
+_enrich_timeout = None
+_out_dir_base = None
+_embedding_type = None
+_enrich_model = None
+_gen_model = None
+_reranker_mode = None
+_reranker_cloud_provider = None
+_reranker_cloud_model = None
+_reranker_local_model = None
+_agro_reranker_model_path = None
+_embedding_model = None
+_voyage_model = None
+_embedding_model_local = None
+_cards_exclude_dirs: List[str] = []
+_cards_exclude_patterns: List[str] = []
+_cards_exclude_keywords: List[str] = []
+_cards_code_snippet_length = None
+_cards_max_symbols = None
+_cards_max_routes = None
+_cards_purpose_max_length = None
+_cards_quick_tips: List[str] = []
+_bm25_stopwords_lang = None
 
 _DEFAULT_CARD_FILTERS = DEFAULT_CONFIG.cards
 
@@ -62,46 +73,72 @@ def _coerce_list(value: Any, fallback: Optional[List[str]] = None) -> List[str]:
 
 def _load_cached_config():
     """Load cards config values into module-level cache."""
-    global _CARDS_ENRICH_DEFAULT, _CARDS_MAX, _ENRICH_CODE_CHUNKS, _ENRICH_TIMEOUT
-    global _OUT_DIR_BASE, _EMBEDDING_TYPE, _ENRICH_MODEL, _GEN_MODEL
-    global _RERANK_BACKEND, _COHERE_RERANK_MODEL, _RERANKER_MODEL
-    global _CARDS_EXCLUDE_DIRS, _CARDS_EXCLUDE_PATTERNS, _CARDS_EXCLUDE_KEYWORDS
+    global _cards_enrich_default, _cards_max, _enrich_code_chunks, _enrich_timeout
+    global _out_dir_base, _embedding_type, _enrich_model, _gen_model
+    global _reranker_mode, _reranker_cloud_provider, _reranker_cloud_model, _reranker_local_model
+    global _agro_reranker_model_path, _embedding_model, _voyage_model, _embedding_model_local
+    global _cards_exclude_dirs, _cards_exclude_patterns, _cards_exclude_keywords
+    global _cards_code_snippet_length, _cards_max_symbols, _cards_max_routes
+    global _cards_purpose_max_length, _cards_quick_tips, _bm25_stopwords_lang
 
     if _config_registry is None:
-        # Fallback to os.getenv only when registry unavailable
-        _CARDS_ENRICH_DEFAULT = int(os.getenv('CARDS_ENRICH_DEFAULT', '1') or '1')
-        _CARDS_MAX = int(os.getenv('CARDS_MAX', '100') or '100')
-        _ENRICH_CODE_CHUNKS = int(os.getenv('ENRICH_CODE_CHUNKS', '1') or '1')
-        _ENRICH_TIMEOUT = int(os.getenv('ENRICH_TIMEOUT', '30') or '30')
-        _OUT_DIR_BASE = os.getenv("OUT_DIR_BASE") or str(Path(__file__).resolve().parents[1] / "out")
-        _EMBEDDING_TYPE = (os.getenv("EMBEDDING_TYPE", "openai") or "openai").lower()
-        _ENRICH_MODEL = os.getenv("ENRICH_MODEL") or os.getenv("GEN_MODEL") or "gpt-4o-mini"
-        _GEN_MODEL = os.getenv("GEN_MODEL") or "gpt-4o-mini"
-        _RERANK_BACKEND = (os.getenv("RERANK_BACKEND", "local") or "local").lower()
-        _COHERE_RERANK_MODEL = os.getenv("COHERE_RERANK_MODEL", "rerank-3.5")
-        _RERANKER_MODEL = os.getenv("RERANKER_MODEL", "BAAI/bge-reranker-v2-m3")
-        _CARDS_EXCLUDE_DIRS = _coerce_list(os.getenv('CARDS_EXCLUDE_DIRS'), _DEFAULT_CARD_FILTERS.exclude_dirs)
-        _CARDS_EXCLUDE_PATTERNS = _coerce_list(os.getenv('CARDS_EXCLUDE_PATTERNS'), _DEFAULT_CARD_FILTERS.exclude_patterns)
-        _CARDS_EXCLUDE_KEYWORDS = _coerce_list(os.getenv('CARDS_EXCLUDE_KEYWORDS'), _DEFAULT_CARD_FILTERS.exclude_keywords)
+        # Fallback to Pydantic defaults when registry unavailable
+        # NOTE: .env is for SECRETS ONLY - config comes from agro_config.json/Pydantic
+        _cards_enrich_default = DEFAULT_CONFIG.enrichment.cards_enrich_default
+        _cards_max = DEFAULT_CONFIG.enrichment.cards_max
+        _enrich_code_chunks = DEFAULT_CONFIG.enrichment.enrich_code_chunks
+        _enrich_timeout = DEFAULT_CONFIG.enrichment.enrich_timeout
+        _out_dir_base = DEFAULT_CONFIG.indexing.out_dir_base or str(Path(__file__).resolve().parents[1] / "out")
+        _embedding_type = DEFAULT_CONFIG.embedding.embedding_type.lower()
+        _enrich_model = DEFAULT_CONFIG.enrichment.enrich_model or DEFAULT_CONFIG.generation.gen_model
+        _gen_model = DEFAULT_CONFIG.generation.gen_model
+        _reranker_mode = DEFAULT_CONFIG.reranking.reranker_mode
+        _reranker_cloud_provider = DEFAULT_CONFIG.reranking.reranker_cloud_provider
+        _reranker_cloud_model = DEFAULT_CONFIG.reranking.reranker_cloud_model
+        _reranker_local_model = DEFAULT_CONFIG.reranking.reranker_local_model
+        _agro_reranker_model_path = DEFAULT_CONFIG.training.agro_reranker_model_path
+        _embedding_model = DEFAULT_CONFIG.embedding.embedding_model
+        _voyage_model = DEFAULT_CONFIG.embedding.voyage_model
+        _embedding_model_local = DEFAULT_CONFIG.embedding.embedding_model_local
+        _cards_exclude_dirs = list(DEFAULT_CONFIG.cards.exclude_dirs)
+        _cards_exclude_patterns = list(DEFAULT_CONFIG.cards.exclude_patterns)
+        _cards_exclude_keywords = list(DEFAULT_CONFIG.cards.exclude_keywords)
+        _cards_code_snippet_length = DEFAULT_CONFIG.cards.code_snippet_length
+        _cards_max_symbols = DEFAULT_CONFIG.cards.max_symbols
+        _cards_max_routes = DEFAULT_CONFIG.cards.max_routes
+        _cards_purpose_max_length = DEFAULT_CONFIG.cards.purpose_max_length
+        _cards_quick_tips = list(DEFAULT_CONFIG.cards.quick_tips)
+        _bm25_stopwords_lang = DEFAULT_CONFIG.indexing.bm25_stopwords_lang
     else:
-        # Use config_registry (preferred path)
-        _CARDS_ENRICH_DEFAULT = _config_registry.get_int('CARDS_ENRICH_DEFAULT', 1)
-        _CARDS_MAX = _config_registry.get_int('CARDS_MAX', 100)
-        _ENRICH_CODE_CHUNKS = _config_registry.get_int('ENRICH_CODE_CHUNKS', 1)
-        _ENRICH_TIMEOUT = _config_registry.get_int('ENRICH_TIMEOUT', 30)
-        _OUT_DIR_BASE = _config_registry.get_str('OUT_DIR_BASE', str(Path(__file__).resolve().parents[1] / "out"))
-        _EMBEDDING_TYPE = _config_registry.get_str('EMBEDDING_TYPE', 'openai').lower()
-        _ENRICH_MODEL = _config_registry.get_str('ENRICH_MODEL', '') or _config_registry.get_str('GEN_MODEL', 'gpt-4o-mini')
-        _GEN_MODEL = _config_registry.get_str('GEN_MODEL', 'gpt-4o-mini')
-        _RERANK_BACKEND = _config_registry.get_str('RERANK_BACKEND', 'local').lower()
-        _COHERE_RERANK_MODEL = _config_registry.get_str('COHERE_RERANK_MODEL', 'rerank-3.5')
-        _RERANKER_MODEL = _config_registry.get_str('RERANKER_MODEL', 'BAAI/bge-reranker-v2-m3')
-        _CARDS_EXCLUDE_DIRS = _coerce_list(_config_registry.get('CARDS_EXCLUDE_DIRS', _DEFAULT_CARD_FILTERS.exclude_dirs),
+        _cards_enrich_default = _config_registry.get_int('CARDS_ENRICH_DEFAULT', 1)
+        _cards_max = _config_registry.get_int('CARDS_MAX', 100)
+        _enrich_code_chunks = _config_registry.get_int('ENRICH_CODE_CHUNKS', 1)
+        _enrich_timeout = _config_registry.get_int('ENRICH_TIMEOUT', 30)
+        _out_dir_base = _config_registry.get_str('OUT_DIR_BASE', str(Path(__file__).resolve().parents[1] / "out"))
+        _embedding_type = _config_registry.get_str('EMBEDDING_TYPE', 'openai').lower()
+        _enrich_model = _config_registry.get_str('ENRICH_MODEL', '') or _config_registry.get_str('GEN_MODEL', 'gpt-4o-mini')
+        _gen_model = _config_registry.get_str('GEN_MODEL', 'gpt-4o-mini')
+        _reranker_mode = _config_registry.get_str('RERANKER_MODE', 'none')
+        _reranker_cloud_provider = _config_registry.get_str('RERANKER_CLOUD_PROVIDER', '')
+        _reranker_cloud_model = _config_registry.get_str('RERANKER_CLOUD_MODEL', 'rerank-3.5')
+        _reranker_local_model = _config_registry.get_str('RERANKER_LOCAL_MODEL', '')
+        _agro_reranker_model_path = _config_registry.get_str('AGRO_RERANKER_MODEL_PATH', 'models/cross-encoder-agro')
+        _embedding_model = _config_registry.get_str('EMBEDDING_MODEL', 'text-embedding-3-large')
+        _voyage_model = _config_registry.get_str('VOYAGE_MODEL', 'voyage-code-3')
+        _embedding_model_local = _config_registry.get_str('EMBEDDING_MODEL_LOCAL', 'all-MiniLM-L6-v2')
+        _cards_exclude_dirs = _coerce_list(_config_registry.get('CARDS_EXCLUDE_DIRS', _DEFAULT_CARD_FILTERS.exclude_dirs),
                                            _DEFAULT_CARD_FILTERS.exclude_dirs)
-        _CARDS_EXCLUDE_PATTERNS = _coerce_list(_config_registry.get('CARDS_EXCLUDE_PATTERNS', _DEFAULT_CARD_FILTERS.exclude_patterns),
+        _cards_exclude_patterns = _coerce_list(_config_registry.get('CARDS_EXCLUDE_PATTERNS', _DEFAULT_CARD_FILTERS.exclude_patterns),
                                                _DEFAULT_CARD_FILTERS.exclude_patterns)
-        _CARDS_EXCLUDE_KEYWORDS = _coerce_list(_config_registry.get('CARDS_EXCLUDE_KEYWORDS', _DEFAULT_CARD_FILTERS.exclude_keywords),
+        _cards_exclude_keywords = _coerce_list(_config_registry.get('CARDS_EXCLUDE_KEYWORDS', _DEFAULT_CARD_FILTERS.exclude_keywords),
                                                _DEFAULT_CARD_FILTERS.exclude_keywords)
+        _cards_code_snippet_length = _config_registry.get_int('CARDS_CODE_SNIPPET_LENGTH', 2000)
+        _cards_max_symbols = _config_registry.get_int('CARDS_MAX_SYMBOLS', 5)
+        _cards_max_routes = _config_registry.get_int('CARDS_MAX_ROUTES', 5)
+        _cards_purpose_max_length = _config_registry.get_int('CARDS_PURPOSE_MAX_LENGTH', 240)
+        _cards_quick_tips = _coerce_list(_config_registry.get('CARDS_QUICK_TIPS', _DEFAULT_CARD_FILTERS.quick_tips),
+                                         _DEFAULT_CARD_FILTERS.quick_tips)
+        _bm25_stopwords_lang = _config_registry.get_str('BM25_STOPWORDS_LANG', 'en')
 
 def reload_config():
     """Reload all cached config values from registry."""
@@ -121,31 +158,29 @@ QUICK_TIPS = [
 
 
 def _progress_dir(repo: str) -> Path:
-    base = Path(_OUT_DIR_BASE)
+    base = Path(_out_dir_base)
     return base / "cards" / repo
 
 
 def _logs_path() -> Path:
-    base = Path(_OUT_DIR_BASE)
+    base = Path(_out_dir_base)
     return base / "logs" / "cards_build.log"
 
 
 def _model_info() -> Dict[str, str]:
-    # Embed
-    if _EMBEDDING_TYPE == "voyage":
-        embed = "voyage-code-3"
-    elif _EMBEDDING_TYPE == "local":
-        embed = "BAAI/bge-small-en-v1.5"
-    else:
-        embed = "text-embedding-3-large"
-    # Enrich
-    enrich = _ENRICH_MODEL
-    # Rerank
-    if _RERANK_BACKEND == "cohere":
-        rerank = _COHERE_RERANK_MODEL
-    else:
-        rerank = _RERANKER_MODEL
-    return {"embed": embed, "enrich": str(enrich), "rerank": rerank}
+    """Return current model config from Pydantic registry - no mapping logic here."""
+    return {
+        "embed_type": _embedding_type,
+        "embed_model": _embedding_model,
+        "embed_model_voyage": _voyage_model,
+        "embed_model_local": _embedding_model_local,
+        "enrich": str(_enrich_model),
+        "rerank_mode": _reranker_mode,
+        "rerank_cloud_provider": _reranker_cloud_provider,
+        "rerank_cloud_model": _reranker_cloud_model,
+        "rerank_local_model": _reranker_local_model,
+        "rerank_learning_model": _agro_reranker_model_path,
+    }
 
 
 def _read_jsonl(path: Path) -> Iterator[Dict[str, Any]]:
@@ -314,7 +349,7 @@ class CardsBuildJob:
             self.done = 0
             self._emit_progress(QUICK_TIPS[2])
 
-            max_chunks = _CARDS_MAX
+            max_chunks = _cards_max
             written = 0
             skipped = 0
             with paths["cards"].open("w", encoding="utf-8") as out_json, paths["cards_txt"].open("w", encoding="utf-8") as out_txt:
@@ -508,9 +543,9 @@ class _Registry:
             job = CardsBuildJob(
                 repo=repo, 
                 enrich=enrich,
-                exclude_dirs=list(exclude_dirs) if exclude_dirs is not None else list(_CARDS_EXCLUDE_DIRS),
-                exclude_patterns=list(exclude_patterns) if exclude_patterns is not None else list(_CARDS_EXCLUDE_PATTERNS),
-                exclude_keywords=list(exclude_keywords) if exclude_keywords is not None else list(_CARDS_EXCLUDE_KEYWORDS)
+                exclude_dirs=list(exclude_dirs) if exclude_dirs is not None else list(_cards_exclude_dirs),
+                exclude_patterns=list(exclude_patterns) if exclude_patterns is not None else list(_cards_exclude_patterns),
+                exclude_keywords=list(exclude_keywords) if exclude_keywords is not None else list(_cards_exclude_keywords)
             )
             self.jobs_by_id[job.job_id] = job
             self.jobs_by_repo[repo] = job.job_id
@@ -574,7 +609,7 @@ def read_logs(tail_bytes: int = 16384) -> Dict[str, Any]:
 def get_card_filter_defaults() -> Dict[str, List[str]]:
     """Expose current default card filters for API/UI consumption."""
     return {
-        "exclude_dirs": list(_CARDS_EXCLUDE_DIRS),
-        "exclude_patterns": list(_CARDS_EXCLUDE_PATTERNS),
-        "exclude_keywords": list(_CARDS_EXCLUDE_KEYWORDS),
+        "exclude_dirs": list(_cards_exclude_dirs),
+        "exclude_patterns": list(_cards_exclude_patterns),
+        "exclude_keywords": list(_cards_exclude_keywords),
     }

@@ -49,11 +49,11 @@ def _load_cached_config():
     global _RERANKER_TIMEOUT, _RERANK_INPUT_SNIPPET_CHARS, _TRANSFORMERS_TRUST_REMOTE_CODE
 
     if _config_registry is None:
-        # Fallback to env vars if registry not available (with backwards compat)
-        _RERANKER_MODE = os.getenv('RERANKER_MODE') or os.getenv('RERANKER_ACTIVE') or os.getenv('RERANKER_BACKEND') or 'local'
-        _RERANKER_CLOUD_PROVIDER = os.getenv('RERANKER_CLOUD_PROVIDER') or os.getenv('RERANKER_PROVIDER') or 'cohere'
-        _RERANKER_CLOUD_MODEL = os.getenv('RERANKER_CLOUD_MODEL') or os.getenv('COHERE_RERANK_MODEL') or 'rerank-3.5'
-        _RERANKER_LOCAL_MODEL = os.getenv('RERANKER_LOCAL_MODEL') or os.getenv('RERANKER_MODEL') or 'cross-encoder/ms-marco-MiniLM-L-12-v2'
+        # Use unified env keys only (no legacy fallbacks)
+        _RERANKER_MODE = os.getenv('RERANKER_MODE', 'local')
+        _RERANKER_CLOUD_PROVIDER = os.getenv('RERANKER_CLOUD_PROVIDER', '')
+        _RERANKER_CLOUD_MODEL = os.getenv('RERANKER_CLOUD_MODEL', '')
+        _RERANKER_LOCAL_MODEL = os.getenv('RERANKER_LOCAL_MODEL', 'cross-encoder/ms-marco-MiniLM-L-12-v2')
         _AGRO_RERANKER_ALPHA = float(os.getenv('AGRO_RERANKER_ALPHA', '0.7') or '0.7')
         _AGRO_RERANKER_TOPN = int(os.getenv('AGRO_RERANKER_TOPN', '50') or '50')
         _AGRO_RERANKER_BATCH = int(os.getenv('AGRO_RERANKER_BATCH', '16') or '16')
@@ -64,11 +64,11 @@ def _load_cached_config():
         _RERANK_INPUT_SNIPPET_CHARS = int(os.getenv('RERANK_INPUT_SNIPPET_CHARS', '700') or '700')
         _TRANSFORMERS_TRUST_REMOTE_CODE = int(os.getenv('TRANSFORMERS_TRUST_REMOTE_CODE', '1') or '1')
     else:
-        # Use config registry with backwards compat fallbacks
-        _RERANKER_MODE = _config_registry.get_str('RERANKER_MODE') or _config_registry.get_str('RERANKER_ACTIVE') or _config_registry.get_str('RERANKER_BACKEND', 'local')
-        _RERANKER_CLOUD_PROVIDER = _config_registry.get_str('RERANKER_CLOUD_PROVIDER') or _config_registry.get_str('RERANKER_PROVIDER', 'cohere')
-        _RERANKER_CLOUD_MODEL = _config_registry.get_str('RERANKER_CLOUD_MODEL') or _config_registry.get_str('COHERE_RERANK_MODEL', 'rerank-3.5')
-        _RERANKER_LOCAL_MODEL = _config_registry.get_str('RERANKER_LOCAL_MODEL') or _config_registry.get_str('RERANKER_MODEL', 'cross-encoder/ms-marco-MiniLM-L-12-v2')
+        # Use unified config registry keys only (no legacy fallbacks)
+        _RERANKER_MODE = _config_registry.get_str('RERANKER_MODE', 'local')
+        _RERANKER_CLOUD_PROVIDER = _config_registry.get_str('RERANKER_CLOUD_PROVIDER', '')
+        _RERANKER_CLOUD_MODEL = _config_registry.get_str('RERANKER_CLOUD_MODEL', '')
+        _RERANKER_LOCAL_MODEL = _config_registry.get_str('RERANKER_LOCAL_MODEL', 'cross-encoder/ms-marco-MiniLM-L-12-v2')
         _AGRO_RERANKER_ALPHA = _config_registry.get_float('AGRO_RERANKER_ALPHA', 0.7)
         _AGRO_RERANKER_TOPN = _config_registry.get_int('AGRO_RERANKER_TOPN', 50)
         _AGRO_RERANKER_BATCH = _config_registry.get_int('AGRO_RERANKER_BATCH', 16)
@@ -146,8 +146,8 @@ _DISABLED_ALIASES = {'off', 'none', 'disabled'}
 _LOCALISH = {'local', 'hf'}
 
 
-def _normalize_backend(value: Optional[str]) -> str:
-    """Normalize backend aliases to canonical values."""
+def _normalize_mode(value: Optional[str]) -> str:
+    """Normalize mode aliases to canonical values."""
     if value is None:
         return ''
     v = str(value).strip().lower()
@@ -173,7 +173,7 @@ def _normalize_provider(value: Optional[str]) -> str:
 
 def _normalize_active_choice(value: Optional[str]) -> str:
     """Normalize active selector, defaulting to local when unspecified."""
-    v = _normalize_backend(value)
+    v = _normalize_mode(value)
     if not v:
         return 'local'
     if v in _DISABLED_ALIASES:
@@ -192,21 +192,8 @@ def _resolve_env_strategy() -> Dict[str, Any]:
     # Get unified mode - 'cloud', 'local', 'learning', or 'none'
     mode = _normalize_active_choice(_RERANKER_MODE)
 
-    # Determine backend based on mode
-    if mode == 'none':
-        backend = 'none'
-    elif mode == 'cloud':
-        # When mode is 'cloud', backend is the cloud provider (cohere, voyage, jina)
-        provider = _normalize_provider(_RERANKER_CLOUD_PROVIDER) or 'cohere'
-        backend = provider
-    elif mode == 'learning':
-        backend = 'learning'
-    else:
-        # 'local' or any localish value
-        backend = 'local'
-
     # Get provider (only meaningful for cloud mode)
-    provider = _RERANKER_CLOUD_PROVIDER if mode == 'cloud' else ''
+    provider = _normalize_provider(_RERANKER_CLOUD_PROVIDER) if mode == 'cloud' else ''
 
     # Get models
     cloud_model = _RERANKER_CLOUD_MODEL
@@ -216,13 +203,23 @@ def _resolve_env_strategy() -> Dict[str, Any]:
     if mode == 'cloud':
         model_name = cloud_model
     elif mode == 'learning':
-        model_name = 'models/cross-encoder-agro'
+        model_name = _config_registry.get_str('AGRO_RERANKER_MODEL_PATH', 'models/cross-encoder-agro') if _config_registry else 'models/cross-encoder-agro'
     else:
         model_name = local_model
 
     snippet_local = _RERANK_INPUT_SNIPPET_CHARS or 700
     snippet_cloud = min(snippet_local + 100, 700)
-    metrics_label = f"{backend}:{cloud_model or local_model}" if backend and backend != 'none' else "none"
+    
+    # Build metrics label from mode/provider (NO backend variable)
+    if mode == 'none':
+        metrics_label = "none"
+    elif mode == 'cloud':
+        metrics_label = f"{provider}:{cloud_model}"
+    elif mode == 'learning':
+        metrics_label = f"learning:{model_name}"
+    else:
+        metrics_label = f"local:{local_model}"
+    
     enabled = mode not in {'none'}
 
     return {
@@ -246,16 +243,14 @@ def _resolve_env_strategy() -> Dict[str, Any]:
 
 
 def get_rerank_config_info() -> Dict[str, Any]:
-    """Expose current rerank configuration snapshot."""
+    """Expose current rerank configuration snapshot using Pydantic field names."""
     cfg = _resolve_env_strategy()
     return {
-        "mode": cfg.get("mode"),
-        "enabled": cfg.get("enabled"),
-        "model": cfg.get("model_name"),
+        "reranker_mode": cfg.get("mode"),
+        "reranker_cloud_provider": cfg.get("provider"),
+        "reranker_cloud_model": cfg.get("cloud_model"),
+        "reranker_local_model": cfg.get("local_model"),
         "model_path": cfg.get("model_name"),
-        "local_model": cfg.get("local_model"),
-        "cloud_model": cfg.get("cloud_model"),
-        "cloud_provider": cfg.get("provider"),
         "snippet_chars": cfg.get("snippet_local"),
         "timeout": cfg.get("timeout"),
         "trust_remote_code": cfg.get("trust_remote_code"),
@@ -387,14 +382,14 @@ def rerank_results(query: str, results: List[Dict[str, Any]], top_k: int = 10, t
             })
     except Exception:
         pass
-    if backend == 'cohere':
+    if mode == 'cloud' and provider == 'cohere':
         try:
             import requests as req
             import time
             from server.api_tracker import track_api_call, APIProvider
 
             api_key = os.getenv('COHERE_API_KEY')
-            if settings and not cohere_key_present:
+            if settings and not cloud_api_key_present:
                 raise RuntimeError('COHERE_API_KEY not set')
             if not settings and not api_key:
                 raise RuntimeError('COHERE_API_KEY not set')
@@ -402,13 +397,13 @@ def rerank_results(query: str, results: List[Dict[str, Any]], top_k: int = 10, t
             docs = []
             for r in results:
                 file_ctx = r.get('file_path', '')
-                snip_len = snippet_cohere
+                snip_len = snippet_cloud
                 code_snip = (r.get('code') or r.get('text') or '')[:snip_len]
                 docs.append(f"{file_ctx}\n\n{code_snip}")
-            rerank_top_n = min(len(docs), cohere_top_n)
+            rerank_top_n = min(len(docs), cloud_top_n)
 
             start = time.time()
-            model_id = cohere_model
+            model_id = cloud_model
             resp = req.post(
                 "https://api.cohere.com/v2/rerank",
                 headers={
@@ -469,7 +464,7 @@ def rerank_results(query: str, results: List[Dict[str, Any]], top_k: int = 10, t
             return top
         except Exception:
             pass
-    elif backend == 'voyage':
+    elif mode == 'cloud' and provider == 'voyage':
         try:
             import requests as req
             import time
@@ -482,13 +477,13 @@ def rerank_results(query: str, results: List[Dict[str, Any]], top_k: int = 10, t
             docs = []
             for r in results:
                 file_ctx = r.get('file_path', '')
-                snip_len = snippet_cohere
+                snip_len = snippet_cloud
                 code_snip = (r.get('code') or r.get('text') or '')[:snip_len]
                 docs.append(f"{file_ctx}\n\n{code_snip}")
-            rerank_top_n = min(len(docs), cohere_top_n)
+            rerank_top_n = min(len(docs), cloud_top_n)
 
             start = time.time()
-            model_id = cloud_model or "rerank-2"
+            model_id = cloud_model
             resp = req.post(
                 "https://api.voyageai.com/v1/rerank",
                 headers={

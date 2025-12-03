@@ -480,6 +480,10 @@ class IndexingConfig(BaseModel):
         default="english",
         description="Stemmer language"
     )
+    bm25_stopwords_lang: str = Field(
+        default="en",
+        description="Stopwords language code"
+    )
     index_excluded_exts: str = Field(
         default=".png,.jpg,.gif,.ico,.svg,.woff,.ttf",
         description="Excluded file extensions (comma-separated)"
@@ -1517,6 +1521,7 @@ class AgroConfigRoot(BaseModel):
             'INDEXING_WORKERS': self.indexing.indexing_workers,
             'BM25_TOKENIZER': self.indexing.bm25_tokenizer,
             'BM25_STEMMER_LANG': self.indexing.bm25_stemmer_lang,
+            'BM25_STOPWORDS_LANG': self.indexing.bm25_stopwords_lang,
             'INDEX_EXCLUDED_EXTS': self.indexing.index_excluded_exts,
             'INDEX_MAX_FILE_SIZE_MB': self.indexing.index_max_file_size_mb,
             'SKIP_DENSE': self.indexing.skip_dense,
@@ -1737,6 +1742,7 @@ class AgroConfigRoot(BaseModel):
                 indexing_workers=data.get('INDEXING_WORKERS', 4),
                 bm25_tokenizer=data.get('BM25_TOKENIZER', 'stemmer'),
                 bm25_stemmer_lang=data.get('BM25_STEMMER_LANG', 'english'),
+                bm25_stopwords_lang=data.get('BM25_STOPWORDS_LANG', 'en'),
                 index_excluded_exts=data.get('INDEX_EXCLUDED_EXTS', '.png,.jpg,.gif,.ico,.svg,.woff,.ttf'),
                 index_max_file_size_mb=data.get('INDEX_MAX_FILE_SIZE_MB', 10),
                 skip_dense=data.get('SKIP_DENSE', 0),
@@ -1958,6 +1964,7 @@ AGRO_CONFIG_KEYS = {
     'INDEXING_WORKERS',
     'BM25_TOKENIZER',
     'BM25_STEMMER_LANG',
+    'BM25_STOPWORDS_LANG',
     'INDEX_EXCLUDED_EXTS',
     'INDEX_MAX_FILE_SIZE_MB',
     'SKIP_DENSE',

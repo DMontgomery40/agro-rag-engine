@@ -21,7 +21,7 @@ def api_env_reload() -> Dict[str, Any]:
     
     This endpoint reloads the config registry and then triggers reload_config()
     on all modules that cache configuration values. This ensures that changes
-    to REPO, embedding models, reranker backends, etc. take effect immediately.
+    to REPO, embedding models, reranker mode, etc. take effect immediately.
     """
     result = cfg.env_reload()
     
@@ -103,7 +103,7 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
     
     Critical settings that trigger auto-reload:
     - REPO: Active repository affects all queries
-    - RERANKER_BACKEND: Affects search result ranking
+    - RERANKER_MODE: Affects search result ranking
     - GEN_MODEL: Affects generation responses
     - EMBEDDING_TYPE: Affects vector search
     """
@@ -113,7 +113,7 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
     
     # Auto-reload if critical settings were changed
     env_updates = payload.get("env", {})
-    critical_keys = {'REPO', 'RERANKER_BACKEND', 'GEN_MODEL', 'EMBEDDING_TYPE', 'EMBEDDING_MODEL'}
+    critical_keys = {'REPO', 'RERANKER_MODE', 'GEN_MODEL', 'EMBEDDING_TYPE', 'EMBEDDING_MODEL'}
     
     if any(k in env_updates for k in critical_keys):
         changed_keys = [k for k in critical_keys if k in env_updates]

@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
-from common.paths import repo_root, docs_dir, files_root
+from common.paths import repo_root, gui_dir, docs_dir, files_root
 from common.config_loader import load_repos
 from server.api_interceptor import setup_interceptor
 from server.frequency_limiter import FrequencyAnomalyMiddleware
@@ -54,7 +54,7 @@ def create_app() -> FastAPI:
     """Application factory for FastAPI app.
 
     - Installs HTTP interceptor, metrics, and frequency limiter middleware
-    - Mounts static content: /web (built React), /docs, /files
+    - Mounts static content: /gui, /docs, /files, and /web when built
     - Includes existing routers: feedback, reranker info, alerts, monitoring
     - Provides minimal core routes to preserve compatibility
     """
@@ -106,8 +106,7 @@ def create_app() -> FastAPI:
             pass
         return response
 
-    # Tracing middleware: start/end trace around /api/chat
-    # Note: /answer is deprecated - all new integrations should use /api/chat
+    # Tracing middleware: start/end trace around /answer and /api/chat
     @app.middleware("http")
     async def tracing_middleware(request: Request, call_next):  # type: ignore[unused-ignore]
         try:
@@ -125,9 +124,7 @@ def create_app() -> FastAPI:
                     return await call_next(request)
 
             path = request.url.path or ""
-            # Only trace /api/chat - the unified chat endpoint
-            # /answer is deprecated and will be removed in future version
-            if path not in {"/api/chat"}:
+            if path not in {"/answer", "/api/chat"}:
                 return await call_next(request)
 
             # Import lazily to avoid cycles at import time
@@ -138,6 +135,25 @@ def create_app() -> FastAPI:
 
             repo = _config_registry.get_str("REPO", "agro")
             question = ""
+
+            if path == "/answer":
+                try:
+                    question = request.query_params.get("q") or ""
+                    repo = request.query_params.get("repo") or repo
+                except Exception:
+                    pass
+                try:
+                    start_trace(repo=repo, question=question)
+                except Exception:
+                    pass
+                try:
+                    response = await call_next(request)
+                finally:
+                    try:
+                        end_trace()
+                    except Exception:
+                        pass
+                return response
 
             # /api/chat: we need to read and re-inject the body for downstream
             try:
@@ -180,10 +196,13 @@ def create_app() -> FastAPI:
             return await call_next(request)
 
     ROOT = repo_root()
+    GUI_DIR = gui_dir()
     DOCS_DIR = docs_dir()
     WEB_DIST = ROOT / "web" / "dist"
 
     # Static mounts
+    if GUI_DIR.exists():
+        app.mount("/gui", StaticFiles(directory=str(GUI_DIR), html=True), name="gui")
     if WEB_DIST.exists():
         from fastapi import APIRouter
         web_router = APIRouter()
@@ -209,9 +228,6 @@ def create_app() -> FastAPI:
         # Catch-all fallback to index.html for SPA routes
         @web_router.get("/{rest_of_path:path}", include_in_schema=False)
         def web_spa_router_catchall(rest_of_path: str):  # type: ignore[unused-ignore]
-            target = WEB_DIST / rest_of_path
-            if target.is_file():
-                return FileResponse(str(target))
             return web_index()
 
         app.include_router(web_router, prefix="/web")
@@ -236,11 +252,19 @@ def create_app() -> FastAPI:
     # Core index + health
     @app.get("/", include_in_schema=False)
     def index():  # type: ignore[unused-ignore]
-        if WEB_DIST.exists():
+        # Optional cutover to /web
+        if os.getenv("GUI_CUTOVER", "0").strip().lower() in {"1", "true", "yes", "on"} and WEB_DIST.exists():
             return RedirectResponse(url="/web")
+        idx = GUI_DIR / "index.html"
+        if idx.exists():
+            resp = FileResponse(str(idx))
+            resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            resp.headers["Pragma"] = "no-cache"
+            resp.headers["Expires"] = "0"
+            return resp
         if DOCS_DIR.exists():
             return RedirectResponse(url="/docs")
-        return JSONResponse({"error": "No Web UI available"}, status_code=404)
+        return JSONResponse({"error": "No GUI available"}, status_code=404)
 
     @app.get("/health")
     def health():  # type: ignore[unused-ignore]
@@ -320,20 +344,19 @@ def create_app() -> FastAPI:
         if top_k == 10:  # Check if we got the default
             top_k = _config_registry.get_int("LANGGRAPH_FINAL_K", 10)
 
-        rr_enabled = _config_registry.get_bool("AGRO_RERANKER_ENABLED", False)
-        rr_backend = _config_registry.get_str("RERANKER_BACKEND", "").strip().lower() or None
+        rr_mode = _config_registry.get_str("RERANKER_MODE", "none").strip().lower()
         rr_provider = None
         rr_model = None
-        if rr_backend:
-            if rr_backend in {"cohere", "voyage"}:
-                rr_provider = rr_backend
-                rr_model = _config_registry.get_str("COHERE_RERANK_MODEL", "") if rr_backend == "cohere" else _config_registry.get_str("VOYAGE_RERANK_MODEL", "")
-            elif rr_backend in {"hf", "local"}:
-                rr_provider = rr_backend
-                rr_model = _config_registry.get_str("RERANKER_MODEL", "")
-            elif rr_backend == "learning":
-                rr_provider = "learning"
-                rr_model = os.getenv("AGRO_LEARNING_RERANKER_MODEL", "cross-encoder-agro")
+        
+        if rr_mode == "cloud":
+            rr_provider = _config_registry.get_str("RERANKER_CLOUD_PROVIDER", "").strip().lower()
+            rr_model = _config_registry.get_str("RERANKER_CLOUD_MODEL", "")
+        elif rr_mode in {"local", "hf"}:
+            rr_provider = "local"
+            rr_model = _config_registry.get_str("RERANKER_LOCAL_MODEL", "")
+        elif rr_mode == "learning":
+            rr_provider = "learning"
+            rr_model = "cross-encoder-agro"
 
         enrich_enabled = _config_registry.get_bool("ENRICH_CODE_CHUNKS", False)
         enrich_backend = _config_registry.get_str("ENRICH_BACKEND", "").strip().lower() or None
@@ -385,18 +408,27 @@ def create_app() -> FastAPI:
             return {
                 "repo": {"name": repo_name, "mode": repo_mode, "branch": branch},
                 "retrieval": {"mode": retrieval_mode, "top_k": top_k},
-                "reranker": {"enabled": rr_enabled, "backend": rr_backend, "provider": rr_provider, "model": rr_model},
+                "reranker": {
+                    "reranker_mode": rr_mode,
+                    "reranker_cloud_provider": rr_provider if rr_mode == "cloud" else "",
+                    "reranker_cloud_model": rr_model if rr_mode == "cloud" else "",
+                    "reranker_local_model": rr_model if rr_mode in {"local", "learning"} else "",
+                },
                 "enrichment": {"enabled": enrich_enabled, "backend": enrich_backend, "model": enrich_model},
                 "generation": {"provider": gen_provider, "model": gen_model},
                 "health": {"qdrant": _qdrant_health(), "redis": _redis_health(), "llm": _llm_health()},
             }
         except Exception as e:
             logging.getLogger("agro.api").warning("pipeline_summary failed: %s", e)
-            # Return a safe minimal structure rather than 500 to keep UI healthy
             return {
                 "repo": {"name": repo_name or "local", "mode": repo_mode or "local", "branch": branch},
                 "retrieval": {"mode": retrieval_mode or "hybrid", "top_k": top_k if isinstance(top_k, int) else 10},
-                "reranker": {"enabled": bool(rr_enabled), "backend": rr_backend or None, "provider": rr_provider or None, "model": rr_model},
+                "reranker": {
+                    "reranker_mode": rr_mode or "none",
+                    "reranker_cloud_provider": "",
+                    "reranker_cloud_model": "",
+                    "reranker_local_model": "",
+                },
                 "enrichment": {"enabled": bool(enrich_enabled), "backend": enrich_backend or None, "model": enrich_model or None},
                 "generation": {"provider": gen_provider or None, "model": gen_model or None},
                 "health": {"qdrant": "unknown", "redis": "unknown", "llm": "unknown"},

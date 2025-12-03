@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from pydantic import ValidationError
@@ -9,7 +10,6 @@ from common.config_loader import load_repos
 from common.paths import repo_root, gui_dir
 from server.services.config_registry import get_config_registry
 from server.models.agro_config_model import AGRO_CONFIG_KEYS
-from server.models.prices_config import PricesConfig, PriceEntry
 
 logger = logging.getLogger("agro.api")
 
@@ -24,17 +24,21 @@ SECRET_FIELDS = {
 
 
 def _atomic_write_text(path: Path, content: str) -> None:
-    """Write text to a file.
-
-    Despite the name, this is now a simple direct write. The atomic rename
-    pattern caused EBUSY errors in Docker with macOS bind mounts. Config files
-    are small and if the process dies mid-write, you have bigger problems anyway.
-    """
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, 'w', encoding='utf-8') as fh:
-        fh.write(content)
-        fh.flush()
-        os.fsync(fh.fileno())
+    fd, tmp_path_str = tempfile.mkstemp(dir=path.parent, prefix=path.name, suffix=".tmp")
+    tmp_path = Path(tmp_path_str)
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as fh:
+            fh.write(content)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp_path, path)
+    finally:
+        if tmp_path.exists():
+            try:
+                tmp_path.unlink()
+            except FileNotFoundError:
+                pass
 
 
 def _write_json(path: Path, data: Any) -> None:
@@ -65,10 +69,6 @@ def secrets_ingest(text: str, persist: bool) -> Dict[str, Any]:
         k = k.strip()
         v = v.strip()
         if not k:
-            continue
-        # CRITICAL: Don't accept masked values
-        if v and all(ch == '•' for ch in v):
-            logger.debug(f"Skipping masked value for {k}")
             continue
         os.environ[k] = v
         applied[k] = v
@@ -104,11 +104,6 @@ def save_mcp_key(key: str) -> Dict[str, Any]:
         - Updates both file and os.environ for immediate effect
     """
     try:
-        # CRITICAL: Don't accept masked values
-        if key and all(ch == '•' for ch in key):
-            logger.warning("Attempted to save masked MCP key - ignoring")
-            return {"status": "error", "message": "Cannot save masked key value"}
-
         env_path = repo_root() / ".env"
 
         # Read existing .env
@@ -138,7 +133,7 @@ def save_mcp_key(key: str) -> Dict[str, Any]:
         return {"status": "error", "message": "Failed to save API key"}
 
 
-def _effective_rerank_backend() -> Dict[str, Any]:
+def _effective_rerank_mode() -> Dict[str, Any]:
     try:
         from server.learning_reranker import get_reranker_info
     except Exception:
@@ -146,42 +141,45 @@ def _effective_rerank_backend() -> Dict[str, Any]:
             return {}
     import time
     registry = get_config_registry()
-    backend_env_raw = (
-        registry.get_str("RERANKER_BACKEND", "").strip().lower()
-        or registry.get_str("RERANK_BACKEND", "").strip().lower()
-        or ""
-    )
-    def _norm_backend(val: str) -> str:
+    
+    mode_raw = registry.get_str("RERANKER_MODE", "").strip().lower()
+    provider_raw = registry.get_str("RERANKER_CLOUD_PROVIDER", "").strip().lower()
+    cloud_model = registry.get_str("RERANKER_CLOUD_MODEL", "").strip()
+    
+    def _norm_mode(val: str) -> str:
         if not val:
             return ""
-        if val in {"off", "none", "disabled"}:
+        if val in {"off", "disabled"}:
             return "none"
-        if val == "hf":
-            return "local"
         return val
 
-    backend_env = _norm_backend(backend_env_raw)
+    mode = _norm_mode(mode_raw)
     now = time.time()
     try:
         info = get_reranker_info()
     except Exception:
         info = {}
-    explicit = bool(backend_env)
+    explicit = bool(mode)
     mtime = float(info.get("model_dir_mtime") or 0.0)
     recent = (now - mtime) <= (7 * 24 * 3600) if mtime > 0 else False
-    # COHERE_API_KEY is a secret, keep os.getenv
-    cohere = bool((os.getenv("COHERE_API_KEY", "") or "").strip())
-    path = info.get("resolved_path") or info.get("path") or registry.get_str("AGRO_RERANKER_MODEL_PATH", "models/cross-encoder-agro")
+    
+    cloud_key_present = False
+    if provider_raw:
+        api_key_env = f"{provider_raw.upper()}_API_KEY"
+        cloud_key_present = bool((os.getenv(api_key_env, "") or "").strip())
+    
+    path = info.get("resolved_path") or info.get("path") or registry.get_str("RERANKER_LOCAL_MODEL", "models/cross-encoder-agro")
     local_present = bool(str(path)) and os.path.exists(str(path))
+    
     if explicit:
-        return {"backend": backend_env, "reason": "explicit_env"}
+        return {"reranker_mode": mode, "reranker_cloud_provider": provider_raw if mode == "cloud" else "", "reranker_cloud_model": cloud_model, "reason": "explicit_env"}
     if recent:
-        return {"backend": "local", "reason": "recent_local_model"}
-    if cohere:
-        return {"backend": "cohere", "reason": "cohere_key_present"}
+        return {"reranker_mode": "learning", "reranker_cloud_provider": "", "reranker_cloud_model": "", "reason": "recent_local_model"}
+    if cloud_key_present and provider_raw:
+        return {"reranker_mode": "cloud", "reranker_cloud_provider": provider_raw, "reranker_cloud_model": cloud_model, "reason": "cloud_key_present"}
     if local_present:
-        return {"backend": "local", "reason": "local_model_present"}
-    return {"backend": "none", "reason": "no_reranker_available"}
+        return {"reranker_mode": "local", "reranker_cloud_provider": "", "reranker_cloud_model": "", "reason": "local_model_present"}
+    return {"reranker_mode": "none", "reranker_cloud_provider": "", "reranker_cloud_model": "", "reason": "no_reranker_available"}
 
 
 def get_config(unmask: bool = False) -> Dict[str, Any]:
@@ -243,9 +241,9 @@ def get_config(unmask: bool = False) -> Dict[str, Any]:
 
     hints: Dict[str, Any] = {}
     try:
-        hints["rerank_backend"] = _effective_rerank_backend()
+        hints["reranker_mode"] = _effective_rerank_mode()
     except Exception:
-        hints["rerank_backend"] = {"backend": "none", "reason": "probe_failed"}
+        hints["reranker_mode"] = {"reranker_mode": "none", "reranker_cloud_provider": "", "reranker_cloud_model": "", "reason": "probe_failed"}
 
     # Add config source metadata for debugging/UI
     try:
@@ -327,22 +325,12 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
         if v is None:
             existing.pop(k, None)
         else:
-            # CRITICAL: Don't write masked values back to .env
-            # UI sends '••••••••••••••••' for secrets - skip these
-            str_v = str(v)
-            if str_v and all(ch == '•' for ch in str_v):
-                # This is a masked value, keep existing value
-                logger.debug(f"Skipping masked value for {k}")
-                continue
-            existing[k] = str_v
+            existing[k] = str(v)
         # also apply to process env
         if v is None:
             os.environ.pop(k, None)
         else:
-            # Same check for os.environ
-            str_v = str(v)
-            if not (str_v and all(ch == '•' for ch in str_v)):
-                os.environ[k] = str_v
+            os.environ[k] = str(v)
 
     # Write .env if there were updates
     if env_file_updates:
@@ -450,23 +438,19 @@ def _classify_components(m: Dict[str, Any]) -> list[str]:
     comps: list[str] = []
     name = (str(m.get("family") or "") + " " + str(m.get("model") or "")).lower()
     unit = str(m.get("unit") or "").lower()
-    rerank_val = m.get("rerank_per_1k")
-    embed_val = m.get("embed_per_1k")
-    input_val = m.get("input_per_1k")
-    output_val = m.get("output_per_1k")
 
     # Rerank if explicit field present or name hints contain rerank
-    if (rerank_val is not None) or ("rerank" in name):
+    if ("rerank_per_1k" in m) or ("rerank" in name):
         comps.append("RERANK")
 
-    # Embedding if explicit field or dimensions present and rerank not set
-    has_embed_cost = (embed_val is not None) or ("dimensions" in m)
-    has_gen_pricing = (input_val is not None) or (output_val is not None) or (unit in {"1k_tokens", "request"}) or (m.get("per_request") is not None)
-    if has_embed_cost and (rerank_val is None):
+    # Embedding if explicit field or dimensions present and no token pricing
+    has_embed_cost = ("embed_per_1k" in m) or ("dimensions" in m)
+    has_gen_pricing = ("input_per_1k" in m) or ("output_per_1k" in m) or (unit in {"1k_tokens", "request"}) or ("per_request" in m)
+    if has_embed_cost and ("rerank_per_1k" not in m):
         comps.append("EMB")
 
     # Generative if token pricing present or marked as request based, and not a pure embed-only entry
-    if has_gen_pricing and not ((embed_val is not None) and (input_val is None) and (output_val is None)):
+    if has_gen_pricing and not ("embed_per_1k" in m and "input_per_1k" not in m and "output_per_1k" not in m):
         comps.append("GEN")
 
     if not comps:
@@ -476,67 +460,36 @@ def _classify_components(m: Dict[str, Any]) -> list[str]:
 
 def _normalize_prices(data: Dict[str, Any]) -> Dict[str, Any]:
     try:
-        cfg = PricesConfig.model_validate(data)
-    except ValidationError as exc:
-        logger.warning("models.json validation failed, using defaults: %s", exc)
-        cfg = PricesConfig.model_validate(_default_prices())
-    except Exception as exc:
-        logger.warning("models.json load error, using defaults: %s", exc)
-        cfg = PricesConfig.model_validate(_default_prices())
-
-    out: list[Dict[str, Any]] = []
-    for entry in cfg.models:
-        # Normalize provider/model casing and ensure components set
-        mm = entry.model_dump()
-        if isinstance(mm.get("provider"), str):
-            mm["provider"] = mm["provider"].strip().lower()
-        if isinstance(mm.get("model"), str):
-            mm["model"] = mm["model"].strip()
-        if not isinstance(mm.get("components"), list) or not mm.get("components"):
-            mm["components"] = _classify_components(mm)
-        out.append(mm)
-
-    new = cfg.model_dump()
-    new["models"] = out
-    return new
-
-
-def _prices_path_candidates() -> List[Path]:
-    """Ordered list of possible models.json locations."""
-    root = repo_root()
-    return [
-        root / "web" / "public" / "models.json",
-        gui_dir() / "models.json",
-        root / "models.json",
-    ]
+        models = list(data.get("models", [])) if isinstance(data, dict) else []
+        out: list[Dict[str, Any]] = []
+        for m in models:
+            if not isinstance(m, dict):
+                continue
+            mm = dict(m)
+            if "provider" in mm and isinstance(mm["provider"], str):
+                mm["provider"] = mm["provider"].strip().lower()
+            if "model" in mm and isinstance(mm["model"], str):
+                mm["model"] = mm["model"].strip()
+            if not isinstance(mm.get("components"), list) or not mm.get("components"):
+                mm["components"] = _classify_components(mm)
+            out.append(mm)
+        new = dict(data)
+        new["models"] = out
+        return new
+    except Exception:
+        return _default_prices()
 
 
 def prices_get() -> Dict[str, Any]:
-    raw = None
-    for candidate in _prices_path_candidates():
-        raw = _read_json(candidate, None)
-        if raw:
-            break
-    data = raw if (raw and isinstance(raw, dict) and raw.get("models") is not None) else _default_prices()
+    raw = _read_json(gui_dir() / "prices.json", {"models": []})
+    data = raw if (raw and isinstance(raw, dict) and raw.get("models")) else _default_prices()
     return _normalize_prices(data)
 
 
 def prices_upsert(item: Dict[str, Any]) -> Dict[str, Any]:
-    data = None
-    prices_path = _prices_path_candidates()[0]
-    for candidate in _prices_path_candidates():
-        prices_path = candidate
-        data = _read_json(candidate, None)
-        if data:
-            break
-    if data is None:
-        data = {"models": []}
-    try:
-        cfg = PricesConfig.model_validate(data)
-    except ValidationError as exc:
-        logger.warning("models.json validation failed on upsert, starting fresh: %s", exc)
-        cfg = PricesConfig()
-    models: List[Dict[str, Any]] = [m.model_dump() for m in cfg.models]
+    prices_path = gui_dir() / "prices.json"
+    data = _read_json(prices_path, {"models": []})
+    models: List[Dict[str, Any]] = list(data.get("models", []))
     key = (str(item.get("provider")), str(item.get("model")))
     idx = next((i for i, m in enumerate(models) if (str(m.get("provider")), str(m.get("model"))) == key), None)
     if idx is None:
@@ -547,12 +500,9 @@ def prices_upsert(item: Dict[str, Any]) -> Dict[str, Any]:
     for i in range(len(models)):
         if not isinstance(models[i].get("components"), list):
             models[i]["components"] = _classify_components(models[i])
-    cfg = PricesConfig(
-        models=[PriceEntry.model_validate(m) for m in models],
-        currency=cfg.currency,
-        last_updated=__import__('datetime').datetime.now().strftime('%Y-%m-%d')
-    )
-    _write_json(prices_path, cfg.model_dump())
+    data["models"] = models
+    data["last_updated"] = __import__('datetime').datetime.now().strftime('%Y-%m-%d')
+    _write_json(prices_path, data)
     return {"ok": True, "count": len(models)}
 
 
@@ -588,7 +538,7 @@ def config_schema() -> Dict[str, Any]:
             "enabled": reg.get_bool("EDITOR_ENABLED", True),
             "embed_enabled": reg.get_bool("EDITOR_EMBED_ENABLED", True),
             "bind": reg.get_str("EDITOR_BIND", "local"),
-            "image": reg.get_str("EDITOR_IMAGE", "codercom/code-server:latest"),
+            "image": reg.get_str("EDITOR_IMAGE", "agro-vscode:latest"),
             "host": "127.0.0.1",
         }
         try:
@@ -626,18 +576,17 @@ def config_schema() -> Dict[str, Any]:
                 "properties": {
                     "FINAL_K": {"type": "integer", "title": "Top-K", "minimum": 1},
                     "LANGGRAPH_FINAL_K": {"type": "integer", "title": "LangGraph Top-K", "minimum": 1},
-                    "MAX_QUERY_REWRITES": {"type": "integer", "title": "Multi-Query Rewrites", "minimum": 1, "maximum": 10},
+                    "MQ_REWRITES": {"type": "integer", "title": "Multi-Query Rewrites", "minimum": 1, "maximum": 10},
                     "SKIP_DENSE": {"type": "boolean", "title": "Skip Dense Embeddings"},
                 },
             },
             "reranker": {
                 "type": "object",
                 "properties": {
-                    "AGRO_RERANKER_ENABLED": {"type": "boolean", "title": "Enable Reranker"},
-                    "RERANK_BACKEND": {"type": "string", "enum": ["", "cloud", "hf", "local", "learning"], "title": "Backend"},
-                    "RERANK_MODEL": {"type": "string", "title": "Local HF Model (when hf/local)"},
-                    "COHERE_RERANK_MODEL": {"type": "string", "title": "Cohere Model (when cloud)"},
-                    "VOYAGE_RERANK_MODEL": {"type": "string", "title": "Voyage Model (when cloud)"},
+                    "RERANKER_MODE": {"type": "string", "enum": ["cloud", "local", "learning", "none"], "title": "Mode"},
+                    "RERANKER_CLOUD_PROVIDER": {"type": "string", "enum": ["", "cohere", "voyage", "jina"], "title": "Cloud Provider"},
+                    "RERANKER_CLOUD_MODEL": {"type": "string", "title": "Cloud Model"},
+                    "RERANKER_LOCAL_MODEL": {"type": "string", "title": "Local Model"},
                     "RERANK_TOP_K": {"type": "integer", "title": "Rerank Top-K", "minimum": 1},
                 },
             },
@@ -719,15 +668,14 @@ def config_schema() -> Dict[str, Any]:
         "retrieval": {
             "FINAL_K": registry.get_int("FINAL_K", registry.get_int("LANGGRAPH_FINAL_K", 10)),
             "LANGGRAPH_FINAL_K": registry.get_int("LANGGRAPH_FINAL_K", registry.get_int("FINAL_K", 10)),
-            "MAX_QUERY_REWRITES": registry.get_int("MAX_QUERY_REWRITES", registry.get_int("MQ_REWRITES", 2)),
+            "MQ_REWRITES": registry.get_int("MQ_REWRITES", 2),
             "SKIP_DENSE": registry.get_bool("SKIP_DENSE", False),
         },
         "reranker": {
-            "AGRO_RERANKER_ENABLED": registry.get_bool("AGRO_RERANKER_ENABLED", False),
-            "RERANK_BACKEND": registry.get_str("RERANK_BACKEND", ""),
-            "RERANK_MODEL": registry.get_str("RERANK_MODEL", ""),
-            "COHERE_RERANK_MODEL": registry.get_str("COHERE_RERANK_MODEL", ""),
-            "VOYAGE_RERANK_MODEL": registry.get_str("VOYAGE_RERANK_MODEL", ""),
+            "RERANKER_MODE": registry.get_str("RERANKER_MODE", "none"),
+            "RERANKER_CLOUD_PROVIDER": registry.get_str("RERANKER_CLOUD_PROVIDER", ""),
+            "RERANKER_CLOUD_MODEL": registry.get_str("RERANKER_CLOUD_MODEL", ""),
+            "RERANKER_LOCAL_MODEL": registry.get_str("RERANKER_LOCAL_MODEL", ""),
             "RERANK_TOP_K": registry.get_int("RERANK_TOP_K", 0) or None,
         },
         "enrichment": {
@@ -758,9 +706,6 @@ def config_schema() -> Dict[str, Any]:
             "default_repo": default_repo,
         },
     }
-
-    # Legacy aliases for downstream consumers expecting old keys
-    values["retrieval"]["MQ_REWRITES"] = values["retrieval"]["MAX_QUERY_REWRITES"]
 
     for k in list(os.environ.keys()):
         if k in SECRET_FIELDS and os.environ.get(k):

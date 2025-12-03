@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-// TypeScript interface for reranker info response
+// TypeScript interface for reranker info response (Pydantic-compliant)
 interface RerankerInfo {
   enabled: boolean;
   path: string;
@@ -9,12 +9,10 @@ interface RerankerInfo {
   topn: number | string;
   batch: number | string;
   maxlen: number | string;
-  backend?: string;
-  provider?: string;
-  model_path?: string;
-  cloud_model?: string;
-  cohere_model?: string;
-  voyage_model?: string;
+  reranker_mode?: string;
+  reranker_cloud_provider?: string;
+  reranker_cloud_model?: string;
+  reranker_local_model?: string;
   snippet_chars?: number | string;
   trust_remote_code?: boolean;
 }
@@ -41,8 +39,8 @@ interface PriceModelEntry {
  * ---/agentspec
  */
 export function ExternalRerankersSubtab() {
-  // State for each input field
-  const [rerankBackend, setRerankBackend] = useState<string>('local');
+  // State for each input field - Pydantic naming
+  const [rerankerMode, setRerankerMode] = useState<string>('local');
   const [activeChoice, setActiveChoice] = useState<'local' | 'cloud'>('local');
   const [cloudProvider, setCloudProvider] = useState<string>('');
   const [cloudModel, setCloudModel] = useState<string>('');
@@ -78,11 +76,11 @@ export function ExternalRerankersSubtab() {
     if (cloudProvider) {
       opts.add(cloudProvider);
     }
-    if (rerankBackend && !['', 'local', 'hf', 'learning', 'none'].includes(rerankBackend)) {
-      opts.add(rerankBackend);
+    if (rerankerMode && !['', 'local', 'hf', 'learning', 'none'].includes(rerankerMode)) {
+      opts.add(rerankerMode);
     }
     return Array.from(opts).sort();
-  }, [priceModels, cloudProvider, rerankBackend]);
+  }, [priceModels, cloudProvider, rerankerMode]);
 
   /**
    * ---agentspec
@@ -243,18 +241,18 @@ export function ExternalRerankersSubtab() {
       }
       const data = await response.json();
 
-      // Extract values from env object
+      // Extract values from env object - unified Pydantic schema
       const env = data.env || {};
-      const backendRaw = (env.RERANKER_BACKEND || env.RERANK_BACKEND || 'local').toString();
-      const activeRaw = (env.RERANKER_ACTIVE || backendRaw || 'local').toString().toLowerCase();
-      const providerRaw = (env.RERANKER_PROVIDER || env.RERANKER_BACKEND || env.RERANK_BACKEND || '').toString().toLowerCase();
-      const normalizedBackend = backendRaw.toLowerCase() || 'local';
-      const providerValue = providerRaw || (normalizedBackend && !['local', 'hf', 'learning', 'none'].includes(normalizedBackend) ? normalizedBackend : cloudProvider || '');
-      const activeSelection = activeRaw === 'cloud' || (!['local', 'hf', 'learning', 'none'].includes(normalizedBackend) && providerValue) ? 'cloud' : 'local';
-      setActiveChoice(activeSelection as 'local' | 'cloud');
-      setCloudProvider(providerValue);
-      setRerankBackend(normalizedBackend);
-      setRerankerModel(env.RERANKER_MODEL || '');
+      const modeRaw = (env.RERANKER_MODE || 'local').toString().toLowerCase();
+      const providerRaw = (env.RERANKER_CLOUD_PROVIDER || '').toString().toLowerCase();
+      const cloudModelVal = (env.RERANKER_CLOUD_MODEL || '').toString();
+      const localModelVal = (env.RERANKER_LOCAL_MODEL || '').toString();
+      
+      setRerankerMode(modeRaw);
+      setCloudProvider(providerRaw);
+      setActiveChoice(modeRaw === 'cloud' ? 'cloud' : 'local');
+      setRerankerModel(localModelVal);
+      setCloudModel(cloudModelVal || 'rerank-3.5');
       const cohere = env.COHERE_RERANK_MODEL || 'rerank-3.5';
       const voyage = env.VOYAGE_RERANK_MODEL || 'rerank-2';
       setCohereModel(cohere);
@@ -379,18 +377,18 @@ export function ExternalRerankersSubtab() {
    */
   const handleBackendChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
-    setRerankBackend(value);
-    updateConfig('RERANKER_BACKEND', value);
+    setRerankerMode(value);
+    updateConfig('RERANKER_MODE', value);
     if (value === 'local' || value === 'hf' || value === 'learning') {
       handleActiveChange('local');
     } else if (value === 'none') {
       setActiveChoice('local');
-      updateConfig('RERANKER_ACTIVE', 'none');
+      // No separate RERANKER_ACTIVE - mode='none' handles disabled state
     } else {
       const providerValue = value.trim().toLowerCase();
       setCloudProvider(providerValue);
       handleActiveChange('cloud');
-      updateConfig('RERANKER_PROVIDER', providerValue);
+      updateConfig('RERANKER_CLOUD_PROVIDER', providerValue);
       const providerModels = priceModels
         .filter((m) => m.provider === providerValue)
         .map((m) => m.model)
@@ -417,20 +415,19 @@ export function ExternalRerankersSubtab() {
    */
   const handleActiveChange = (value: 'local' | 'cloud') => {
     setActiveChoice(value);
-    updateConfig('RERANKER_ACTIVE', value === 'local' ? 'local' : 'cloud');
+    // Unified schema - mode determines everything, no separate RERANKER_ACTIVE
     if (value === 'local') {
-      setRerankBackend('local');
-      updateConfig('RERANKER_BACKEND', 'local');
+      setRerankerMode('local');
+      updateConfig('RERANKER_MODE', 'local');
+      updateConfig('RERANKER_CLOUD_PROVIDER', '');
     } else {
-      const providerValue = cloudProvider || providerOptions[0] || 'cloud';
+      const providerValue = cloudProvider || providerOptions[0] || 'cohere';
       if (!cloudProvider && providerValue) {
         setCloudProvider(providerValue);
       }
-      setRerankBackend(providerValue);
-      if (providerValue) {
-        updateConfig('RERANKER_PROVIDER', providerValue);
-      }
-      updateConfig('RERANKER_BACKEND', providerValue);
+      setRerankerMode('cloud');
+      updateConfig('RERANKER_MODE', 'cloud');
+      updateConfig('RERANKER_CLOUD_PROVIDER', providerValue);
       if (cloudModel) {
         updateConfig('RERANKER_CLOUD_MODEL', cloudModel);
       }
@@ -463,11 +460,11 @@ export function ExternalRerankersSubtab() {
     if (nextModel) {
       setCloudModel(nextModel);
     }
-    updateConfig('RERANKER_PROVIDER', normalized);
+    updateConfig('RERANKER_CLOUD_PROVIDER', normalized);
     // Keep backend in sync when cloud is active
     if (activeChoice === 'cloud') {
-      setRerankBackend(normalized || 'cloud');
-      updateConfig('RERANKER_BACKEND', normalized || 'cloud');
+      setRerankerMode(normalized || 'cloud');
+      updateConfig('RERANKER_MODE', normalized || 'cloud');
     }
     if (nextModel) {
       updateConfig('RERANKER_CLOUD_MODEL', nextModel);
@@ -539,8 +536,8 @@ export function ExternalRerankersSubtab() {
       setCloudModel(model);
       setActiveChoice('cloud');
       await updateConfigBatch({
-        RERANKER_PROVIDER: provider,
-        RERANKER_BACKEND: provider,
+        RERANKER_CLOUD_PROVIDER: provider,
+        RERANKER_MODE: provider,
         RERANKER_ACTIVE: 'cloud',
         RERANKER_CLOUD_MODEL: model,
       });
@@ -586,7 +583,7 @@ export function ExternalRerankersSubtab() {
    * ---/agentspec
    */
   const handleModelBlur = () => {
-    updateConfig('RERANKER_MODEL', rerankerModel);
+    updateConfig('RERANKER_LOCAL_MODEL', rerankerModel);
   };
 
   /**
@@ -681,7 +678,7 @@ export function ExternalRerankersSubtab() {
   };
 
   // Show warning when backend is 'none'
-  const showNoneWarning = rerankBackend === 'none';
+  const showNoneWarning = rerankerMode === 'none';
 
   if (loading) {
     return (
@@ -693,7 +690,7 @@ export function ExternalRerankersSubtab() {
 
   const displayInfo: Partial<RerankerInfo> & Record<string, any> = rerankerInfo || {
     enabled: false,
-    backend: rerankBackend || 'local',
+    backend: rerankerMode || 'local',
     provider: cloudProvider || '',
     cloud_model: cloudModel || '',
     model_path: rerankerModel || '',
@@ -907,7 +904,7 @@ export function ExternalRerankersSubtab() {
             <select
               name="RERANKER_BACKEND"
               id="RERANKER_BACKEND"
-              value={rerankBackend}
+              value={rerankerMode}
               onChange={handleBackendChange}
             >
               {backendOptions.map((opt) => (

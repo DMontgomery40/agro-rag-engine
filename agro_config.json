@@ -121,20 +121,16 @@
     "repos_file": "./repos.json"
   },
   "reranking": {
-    "reranker_active": "cloud",
-    "reranker_provider": "cohere",
+    "reranker_mode": "cloud",
+    "reranker_cloud_provider": "cohere",
     "reranker_cloud_model": "rerank-3.5",
-    "reranker_model": "rerank-3.5",
-    "agro_reranker_enabled": 0,
+    "reranker_local_model": "",
     "agro_reranker_alpha": 0.7,
     "agro_reranker_topn": 50,
     "agro_reranker_batch": 16,
     "agro_reranker_maxlen": 512,
     "agro_reranker_reload_on_change": 0,
     "agro_reranker_reload_period_sec": 60,
-    "cohere_rerank_model": "rerank-3.5",
-    "voyage_rerank_model": "rerank-2",
-    "reranker_backend": "local",
     "reranker_timeout": 10,
     "rerank_input_snippet_chars": 700,
     "transformers_trust_remote_code": 1
