@@ -26,76 +26,58 @@ try:
 except ImportError:
     _config_registry = None
 
-# Cached reranking parameters
-_RERANKER_MODEL = None
-_AGRO_RERANKER_ENABLED = None
+# Cached reranking parameters - unified with RERANKER_MODE
+_RERANKER_MODE = None
+_RERANKER_CLOUD_PROVIDER = None
+_RERANKER_CLOUD_MODEL = None
+_RERANKER_LOCAL_MODEL = None
 _AGRO_RERANKER_ALPHA = None
 _AGRO_RERANKER_TOPN = None
 _AGRO_RERANKER_BATCH = None
 _AGRO_RERANKER_MAXLEN = None
 _AGRO_RERANKER_RELOAD_ON_CHANGE = None
 _AGRO_RERANKER_RELOAD_PERIOD_SEC = None
-_COHERE_RERANK_MODEL = None
-_VOYAGE_RERANK_MODEL = None
-_RERANKER_BACKEND = None
 _RERANKER_TIMEOUT = None
-_RERANK_BACKEND = None
 _RERANK_INPUT_SNIPPET_CHARS = None
-_COHERE_RERANK_TOP_N = None
 _TRANSFORMERS_TRUST_REMOTE_CODE = None
-_RERANKER_ACTIVE = None
-_RERANKER_PROVIDER = None
-_RERANKER_CLOUD_MODEL = None
 
 def _load_cached_config():
     """Load all reranking config values into module-level cache."""
-    global _RERANKER_MODEL, _AGRO_RERANKER_ENABLED, _AGRO_RERANKER_ALPHA, _AGRO_RERANKER_TOPN
-    global _AGRO_RERANKER_BATCH, _AGRO_RERANKER_MAXLEN, _AGRO_RERANKER_RELOAD_ON_CHANGE
-    global _AGRO_RERANKER_RELOAD_PERIOD_SEC, _COHERE_RERANK_MODEL, _VOYAGE_RERANK_MODEL
-    global _RERANKER_BACKEND, _RERANKER_TIMEOUT, _RERANK_BACKEND, _RERANK_INPUT_SNIPPET_CHARS
-    global _COHERE_RERANK_TOP_N, _TRANSFORMERS_TRUST_REMOTE_CODE, _RERANKER_ACTIVE, _RERANKER_PROVIDER, _RERANKER_CLOUD_MODEL
+    global _RERANKER_MODE, _RERANKER_CLOUD_PROVIDER, _RERANKER_CLOUD_MODEL, _RERANKER_LOCAL_MODEL
+    global _AGRO_RERANKER_ALPHA, _AGRO_RERANKER_TOPN, _AGRO_RERANKER_BATCH, _AGRO_RERANKER_MAXLEN
+    global _AGRO_RERANKER_RELOAD_ON_CHANGE, _AGRO_RERANKER_RELOAD_PERIOD_SEC
+    global _RERANKER_TIMEOUT, _RERANK_INPUT_SNIPPET_CHARS, _TRANSFORMERS_TRUST_REMOTE_CODE
 
     if _config_registry is None:
-        # Fallback to env vars if registry not available
-        _RERANKER_MODEL = os.getenv('RERANKER_MODEL', 'cross-encoder/ms-marco-MiniLM-L-12-v2')
-        _AGRO_RERANKER_ENABLED = int(os.getenv('AGRO_RERANKER_ENABLED', '1') or '1')
+        # Fallback to env vars if registry not available (with backwards compat)
+        _RERANKER_MODE = os.getenv('RERANKER_MODE') or os.getenv('RERANKER_ACTIVE') or os.getenv('RERANKER_BACKEND') or 'local'
+        _RERANKER_CLOUD_PROVIDER = os.getenv('RERANKER_CLOUD_PROVIDER') or os.getenv('RERANKER_PROVIDER') or 'cohere'
+        _RERANKER_CLOUD_MODEL = os.getenv('RERANKER_CLOUD_MODEL') or os.getenv('COHERE_RERANK_MODEL') or 'rerank-3.5'
+        _RERANKER_LOCAL_MODEL = os.getenv('RERANKER_LOCAL_MODEL') or os.getenv('RERANKER_MODEL') or 'cross-encoder/ms-marco-MiniLM-L-12-v2'
         _AGRO_RERANKER_ALPHA = float(os.getenv('AGRO_RERANKER_ALPHA', '0.7') or '0.7')
         _AGRO_RERANKER_TOPN = int(os.getenv('AGRO_RERANKER_TOPN', '50') or '50')
         _AGRO_RERANKER_BATCH = int(os.getenv('AGRO_RERANKER_BATCH', '16') or '16')
         _AGRO_RERANKER_MAXLEN = int(os.getenv('AGRO_RERANKER_MAXLEN', '512') or '512')
         _AGRO_RERANKER_RELOAD_ON_CHANGE = int(os.getenv('AGRO_RERANKER_RELOAD_ON_CHANGE', '0') or '0')
         _AGRO_RERANKER_RELOAD_PERIOD_SEC = int(os.getenv('AGRO_RERANKER_RELOAD_PERIOD_SEC', '60') or '60')
-        _COHERE_RERANK_MODEL = os.getenv('COHERE_RERANK_MODEL', 'rerank-3.5')
-        _VOYAGE_RERANK_MODEL = os.getenv('VOYAGE_RERANK_MODEL', 'rerank-2')
-        _RERANKER_BACKEND = os.getenv('RERANKER_BACKEND', 'local')
         _RERANKER_TIMEOUT = int(os.getenv('RERANKER_TIMEOUT', '10') or '10')
-        _RERANK_BACKEND = os.getenv('RERANK_BACKEND', _RERANKER_BACKEND)
         _RERANK_INPUT_SNIPPET_CHARS = int(os.getenv('RERANK_INPUT_SNIPPET_CHARS', '700') or '700')
-        _COHERE_RERANK_TOP_N = int(os.getenv('COHERE_RERANK_TOP_N', '50') or '50')
         _TRANSFORMERS_TRUST_REMOTE_CODE = int(os.getenv('TRANSFORMERS_TRUST_REMOTE_CODE', '1') or '1')
-        _RERANKER_ACTIVE = os.getenv('RERANKER_ACTIVE', _RERANKER_BACKEND)
-        _RERANKER_PROVIDER = os.getenv('RERANKER_PROVIDER', '')
-        _RERANKER_CLOUD_MODEL = os.getenv('RERANKER_CLOUD_MODEL', _COHERE_RERANK_MODEL)
     else:
-        _RERANKER_MODEL = _config_registry.get_str('RERANKER_MODEL', 'cross-encoder/ms-marco-MiniLM-L-12-v2')
-        _AGRO_RERANKER_ENABLED = _config_registry.get_int('AGRO_RERANKER_ENABLED', 1)
+        # Use config registry with backwards compat fallbacks
+        _RERANKER_MODE = _config_registry.get_str('RERANKER_MODE') or _config_registry.get_str('RERANKER_ACTIVE') or _config_registry.get_str('RERANKER_BACKEND', 'local')
+        _RERANKER_CLOUD_PROVIDER = _config_registry.get_str('RERANKER_CLOUD_PROVIDER') or _config_registry.get_str('RERANKER_PROVIDER', 'cohere')
+        _RERANKER_CLOUD_MODEL = _config_registry.get_str('RERANKER_CLOUD_MODEL') or _config_registry.get_str('COHERE_RERANK_MODEL', 'rerank-3.5')
+        _RERANKER_LOCAL_MODEL = _config_registry.get_str('RERANKER_LOCAL_MODEL') or _config_registry.get_str('RERANKER_MODEL', 'cross-encoder/ms-marco-MiniLM-L-12-v2')
         _AGRO_RERANKER_ALPHA = _config_registry.get_float('AGRO_RERANKER_ALPHA', 0.7)
         _AGRO_RERANKER_TOPN = _config_registry.get_int('AGRO_RERANKER_TOPN', 50)
         _AGRO_RERANKER_BATCH = _config_registry.get_int('AGRO_RERANKER_BATCH', 16)
         _AGRO_RERANKER_MAXLEN = _config_registry.get_int('AGRO_RERANKER_MAXLEN', 512)
         _AGRO_RERANKER_RELOAD_ON_CHANGE = _config_registry.get_int('AGRO_RERANKER_RELOAD_ON_CHANGE', 0)
         _AGRO_RERANKER_RELOAD_PERIOD_SEC = _config_registry.get_int('AGRO_RERANKER_RELOAD_PERIOD_SEC', 60)
-        _COHERE_RERANK_MODEL = _config_registry.get_str('COHERE_RERANK_MODEL', 'rerank-3.5')
-        _VOYAGE_RERANK_MODEL = _config_registry.get_str('VOYAGE_RERANK_MODEL', 'rerank-2')
-        _RERANKER_BACKEND = _config_registry.get_str('RERANKER_BACKEND', 'local')
         _RERANKER_TIMEOUT = _config_registry.get_int('RERANKER_TIMEOUT', 10)
-        _RERANK_BACKEND = _config_registry.get_str('RERANKER_BACKEND', _RERANKER_BACKEND)
         _RERANK_INPUT_SNIPPET_CHARS = _config_registry.get_int('RERANK_INPUT_SNIPPET_CHARS', 700)
-        _COHERE_RERANK_TOP_N = _config_registry.get_int('COHERE_RERANK_TOP_N', 50)
         _TRANSFORMERS_TRUST_REMOTE_CODE = _config_registry.get_int('TRANSFORMERS_TRUST_REMOTE_CODE', 1)
-        _RERANKER_ACTIVE = _config_registry.get_str('RERANKER_ACTIVE', _RERANKER_BACKEND)
-        _RERANKER_PROVIDER = _config_registry.get_str('RERANKER_PROVIDER', '')
-        _RERANKER_CLOUD_MODEL = _config_registry.get_str('RERANKER_CLOUD_MODEL', _COHERE_RERANK_MODEL)
 
     # Ensure transformers respects config for remote code
     try:
@@ -117,11 +99,9 @@ _SHARED_LOADER = shared_loader_enabled()
 if _SHARED_LOADER:
     _BOOT_SETTINGS = load_settings()
     DEFAULT_MODEL = resolve_model_target(_BOOT_SETTINGS)
-    COHERE_MODEL = _BOOT_SETTINGS.cohere_model
 else:
     # Use cached values from config registry
-    DEFAULT_MODEL = _RERANKER_MODEL
-    COHERE_MODEL = _COHERE_RERANK_MODEL
+    DEFAULT_MODEL = _RERANKER_LOCAL_MODEL
 
 def _sigmoid(x: float) -> float:
     try:
@@ -206,48 +186,54 @@ def _normalize_active_choice(value: Optional[str]) -> str:
 
 
 def _resolve_env_strategy() -> Dict[str, Any]:
-    """Resolve reranker backend/provider/model choices from cached config."""
+    """Resolve reranker mode/provider/model choices from unified RERANKER_MODE config."""
     _load_cached_config()
-    active_raw = _RERANKER_ACTIVE or _RERANKER_BACKEND or _RERANK_BACKEND or 'local'
-    provider_raw = _RERANKER_PROVIDER or _RERANKER_BACKEND or _RERANK_BACKEND
-    backend_raw = _RERANKER_BACKEND or _RERANK_BACKEND
 
-    active = _normalize_active_choice(active_raw)
-    provider_hint = _normalize_provider(provider_raw)
-    backend_hint = _normalize_backend(backend_raw)
+    # Get unified mode - 'cloud', 'local', 'learning', or 'none'
+    mode = _normalize_active_choice(_RERANKER_MODE)
 
-    if active == 'none':
+    # Determine backend based on mode
+    if mode == 'none':
         backend = 'none'
-    elif active == 'cloud':
-        backend = provider_hint or backend_hint or 'cloud'
-    elif active in _LOCALISH:
-        backend = 'local'
-    elif active == 'learning':
+    elif mode == 'cloud':
+        # When mode is 'cloud', backend is the cloud provider (cohere, voyage, jina)
+        provider = _normalize_provider(_RERANKER_CLOUD_PROVIDER) or 'cohere'
+        backend = provider
+    elif mode == 'learning':
         backend = 'learning'
     else:
-        backend = active
+        # 'local' or any localish value
+        backend = 'local'
 
-    if not backend or backend == 'cloud':
-        backend = provider_hint or backend_hint or 'local'
+    # Get provider (only meaningful for cloud mode)
+    provider = _RERANKER_CLOUD_PROVIDER if mode == 'cloud' else ''
 
-    provider = provider_hint or (backend if backend not in (_LOCALISH | {'learning', 'none'}) else '')
-    cloud_model = _RERANKER_CLOUD_MODEL or (_COHERE_RERANK_MODEL if provider == 'cohere' else _VOYAGE_RERANK_MODEL if provider == 'voyage' else None)
+    # Get models
+    cloud_model = _RERANKER_CLOUD_MODEL
+    local_model = _RERANKER_LOCAL_MODEL or DEFAULT_MODEL
 
-    model_name = _RERANKER_MODEL or DEFAULT_MODEL
+    # Determine which model to use based on mode
+    if mode == 'cloud':
+        model_name = cloud_model
+    elif mode == 'learning':
+        model_name = 'models/cross-encoder-agro'
+    else:
+        model_name = local_model
+
     snippet_local = _RERANK_INPUT_SNIPPET_CHARS or 700
     snippet_cloud = min(snippet_local + 100, 700)
-    metrics_label = f"{backend}:{cloud_model or model_name}" if backend and backend != 'none' else "none"
-    enabled = backend not in {'none'} and bool(_AGRO_RERANKER_ENABLED if _AGRO_RERANKER_ENABLED is not None else 1)
+    metrics_label = f"{backend}:{cloud_model or local_model}" if backend and backend != 'none' else "none"
+    enabled = mode not in {'none'}
 
     return {
-        "active": active,
-        "backend": backend,
+        "mode": mode,
         "provider": provider,
         "cloud_model": cloud_model,
+        "local_model": local_model,
         "model_name": model_name,
         "snippet_local": snippet_local,
         "snippet_cloud": snippet_cloud,
-        "cohere_top_n": _COHERE_RERANK_TOP_N or 50,
+        "cloud_top_n": _AGRO_RERANKER_TOPN or 50,
         "metrics_label": metrics_label,
         "trust_remote_code": bool(_TRANSFORMERS_TRUST_REMOTE_CODE),
         "timeout": _RERANKER_TIMEOUT or 10,
@@ -255,20 +241,21 @@ def _resolve_env_strategy() -> Dict[str, Any]:
         "topn": _AGRO_RERANKER_TOPN or 50,
         "batch": _AGRO_RERANKER_BATCH or 16,
         "maxlen": _AGRO_RERANKER_MAXLEN or 512,
+        "enabled": enabled,
     }
 
 
 def get_rerank_config_info() -> Dict[str, Any]:
     """Expose current rerank configuration snapshot."""
     cfg = _resolve_env_strategy()
-    provider = cfg.get("provider")
-    cloud_model = cfg.get("cloud_model") or (_COHERE_RERANK_MODEL if provider == 'cohere' else _VOYAGE_RERANK_MODEL if provider == 'voyage' else None)
-    model_name = cfg.get("model_name")
     return {
-        "backend": cfg.get("backend"),
+        "mode": cfg.get("mode"),
         "enabled": cfg.get("enabled"),
-        "model": model_name,
-        "model_path": model_name,
+        "model": cfg.get("model_name"),
+        "model_path": cfg.get("model_name"),
+        "local_model": cfg.get("local_model"),
+        "cloud_model": cfg.get("cloud_model"),
+        "cloud_provider": cfg.get("provider"),
         "snippet_chars": cfg.get("snippet_local"),
         "timeout": cfg.get("timeout"),
         "trust_remote_code": cfg.get("trust_remote_code"),
@@ -276,12 +263,7 @@ def get_rerank_config_info() -> Dict[str, Any]:
         "topn": cfg.get("topn"),
         "batch": cfg.get("batch"),
         "maxlen": cfg.get("maxlen"),
-        "cohere_model": _COHERE_RERANK_MODEL or COHERE_MODEL,
-        "voyage_model": _VOYAGE_RERANK_MODEL,
-        "cohere_top_n": _COHERE_RERANK_TOP_N or 50,
-        "active": cfg.get("active"),
-        "provider": provider,
-        "cloud_model": cloud_model,
+        "cloud_top_n": cfg.get("cloud_top_n"),
     }
 
 def get_reranker() -> Optional[Reranker]:
@@ -292,8 +274,23 @@ def get_reranker() -> Optional[Reranker]:
         model_name = resolve_model_target(settings)
         max_length = settings.max_length
     else:
-        # Use cached config values instead of os.getenv
-        model_name = _RERANKER_MODEL or DEFAULT_MODEL
+        _load_cached_config()
+
+        # Cloud mode uses API calls, not local reranker
+        if _RERANKER_MODE == 'cloud':
+            return None
+
+        # Disabled mode
+        if _RERANKER_MODE == 'none':
+            return None
+
+        # Learning mode uses AGRO model
+        if _RERANKER_MODE == 'learning':
+            model_name = 'models/cross-encoder-agro'
+        else:
+            # Local mode uses configured local model
+            model_name = _RERANKER_LOCAL_MODEL or DEFAULT_MODEL
+
         max_length = _AGRO_RERANKER_MAXLEN or 512
 
     if _RERANKER is not None and _RERANKER_MODEL_ID != model_name:
@@ -323,23 +320,39 @@ def rerank_results(query: str, results: List[Dict[str, Any]], top_k: int = 10, t
         metrics_label = settings.metrics_label
         snippet_local = settings.snippet_chars
         snippet_cohere = settings.snippet_chars
-        cohere_model = settings.cohere_model or COHERE_MODEL
+        cohere_model = settings.cohere_model or 'rerank-3.5'
         cohere_top_n = settings.top_n_cloud
         cohere_key_present = settings.cohere_api_key_present
     else:
-        # Use cached config values instead of os.getenv
+        # Use cached config values from unified RERANKER_MODE
         cfg = _resolve_env_strategy()
-        backend = cfg.get("backend")
+        mode = cfg.get("mode")
         provider = cfg.get("provider")
         enabled = bool(cfg.get("enabled"))
         model_name = cfg.get("model_name")
         cloud_model = cfg.get("cloud_model")
-        metrics_label = cfg.get("metrics_label") or "none"
-        snippet_local = cfg.get("snippet_local") or 600
-        snippet_cohere = cfg.get("snippet_cloud") or 700
-        cohere_model = cloud_model if backend == 'cohere' else (_COHERE_RERANK_MODEL or COHERE_MODEL)
-        cohere_top_n = cfg.get("cohere_top_n") or 50
-        cohere_key_present = bool(os.getenv('COHERE_API_KEY'))
+        metrics_label = cfg.get("metrics_label")
+        snippet_local = cfg.get("snippet_local")
+        snippet_cloud = cfg.get("snippet_cloud")
+        cloud_top_n = cfg.get("cloud_top_n")
+
+        # Validate cloud mode configuration
+        if mode == 'cloud':
+            if not provider:
+                raise ValueError(
+                    f"RERANKER_MODE='{mode}' requires RERANKER_CLOUD_PROVIDER to be set"
+                )
+            if not cloud_model:
+                raise ValueError(
+                    f"RERANKER_MODE='{mode}' with RERANKER_CLOUD_PROVIDER='{provider}' "
+                    f"requires RERANKER_CLOUD_MODEL to be set"
+                )
+            api_key_env = f"{provider.upper()}_API_KEY"
+            if not os.getenv(api_key_env):
+                raise ValueError(
+                    f"RERANKER_MODE='{mode}' with RERANKER_CLOUD_PROVIDER='{provider}' "
+                    f"requires {api_key_env} environment variable to be set"
+                )
 
     if not enabled:
         for i, r in enumerate(results):

@@ -16,6 +16,27 @@ import { formatBytes } from '@web/utils/formatters';
  * Hook for Calculator 1: Full Storage Requirements
  * Calculates exact storage needs for a given configuration
  */
+/**
+ * ---agentspec
+ * what: |
+ *   Custom React hook that manages state for a storage calculator component.
+ *   Initializes and provides access to calculator input parameters: repository size (with unit conversion), chunk size (with unit conversion), embedding dimensions, and floating-point precision.
+ *   Returns an `inputs` object containing all calculator parameters and a `setInputs` function to update them.
+ *   Stores numeric values with their corresponding unit multipliers (e.g., repoUnit: 1073741824 for GiB conversion to bytes).
+ *   Handles no edge cases internally; validation and computation logic must be implemented by consuming components.
+ *
+ * why: |
+ *   Centralizes calculator state management in a reusable hook to avoid prop drilling and duplicate state logic across multiple components.
+ *   Uses unit multipliers (1073741824 for GiB, 1024 for KiB) to enable flexible unit selection while maintaining consistent byte-based calculations downstream.
+ *   Separates state initialization from business logic, allowing the hook to remain simple and testable.
+ *
+ * guardrails:
+ *   - DO NOT add calculation logic to this hook; keep it a pure state container to maintain separation of concerns
+ *   - ALWAYS ensure unit multipliers match standard byte conversion factors (1024 for binary units, 1000 for decimal) to prevent silent calculation errors
+ *   - NOTE: Default precision value of 4 assumes float32; if precision semantics change, update documentation and validate all dependent calculations
+ *   - ASK USER: Before adding derived state (e.g., computed total storage), confirm whether calculations should live in this hook or in a separate custom hook
+ * ---/agentspec
+ */
 export function useStorageCalculator() {
   // Input state
   const [inputs, setInputs] = useState<CalculatorInputs>({
@@ -115,6 +136,27 @@ export function useStorageCalculator() {
 /**
  * Hook for Calculator 2: Optimization & Fitting
  * Compares different strategies to fit within a target storage limit
+ */
+/**
+ * ---agentspec
+ * what: |
+ *   React hook that manages state for an optimization calculator component.
+ *   Accepts optional CalculatorInputs parameter (calculator1Inputs) but does not use it; initializes Calculator2Inputs state with hardcoded defaults.
+ *   Returns state object containing repoSize, repoUnit, targetSize, targetUnit, chunkSize, chunkUnit as numbers.
+ *   Provides setInputs function to update calculator state.
+ *   No side effects on mount; state persists across re-renders until component unmounts.
+ *
+ * why: |
+ *   Encapsulates calculator state management in a reusable hook to separate UI logic from state handling.
+ *   Hardcoded defaults (5 GiB repo, 5 GiB target, 4 KiB chunks) provide sensible starting values for typical optimization scenarios.
+ *   Units stored as byte multipliers (1073741824 for GiB, 1024 for KiB) to enable unit-agnostic calculations downstream.
+ *
+ * guardrails:
+ *   - DO NOT remove the unused calculator1Inputs parameter without confirming it was intentionally deprecated; ASK USER if this parameter should be integrated or formally removed
+ *   - ALWAYS ensure setInputs updates maintain the Calculator2Inputs type contract; adding new fields requires type definition updates
+ *   - NOTE: Hardcoded defaults are not configurable; if defaults need to vary by context, consider accepting them as hook parameters
+ *   - ASK USER: Clarify whether calculator1Inputs parameter should be merged into initial state or if it represents a deprecated API that can be removed
+ * ---/agentspec
  */
 export function useOptimizationCalculator(calculator1Inputs?: CalculatorInputs) {
   // Input state

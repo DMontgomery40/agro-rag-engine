@@ -29,7 +29,9 @@ interface RepoStore {
   loading: boolean;
   error: string | null;
   switching: boolean;
-  
+  /** True after first load attempt (success or failure) - prevents infinite loops */
+  initialized: boolean;
+
   // Actions
   loadRepos: () => Promise<void>;
   setActiveRepo: (repoName: string) => Promise<void>;
@@ -76,44 +78,53 @@ export const useRepoStore = create<RepoStore>((set, get) => ({
   loading: false,
   error: null,
   switching: false,
+  initialized: false,
 
   loadRepos: async () => {
+    // Prevent concurrent loads - if already loading, skip
+    const { loading } = get();
+    if (loading) {
+      return;
+    }
+
     set({ loading: true, error: null });
     try {
       const apiBase = getApiBase();
-      
+
       // Fetch repos list AND current config in parallel
       const [reposRes, configRes] = await Promise.all([
         fetch(`${apiBase}/repos`),
         fetch(`${apiBase}/config`)
       ]);
-      
+
       if (!reposRes.ok || !configRes.ok) {
         throw new Error('Failed to load repos or config');
       }
-      
+
       const reposData = await reposRes.json();
       const configData = await configRes.json();
-      
+
       const repos: Repository[] = reposData.repos || [];
       const activeRepo = configData.env?.REPO || configData.default_repo || (repos[0]?.name || 'agro');
-      
-      set({ 
-        repos, 
+
+      set({
+        repos,
         activeRepo,
-        loading: false, 
-        error: null 
+        loading: false,
+        error: null,
+        initialized: true
       });
-      
+
       // Broadcast repo state for any listeners
-      window.dispatchEvent(new CustomEvent('agro-repo-loaded', { 
-        detail: { repos, activeRepo } 
+      window.dispatchEvent(new CustomEvent('agro-repo-loaded', {
+        detail: { repos, activeRepo }
       }));
-      
+
     } catch (error) {
       set({
         loading: false,
-        error: error instanceof Error ? error.message : 'Failed to load repositories'
+        error: error instanceof Error ? error.message : 'Failed to load repositories',
+        initialized: true  // Mark as initialized even on error to prevent retry loops
       });
     }
   },
@@ -250,4 +261,5 @@ export const useRepos = () => useRepoStore(state => state.repos);
  */
 export const useRepoLoading = () => useRepoStore(state => state.loading || state.switching);
 
-
+/** Returns true after first load attempt (success or failure) - use to prevent infinite load loops */
+export const useRepoInitialized = () => useRepoStore(state => state.initialized);

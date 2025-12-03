@@ -139,9 +139,23 @@ def generate_text(
         "input": user_input,
         "store": store,
     }
+
     # Use cached temperature value
     temp = _GEN_TEMPERATURE
-    kwargs["temperature"] = temp
+
+    # Some models (o1-series, gpt-5) don't support custom temperature
+    # They only accept temperature=1 or omit it entirely
+    reasoning_models = {"o1-preview", "o1-mini", "o1", "gpt-5", "gpt-5.1", "gpt-5-mini", "gpt-5.1-mini"}
+    is_reasoning_model = (
+        mdl in reasoning_models or
+        (mdl and (mdl.startswith("o1-") or mdl.startswith("o1 ") or "gpt-5" in mdl))
+    )
+
+    if is_reasoning_model:
+        # Reasoning models only support temperature=1, so omit it (defaults to 1)
+        pass
+    else:
+        kwargs["temperature"] = temp
     if system_instructions:
         kwargs["instructions"] = system_instructions
     if reasoning_effort:
@@ -305,7 +319,7 @@ def generate_text(
     from server.api_tracker import track_api_call, APIProvider
 
     try:
-        # OpenAI Responses API (supports temperature)
+        # OpenAI Responses API - Primary path
         if _OPENAI_SDK is None or not hasattr(_OPENAI_SDK, "OpenAI"):
             raise RuntimeError("OpenAI client not available")
 
@@ -349,58 +363,7 @@ def generate_text(
             pass
 
         return text, meta
-    except Exception:
-        try:
-            messages = []
-            if system_instructions:
-                messages.append({"role": "system", "content": system_instructions})
-            messages.append({"role": "user", "content": user_input})
-            # Chat Completions fallback (supports temperature as well)
-            ckwargs: Dict[str, Any] = {"model": mdl, "messages": messages, "temperature": temp}
-            if response_format and isinstance(response_format, dict):
-                ckwargs["response_format"] = response_format
-
-            start = timer.time()
-            cc = None
-            if _OPENAI_SDK is not None and hasattr(_OPENAI_SDK, "OpenAI"):
-                cc = client().chat.completions.create(**ckwargs)
-            elif _OPENAI_LEGACY is not None:
-                # Legacy SDK path (<=0.x) - best-effort compatibility
-                _OPENAI_LEGACY.api_key = os.getenv("OPENAI_API_KEY")
-                # Legacy library expects "messages" to be a list of dicts under ChatCompletion
-                cc = _OPENAI_LEGACY.ChatCompletion.create(**ckwargs)  # type: ignore
-            else:
-                raise RuntimeError("OpenAI SDK not installed")
-
-            duration_ms = (timer.time() - start) * 1000
-
-            text = ""
-            if cc:
-                if hasattr(cc, "choices"):
-                    text = (cc.choices[0].message.content if getattr(cc, "choices", []) else "") or ""
-                elif isinstance(cc, dict):
-                    choices = cc.get("choices") or []
-                    if choices:
-                        msg = (choices[0].get("message") or {})
-                        text = msg.get("content") or choices[0].get("text") or ""
-
-            # Track API call
-            tokens_used = getattr(getattr(cc, 'usage', None), 'total_tokens', 0) or 0
-            prompt_tokens = getattr(getattr(cc, 'usage', None), 'prompt_tokens', 0) or tokens_used // 2
-            completion_tokens = getattr(getattr(cc, 'usage', None), 'completion_tokens', 0) or tokens_used // 2
-            # gpt-4o-mini pricing: ~$0.15 per 1M input tokens, $0.60 per 1M output tokens
-            cost_usd = (prompt_tokens / 1_000_000) * 0.15 + (completion_tokens / 1_000_000) * 0.60
-
-            track_api_call(
-                provider=APIProvider.OPENAI,
-                endpoint="https://api.openai.com/v1/chat/completions",
-                method="POST",
-                duration_ms=duration_ms,
-                status_code=200,
-                tokens_estimated=tokens_used,
-                cost_usd=cost_usd
-            )
-
-            return text, cc
-        except Exception as e:
-            raise RuntimeError(f"Generation failed for model={mdl}: {e}")
+    except Exception as e:
+        # No fallback - Chat Completions API is deprecated
+        # Only use Responses API (https://platform.openai.com/docs/api-reference/responses/create)
+        raise RuntimeError(f"Generation failed for model={mdl}: {e}")

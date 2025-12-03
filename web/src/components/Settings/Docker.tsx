@@ -56,11 +56,11 @@ export function Docker() {
 
     loadData();
 
-    // Refresh every 5 seconds
+    // Refresh every 30 seconds
     const interval = setInterval(() => {
       fetchStatus();
       fetchContainers();
-    }, 5000);
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [fetchStatus, fetchContainers]);

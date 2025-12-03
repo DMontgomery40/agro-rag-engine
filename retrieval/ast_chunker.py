@@ -1,12 +1,15 @@
 import os
 import re
 import hashlib
+import logging
 from typing import Dict, List, Optional
 
 try:
     from tree_sitter_languages import get_parser as _ts_get_parser  # type: ignore
 except Exception:
     _ts_get_parser = None
+
+logger = logging.getLogger("agro.ast_chunker")
 
 LANG_MAP = {
     ".py": "python", ".js": "javascript", ".jsx": "javascript",
@@ -151,7 +154,27 @@ def _guess_name(lang:str, text:str)->Optional[str]:
         return m.group(1) if m else None
     return None
 
-def chunk_code(src:str, fpath:str, lang:str, target:int=900)->List[Dict]:
+def chunk_code(
+    src: str,
+    fpath: str,
+    lang: str,
+    target: int = 900,
+    max_tokens: Optional[int] = None,
+    provider: str = "openai"
+) -> List[Dict]:
+    """Chunk code with optional token limit awareness.
+
+    Args:
+        src: Source code to chunk
+        fpath: File path for metadata
+        lang: Programming language
+        target: Target non-whitespace character count
+        max_tokens: Maximum tokens per chunk (from provider limits)
+        provider: Provider for token counting (openai, voyage, etc)
+
+    Returns:
+        List of chunk dictionaries
+    """
     try:
         if _ts_get_parser is None:
             raise RuntimeError("tree_sitter_languages not available")
@@ -194,6 +217,38 @@ def chunk_code(src:str, fpath:str, lang:str, target:int=900)->List[Dict]:
                     "imports": extract_imports(src, lang),
                     "code": chunk_text,
                 })
+
+        # Validate token limits if specified
+        if max_tokens:
+            from common.token_utils import get_token_counter
+
+            counter = get_token_counter(provider)
+            validated_chunks: List[Dict] = []
+
+            for chunk in chunks:
+                token_count = counter.count_tokens(chunk['code'])
+
+                if token_count <= max_tokens:
+                    validated_chunks.append(chunk)
+                else:
+                    # Split oversized chunk using greedy fallback
+                    logger.warning(
+                        f"⚠️  Chunk in {fpath}:{chunk.get('start_line')} exceeds {max_tokens} tokens "
+                        f"({token_count} tokens), splitting..."
+                    )
+                    # Use greedy fallback to split the chunk further
+                    split_chunks = greedy_fallback(chunk['code'], fpath, lang, target // 2)
+                    for sub_chunk in split_chunks:
+                        # Preserve metadata from parent chunk
+                        sub_chunk.update({
+                            "file_path": fpath,
+                            "language": lang,
+                            "imports": chunk.get("imports", [])
+                        })
+                        validated_chunks.append(sub_chunk)
+
+            return validated_chunks
+
         return chunks
     except Exception:
         return greedy_fallback(src, fpath, lang, target)

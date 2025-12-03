@@ -1,4 +1,125 @@
 {
   "default_repo": "agro",
-  "repos": []
+  "repos": [
+    {
+      "name": "agro",
+      "slug": "agro",
+      "path": ".",
+      "exclude_paths": [
+        "docs",
+        "agent_docs",
+        "website",
+        "tests",
+        "assets",
+        "internal_docs.md",
+        "out/",
+        "checkpoints/",
+        "models/",
+        "data/",
+        "telemetry/",
+        "node_mcp/",
+        "public/",
+        "examples/",
+        "bin/",
+        "reports/",
+        "screenshots/",
+        "web/dist",
+        "gui"
+      ],
+      "keywords": [
+        "alertmanager",
+        "ast",
+        "autotune",
+        "bm25",
+        "bonus",
+        "chunking",
+        "cross-encoder",
+        "docker-compose",
+        "editor",
+        "embedding",
+        "eval",
+        "exclusion",
+        "fastapi",
+        "feedback",
+        "filtering",
+        "final_k",
+        "float",
+        "golden",
+        "golden questions",
+        "grafana",
+        "hybrid",
+        "hybrid_search",
+        "indexer",
+        "langgraph",
+        "layer",
+        "learning reranker",
+        "local",
+        "loki",
+        "mcp",
+        "metadata",
+        "micro-interactions",
+        "models",
+        "navigation",
+        "openai",
+        "openvscode",
+        "playwright",
+        "prometheus",
+        "python",
+        "qdrant",
+        "redis",
+        "rerank",
+        "reranker",
+        "retrieval",
+        "rrf",
+        "search",
+        "semantic",
+        "stdio",
+        "synonym",
+        "telemetry",
+        "tokens",
+        "tooltip",
+        "tracing",
+        "triplet",
+        "vscode"
+      ],
+      "path_boosts": [
+        "server",
+        "indexer",
+        "retrieval",
+        "scripts",
+        "server/routers/",
+        "server/services/",
+        "server/",
+        "web/src/components/",
+        "indexer/",
+        "infra/",
+        "web"
+      ],
+      "layer_bonuses": {
+        "retrieval": {
+          "retrieval": 0.15,
+          "server": 0.05
+        },
+        "indexer": {
+          "indexer": 0.15,
+          "retrieval": 0.08,
+          "common": 0.05
+        },
+        "eval": {
+          "eval": 0.15,
+          "tests": 0.1,
+          "retrieval": 0.05
+        },
+        "infra": {
+          "infra": 0.15,
+          "scripts": 0.08
+        },
+        "server": {
+          "server": 0.55,
+          "retrieval": 0.05,
+          "common": 0.05
+        }
+      }
+    }
+  ]
 }

@@ -162,7 +162,7 @@
       if (window.showStatus) window.showStatus('Starting indexer...', 'loading');
       await fetch(api('/api/index/start'), { method:'POST' });
       if (indexPoll) clearInterval(indexPoll);
-      indexPoll = setInterval(pollIndexStatus, 800);
+      indexPoll = setInterval(pollIndexStatus, 2000); // poll every 2 seconds during indexing
       await pollIndexStatus();
     }catch(e){ if (window.showStatus) window.showStatus('Failed to start indexer: ' + e.message, 'error'); throw e; }
   }

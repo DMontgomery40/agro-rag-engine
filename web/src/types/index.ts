@@ -48,6 +48,10 @@ export interface EnvConfig {
   REPO?: string;
   THEME_MODE?: 'auto' | 'dark' | 'light';
   API_BASE_URL?: string;
+  // Eval settings (Pydantic-validated integers)
+  EVAL_MULTI?: number;
+  EVAL_FINAL_K?: number;
+  EVAL_MULTI_M?: number;
 }
 
 export interface Repository {

@@ -219,13 +219,13 @@
         // Initial status check
         updateHTTPStatus();
 
-        // Auto-refresh status every 10 seconds if on infrastructure tab
+        // Auto-refresh status every 30 seconds if on infrastructure tab
         setInterval(() => {
             const infraTab = $('#tab-infrastructure');
             if (infraTab && infraTab.classList.contains('active')) {
                 updateHTTPStatus();
             }
-        }, 10000);
+        }, 30000);
     }
 
     // Export to window

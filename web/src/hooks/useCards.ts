@@ -1,20 +1,52 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useAPI } from './useAPI';
+import { useCardsStore } from '@/stores';
 import type {
-  Card,
   CardsResponse,
   CardsBuildOptions,
-  LastBuild,
-  CardsBuildStatus
 } from '@web/types/cards';
 
+/**
+ * ---agentspec
+ * what: |
+ *   Custom React hook that wraps useCardsStore (Zustand) to manage card data and build state.
+ *   Uses centralized Zustand store for state management with Pydantic validation from backend.
+ *   Returns an object containing: cards array, lastBuild, loading states, error, and action functions.
+ *   All state changes go through the Zustand store to maintain single source of truth.
+ *
+ * why: |
+ *   Follows AGRO architecture pattern: Hooks wrap Zustand stores that sync with Pydantic backend.
+ *   Eliminates local useState which causes state duplication and sync issues.
+ *   Provides consistent state access across all components using cards functionality.
+ *
+ * guardrails:
+ *   - DO NOT use useState for any state - MUST use Zustand store only
+ *   - ALWAYS clear error state when starting new operations
+ *   - All config values MUST come from Pydantic backend via useConfigStore
+ * ---/agentspec
+ */
 export function useCards() {
   const { api } = useAPI();
-  const [cards, setCards] = useState<Card[]>([]);
-  const [lastBuild, setLastBuild] = useState<LastBuild | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isBuilding, setIsBuilding] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    cards,
+    lastBuild,
+    isLoading,
+    isBuilding,
+    buildInProgress,
+    buildStage,
+    buildProgress,
+    progressRepo,
+    error,
+    setCards,
+    setLastBuild,
+    setIsLoading,
+    setIsBuilding,
+    setBuildInProgress,
+    setBuildStage,
+    setBuildProgress,
+    setProgressRepo,
+    setError,
+  } = useCardsStore();
 
   const load = useCallback(async () => {
     try {
@@ -112,10 +144,18 @@ export function useCards() {
     lastBuild,
     isLoading,
     isBuilding,
+    buildInProgress,
+    buildStage,
+    buildProgress,
+    progressRepo,
     error,
     load,
     build,
     deleteCard,
-    jumpToLine
+    jumpToLine,
+    setBuildInProgress,
+    setBuildStage,
+    setBuildProgress,
+    setProgressRepo,
   };
 }

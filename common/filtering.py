@@ -8,6 +8,8 @@ PRUNE_DIRS = {
     # Build artifacts and caches
     ".venv", "node_modules", "dist", "build", "target", "__pycache__",
     "coverage", ".tox", ".mypy_cache", ".pytest_cache",
+    # Docs build outputs
+    "site", "_site",
     # AGRO internal directories (docs, data, outputs, etc.)
     "docs", "agent_docs", "website", "tests", "out", "checkpoints", "models",
     "data", "telemetry", "node_mcp", "public", "examples", "bin", "reports",

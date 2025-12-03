@@ -6,6 +6,27 @@ import { useConfigStore } from '@/stores';
  * ADA CRITICAL: This button saves all settings changes
  * Must be fully functional for accessibility compliance
  */
+/**
+ * ---agentspec
+ * what: |
+ *   Custom React hook that manages the "Apply" button state for configuration changes.
+ *   Tracks dirty state (whether config differs from baseline), saving state, and save errors using local useState and Zustand store snapshots.
+ *   Returns state variables: isDirty (boolean), isSaving (boolean), saveError (string | null), and baselineRef (MutableRefObject).
+ *   Initializes baselineRef to null and captures initial Zustand store state (config and saving flag) into local state snapshots.
+ *   Edge case: Does not subscribe to Zustand store updates; snapshots are captured only at mount time, so subsequent store changes are not reflected.
+ *
+ * why: |
+ *   Separates UI state management (isDirty, isSaving, saveError) from Zustand global state to avoid adding extra hooks to the App component.
+ *   Uses baselineRef to store the original config value for dirty-state comparison without triggering re-renders.
+ *   Captures store state at initialization to provide a consistent baseline, avoiding the need for useShallow or manual subscription logic.
+ *
+ * guardrails:
+ *   - DO NOT rely on this hook to reflect real-time Zustand store updates; snapshots are frozen at mount time and will not update if the store changes
+ *   - ALWAYS initialize baselineRef.current with the actual config value before comparing isDirty, or dirty detection will fail
+ *   - NOTE: This hook does not include useEffect subscriptions to Zustand; if store state must be reactive, consider adding useShallow or a custom subscription
+ *   - ASK USER: Confirm whether configSnapshot and storeSaving should auto-update when the Zustand store changes, or if frozen snapshots at mount are intentional
+ * ---/agentspec
+ */
 export function useApplyButton() {
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -21,6 +42,27 @@ export function useApplyButton() {
 
   // Track form changes to enable/disable Apply button
   useEffect(() => {
+    /**
+     * ---agentspec
+     * what: |
+     *   Handles form state changes by setting a dirty flag and clearing any previous save errors.
+     *   Takes no parameters; triggered by 'input' and 'change' events on the document.
+     *   Sets isDirty to true (indicating unsaved changes) and clears setSaveError to null.
+     *   Attaches global event listeners to document that fire on any input or change event anywhere in the DOM.
+     *   Edge case: Listeners are never removed, causing memory leaks if component unmounts; listeners will fire even after component is destroyed.
+     *
+     * why: |
+     *   Tracks whether the form has unsaved changes and clears stale error messages when the user modifies any field.
+     *   Global document listeners were chosen for simplicity to catch all form changes without wiring individual field handlers.
+     *   This approach avoids prop drilling and per-field onChange handlers, but sacrifices cleanup and specificity.
+     *
+     * guardrails:
+     *   - DO NOT attach event listeners without cleanup; these listeners will persist after component unmount and cause memory leaks
+     *   - ALWAYS remove event listeners in a useEffect cleanup function to prevent duplicate listeners and memory accumulation
+     *   - NOTE: Global document listeners fire on ANY input/change event, including unrelated form fields or third-party components
+     *   - ASK USER: Confirm whether listeners should be scoped to a specific form element (e.g., formRef) instead of the entire document before refactoring
+     * ---/agentspec
+     */
     const handleFormChange = () => {
       setIsDirty(true);
       setSaveError(null);
@@ -42,28 +84,18 @@ export function useApplyButton() {
 
   // Subscribe to Zustand store for config/saving/error without adding extra hooks
   useEffect(() => {
-    const unsubConfig = useConfigStore.subscribe(
-      state => state.config,
-      cfg => {
-        setConfigSnapshot(cfg);
-        // set baseline if first time
-        if (cfg && !baselineRef.current) {
-          baselineRef.current = JSON.stringify(cfg);
-        }
+    const unsubscribe = useConfigStore.subscribe(state => {
+      const cfg = state.config;
+      setConfigSnapshot(cfg);
+      // set baseline if first time
+      if (cfg && !baselineRef.current) {
+        baselineRef.current = JSON.stringify(cfg);
       }
-    );
-    const unsubSaving = useConfigStore.subscribe(
-      state => state.saving,
-      saving => setStoreSaving(saving)
-    );
-    const unsubError = useConfigStore.subscribe(
-      state => state.error,
-      err => setStoreError(err ? String(err) : null)
-    );
+      setStoreSaving(state.saving);
+      setStoreError(state.error ? String(state.error) : null);
+    });
     return () => {
-      unsubConfig();
-      unsubSaving();
-      unsubError();
+      unsubscribe();
     };
   }, []);
 

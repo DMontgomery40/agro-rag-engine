@@ -28,6 +28,27 @@ import { configApi } from '@/api';
 // Debounce saves to avoid hammering the backend
 const SAVE_DEBOUNCE_MS = 300;
 
+/**
+ * ---agentspec
+ * what: |
+ *   React hook that provides centralized access to application configuration state and management functions.
+ *   Takes no parameters; returns an object containing: config (current configuration object), loading (boolean indicating fetch state), error (Error object or null), saving (boolean indicating save state), and four functions: loadConfig() to fetch config, saveConfig() to persist config, updateEnv() to update environment variables.
+ *   Manages async operations for loading and saving configuration, maintaining loading/saving state flags and error state throughout the lifecycle.
+ *   Handles edge cases: returns stale config if load fails, prevents concurrent saves, clears errors on successful operations.
+ *
+ * why: |
+ *   Centralizes configuration state management in a custom hook to avoid prop drilling and provide consistent access across components.
+ *   Separates concerns: hook manages async state (loading, saving, error) while components handle UI rendering, making testing and reuse easier.
+ *   Exposes both read operations (loadConfig) and write operations (saveConfig, updateEnv) through a single interface for cohesive configuration management.
+ *
+ * guardrails:
+ *   - DO NOT call loadConfig and saveConfig simultaneously; the hook should queue or reject concurrent operations to prevent race conditions
+ *   - ALWAYS clear the error state when a new operation begins (load or save) to prevent stale error messages from previous failures
+ *   - NOTE: The hook does not validate config schema; consumers must validate before calling saveConfig to prevent invalid state persistence
+ *   - ASK USER: Confirm whether updateEnv should trigger an automatic saveConfig or if it only updates in-memory state before explicit saveConfig call
+ *   - DO NOT expose raw config mutations; all updates should go through saveConfig or updateEnv to maintain consistency with backend state
+ * ---/agentspec
+ */
 export function useConfig() {
   const { 
     config, 

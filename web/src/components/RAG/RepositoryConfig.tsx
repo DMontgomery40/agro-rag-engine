@@ -29,7 +29,7 @@ interface RepositoryConfigProps {
  */
 export function RepositoryConfig({ onExcludePathsChange }: RepositoryConfigProps) {
   // Get repos and active repo from Zustand store
-  const { repos, activeRepo, loading: reposLoading, getRepoByName, loadRepos } = useRepoStore();
+  const { repos, activeRepo, loading: reposLoading, getRepoByName, loadRepos, initialized } = useRepoStore();
   const { updateRepo, saving } = useConfigStore();
   
   // Get current repo data from store (reactive to store changes)
@@ -45,12 +45,12 @@ export function RepositoryConfig({ onExcludePathsChange }: RepositoryConfigProps
   // Ref to track if we're initializing from store (prevent save on mount)
   const isInitializing = useRef(true);
 
-  // Load repos on mount if not loaded
+  // Load repos once on mount if not yet initialized
   useEffect(() => {
-    if (repos.length === 0 && !reposLoading) {
+    if (!initialized && !reposLoading) {
       loadRepos();
     }
-  }, [repos.length, reposLoading, loadRepos]);
+  }, [initialized, reposLoading, loadRepos]);
 
   // Sync local inputs from store when repo changes
   useEffect(() => {

@@ -40,12 +40,14 @@ export function QuickActions() {
   const [evalError, setEvalError] = useState<string | null>(null);
   
   // Use centralized repo store
-  const { activeRepo, switching, loadRepos } = useRepoStore();
-  
-  // Load repos on mount
+  const { activeRepo, switching, loadRepos, initialized } = useRepoStore();
+
+  // Load repos once on mount if not yet initialized
   useEffect(() => {
-    loadRepos();
-  }, [loadRepos]);
+    if (!initialized) {
+      loadRepos();
+    }
+  }, [initialized, loadRepos]);
 
   useEffect(() => {
     if (!showEvalDropdown) {

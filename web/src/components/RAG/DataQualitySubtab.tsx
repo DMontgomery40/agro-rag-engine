@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAPI } from '@/hooks';
+import { useCards } from '@/hooks/useCards';
 import { RepositoryConfig } from './RepositoryConfig';
 import { useRepoStore } from '@/stores/useRepoStore';
 import { CardsViewer } from './CardsViewer';
@@ -41,9 +42,12 @@ declare global {
  */
 export function DataQualitySubtab() {
   const { api } = useAPI();
-  
+
   // Use centralized repo store
-  const { repos: storeRepos, activeRepo, loadRepos: storeLoadRepos } = useRepoStore();
+  const { repos: storeRepos, activeRepo, loadRepos: storeLoadRepos, loading, error: repoError, initialized } = useRepoStore();
+
+  // Use cards store for build state - NO LOCAL USESTATE
+  const { buildInProgress, buildStage, progressRepo } = useCards();
   /**
    * ---agentspec
    * what: |
@@ -79,13 +83,21 @@ export function DataQualitySubtab() {
   const [keywordsGenerateStatus, setKeywordsGenerateStatus] = useState<string>('');
   const [generatedKeywordsCount, setGeneratedKeywordsCount] = useState<number | null>(null);
 
-  // Load repos list via store
+  // Load repos list via store (once if not initialized)
   useEffect(() => {
-    if (storeRepos.length === 0) {
+    if (!initialized && !loading) {
       storeLoadRepos();
     }
-  }, [storeRepos.length, storeLoadRepos]);
-  
+  }, [initialized, loading, storeLoadRepos]);
+
+  // Show error if repo loading failed
+  useEffect(() => {
+    if (repoError) {
+      console.error('[DataQualitySubtab] Failed to load repos:', repoError);
+      // Optionally show error to user
+    }
+  }, [repoError]);
+
   // Sync selectedRepo with store's activeRepo or first repo when available
   useEffect(() => {
     if (repos.length > 0 && !selectedRepo) {

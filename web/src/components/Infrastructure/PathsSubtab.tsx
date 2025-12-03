@@ -25,6 +25,29 @@ interface PathConfig {
   MCP_HTTP_PATH: string;
 }
 
+/**
+ * ---agentspec
+ * what: |
+ *   React component that manages a configuration subtab for file paths within a settings interface.
+ *   Accepts no props; manages internal state for PathConfig object (partial), loading state, saving state, and action messages.
+ *   Returns JSX rendering a form/UI for path configuration with real-time feedback.
+ *   Loads configuration on mount via loadConfig() effect hook; provides setConfig for updates and setSaving for async operations.
+ *   Handles loading and saving states independently to show spinners/disabled states during async operations.
+ *   Edge cases: component may render before config loads (loading=true), save operations may fail (setSaving cleanup required), tooltips may be undefined if useTooltips() hook fails.
+ *
+ * why: |
+ *   Separates path configuration UI from business logic by using React hooks (useState, useEffect) for local state management.
+ *   Follows standard React patterns: loading state prevents render-before-data bugs, saving state prevents double-submit, actionMessage provides user feedback.
+ *   Tooltips hook injected as dependency to keep component testable and decoupled from tooltip implementation.
+ *
+ * guardrails:
+ *   - DO NOT mutate config state directly; always use setConfig to ensure React re-renders and state consistency
+ *   - ALWAYS call setLoading(false) after loadConfig() completes, even on error, to prevent infinite loading spinners
+ *   - ALWAYS call setSaving(false) after save operations complete (success or failure) to re-enable form controls
+ *   - NOTE: actionMessage state has no auto-clear timeout; component relies on parent or explicit setActionMessage(null) to dismiss messages
+ *   - ASK USER: Confirm whether tooltips should be optional (graceful fallback if useTooltips() returns undefined) or required before rendering
+ * ---/agentspec
+ */
 export function PathsSubtab() {
   const [config, setConfig] = useState<Partial<PathConfig>>({});
   const [loading, setLoading] = useState(true);
@@ -94,6 +117,27 @@ export function PathsSubtab() {
     }
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Updates a single configuration key-value pair in a PathConfig state object using React's setState pattern.
+   *   Takes a key (string literal from PathConfig keys) and a value (string), then merges the update into the previous config state.
+   *   Returns void; side effect is updating the config state via setConfig hook.
+   *   Handles all PathConfig keys uniformly without validation of value content or key existence at runtime.
+   *   Edge case: If key does not exist in PathConfig type, TypeScript will catch it at compile time, but runtime behavior is permissive (spreads any key-value pair).
+   *
+   * why: |
+   *   Provides a generic, reusable update function for form inputs or configuration changes without repeating setState logic for each field.
+   *   Uses functional setState (prev => {...}) to ensure updates are based on the latest state, avoiding race conditions in rapid updates.
+   *   Keeps the component concise by centralizing the update pattern rather than inline setState calls throughout the component.
+   *
+   * guardrails:
+   *   - DO NOT add validation logic here; this function is intentionally a thin wrapper for state updates. Validation should happen at the form input level or in a separate validation hook.
+   *   - ALWAYS use this function for all PathConfig updates to maintain consistent state management patterns across the component.
+   *   - NOTE: This function does not persist config to storage or trigger side effects; callers must handle persistence separately if needed.
+   *   - ASK USER: Before adding async operations (API calls, debouncing, or validation) to updateConfig, confirm whether a separate effect hook or custom hook would be more appropriate.
+   * ---/agentspec
+   */
   const updateConfig = (key: keyof PathConfig, value: string) => {
     setConfig(prev => ({ ...prev, [key]: value }));
   };

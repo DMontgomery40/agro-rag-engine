@@ -167,7 +167,7 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
   const [queryRepoOverride, setQueryRepoOverride] = useState('');
   
   // Use centralized repo store for repo list and default
-  const { repos, activeRepo, loadRepos } = useRepoStore();
+  const { repos, activeRepo, loadRepos, initialized } = useRepoStore();
   
   // Check if index exists for "no index" warning
   const { status: embeddingStatus } = useEmbeddingStatus();
@@ -351,14 +351,14 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
     return () => window.removeEventListener('agro-chat-config-updated', handler as EventListener);
   }, [notifyTrace, onTracePreferenceChange]);
 
-  // Load repositories via store
+  // Load repositories via store (once on mount if not initialized)
   useEffect(() => {
-    if (repos.length === 0) {
+    if (!initialized) {
       loadRepos();
     }
     // Load chat history from localStorage
     loadChatHistory();
-  }, [repos.length, loadRepos]);
+  }, [initialized, loadRepos]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {

@@ -9,7 +9,7 @@
     "conf_top1": 0.62,
     "conf_avg5": 0.55,
     "conf_any": 0.55,
-    "eval_multi": 1,
+    "eval_multi": 0,
     "query_expansion_enabled": 1,
     "bm25_weight": 0.5582861807587417,
     "bm25_k1": 1.2,
@@ -18,8 +18,8 @@
     "card_search_enabled": 1,
     "multi_query_m": 3,
     "use_semantic_synonyms": 1,
-    "topk_dense": 75,
-    "topk_sparse": 75,
+    "topk_dense": 26,
+    "topk_sparse": 24,
     "hydration_mode": "lazy",
     "hydration_max_chars": 2000,
     "disable_rerank": 1
@@ -50,7 +50,7 @@
         "server": 1.15,
         "common": 1.1,
         "web": 0.7,
-        "gui": 0.6
+        "gui": -0.6
       },
       "indexer": {
         "indexer": 1.3,
@@ -104,7 +104,7 @@
     "preserve_imports": 1
   },
   "indexing": {
-    "qdrant_url": "http://127.0.0.1:6333",
+    "qdrant_url": "http://qdrant:6333",
     "collection_name": "code_chunks_agro",
     "collection_suffix": "test",
     "repo_path": "",
@@ -124,7 +124,7 @@
     "reranker_active": "cloud",
     "reranker_provider": "cohere",
     "reranker_cloud_model": "rerank-3.5",
-    "reranker_model": "agro/cross-encoder-model",
+    "reranker_model": "rerank-3.5",
     "agro_reranker_enabled": 0,
     "agro_reranker_alpha": 0.7,
     "agro_reranker_topn": 50,
@@ -252,7 +252,7 @@
     "editor_bind": "local",
     "editor_embed_enabled": 1,
     "editor_enabled": 1,
-    "editor_image": "agro-openvscode",
+    "editor_image": "codercom/code-server:latest",
     "theme_mode": "dark",
     "open_browser": 1,
     "runtime_mode": "development"

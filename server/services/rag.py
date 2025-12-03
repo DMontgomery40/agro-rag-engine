@@ -380,7 +380,7 @@ async def do_chat_stream(payload: Dict[str, Any], request: Optional[Request] = N
             chunk["content"] = content
         if data is not None:
             chunk["data"] = data
-        return f"data: {json.dumps(chunk)}\n\n"
+        return f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
 
     # Apply overrides like do_chat
     overrides = {

@@ -353,7 +353,7 @@ function startStatusPolling() {
                 updateTaskResults(status);
             }
         }
-    }, 1000);
+    }, 2000); // poll every 2 seconds during reranker training
 }
 
 /**

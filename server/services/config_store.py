@@ -66,6 +66,10 @@ def secrets_ingest(text: str, persist: bool) -> Dict[str, Any]:
         v = v.strip()
         if not k:
             continue
+        # CRITICAL: Don't accept masked values
+        if v and all(ch == '•' for ch in v):
+            logger.debug(f"Skipping masked value for {k}")
+            continue
         os.environ[k] = v
         applied[k] = v
 
@@ -100,6 +104,11 @@ def save_mcp_key(key: str) -> Dict[str, Any]:
         - Updates both file and os.environ for immediate effect
     """
     try:
+        # CRITICAL: Don't accept masked values
+        if key and all(ch == '•' for ch in key):
+            logger.warning("Attempted to save masked MCP key - ignoring")
+            return {"status": "error", "message": "Cannot save masked key value"}
+
         env_path = repo_root() / ".env"
 
         # Read existing .env
@@ -318,12 +327,22 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
         if v is None:
             existing.pop(k, None)
         else:
-            existing[k] = str(v)
+            # CRITICAL: Don't write masked values back to .env
+            # UI sends '••••••••••••••••' for secrets - skip these
+            str_v = str(v)
+            if str_v and all(ch == '•' for ch in str_v):
+                # This is a masked value, keep existing value
+                logger.debug(f"Skipping masked value for {k}")
+                continue
+            existing[k] = str_v
         # also apply to process env
         if v is None:
             os.environ.pop(k, None)
         else:
-            os.environ[k] = str(v)
+            # Same check for os.environ
+            str_v = str(v)
+            if not (str_v and all(ch == '•' for ch in str_v)):
+                os.environ[k] = str_v
 
     # Write .env if there were updates
     if env_file_updates:
@@ -569,7 +588,7 @@ def config_schema() -> Dict[str, Any]:
             "enabled": reg.get_bool("EDITOR_ENABLED", True),
             "embed_enabled": reg.get_bool("EDITOR_EMBED_ENABLED", True),
             "bind": reg.get_str("EDITOR_BIND", "local"),
-            "image": reg.get_str("EDITOR_IMAGE", "agro-vscode:latest"),
+            "image": reg.get_str("EDITOR_IMAGE", "codercom/code-server:latest"),
             "host": "127.0.0.1",
         }
         try:

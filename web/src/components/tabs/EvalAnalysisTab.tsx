@@ -7,6 +7,7 @@ import { EvalDrillDown } from '@/components/Evaluation/EvalDrillDown';
 import { SystemPromptsSubtab } from '@/components/Evaluation/SystemPromptsSubtab';
 import { LiveTerminal, LiveTerminalHandle } from '@/components/LiveTerminal/LiveTerminal';
 import { TerminalService } from '@/services/TerminalService';
+import { useConfigStore } from '@/stores/useConfigStore';
 
 type EvalSubtab = 'analysis' | 'prompts';
 
@@ -32,12 +33,21 @@ export const EvalAnalysisTab: React.FC = () => {
   const [terminalVisible, setTerminalVisible] = useState(false);
   const terminalRef = useRef<LiveTerminalHandle>(null);
 
-  // Eval settings (stored in localStorage)
-  const [evalSettings] = useState(() => ({
-    useMulti: localStorage.getItem('eval_useMulti') === 'false' ? false : true,
-    finalK: parseInt(localStorage.getItem('eval_finalK') || '5', 10),
-    sampleSize: localStorage.getItem('eval_sampleSize') || ''
-  }));
+  // Eval settings from Pydantic config (Zustandic - syncs with backend)
+  const { config, loadConfig } = useConfigStore();
+
+  // Derive eval settings from config store - these mirror retrieval settings
+  const evalSettings = {
+    useMulti: config?.env?.EVAL_MULTI !== 0,  // 0 = disabled, 1 = enabled (LLM query expansion)
+    finalK: config?.env?.EVAL_FINAL_K || 5,
+    multiM: config?.env?.EVAL_MULTI_M || 10,
+    sampleSize: ''  // Per-run override, not persisted
+  };
+
+  // Load config on mount
+  useEffect(() => {
+    if (!config) loadConfig();
+  }, [config, loadConfig]);
 
   // Terminal helpers
   const getTerminal = useCallback(() => {

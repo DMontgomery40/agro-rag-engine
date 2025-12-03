@@ -454,16 +454,18 @@ def rrf_fusion(results_list: List[List[tuple]], k: int = 60, weights: List[float
 
 
 def rerank(query: str, docs: List[Dict], k: int = 10) -> List[Dict]:
-    """Rerank documents using configured backend (cohere, voyage, or local)."""
+    """Rerank documents using configured backend (cloud, local, or learning)."""
     if not docs:
         return []
 
-    # Check if reranking is disabled (DISABLE_RERANK=1 means disabled)
+    # Check if reranking is disabled (DISABLE_RERANK=1 or RERANKER_MODE='none')
     if _cfg.get_int('DISABLE_RERANK', 0):
         return docs[:k]
 
-    backend = _cfg.get_str('RERANKER_BACKEND', 'local').lower()
-    
+    mode = _cfg.get_str('RERANKER_MODE', 'local').lower()
+    if mode == 'none':
+        return docs[:k]
+
     try:
         # Prepare texts for reranking
         texts = []
@@ -471,88 +473,110 @@ def rerank(query: str, docs: List[Dict], k: int = 10) -> List[Dict]:
             code = d.get('code', '')[:700]  # Truncate for speed
             fp = d.get('file_path', '')
             texts.append(f"{fp}\n{code}")
-        
-        if backend == 'cohere':
-            import requests as req
-            model = _cfg.get_str('COHERE_RERANK_MODEL', 'rerank-v3.5')
-            api_key = os.getenv('COHERE_API_KEY')
 
-            resp = req.post(
-                "https://api.cohere.com/v2/rerank",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": model,
-                    "query": query,
-                    "documents": texts,
-                    "top_n": min(k, len(texts)),
-                    "return_documents": False
-                },
-                timeout=10
-            )
-            resp.raise_for_status()
-            data = resp.json()
+        if mode == 'cloud':
+            provider = _cfg.get_str('RERANKER_CLOUD_PROVIDER', 'cohere').lower()
+            model = _cfg.get_str('RERANKER_CLOUD_MODEL', 'rerank-3.5')
 
-            # Apply scores based on Cohere response
-            for res in data.get("results", []):
-                idx = res.get("index", 0)
-                if idx < len(docs):
-                    docs[idx]['rerank_score'] = float(res.get("relevance_score", 0))
+            if provider == 'cohere':
+                import requests as req
+                api_key = os.getenv('COHERE_API_KEY')
 
-            docs.sort(key=lambda x: x.get('rerank_score', 0), reverse=True)
-            return docs[:k]
-        
-        elif backend == 'voyage':
-            import voyageai
-            model = _cfg.get_str('VOYAGE_RERANK_MODEL', 'rerank-2')
-            
-            if not hasattr(rerank, '_voyage_client'):
-                rerank._voyage_client = voyageai.Client(api_key=os.getenv('VOYAGE_API_KEY'))
-            
-            response = rerank._voyage_client.rerank(
-                query=query,
-                documents=texts,
-                model=model,
-                top_k=min(k, len(texts))
-            )
-            
-            for res in response.results:
-                idx = res.index
-                if idx < len(docs):
-                    docs[idx]['rerank_score'] = float(res.relevance_score)
-            
-            docs.sort(key=lambda x: x.get('rerank_score', 0), reverse=True)
-            return docs[:k]
-        
-        else:  # local cross-encoder
+                resp = req.post(
+                    "https://api.cohere.com/v2/rerank",
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "model": model,
+                        "query": query,
+                        "documents": texts,
+                        "top_n": min(k, len(texts)),
+                        "return_documents": False
+                    },
+                    timeout=10
+                )
+                resp.raise_for_status()
+                data = resp.json()
+
+                # Apply scores based on Cohere response
+                for res in data.get("results", []):
+                    idx = res.get("index", 0)
+                    if idx < len(docs):
+                        docs[idx]['rerank_score'] = float(res.get("relevance_score", 0))
+
+                docs.sort(key=lambda x: x.get('rerank_score', 0), reverse=True)
+                return docs[:k]
+
+            elif provider == 'voyage':
+                import voyageai
+
+                if not hasattr(rerank, '_voyage_client'):
+                    rerank._voyage_client = voyageai.Client(api_key=os.getenv('VOYAGE_API_KEY'))
+
+                response = rerank._voyage_client.rerank(
+                    query=query,
+                    documents=texts,
+                    model=model,
+                    top_k=min(k, len(texts))
+                )
+
+                for res in response.results:
+                    idx = res.index
+                    if idx < len(docs):
+                        docs[idx]['rerank_score'] = float(res.relevance_score)
+
+                docs.sort(key=lambda x: x.get('rerank_score', 0), reverse=True)
+                return docs[:k]
+
+            else:
+                # Unknown cloud provider, fall back to local
+                mode = 'local'
+
+        if mode == 'learning':
+            # Use AGRO's learning cross-encoder
             from rerankers import Reranker
-            
-            model = _cfg.get_str('RERANKER_MODEL', 'cross-encoder/ms-marco-MiniLM-L-12-v2')
-            
-            # Check for local trained model
+
             local_model = Path(__file__).parent.parent / 'models' / 'cross-encoder-agro'
-            if local_model.exists():
-                model = str(local_model)
-            
-            # Cache reranker
+            model = str(local_model) if local_model.exists() else 'cross-encoder/ms-marco-MiniLM-L-12-v2'
+
             if not hasattr(rerank, '_reranker') or rerank._model_name != model:
                 rerank._reranker = Reranker(model, model_type='cross-encoder')
                 rerank._model_name = model
-            
+
             ranked = rerank._reranker.rank(query=query, docs=texts, doc_ids=list(range(len(docs))))
-            
+
             for res in ranked.results:
                 idx = res.document.doc_id
                 if idx < len(docs):
                     docs[idx]['rerank_score'] = float(res.score)
-            
+
+            docs.sort(key=lambda x: x.get('rerank_score', 0), reverse=True)
+            return docs[:k]
+
+        else:  # mode == 'local' - use configured local cross-encoder
+            from rerankers import Reranker
+
+            model = _cfg.get_str('RERANKER_LOCAL_MODEL', 'cross-encoder/ms-marco-MiniLM-L-12-v2')
+
+            # Cache reranker
+            if not hasattr(rerank, '_reranker') or rerank._model_name != model:
+                rerank._reranker = Reranker(model, model_type='cross-encoder')
+                rerank._model_name = model
+
+            ranked = rerank._reranker.rank(query=query, docs=texts, doc_ids=list(range(len(docs))))
+
+            for res in ranked.results:
+                idx = res.document.doc_id
+                if idx < len(docs):
+                    docs[idx]['rerank_score'] = float(res.score)
+
             docs.sort(key=lambda x: x.get('rerank_score', 0), reverse=True)
             return docs[:k]
     
     except Exception as e:
-        print(f"[rerank] Failed ({backend}): {e}, returning unranked")
+        print(f"[rerank] Failed (mode={mode}): {e}, returning unranked")
         return docs[:k]
 
 

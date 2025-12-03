@@ -10,9 +10,12 @@ Simple, working indexer that:
 import os
 import json
 import hashlib
+import logging
 from pathlib import Path
 from typing import List, Dict
 from datetime import datetime
+
+logger = logging.getLogger("agro.indexer")
 
 # BM25
 import bm25s
@@ -27,6 +30,7 @@ import uuid
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from common.config_loader import get_repo_paths, out_dir, exclude_paths
+from common.filtering import PRUNE_DIRS
 from retrieval.ast_chunker import collect_files, chunk_code, lang_from_path
 from server.services.config_registry import get_config_registry
 
@@ -40,25 +44,28 @@ EMBEDDING_MODEL = _cfg.get_str('EMBEDDING_MODEL', 'text-embedding-3-large')
 EMBEDDING_MODEL_LOCAL = _cfg.get_str('EMBEDDING_MODEL_LOCAL', 'BAAI/bge-small-en-v1.5')
 VOYAGE_MODEL = _cfg.get_str('VOYAGE_MODEL', 'voyage-code-3')
 
+# Get provider-specific token limits (no hardcoding!)
+from common.provider_limits import get_provider_limits
+
+provider_limits = get_provider_limits(
+    provider=EMBEDDING_TYPE,
+    model=EMBEDDING_MODEL if EMBEDDING_TYPE != 'local' else EMBEDDING_MODEL_LOCAL,
+    config={
+        'embedding_max_tokens': _cfg.get_int('EMBEDDING_MAX_TOKENS', None),
+        'embedding_batch_size': _cfg.get_int('EMBEDDING_BATCH_SIZE', None),
+        'embedding_dim': _cfg.get_int('EMBEDDING_DIM', None),
+    }
+)
+
+MAX_TOKENS = provider_limits['max_tokens']
+BATCH_SIZE = provider_limits['batch_size']
+CHUNK_TARGET = _cfg.get_int('CHUNK_SIZE', 1000)
+
 # File extensions to index
 SOURCE_EXTS = {
     '.py', '.ts', '.tsx', '.js', '.jsx', '.go', '.rs', '.java',
     '.c', '.h', '.cpp', '.hpp', '.rb', '.sh', '.yaml', '.yml',
     '.json', '.toml', '.sql'
-}
-
-# Directories to skip (these are always excluded)
-SKIP_DIRS = {
-    # Package managers & dependencies
-    'node_modules', '.venv', 'venv', 'env', '.env', 'vendor',
-    'Pods', 'Godeps', '.bundle', 'bundle', 'packages',
-    # Build outputs
-    'dist', 'build', '.next', 'out', '__pycache__', '.cache',
-    # Version control & IDE
-    '.git', '.svn', '.hg', '.cursor', '.idea', '.vscode', '.editor_data',
-    # Other
-    'checkpoints', 'models', 'coverage', '.pytest_cache', '.mypy_cache',
-    'eggs', '*.egg-info', 'site-packages',
 }
 
 # Files to skip (descriptions/docs, not implementations)
@@ -117,7 +124,7 @@ def should_index(path: str, repo_excludes: List[str] = None) -> bool:
     # Check for skip dirs in path parts
     for part in p.parts:
         part_lower = part.lower()
-        if part_lower in SKIP_DIRS or part_lower.startswith('.'):
+        if part_lower in PRUNE_DIRS or part_lower.startswith('.'):
             # Skip hidden dirs and known junk
             if part_lower not in {'.env'}:  # .env file is ok, but .venv dir is not
                 return False
@@ -153,41 +160,85 @@ def get_embedding_func():
         model = SentenceTransformer(EMBEDDING_MODEL_LOCAL)
         # Local models have varying dimensions - get from model
         local_dim = model.get_sentence_embedding_dimension()
+
+        # Use provider limits (already computed at module level)
         def embed(texts: List[str]) -> List[List[float]]:
-            return model.encode(texts, normalize_embeddings=True, show_progress_bar=False).tolist()
+            # Local models don't have strict API token limits
+            # But batch for memory efficiency using configured batch size
+            all_embs = []
+            for i in range(0, len(texts), BATCH_SIZE):
+                batch = texts[i:i+BATCH_SIZE]
+                all_embs.extend(
+                    model.encode(batch, normalize_embeddings=True, show_progress_bar=False).tolist()
+                )
+            return all_embs
         return embed, local_dim
     
     elif EMBEDDING_TYPE == 'voyage':
         import voyageai
+        from common.token_utils import create_token_aware_batches
+
         client = voyageai.Client(api_key=os.getenv('VOYAGE_API_KEY'))
+
+        # Use provider limits (already computed at module level)
         def embed(texts: List[str]) -> List[List[float]]:
-            # Batch to avoid rate limits
+            batches = create_token_aware_batches(
+                texts,
+                max_tokens_per_batch=MAX_TOKENS,
+                max_batch_size=BATCH_SIZE,
+                provider='voyage'
+            )
+
             all_embs = []
-            for i in range(0, len(texts), 64):
-                batch = texts[i:i+64]
-                r = client.embed(batch, model=VOYAGE_MODEL, input_type='document', output_dimension=512)
+            for batch in batches:
+                r = client.embed(batch, model=VOYAGE_MODEL, input_type='document')
                 all_embs.extend(r.embeddings)
+
             return all_embs
-        return embed, 512
+
+        return embed, provider_limits['dimensions']
     
     else:  # openai (default)
         from openai import OpenAI
+        from common.token_utils import create_token_aware_batches
+
         client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-        
-        # OpenAI text-embedding-3-large has 8192 token limit
-        # Truncate texts to ~30000 chars (~7500 tokens) to stay safely under limit
-        MAX_CHARS = 30000
-        
+
+        # Use provider limits (already computed at module level)
         def embed(texts: List[str]) -> List[List[float]]:
+            # Create token-aware batches using FFD
+            batches = create_token_aware_batches(
+                texts,
+                max_tokens_per_batch=MAX_TOKENS,
+                max_batch_size=BATCH_SIZE,
+                provider='openai'
+            )
+
             all_embs = []
-            for i in range(0, len(texts), 64):
-                batch = texts[i:i+64]
-                # Truncate any texts that are too long
-                batch = [t[:MAX_CHARS] if len(t) > MAX_CHARS else t for t in batch]
-                r = client.embeddings.create(input=batch, model=EMBEDDING_MODEL)
-                all_embs.extend([d.embedding for d in r.data])
+            for i, batch in enumerate(batches):
+                try:
+                    # Validate batch before sending
+                    if not batch:
+                        logger.warning(f"Skipping empty batch {i+1}/{len(batches)}")
+                        continue
+
+                    # Filter out empty strings
+                    valid_batch = [t for t in batch if t and t.strip()]
+                    if not valid_batch:
+                        logger.warning(f"Skipping batch {i+1}/{len(batches)} - all texts empty")
+                        continue
+
+                    r = client.embeddings.create(input=valid_batch, model=EMBEDDING_MODEL)
+                    all_embs.extend([d.embedding for d in r.data])
+                except Exception as e:
+                    logger.error(f"Embedding failed for batch {i+1}/{len(batches)} with {len(batch)} texts")
+                    logger.error(f"First text preview: {repr(batch[0][:100]) if batch else 'EMPTY'}")
+                    logger.error(f"Error: {e}")
+                    raise
+
             return all_embs
-        return embed, embed_dim
+
+        return embed, provider_limits['dimensions']
 
 
 def main():
@@ -218,8 +269,8 @@ def main():
         for root, dirs, files in os.walk(base):
             # Aggressively prune directories
             dirs[:] = [
-                d for d in dirs 
-                if d.lower() not in SKIP_DIRS 
+                d for d in dirs
+                if d.lower() not in PRUNE_DIRS
                 and d.lower() not in exclude_lower
                 and not d.startswith('.')  # Skip all hidden dirs
             ]
@@ -255,8 +306,15 @@ def main():
             except ValueError:
                 continue
         
-        # Chunk the file
-        file_chunks = chunk_code(src, rel_path, lang, target=900)
+        # Chunk the file with token limits
+        file_chunks = chunk_code(
+            src,
+            rel_path,
+            lang,
+            target=CHUNK_TARGET,
+            max_tokens=MAX_TOKENS,
+            provider=EMBEDDING_TYPE
+        )
         
         for c in file_chunks:
             # Dedupe by content hash

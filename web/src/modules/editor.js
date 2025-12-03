@@ -203,7 +203,7 @@
     // In CI or when embed is disabled, we still update the badge but avoid loading the iframe repeatedly
     if (!editorHealthInterval) {
       checkEditorHealth();
-      editorHealthInterval = setInterval(checkEditorHealth, 10000);
+      editorHealthInterval = setInterval(checkEditorHealth, 30000);
     }
   }
 

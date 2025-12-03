@@ -10,7 +10,7 @@ export function InfrastructureServices() {
 
   useEffect(() => {
     checkInfraStatus();
-    const interval = setInterval(checkInfraStatus, 10000);
+    const interval = setInterval(checkInfraStatus, 30000);
     return () => clearInterval(interval);
   }, []);
 

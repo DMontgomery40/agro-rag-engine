@@ -1,15 +1,61 @@
 import { useState, useEffect } from 'react';
+import { useRepoStore } from '@/stores/useRepoStore';
 
 /**
  * Hook for app initialization
  * Handles loading prices, config, profiles, keywords, and commit metadata
  * Triggers initial health checks and dashboard refresh
  */
+/**
+ * ---agentspec
+ * what: |
+ *   Custom React hook that manages application initialization state and error handling.
+ *   Takes no parameters; manages two state variables: isInitialized (boolean) and initError (string | null).
+ *   Returns an object with isInitialized and initError properties for consuming components.
+ *   Runs initialization logic once on component mount via useEffect with empty dependency array.
+ *   Logs initialization start to console; catches and stores any errors that occur during init.
+ *
+ * why: |
+ *   Centralizes app startup logic in a reusable hook to avoid duplicating initialization code across components.
+ *   Separates initialization concerns (async setup, error handling, state management) from component rendering logic.
+ *   Provides a single source of truth for initialization state that multiple components can subscribe to.
+ *
+ * guardrails:
+ *   - DO NOT add side effects outside the useEffect block; all async initialization must occur within the effect
+ *   - ALWAYS include error handling in the init function to prevent unhandled promise rejections
+ *   - NOTE: Empty dependency array means init runs only once on mount; if re-initialization is needed, add dependencies or create a separate trigger function
+ *   - ASK USER: What specific initialization tasks should this hook perform? (API calls, config loading, auth checks, etc.) Currently the init function body is incomplete
+ *   - ASK USER: Should initialization errors be retryable, or should they permanently block the app?
+ * ---/agentspec
+ */
 export function useAppInit() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
+  const { loadRepos } = useRepoStore();
 
   useEffect(() => {
+    /**
+     * ---agentspec
+     * what: |
+     *   Initializes the application by polling for CoreUtils availability on the window object.
+     *   Takes no parameters; runs asynchronously as a side effect.
+     *   Polls window.CoreUtils with 100ms intervals for up to 5 seconds (50 attempts × 100ms).
+     *   Returns a Promise that resolves when CoreUtils is detected or rejects/times out after 50 failed attempts.
+     *   Logs initialization start to console; does not validate CoreUtils structure or functionality.
+     *
+     * why: |
+     *   Waits for legacy modules to load CoreUtils asynchronously before proceeding with app initialization.
+     *   Polling approach accommodates unpredictable timing of legacy script loading without blocking the main thread.
+     *   This pattern bridges modern async initialization with legacy synchronous module loading patterns.
+     *
+     * guardrails:
+     *   - DO NOT remove the polling loop; CoreUtils may not be immediately available when this hook runs
+     *   - ALWAYS log initialization state for debugging; legacy module loading failures are difficult to diagnose
+     *   - NOTE: Hard-coded 5-second timeout (50 attempts) may be insufficient for slow network conditions or large legacy bundles
+     *   - NOTE: No error handling after the loop; if CoreUtils never loads, the function silently completes without indication of failure
+     *   - ASK USER: Confirm desired behavior when CoreUtils fails to load—should this throw an error, retry with backoff, or fall back to a default state?
+     * ---/agentspec
+     */
     const init = async () => {
       try {
         console.log('[useAppInit] Starting app initialization...');
@@ -59,6 +105,10 @@ export function useAppInit() {
               }
             })
             .catch(err => console.warn('Failed to load profiles:', err)),
+
+          // Load repos via Zustand store
+          loadRepos()
+            .catch(err => console.warn('Failed to load repos:', err)),
 
           // Load keywords if available
           (window as any).Keywords?.loadKeywords?.()

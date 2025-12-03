@@ -19,6 +19,7 @@ export { useAPI } from './useAPI';
 export { useTheme } from './useTheme';
 export { useUIHelpers } from './useUIHelpers';
 export { useTooltips } from './useTooltips';
+export { useTooltipStore } from '../stores/useTooltipStore';
 export { useGlobalSearch } from './useGlobalSearch';
 
 // Navigation hooks (React Router integration)
@@ -31,8 +32,7 @@ export { useConfig, useConfigField } from './useConfig';
 export { useConfigStore } from '../stores/useConfigStore';
 
 // Embedding status (critical mismatch detection)
-export { useEmbeddingStatus } from './useEmbeddingStatus';
-export type { EmbeddingStatus } from './useEmbeddingStatus';
+export { useEmbeddingStatus } from '@/hooks/useEmbeddingStatus';
 
 // Feature hooks
 export { useDashboard } from './useDashboard';

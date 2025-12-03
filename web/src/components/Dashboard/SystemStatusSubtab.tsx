@@ -166,8 +166,8 @@ export function SystemStatusSubtab() {
   useEffect(() => {
     refreshStatus();
 
-    // Poll status every 10 seconds
-    const interval = setInterval(refreshStatus, 10000);
+    // Poll status every 30 seconds
+    const interval = setInterval(refreshStatus, 30000);
 
     // Listen for manual refresh events
     const handleRefresh = () => refreshStatus();

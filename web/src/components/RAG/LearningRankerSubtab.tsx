@@ -139,7 +139,7 @@ export function LearningRankerSubtab() {
      */
     const interval = setInterval(() => {
       loadStatus();
-    }, 2000);
+    }, 5000); // poll every 5 seconds during reranker training
 
     return () => clearInterval(interval);
   }, []);

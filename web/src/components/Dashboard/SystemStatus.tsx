@@ -84,7 +84,7 @@ export function SystemStatus() {
 
   useEffect(() => {
     refreshStatus();
-    const interval = setInterval(refreshStatus, 10000); // Refresh every 10 seconds
+    const interval = setInterval(refreshStatus, 30000); // Refresh every 30 seconds
     return () => clearInterval(interval);
   }, [refreshStatus]);
 

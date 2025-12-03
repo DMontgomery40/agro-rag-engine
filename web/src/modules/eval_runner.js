@@ -195,7 +195,7 @@ function startPolling() {
                 window.UXFeedback.progress.hide('evaluation');
             }
         }
-    }, 1000);
+    }, 2000); // poll every 2 seconds during evaluation
 }
 
 // Load evaluation results

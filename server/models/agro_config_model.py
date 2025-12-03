@@ -513,31 +513,25 @@ class IndexingConfig(BaseModel):
 class RerankingConfig(BaseModel):
     """Reranking configuration for result refinement."""
 
-    reranker_active: str = Field(
-        default="cloud",
-        description="Active reranker choice (local/learning/HF vs cloud provider)"
+    reranker_mode: str = Field(
+        default="local",
+        pattern="^(cloud|local|learning|none)$",
+        description="Reranker mode: 'cloud' (Cohere/Voyage API), 'local' (HuggingFace cross-encoder), 'learning' (AGRO cross-encoder-agro), 'none' (disabled)"
     )
 
-    reranker_provider: str = Field(
-        default="",
-        description="Cloud reranker provider when using external API"
+    reranker_cloud_provider: str = Field(
+        default="cohere",
+        description="Cloud reranker provider when mode=cloud (cohere, voyage, jina)"
     )
 
     reranker_cloud_model: str = Field(
         default="rerank-3.5",
-        description="Selected cloud reranker model for the chosen provider"
+        description="Cloud reranker model name when mode=cloud"
     )
 
-    reranker_model: str = Field(
+    reranker_local_model: str = Field(
         default="cross-encoder/ms-marco-MiniLM-L-12-v2",
-        description="Reranker model path"
-    )
-
-    agro_reranker_enabled: int = Field(
-        default=1,
-        ge=0,
-        le=1,
-        description="Enable reranking"
+        description="Local HuggingFace cross-encoder model when mode=local"
     )
 
     agro_reranker_alpha: float = Field(
@@ -582,21 +576,6 @@ class RerankingConfig(BaseModel):
         description="Reload check period (seconds)"
     )
 
-    cohere_rerank_model: str = Field(
-        default="rerank-3.5",
-        description="Cohere reranker model"
-    )
-
-    voyage_rerank_model: str = Field(
-        default="rerank-2",
-        description="Voyage reranker model"
-    )
-
-    reranker_backend: str = Field(
-        default="local",
-        description="Reranker backend (local/hf/learning for on-host models, provider id for cloud, none/off to disable)"
-    )
-
     reranker_timeout: int = Field(
         default=10,
         ge=5,
@@ -618,40 +597,30 @@ class RerankingConfig(BaseModel):
         description="Allow transformers remote code for HF rerankers that require it"
     )
 
-    @field_validator('reranker_backend', mode='before')
+    @field_validator('reranker_mode', mode='before')
     @classmethod
-    def normalize_backend(cls, v: str) -> str:
-        """Normalize backend aliases."""
+    def normalize_mode(cls, v: str) -> str:
+        """Normalize reranker mode aliases."""
         if isinstance(v, str):
             val = v.strip().lower()
-            if val in {'off', 'none', 'disabled'}:
-                return 'none'
-            if val == 'hf':
-                return 'hf'
-            return val
-        return v
-
-    @field_validator('reranker_active', mode='before')
-    @classmethod
-    def normalize_active(cls, v: str) -> str:
-        if isinstance(v, str):
-            val = v.strip().lower()
-            if val in {'off', 'none', 'disabled'}:
+            if val in {'off', 'disabled'}:
                 return 'none'
             if val == 'hf':
                 return 'local'
-            if val == 'learning':
-                return 'local'
+            # Map old 'cohere', 'voyage', 'jina' values to 'cloud'
+            if val in {'cohere', 'voyage', 'jina'}:
+                return 'cloud'
             return val
         return v
 
-    @field_validator('reranker_provider', mode='before')
+    @field_validator('reranker_cloud_provider', mode='before')
     @classmethod
-    def normalize_provider(cls, v: str) -> str:
+    def normalize_cloud_provider(cls, v: str) -> str:
+        """Normalize cloud provider aliases."""
         if isinstance(v, str):
             val = v.strip().lower()
-            if val in {'off', 'none', 'disabled'}:
-                return 'none'
+            if val in {'off', 'none', 'disabled', ''}:
+                return ''
             return val
         return v
 
@@ -1202,7 +1171,7 @@ class UIConfig(BaseModel):
     )
 
     editor_image: str = Field(
-        default="agro-vscode:latest",
+        default="codercom/code-server:latest",
         description="Editor Docker image"
     )
 
@@ -1554,21 +1523,17 @@ class AgroConfigRoot(BaseModel):
             'OUT_DIR_BASE': self.indexing.out_dir_base,
             'RAG_OUT_BASE': self.indexing.rag_out_base,
             'REPOS_FILE': self.indexing.repos_file,
-    # Reranking params (13)
-            'RERANKER_MODEL': self.reranking.reranker_model,
-            'AGRO_RERANKER_ENABLED': self.reranking.agro_reranker_enabled,
+    # Reranking params (13) - unified with RERANKER_MODE
+            'RERANKER_MODE': self.reranking.reranker_mode,
+            'RERANKER_CLOUD_PROVIDER': self.reranking.reranker_cloud_provider,
+            'RERANKER_CLOUD_MODEL': self.reranking.reranker_cloud_model,
+            'RERANKER_LOCAL_MODEL': self.reranking.reranker_local_model,
             'AGRO_RERANKER_ALPHA': self.reranking.agro_reranker_alpha,
             'AGRO_RERANKER_TOPN': self.reranking.agro_reranker_topn,
             'AGRO_RERANKER_BATCH': self.reranking.agro_reranker_batch,
             'AGRO_RERANKER_MAXLEN': self.reranking.agro_reranker_maxlen,
             'AGRO_RERANKER_RELOAD_ON_CHANGE': self.reranking.agro_reranker_reload_on_change,
             'AGRO_RERANKER_RELOAD_PERIOD_SEC': self.reranking.agro_reranker_reload_period_sec,
-            'COHERE_RERANK_MODEL': self.reranking.cohere_rerank_model,
-            'VOYAGE_RERANK_MODEL': self.reranking.voyage_rerank_model,
-            'RERANKER_ACTIVE': self.reranking.reranker_active,
-            'RERANKER_PROVIDER': self.reranking.reranker_provider,
-            'RERANKER_CLOUD_MODEL': self.reranking.reranker_cloud_model,
-            'RERANKER_BACKEND': self.reranking.reranker_backend,
             'RERANKER_TIMEOUT': self.reranking.reranker_timeout,
             'RERANK_INPUT_SNIPPET_CHARS': self.reranking.rerank_input_snippet_chars,
             'TRANSFORMERS_TRUST_REMOTE_CODE': self.reranking.transformers_trust_remote_code,
@@ -1780,24 +1745,21 @@ class AgroConfigRoot(BaseModel):
                 repos_file=data.get('REPOS_FILE', './repos.json'),
             ),
             reranking=RerankingConfig(
-            reranker_model=data.get('RERANKER_MODEL', 'cross-encoder/ms-marco-MiniLM-L-12-v2'),
-            agro_reranker_enabled=data.get('AGRO_RERANKER_ENABLED', 1),
-            agro_reranker_alpha=data.get('AGRO_RERANKER_ALPHA', 0.7),
-            agro_reranker_topn=data.get('AGRO_RERANKER_TOPN', 50),
-            agro_reranker_batch=data.get('AGRO_RERANKER_BATCH', 16),
-            agro_reranker_maxlen=data.get('AGRO_RERANKER_MAXLEN', 512),
-            agro_reranker_reload_on_change=data.get('AGRO_RERANKER_RELOAD_ON_CHANGE', 0),
-            agro_reranker_reload_period_sec=data.get('AGRO_RERANKER_RELOAD_PERIOD_SEC', 60),
-            cohere_rerank_model=data.get('COHERE_RERANK_MODEL', 'rerank-3.5'),
-            voyage_rerank_model=data.get('VOYAGE_RERANK_MODEL', 'rerank-2'),
-            reranker_active=data.get('RERANKER_ACTIVE', data.get('RERANKER_BACKEND', 'local')),
-            reranker_provider=data.get('RERANKER_PROVIDER', data.get('RERANKER_BACKEND', data.get('RERANK_BACKEND', ''))),
-            reranker_cloud_model=data.get('RERANKER_CLOUD_MODEL') or data.get('COHERE_RERANK_MODEL') or data.get('VOYAGE_RERANK_MODEL') or 'rerank-3.5',
-            reranker_backend=data.get('RERANKER_BACKEND', data.get('RERANK_BACKEND', 'local')),
-            reranker_timeout=data.get('RERANKER_TIMEOUT', 10),
-            rerank_input_snippet_chars=data.get('RERANK_INPUT_SNIPPET_CHARS', 700),
-            transformers_trust_remote_code=data.get('TRANSFORMERS_TRUST_REMOTE_CODE', 1),
-        ),
+                # Unified RERANKER_MODE with backwards compat fallback to old keys
+                reranker_mode=data.get('RERANKER_MODE') or data.get('RERANKER_ACTIVE') or data.get('RERANKER_BACKEND') or 'local',
+                reranker_cloud_provider=data.get('RERANKER_CLOUD_PROVIDER') or data.get('RERANKER_PROVIDER') or 'cohere',
+                reranker_cloud_model=data.get('RERANKER_CLOUD_MODEL') or data.get('COHERE_RERANK_MODEL') or 'rerank-3.5',
+                reranker_local_model=data.get('RERANKER_LOCAL_MODEL') or data.get('RERANKER_MODEL') or 'cross-encoder/ms-marco-MiniLM-L-12-v2',
+                agro_reranker_alpha=data.get('AGRO_RERANKER_ALPHA', 0.7),
+                agro_reranker_topn=data.get('AGRO_RERANKER_TOPN', 50),
+                agro_reranker_batch=data.get('AGRO_RERANKER_BATCH', 16),
+                agro_reranker_maxlen=data.get('AGRO_RERANKER_MAXLEN', 512),
+                agro_reranker_reload_on_change=data.get('AGRO_RERANKER_RELOAD_ON_CHANGE', 0),
+                agro_reranker_reload_period_sec=data.get('AGRO_RERANKER_RELOAD_PERIOD_SEC', 60),
+                reranker_timeout=data.get('RERANKER_TIMEOUT', 10),
+                rerank_input_snippet_chars=data.get('RERANK_INPUT_SNIPPET_CHARS', 700),
+                transformers_trust_remote_code=data.get('TRANSFORMERS_TRUST_REMOTE_CODE', 1),
+            ),
             generation=GenerationConfig(
                 gen_model=data.get('GEN_MODEL', 'gpt-4o-mini'),
                 gen_temperature=data.get('GEN_TEMPERATURE', 0.0),
@@ -1889,7 +1851,7 @@ class AgroConfigRoot(BaseModel):
                 editor_bind=data.get('EDITOR_BIND', 'local'),
                 editor_embed_enabled=data.get('EDITOR_EMBED_ENABLED', 1),
                 editor_enabled=data.get('EDITOR_ENABLED', 1),
-                editor_image=data.get('EDITOR_IMAGE', 'agro-vscode:latest'),
+                editor_image=data.get('EDITOR_IMAGE', 'codercom/code-server:latest'),
                 theme_mode=data.get('THEME_MODE', 'dark'),
                 open_browser=data.get('OPEN_BROWSER', 1),
                 runtime_mode=data.get('RUNTIME_MODE', 'development'),
@@ -2002,21 +1964,17 @@ AGRO_CONFIG_KEYS = {
     'OUT_DIR_BASE',
     'RAG_OUT_BASE',
     'REPOS_FILE',
-    # Reranking params (13)
-    'RERANKER_MODEL',
-    'AGRO_RERANKER_ENABLED',
+    # Reranking params (13) - unified with RERANKER_MODE
+    'RERANKER_MODE',
+    'RERANKER_CLOUD_PROVIDER',
+    'RERANKER_CLOUD_MODEL',
+    'RERANKER_LOCAL_MODEL',
     'AGRO_RERANKER_ALPHA',
     'AGRO_RERANKER_TOPN',
     'AGRO_RERANKER_BATCH',
     'AGRO_RERANKER_MAXLEN',
     'AGRO_RERANKER_RELOAD_ON_CHANGE',
     'AGRO_RERANKER_RELOAD_PERIOD_SEC',
-    'COHERE_RERANK_MODEL',
-    'VOYAGE_RERANK_MODEL',
-    'RERANKER_ACTIVE',
-    'RERANKER_PROVIDER',
-    'RERANKER_CLOUD_MODEL',
-    'RERANKER_BACKEND',
     'RERANKER_TIMEOUT',
     'RERANK_INPUT_SNIPPET_CHARS',
     'TRANSFORMERS_TRUST_REMOTE_CODE',
@@ -2160,10 +2118,10 @@ RAG_EVAL_CONFIG_KEYS = {
     'CHUNK_SIZE', 'CHUNK_OVERLAP', 'AST_OVERLAP_LINES', 'MAX_CHUNK_SIZE',
     'MIN_CHUNK_CHARS', 'GREEDY_FALLBACK_TARGET', 'CHUNKING_STRATEGY', 'PRESERVE_IMPORTS',
 
-    # Reranking params (10 keys) - directly affects result quality
-    'RERANKER_MODEL', 'AGRO_RERANKER_ENABLED', 'AGRO_RERANKER_ALPHA', 'AGRO_RERANKER_TOPN',
-    'AGRO_RERANKER_BATCH', 'AGRO_RERANKER_MAXLEN', 'COHERE_RERANK_MODEL',
-    'VOYAGE_RERANK_MODEL', 'RERANKER_BACKEND', 'RERANK_INPUT_SNIPPET_CHARS',
+    # Reranking params (9 keys) - directly affects result quality
+    'RERANKER_MODE', 'RERANKER_CLOUD_PROVIDER', 'RERANKER_CLOUD_MODEL', 'RERANKER_LOCAL_MODEL',
+    'AGRO_RERANKER_ALPHA', 'AGRO_RERANKER_TOPN', 'AGRO_RERANKER_BATCH',
+    'AGRO_RERANKER_MAXLEN', 'RERANK_INPUT_SNIPPET_CHARS',
 
     # Keywords params (3 keys) - affects keyword boosting
     'KEYWORDS_BOOST', 'KEYWORDS_MAX_PER_REPO', 'KEYWORDS_MIN_FREQ',

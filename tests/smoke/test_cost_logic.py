@@ -67,3 +67,4 @@ def test_cost_estimate_embed_scaling():
 
 
 
+
