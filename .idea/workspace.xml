@@ -5,98 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="06981a01-68f6-4278-af0e-6fdee9153f5c" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/agro-rag-engine.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/agro-rag-engine.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/AGENTS.md" beforeDir="false" afterPath="$PROJECT_DIR$/AGENTS.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CLAUDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/CLAUDE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agent_docs/ENTERPRISE_INDEXING_IMPLEMENTATION_PLAN.md" beforeDir="false" afterPath="$PROJECT_DIR$/agent_docs/ENTERPRISE_INDEXING_IMPLEMENTATION_PLAN.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agent_docs/HANDOFF_2025_11_28_ENTERPRISE_INDEXING.md" beforeDir="false" afterPath="$PROJECT_DIR$/agent_docs/HANDOFF_2025_11_28_ENTERPRISE_INDEXING.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agent_docs/HANDOFF_2025_11_28_ONBOARDING_AND_DOCS.md" beforeDir="false" afterPath="$PROJECT_DIR$/agent_docs/HANDOFF_2025_11_28_ONBOARDING_AND_DOCS.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agent_docs/HANDOFF_2025_12_02_RERANKER_CONFIG_UNIFICATION.md" beforeDir="false" afterPath="$PROJECT_DIR$/agent_docs/HANDOFF_2025_12_02_RERANKER_CONFIG_UNIFICATION.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agent_docs/___ANTHROPIC_REFUND_REQUEST___.md" beforeDir="false" afterPath="$PROJECT_DIR$/agent_docs/___ANTHROPIC_REFUND_REQUEST___.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agent_docs/audit/all_hits.raw" beforeDir="false" afterPath="$PROJECT_DIR$/agent_docs/audit/all_hits.raw" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agent_docs/audit/backend_api_complete_audit.md" beforeDir="false" afterPath="$PROJECT_DIR$/agent_docs/audit/backend_api_complete_audit.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agent_docs/audit/hardcoding_hits.csv" beforeDir="false" afterPath="$PROJECT_DIR$/agent_docs/audit/hardcoding_hits.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agent_docs/audit/legacy_javascript_complete_audit.md" beforeDir="false" afterPath="$PROJECT_DIR$/agent_docs/audit/legacy_javascript_complete_audit.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agent_docs/audit/module_inventory_with_details.md" beforeDir="false" afterPath="$PROJECT_DIR$/agent_docs/audit/module_inventory_with_details.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agent_docs/gui_audit/gui/INTEGRATION_DATA_FLOW.md" beforeDir="false" afterPath="$PROJECT_DIR$/agent_docs/gui_audit/gui/INTEGRATION_DATA_FLOW.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agent_docs/gui_audit/gui/JS_AUDIT_UTILITIES.md" beforeDir="false" afterPath="$PROJECT_DIR$/agent_docs/gui_audit/gui/JS_AUDIT_UTILITIES.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agent_docs/investigation-80rps-api-config-repos-2025-12-02.md" beforeDir="false" afterPath="$PROJECT_DIR$/agent_docs/investigation-80rps-api-config-repos-2025-12-02.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agent_docs/investigation-unicode-encoding-error-2025-12-01.md" beforeDir="false" afterPath="$PROJECT_DIR$/agent_docs/investigation-unicode-encoding-error-2025-12-01.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agent_docs/shared/current/PROGRESS_UI_BACKEND_MIGRATION.md" beforeDir="false" afterPath="$PROJECT_DIR$/agent_docs/shared/current/PROGRESS_UI_BACKEND_MIGRATION.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agro_config.json" beforeDir="false" afterPath="$PROJECT_DIR$/agro_config.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common/paths.py" beforeDir="false" afterPath="$PROJECT_DIR$/common/paths.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/training/triplets.jsonl" beforeDir="false" afterPath="$PROJECT_DIR$/data/training/triplets.jsonl" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/MODEL_RECOMMENDATIONS.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/MODEL_RECOMMENDATIONS.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/examples/mcp/mcp_claude_example.json" beforeDir="false" afterPath="$PROJECT_DIR$/examples/mcp/mcp_claude_example.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/extract_endpoints.py" beforeDir="false" afterPath="$PROJECT_DIR$/extract_endpoints.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/app.js" beforeDir="false" afterPath="$PROJECT_DIR$/gui/app.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gui/app.js.backup" beforeDir="false" afterPath="$PROJECT_DIR$/gui/app.js.backup" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal_docs.md/GUI-full-plan-draft.md" beforeDir="false" afterPath="$PROJECT_DIR$/internal_docs.md/GUI-full-plan-draft.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal_docs.md/agro_gui_stubs_scaffolding_live_settings_cost_profiles_secrets.md" beforeDir="false" afterPath="$PROJECT_DIR$/internal_docs.md/agro_gui_stubs_scaffolding_live_settings_cost_profiles_secrets.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/internal_docs.md/auto_profile_v2_draft.md" beforeDir="false" afterPath="$PROJECT_DIR$/internal_docs.md/auto_profile_v2_draft.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mkdocs/docs/api/endpoints.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/api/endpoints.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mkdocs/docs/configuration/profiles.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/configuration/profiles.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/cross-encoder-agro.baseline/tokenizer.json" beforeDir="false" afterPath="$PROJECT_DIR$/models/cross-encoder-agro.baseline/tokenizer.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/cross-encoder-agro.baseline/vocab.txt" beforeDir="false" afterPath="$PROJECT_DIR$/models/cross-encoder-agro.baseline/vocab.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/cross-encoder-agro/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/models/cross-encoder-agro/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/cross-encoder-agro/model.safetensors" beforeDir="false" afterPath="$PROJECT_DIR$/models/cross-encoder-agro/model.safetensors" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/cross-encoder-agro/tokenizer.json" beforeDir="false" afterPath="$PROJECT_DIR$/models/cross-encoder-agro/tokenizer.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/cross-encoder-agro/vocab.txt" beforeDir="false" afterPath="$PROJECT_DIR$/models/cross-encoder-agro/vocab.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/repos.json" beforeDir="false" afterPath="$PROJECT_DIR$/repos.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/reranker/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/reranker/config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts/test_backend.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/test_backend.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/app.backup.py.bak" beforeDir="false" afterPath="$PROJECT_DIR$/server/app.backup.py.bak" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/app.py.monolithic.bak" beforeDir="false" afterPath="$PROJECT_DIR$/server/app.py.monolithic.bak" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/autoprofile.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/autoprofile.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/models/agro_config_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/models/agro_config_model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/models/prices_config.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/models/prices_config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/routers/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/routers/config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/routers/cost.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/routers/cost.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/routers/docker.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/routers/docker.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/routers/profiles.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/routers/profiles.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/routers/reranker_ops.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/routers/reranker_ops.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/services/config_store.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/services/config_store.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-results/.last-run.json" beforeDir="false" afterPath="$PROJECT_DIR$/test-results/.last-run.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-results/rag_subtabs_render-RAG-Sub-c95a9-hould-render-without-errors-chromium/error-context.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-results/rag_subtabs_render-RAG-Sub-c95a9-hould-render-without-errors-chromium/trace.zip" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/api.spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/tests/api.spec.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/config_migration_retrieval_smoke.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/config_migration_retrieval_smoke.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/smoke/test_config_prices_consistency.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/smoke/test_config_prices_consistency.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/smoke/test_metrics_instrumentation.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/smoke/test_metrics_instrumentation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/smoke/test_prices_components.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/smoke/test_prices_components.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/smoke/test_prices_not_stubbed.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/smoke/test_prices_not_stubbed.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/smoke/test_pydantic_conformity.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/smoke/test_pydantic_conformity.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/smoke/verify_metrics.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/smoke/verify_metrics.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_agro_config.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_agro_config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/App.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/api/client.ts" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/api/client.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/components/Chat/ChatSettings.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/components/Chat/ChatSettings.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/components/Infrastructure/InfrastructureSubtabs.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/components/Infrastructure/InfrastructureSubtabs.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/components/RAG/ExternalRerankersSubtab.tsx.bak" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/components/RAG/ExternalRerankersSubtab.tsx.bak" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/components/Settings/Docker.tsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/components/tabs/InfrastructureTab.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/components/tabs/InfrastructureTab.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/contexts/CoreContext.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/contexts/CoreContext.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/hooks/useAppInit.ts" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/hooks/useAppInit.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/hooks/useEventBus.ts" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/hooks/useEventBus.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/hooks/useGlobalState.ts" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/hooks/useGlobalState.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/hooks/useTheme.ts" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/hooks/useTheme.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/modules/app.js" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/modules/app.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/modules/config.js" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/modules/config.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/modules/core-utils.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/modules/cost_logic.js" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/modules/cost_logic.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/modules/error-helpers.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/modules/fetch-shim.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/modules/model_flows.js" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/modules/model_flows.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/modules/theme.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/modules/tooltips.js" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/modules/tooltips.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/modules/ui-helpers.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/stores/useUIStore.ts" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/stores/useUIStore.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/utils/errorHelpers.ts" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/utils/errorHelpers.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -182,7 +91,7 @@
       <option name="presentableId" value="Default" />
       <updated>1764820245918</updated>
       <workItem from="1764820247767" duration="653000" />
-      <workItem from="1764820913189" duration="21605000" />
+      <workItem from="1764820913189" duration="22595000" />
     </task>
     <servers />
   </component>
