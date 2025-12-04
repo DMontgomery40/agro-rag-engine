@@ -560,9 +560,11 @@ export function DockerSubtab() {
                       </div>
                       <div style={{ fontSize: '12px', color: 'var(--fg-muted)', marginBottom: '4px' }}>{container.image}</div>
                       <div style={{ fontSize: '11px', color: 'var(--fg-muted)' }}>{container.status}</div>
-                      {container.ports.length > 0 && (
+                      {container.ports && (Array.isArray(container.ports) ? container.ports.length > 0 : container.ports.length > 0) && (
                         <div style={{ fontSize: '11px', color: 'var(--accent)', marginTop: '4px' }}>
-                          Ports: {container.ports.map(p => `${p.PublicPort || p.PrivatePort}/${p.Type}`).join(', ')}
+                          Ports: {Array.isArray(container.ports)
+                            ? container.ports.map(p => `${p.PublicPort || p.PrivatePort}/${p.Type}`).join(', ')
+                            : container.ports}
                         </div>
                       )}
                     </div>

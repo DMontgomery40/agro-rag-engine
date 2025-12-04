@@ -11,13 +11,13 @@ function resolveAPIBase(): string {
     const override = q.get('api');
     if (override) return override.replace(/\/$/, '');
     
-    // If on Vite dev server (ports 5170-5179), talk directly to backend on 8012
+    // If on the Vite dev server (ports 5170-5179), talk directly to backend on 8012
     const port = u.port || '';
     if (port && /^517[0-9]$/.test(port)) {
       return 'http://127.0.0.1:8012/api';
     }
     
-    // If protocol is http/https but not Vite dev port, use same origin
+    // If the protocol is http/https but not Vite dev port, use the same origin
     if (u.protocol.startsWith('http')) {
       return (u.origin.replace(/\/$/, '')) + '/api';
     }
@@ -30,7 +30,7 @@ function resolveAPIBase(): string {
   }
 }
 
-// Get API base URL from env or resolve dynamically
+// TODO:  THIS SHOULD BE PYDANTIC
 const API_BASE = import.meta.env.VITE_API_BASE || resolveAPIBase();
 
 // Create axios instance with defaults

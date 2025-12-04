@@ -5,7 +5,20 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="06981a01-68f6-4278-af0e-6fdee9153f5c" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.aiassistant/rules/AGRO-RULES.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/models/agro_config_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/models/agro_config_model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/routers/docker.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/routers/docker.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/.last-run.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/docker-settings-Docker-Set-37033-ons-are-present-on-sections-chromium/trace.zip" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/docker-settings-Docker-Set-524a1-cture-service-cards-display-chromium/trace.zip" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/docker-settings-Docker-Set-acbdb-lapsible-with-config-inputs-chromium/trace.zip" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/docker-settings-Docker-Set-e2ffa-page-renders-without-errors-chromium/trace.zip" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/docker-settings-Docker-Set-e390a-tus-displays-container-info-chromium/trace.zip" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/web-smoke/docker-settings.spec.ts" beforeDir="false" afterPath="$PROJECT_DIR$/tests/web-smoke/docker-settings.spec.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web/src/api/client.ts" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/api/client.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web/src/components/Infrastructure/DockerSubtab.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/components/Infrastructure/DockerSubtab.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web/src/components/Settings/Integrations.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/components/Settings/Integrations.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -59,7 +72,7 @@
     "project.structure.last.edited": "Modules",
     "project.structure.proportion": "0.15",
     "project.structure.side.proportion": "0.2",
-    "settings.editor.selected.configurable": "advanced.settings",
+    "settings.editor.selected.configurable": "ml.llm.LLMThirdPartyAiProvidersConfigurable",
     "to.speed.mode.migration.done": "true",
     "ts.external.directory.path": "/Users/davidmontgomery/agro-rag-engine/.editor_data/code-server-data/extensions/ms-python.python-2025.16.0-universal/out/client/node_modules/typescript/lib",
     "vue.rearranger.settings.migration": "true"
@@ -91,7 +104,7 @@
       <option name="presentableId" value="Default" />
       <updated>1764820245918</updated>
       <workItem from="1764820247767" duration="653000" />
-      <workItem from="1764820913189" duration="22595000" />
+      <workItem from="1764820913189" duration="29243000" />
     </task>
     <servers />
   </component>

@@ -1390,6 +1390,11 @@ Format your response with clear sections using markdown headers.''',
 class DockerConfig(BaseModel):
     """Docker infrastructure configuration."""
 
+    docker_host: str = Field(
+        default="",
+        description="Docker socket URL (e.g., unix:///var/run/docker.sock). Leave empty for auto-detection."
+    )
+
     docker_status_timeout: int = Field(
         default=5,
         ge=1,
@@ -1686,7 +1691,8 @@ class AgroConfigRoot(BaseModel):
             'PROMPT_CODE_ENRICHMENT': self.system_prompts.code_enrichment,
             'PROMPT_EVAL_ANALYSIS': self.system_prompts.eval_analysis,
             'PROMPT_LIGHTWEIGHT_CARDS': self.system_prompts.lightweight_cards,
-            # Docker params (7)
+            # Docker params (8)
+            'DOCKER_HOST': self.docker.docker_host,
             'DOCKER_STATUS_TIMEOUT': self.docker.docker_status_timeout,
             'DOCKER_CONTAINER_LIST_TIMEOUT': self.docker.docker_container_list_timeout,
             'DOCKER_CONTAINER_ACTION_TIMEOUT': self.docker.docker_container_action_timeout,
@@ -1926,6 +1932,7 @@ class AgroConfigRoot(BaseModel):
                 lightweight_cards=data.get('PROMPT_LIGHTWEIGHT_CARDS', SystemPromptsConfig().lightweight_cards),
             ),
             docker=DockerConfig(
+                docker_host=data.get('DOCKER_HOST', ''),
                 docker_status_timeout=data.get('DOCKER_STATUS_TIMEOUT', 5),
                 docker_container_list_timeout=data.get('DOCKER_CONTAINER_LIST_TIMEOUT', 10),
                 docker_container_action_timeout=data.get('DOCKER_CONTAINER_ACTION_TIMEOUT', 30),
@@ -2140,7 +2147,8 @@ AGRO_CONFIG_KEYS = {
     'PROMPT_LIGHTWEIGHT_CARDS',
     'PROMPT_CODE_ENRICHMENT',
     'PROMPT_EVAL_ANALYSIS',
-    # Docker params (7)
+    # Docker params (8)
+    'DOCKER_HOST',
     'DOCKER_STATUS_TIMEOUT',
     'DOCKER_CONTAINER_LIST_TIMEOUT',
     'DOCKER_CONTAINER_ACTION_TIMEOUT',
