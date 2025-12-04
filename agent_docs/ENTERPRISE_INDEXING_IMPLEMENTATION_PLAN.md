@@ -282,14 +282,14 @@ from typing import List, Dict, Tuple, Optional
 
 # Lazy imports to avoid loading unnecessary dependencies
 _tiktoken_encoder = None
-_prices_cache = None
+_models_cache = None
 
 
-def _load_prices() -> Dict:
+def _load_models() -> Dict:
     """Load models.json with model metadata."""
-    global _prices_cache
-    if _prices_cache is not None:
-        return _prices_cache
+    global _models_cache
+    if _models_cache is not None:
+        return _models_cache
     
     # Try multiple locations
     search_paths = [
@@ -301,14 +301,14 @@ def _load_prices() -> Dict:
     for path in search_paths:
         if path.exists():
             try:
-                _prices_cache = json.loads(path.read_text())
-                return _prices_cache
+                _models_cache = json.loads(path.read_text())
+                return _models_cache
             except Exception as e:
                 print(f"[token_utils] Warning: Could not load {path}: {e}")
     
     print("[token_utils] Warning: models.json not found, using defaults")
-    _prices_cache = {"models": []}
-    return _prices_cache
+    _models_cache = {"models": []}
+    return _models_cache
 
 
 def _get_model_info(model_name: str) -> Optional[Dict]:
@@ -320,10 +320,10 @@ def _get_model_info(model_name: str) -> Optional[Dict]:
     if not model_name:
         return None
         
-    prices = _load_prices()
+    models = _load_models()
     model_lower = model_name.lower().strip()
     
-    for model in prices.get("models", []):
+    for model in models.get("models", []):
         # EXACT match only - no partial matching
         if model.get("model", "").lower().strip() == model_lower:
             return model
@@ -661,10 +661,10 @@ def prepare_chunks_for_embedding(
 
 
 def clear_cache():
-    """Clear cached encoders and prices (for testing)."""
-    global _tiktoken_encoder, _prices_cache
+    """Clear cached encoders and models (for testing)."""
+    global _tiktoken_encoder, _models_cache
     _tiktoken_encoder = None
-    _prices_cache = None
+    _models_cache = None
 ```
 
 ---
@@ -1343,7 +1343,7 @@ Update the final metadata save section:
 
 ```
 □ A1. Create indexer/token_utils.py
-   - _load_prices() with multiple search paths
+   - _load_models() with multiple search paths
    - _get_model_info() with EXACT match only
    - count_tokens() with tiktoken/char fallback
    - get_max_tokens_for_model() with provider defaults
@@ -1451,7 +1451,7 @@ class PriceEntry(BaseModel):
         return v
 
 
-class PricesConfig(BaseModel):
+class modelsConfig(BaseModel):
     """Root schema for models.json."""
     
     models: List[PriceEntry]
@@ -1473,13 +1473,13 @@ class PricesConfig(BaseModel):
         return None
 
 
-def validate_prices_json(prices_data: dict) -> PricesConfig:
+def validate_models_json(models_data: dict) -> modelsConfig:
     """Validate models.json data and return typed config.
     
     Raises:
         pydantic.ValidationError: If validation fails
     """
-    return PricesConfig(**prices_data)
+    return modelsConfig(**models_data)
 ```
 
 ---
@@ -2241,8 +2241,8 @@ def hybrid_search(query: str, repo: str, top_k: int = 10, ...) -> List[Dict]:
 ```
 □ B1. Create server/models/price_model.py
    - PriceEntry with max_tokens validation
-   - PricesConfig with helper methods
-   - validate_prices_json() function
+   - modelsConfig with helper methods
+   - validate_models_json() function
 
 □ B2. Update web/public/models.json
    - Add max_tokens to ALL embedding models (correct values!)
@@ -2310,7 +2310,7 @@ def hybrid_search(query: str, repo: str, top_k: int = 10, ...) -> List[Dict]:
 
 ```bash
 # 1. Verify models.json loads
-python -c "from indexer.token_utils import _load_prices; print(_load_prices())"
+python -c "from indexer.token_utils import _load_models; print(_load_models())"
 
 # 2. Test token counting
 python -c "from indexer.token_utils import count_tokens; print(count_tokens('hello world', 'text-embedding-3-large', 'openai'))"

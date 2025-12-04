@@ -1,4 +1,6 @@
 import json as _json
+import os
+import shutil
 import subprocess
 from typing import Any, Dict
 
@@ -8,6 +10,54 @@ from common.paths import repo_root
 from server.services.config_registry import get_config_registry
 
 router = APIRouter()
+
+# Find docker binary - check common locations for macOS Colima
+_DOCKER_BIN = shutil.which("docker") or (
+    "/opt/homebrew/bin/docker" if os.path.exists("/opt/homebrew/bin/docker") else
+    "/usr/local/bin/docker" if os.path.exists("/usr/local/bin/docker") else
+    "docker"
+)
+
+# Build env for subprocess - use real HOME from pwd, not potentially corrupted os.environ
+# This is needed because .env may have HOME=/root for Docker containers
+_SUBPROCESS_ENV = os.environ.copy()
+try:
+    import pwd
+    _SUBPROCESS_ENV["HOME"] = pwd.getpwuid(os.getuid()).pw_dir
+except Exception:
+    pass  # Keep whatever HOME is set
+
+
+@router.get("/api/docker/debug")
+def docker_debug() -> Dict[str, Any]:
+    """Debug endpoint to check docker binary resolution."""
+    import subprocess
+    home = os.environ.get("HOME", "")
+    docker_config = os.path.join(home, ".docker", "config.json")
+    result = subprocess.run(
+        [_DOCKER_BIN, "info", "--format", "{{.ServerVersion}}"],
+        capture_output=True,
+        text=True,
+        timeout=5,
+    )
+    ctx_result = subprocess.run(
+        [_DOCKER_BIN, "context", "ls", "--format", "{{.Name}}:{{.Current}}"],
+        capture_output=True,
+        text=True,
+        timeout=5,
+    )
+    return {
+        "docker_bin": _DOCKER_BIN,
+        "exists": os.path.exists(_DOCKER_BIN),
+        "which_result": shutil.which("docker"),
+        "home": home,
+        "docker_config_exists": os.path.exists(docker_config),
+        "returncode": result.returncode,
+        "stdout": result.stdout,
+        "stderr": result.stderr,
+        "contexts": ctx_result.stdout,
+        "ctx_stderr": ctx_result.stderr,
+    }
 
 # Helper to get config values with defaults
 def _get_docker_config():
@@ -29,14 +79,14 @@ def docker_status() -> Dict[str, Any]:
     cfg = _get_docker_config()
     try:
         result = subprocess.run(
-            ["docker", "info", "--format", "{{.ServerVersion}}"],
+            [_DOCKER_BIN, "info", "--format", "{{.ServerVersion}}"],
             capture_output=True,
             text=True,
             timeout=cfg["status_timeout"],
         )
         if result.returncode == 0:
             count_result = subprocess.run(
-                ["docker", "ps", "-q"], capture_output=True, text=True, timeout=cfg["status_timeout"]
+                [_DOCKER_BIN, "ps", "-q"], capture_output=True, text=True, timeout=cfg["status_timeout"]
             )
             container_count = len(
                 [line for line in count_result.stdout.strip().split("\n") if line]
@@ -66,7 +116,7 @@ def docker_containers_all() -> Dict[str, Any]:
     cfg = _get_docker_config()
     try:
         result = subprocess.run(
-            ["docker", "ps", "-a", "--format", "{{json .}}"],
+            [_DOCKER_BIN, "ps", "-a", "--format", "{{json .}}"],
             capture_output=True,
             text=True,
             timeout=cfg["container_list_timeout"],
@@ -168,7 +218,7 @@ def docker_redis_ping() -> Dict[str, Any]:
     cfg = _get_docker_config()
     try:
         find_result = subprocess.run(
-            ["docker", "ps", "--format", "{{.Names}}", "--filter", "name=redis"],
+            [_DOCKER_BIN, "ps", "--format", "{{.Names}}", "--filter", "name=redis"],
             capture_output=True,
             text=True,
             timeout=cfg["status_timeout"],
@@ -178,7 +228,7 @@ def docker_redis_ping() -> Dict[str, Any]:
 
         container_name = find_result.stdout.strip().split("\n")[0]
         ping_result = subprocess.run(
-            ["docker", "exec", container_name, "redis-cli", "ping"],
+            [_DOCKER_BIN, "exec", container_name, "redis-cli", "ping"],
             capture_output=True,
             text=True,
             timeout=cfg["status_timeout"],
@@ -197,7 +247,7 @@ def docker_redis_memory() -> Dict[str, Any]:
     cfg = _get_docker_config()
     try:
         find_result = subprocess.run(
-            ["docker", "ps", "--format", "{{.Names}}", "--filter", "name=redis"],
+            [_DOCKER_BIN, "ps", "--format", "{{.Names}}", "--filter", "name=redis"],
             capture_output=True,
             text=True,
             timeout=cfg["status_timeout"],
@@ -208,7 +258,7 @@ def docker_redis_memory() -> Dict[str, Any]:
         container_name = find_result.stdout.strip().split("\n")[0]
         # Get memory info from Redis
         info_result = subprocess.run(
-            ["docker", "exec", container_name, "redis-cli", "INFO", "memory"],
+            [_DOCKER_BIN, "exec", container_name, "redis-cli", "INFO", "memory"],
             capture_output=True,
             text=True,
             timeout=cfg["status_timeout"],
@@ -271,7 +321,7 @@ def docker_infra_down() -> Dict[str, Any]:
     try:
         root = repo_root()
         result = subprocess.run(
-            ["docker", "compose", "down"],
+            [_DOCKER_BIN, "compose", "down"],
             capture_output=True,
             text=True,
             timeout=cfg["infra_down_timeout"],
@@ -292,7 +342,7 @@ def _ctl(action: str, container_id: str, timeout: int = None) -> Dict[str, Any]:
         timeout = cfg["container_action_timeout"]
     try:
         result = subprocess.run(
-            ["docker", action, container_id],
+            [_DOCKER_BIN, action, container_id],
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -355,7 +405,7 @@ def docker_container_remove(container_id: str) -> Dict[str, Any]:
     # Use rm -f for remove
     try:
         result = subprocess.run(
-            ["docker", "rm", "-f", container_id],
+            [_DOCKER_BIN, "rm", "-f", container_id],
             capture_output=True,
             text=True,
             timeout=cfg["container_action_timeout"],
@@ -385,7 +435,7 @@ def docker_container_logs(
     if timestamps is None:
         timestamps = cfg["logs_timestamps"]
     try:
-        cmd = ["docker", "logs", "--tail", str(tail)]
+        cmd = [_DOCKER_BIN, "logs", "--tail", str(tail)]
         if timestamps:
             cmd.append("--timestamps")
         cmd.append(container_id)

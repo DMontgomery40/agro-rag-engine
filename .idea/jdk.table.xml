@@ -1,0 +1,17 @@
+<application>
+  <component name="ProjectJdkTable">
+    <jdk version="2">
+      <name value="Python 3.11.7 (agro-rag-engine)" />
+      <type value="Python SDK" />
+      <homePath value="/Users/davidmontgomery/.pyenv/versions/3.11.7/bin/python3.11" />
+      <roots>
+        <classPath>
+          <root type="composite">
+            <root url="file:///Users/davidmontgomery/.pyenv/versions/3.11.7/lib/python3.11" type="simple" />
+            <root url="file:///Users/davidmontgomery/.pyenv/versions/3.11.7/lib/python3.11/site-packages" type="simple" />
+          </root>
+        </classPath>
+      </roots>
+    </jdk>
+  </component>
+</application>

@@ -701,7 +701,7 @@ server/autoprofile.py:113:            if "gemini-1.5-pro" in model:
 server/autoprofile.py:115:            if "gemini-1.5-flash" in model:
 server/autoprofile.py:138:    if c == "RERANK":
 server/autoprofile.py:192:    if comp == "RERANK":
-server/autoprofile.py:213:    RER = _component_rows("RERANK", ALLOW, prices, include_local, use_heuristics)
+server/autoprofile.py:213:    RER = _component_rows("RERANK", ALLOW, models, include_local, use_heuristics)
 server/autoprofile.py:224:        row["score"] = _score_row(row, W, "RERANK")
 server/autoprofile.py:239:    env["GEN_MODEL"] = str(winner_gen.get("model") or "")
 server/autoprofile.py:246:    env["RERANK_BACKEND"] = "cohere" if prov_rer == "cohere" else ("local" if prov_rer in {"local", "hf"} else prov_rer)

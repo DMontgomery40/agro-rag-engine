@@ -32,6 +32,7 @@ interface InfrastructureSubtabsProps {
 export function InfrastructureSubtabs({ activeSubtab, onSubtabChange }: InfrastructureSubtabsProps) {
   const subtabs = [
     { id: 'services', title: 'Services' },
+    { id: 'docker', title: 'Docker' },
     { id: 'mcp', title: 'MCP Servers' },
     { id: 'paths', title: 'Paths & Stores' },
     { id: 'monitoring', title: 'Monitoring' }

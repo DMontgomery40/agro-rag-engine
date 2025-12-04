@@ -455,7 +455,7 @@ def _classify_components(m: Dict[str, Any]) -> list[str]:
     return sorted(list(set(comps)))
 
 
-def _normalize_prices(data: Dict[str, Any]) -> Dict[str, Any]:
+def _normalize_models(data: Dict[str, Any]) -> Dict[str, Any]:
     try:
         models = list(data.get("models", [])) if isinstance(data, dict) else []
         out: list[Dict[str, Any]] = []
@@ -474,18 +474,18 @@ def _normalize_prices(data: Dict[str, Any]) -> Dict[str, Any]:
         new["models"] = out
         return new
     except Exception:
-        return _default_prices()
+        return _default_models()
 
 
-def prices_get() -> Dict[str, Any]:
+def models_get() -> Dict[str, Any]:
     raw = _read_json(gui_dir() / "models.json", {"models": []})
-    data = raw if (raw and isinstance(raw, dict) and raw.get("models")) else _default_prices()
-    return _normalize_prices(data)
+    data = raw if (raw and isinstance(raw, dict) and raw.get("models")) else _default_models()
+    return _normalize_models(data)
 
 
-def prices_upsert(item: Dict[str, Any]) -> Dict[str, Any]:
-    prices_path = gui_dir() / "models.json"
-    data = _read_json(prices_path, {"models": []})
+def models_upsert(item: Dict[str, Any]) -> Dict[str, Any]:
+    models_path = gui_dir() / "models.json"
+    data = _read_json(models_path, {"models": []})
     models: List[Dict[str, Any]] = list(data.get("models", []))
     key = (str(item.get("provider")), str(item.get("model")))
     idx = next((i for i, m in enumerate(models) if (str(m.get("provider")), str(m.get("model"))) == key), None)
@@ -499,11 +499,11 @@ def prices_upsert(item: Dict[str, Any]) -> Dict[str, Any]:
             models[i]["components"] = _classify_components(models[i])
     data["models"] = models
     data["last_updated"] = __import__('datetime').datetime.now().strftime('%Y-%m-%d')
-    _write_json(prices_path, data)
+    _write_json(models_path, data)
     return {"ok": True, "count": len(models)}
 
 
-def _default_prices() -> Dict[str, Any]:
+def _default_models() -> Dict[str, Any]:
     return {
         "last_updated": "2025-10-10",
         "currency": "USD",
@@ -626,11 +626,23 @@ def config_schema() -> Dict[str, Any]:
                     "default_repo": {"type": "string", "title": "Default Repo"},
                 },
             },
+            "docker": {
+                "type": "object",
+                "properties": {
+                    "DOCKER_STATUS_TIMEOUT": {"type": "integer", "title": "Status Check Timeout (s)", "minimum": 1, "maximum": 30},
+                    "DOCKER_CONTAINER_LIST_TIMEOUT": {"type": "integer", "title": "Container List Timeout (s)", "minimum": 1, "maximum": 60},
+                    "DOCKER_CONTAINER_ACTION_TIMEOUT": {"type": "integer", "title": "Container Action Timeout (s)", "minimum": 5, "maximum": 120},
+                    "DOCKER_INFRA_UP_TIMEOUT": {"type": "integer", "title": "Infra Up Timeout (s)", "minimum": 30, "maximum": 300},
+                    "DOCKER_INFRA_DOWN_TIMEOUT": {"type": "integer", "title": "Infra Down Timeout (s)", "minimum": 10, "maximum": 120},
+                    "DOCKER_LOGS_TAIL": {"type": "integer", "title": "Log Lines to Tail", "minimum": 10, "maximum": 1000},
+                    "DOCKER_LOGS_TIMESTAMPS": {"type": "integer", "title": "Include Log Timestamps (0/1)", "minimum": 0, "maximum": 1},
+                },
+            },
         },
     }
 
     ui: Dict[str, Any] = {
-        "order": ["generation", "retrieval", "reranker", "enrichment", "repo", "vscode", "grafana"],
+        "order": ["generation", "retrieval", "reranker", "enrichment", "repo", "vscode", "grafana", "docker"],
         "titles": {
             "generation": {"title": "Generation"},
             "retrieval": {"title": "Retrieval"},
@@ -639,6 +651,7 @@ def config_schema() -> Dict[str, Any]:
             "repo": {"title": "Repository"},
             "vscode": {"title": "VSCode"},
             "grafana": {"title": "Grafana"},
+            "docker": {"title": "Docker"},
         },
     }
 
@@ -695,6 +708,15 @@ def config_schema() -> Dict[str, Any]:
             "REPO": registry.get_str("REPO", default_repo or "agro"),
             "GIT_BRANCH": registry.get_str("GIT_BRANCH", ""),
             "default_repo": default_repo,
+        },
+        "docker": {
+            "DOCKER_STATUS_TIMEOUT": registry.get_int("DOCKER_STATUS_TIMEOUT", 5),
+            "DOCKER_CONTAINER_LIST_TIMEOUT": registry.get_int("DOCKER_CONTAINER_LIST_TIMEOUT", 10),
+            "DOCKER_CONTAINER_ACTION_TIMEOUT": registry.get_int("DOCKER_CONTAINER_ACTION_TIMEOUT", 30),
+            "DOCKER_INFRA_UP_TIMEOUT": registry.get_int("DOCKER_INFRA_UP_TIMEOUT", 60),
+            "DOCKER_INFRA_DOWN_TIMEOUT": registry.get_int("DOCKER_INFRA_DOWN_TIMEOUT", 30),
+            "DOCKER_LOGS_TAIL": registry.get_int("DOCKER_LOGS_TAIL", 100),
+            "DOCKER_LOGS_TIMESTAMPS": registry.get_int("DOCKER_LOGS_TIMESTAMPS", 1),
         },
     }
 

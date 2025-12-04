@@ -163,7 +163,7 @@ def categorize_endpoint(path: str) -> str:
         return 'autotune'
     elif '/git' in path_lower:
         return 'git'
-    elif '/cost' in path_lower or '/prices' in path_lower:
+    elif '/cost' in path_lower or '/models' in path_lower:
         return 'cost'
     elif '/health' in path_lower:
         return 'health'

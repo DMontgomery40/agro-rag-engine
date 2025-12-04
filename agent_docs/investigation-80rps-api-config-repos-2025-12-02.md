@@ -348,12 +348,12 @@ await Promise.all([
     // Load models.json for cost estimation
     fetch(api('/api/models'))
         .then(r => r.json())
-        .then(prices => {
+        .then(models => {
             if ((window as any).CoreUtils.state) {
-                (window as any).CoreUtils.state.prices = prices;
+                (window as any).CoreUtils.state.models = models;
             }
         })
-        .catch(err => console.warn('Failed to load prices:', err)),
+        .catch(err => console.warn('Failed to load models:', err)),
 
     // Load config
     fetch(api('/api/config'))  // ⚠️ LINE 87 - ANOTHER /api/config CALL

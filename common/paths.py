@@ -14,7 +14,11 @@ def _as_dir(p: str | Path | None) -> Path:
 def repo_root() -> Path:
     env = os.getenv("REPO_ROOT")
     if env:
-        return _as_dir(env)
+        candidate = _as_dir(env)
+        # Only use REPO_ROOT if the path actually exists
+        # (handles .env having Docker paths like /app when running locally)
+        if candidate.exists():
+            return candidate
     return Path(__file__).resolve().parents[1]
 
 
@@ -28,7 +32,7 @@ def gui_dir() -> Path:
         candidate = _as_dir(env)
         if candidate.exists():
             return candidate
-    # Default to the React web public assets (shared prices/profiles)
+    # Default to the React web public assets (shared models/profiles)
     return repo_root() / "web" / "public"
 
 

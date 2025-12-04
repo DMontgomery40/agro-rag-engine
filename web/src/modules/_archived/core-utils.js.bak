@@ -67,7 +67,7 @@
   /**
    * ---agentspec
    * what: |
-   *   Initializes DOM query helpers ($, $$) and global state object (prices, config). Provides foundation for DOM manipulation and app state management.
+   *   Initializes DOM query helpers ($, $$) and global state object (models, config). Provides foundation for DOM manipulation and app state management.
    *
    * why: |
    *   Centralizes selector logic and state in one place to avoid repeated boilerplate and ensure consistent access patterns.
@@ -83,7 +83,7 @@
   /**
    * ---agentspec
    * what: |
-   *   Initializes global app state object with prices, config, profiles, and defaultProfile properties. Provides centralized store for DOM queries via $$ utility.
+   *   Initializes global app state object with models, config, profiles, and defaultProfile properties. Provides centralized store for DOM queries via $$ utility.
    *
    * why: |
    *   Single source of truth for app data; enables consistent state access across modules.
@@ -98,7 +98,7 @@
 
   // Global application state
   const state = {
-    prices: null,
+    models: null,
     config: null,
     profiles: [],
     defaultProfile: null,

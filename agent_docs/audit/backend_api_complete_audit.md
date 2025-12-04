@@ -74,7 +74,7 @@
 - **Query Params:** None
 - **Response:** Price list JSON
 - **Pydantic:** No
-- **Reads agro_config.json:** YES - Via `cfg.prices_get()`
+- **Reads agro_config.json:** YES - Via `cfg.models_get()`
 - **Frontend Call:** YES - Chat component calls this
 - **Implementation:** Returns from `gui/models.json` via `config_store`
 
@@ -82,9 +82,9 @@
 - **File:** `/server/routers/config.py:50-52`
 - **Method:** POST
 - **Request Body:** JSON dict representing a price item
-- **Response:** Updated prices dict
+- **Response:** Updated models dict
 - **Pydantic:** No - uses raw dict
-- **Reads/Writes agro_config.json:** YES - Via `cfg.prices_upsert(item)`
+- **Reads/Writes agro_config.json:** YES - Via `cfg.models_upsert(item)`
 - **Frontend Call:** Likely (for price management)
 - **Implementation:** Updates price entry in `gui/models.json`
 

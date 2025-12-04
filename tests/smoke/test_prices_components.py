@@ -15,7 +15,7 @@ def _get_app():
         return app
 
 
-def test_prices_have_components():
+def test_models_have_components():
     app = _get_app()
     client = TestClient(app)
 
@@ -23,7 +23,7 @@ def test_prices_have_components():
     assert r.status_code == 200, f"/api/models returned {r.status_code}"
     data: Dict[str, Any] = r.json()
 
-    assert isinstance(data, dict) and isinstance(data.get("models"), list), "prices payload shape invalid"
+    assert isinstance(data, dict) and isinstance(data.get("models"), list), "models payload shape invalid"
     models = data["models"]
     assert len(models) > 0, "no models returned from /api/models"
 

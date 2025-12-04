@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useUIStore } from '@/stores/useUIStore';
 
 type ThemeMode = 'light' | 'dark' | 'auto';
 
 /**
  * useTheme Hook
  * Manages theme mode (light/dark/auto) with system preference detection
- * Converts theme.js functionality to React
+ * Uses UIStore for persisted state, replaces legacy theme.js
  */
 /**
  * ---agentspec
@@ -105,20 +106,48 @@ export function useTheme() {
     applyTheme(next);
   }, [theme, applyTheme]);
 
-  // Initialize theme from localStorage or environment
-  useEffect(() => {
+  // Initialize theme from config/localStorage - called by legacy config.js
+  const initThemeFromEnv = useCallback((env?: { THEME_MODE?: ThemeMode }) => {
     try {
       const saved = localStorage.getItem('THEME_MODE') as ThemeMode | null;
-      const mode = saved || 'auto';
+      const configMode = env?.THEME_MODE;
+      const mode = saved || configMode || 'auto';
 
       setTheme(mode);
       applyThemeToDocument(mode);
 
-      // Expose to window for backwards compatibility
+      // Sync with UIStore
+      useUIStore.getState().setThemeMode(mode);
+
+      // Update selectors if present
+      const selTop = document.querySelector('#theme-mode') as HTMLSelectElement | null;
+      const selMisc = document.querySelector('#misc-theme-mode') as HTMLSelectElement | null;
+      if (selTop) selTop.value = mode;
+      if (selMisc) selMisc.value = mode;
+
+      console.log('[useTheme] Initialized from config with mode:', mode);
+    } catch (e) {
+      console.warn('[useTheme] Failed to initialize from config:', e);
+    }
+  }, [applyThemeToDocument]);
+
+  // Initialize theme on mount
+  useEffect(() => {
+    try {
+      // Read from UIStore first (persisted), fallback to localStorage
+      const storeMode = useUIStore.getState().themeMode;
+      const saved = localStorage.getItem('THEME_MODE') as ThemeMode | null;
+      const mode = storeMode || saved || 'auto';
+
+      setTheme(mode);
+      applyThemeToDocument(mode);
+
+      // Expose to window for backwards compatibility with legacy modules
       (window as any).Theme = {
         resolveTheme,
         applyTheme,
         toggleTheme,
+        initThemeFromEnv,
         currentMode: mode
       };
 
@@ -126,7 +155,7 @@ export function useTheme() {
     } catch (e) {
       console.warn('[useTheme] Failed to initialize:', e);
     }
-  }, [applyThemeToDocument, resolveTheme, applyTheme, toggleTheme]);
+  }, [applyThemeToDocument, resolveTheme, applyTheme, toggleTheme, initThemeFromEnv]);
 
   // React to system preference changes when in auto mode
   useEffect(() => {

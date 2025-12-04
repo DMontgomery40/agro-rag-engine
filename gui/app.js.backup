@@ -20,7 +20,7 @@
     const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
     const state = {
-        prices: null,
+        models: null,
         config: null,
         profiles: [],
         defaultProfile: null,
@@ -386,9 +386,9 @@
         } catch {}
 
         // Seed cost panel defaults from pricing if fields are empty
-        if (state.prices && Array.isArray(state.prices.models) && state.prices.models.length) {
-            if (!$('#cost-provider').value) $('#cost-provider').value = state.prices.models[0].provider || '';
-            if (!$('#cost-model').value) $('#cost-model').value = state.prices.models[0].model || '';
+        if (state.models && Array.isArray(state.models.models) && state.models.models.length) {
+            if (!$('#cost-provider').value) $('#cost-provider').value = state.models.models[0].provider || '';
+            if (!$('#cost-model').value) $('#cost-model').value = state.models.models[0].model || '';
         }
 
         // Cost panel autopopulate from env
@@ -764,23 +764,23 @@
         }
     }
 
-    // ---------------- Prices & Cost ----------------
-    async function loadPrices() {
+    // ---------------- models & Cost ----------------
+    async function loadmodels() {
         try {
             const r = await fetch(api('/api/models'));
-            state.prices = await r.json();
+            state.models = await r.json();
             populatePriceDatalists();
         } catch (e) {
-            console.error('Failed to load prices:', e);
+            console.error('Failed to load models:', e);
         }
     }
 
     function unique(xs) { return Array.from(new Set(xs)); }
 
     function populatePriceDatalists() {
-        if (!state.prices || !Array.isArray(state.prices.models)) return;
+        if (!state.models || !Array.isArray(state.models.models)) return;
 
-        const models = state.prices.models;
+        const models = state.models.models;
         const providers = unique(models.map(m => (m.provider || '').trim()).filter(Boolean));
         const allModels = unique(models.map(m => (m.model || '').trim()).filter(Boolean));
 
@@ -2150,7 +2150,7 @@
         const genKwBtn = document.getElementById('btn-generate-keywords'); if (genKwBtn) genKwBtn.addEventListener('click', createKeywords);
 
         await Promise.all([
-            loadPrices(),
+            loadmodels(),
             loadConfig(),
             loadProfiles(),
             loadKeywords()
@@ -3049,7 +3049,7 @@
         const entry = { provider, model, family: 'gen', base_url: baseUrl || undefined };
         if (provider === 'local') entry.unit = 'request'; else entry.unit = '1k_tokens';
         await upsertPrice(entry);
-        await loadPrices();
+        await loadmodels();
         alert('Generation model added.');
     }
 
@@ -3082,7 +3082,7 @@
         const entry = { provider, model: model || provider + '-embed', family: 'embed', base_url: baseUrl || undefined };
         entry.unit = '1k_tokens';
         await upsertPrice(entry);
-        await loadPrices();
+        await loadmodels();
         alert('Embedding model added.');
     }
 
@@ -3114,7 +3114,7 @@
         const entry = { provider, model, family: 'rerank', base_url: baseUrl || undefined };
         entry.unit = provider === 'cohere' ? '1k_tokens' : 'request';
         await upsertPrice(entry);
-        await loadPrices();
+        await loadmodels();
         alert('Rerank model added.');
     }
 
@@ -3126,7 +3126,7 @@
         const baseUrl = promptStr('Base URL (optional)', '');
         const unit = promptStr('Unit (1k_tokens or request)', provider === 'local' ? 'request' : '1k_tokens') || '1k_tokens';
         await upsertPrice({ provider, model, family: 'misc', base_url: baseUrl || undefined, unit });
-        await loadPrices();
+        await loadmodels();
         alert('Model added to pricing catalog.');
     }
 

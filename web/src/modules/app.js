@@ -128,27 +128,27 @@
     const saveConfig = window.Config?.saveConfig || (async () => {});
 
 
-    // ---------------- Prices & Cost ----------------
-    async function loadPrices() {
+    // ---------------- models & Cost ----------------
+    async function loadmodels() {
         try {
             const r = await fetch(api('/api/models'));
-            state.prices = await r.json();
+            state.models = await r.json();
             populatePriceDatalists();
         } catch (e) {
-            console.error('Failed to load prices:', e);
+            console.error('Failed to load models:', e);
         }
     }
 
     /**
      * ---agentspec
      * what: |
-     *   Deduplicates provider and model strings from state.prices.models array. Returns two unique arrays: providers and allModels.
+     *   Deduplicates provider and model strings from state.models.models array. Returns two unique arrays: providers and allModels.
      *
      * why: |
      *   Populates datalists with distinct values to avoid duplicate options in UI dropdowns.
      *
      * guardrails:
-     *   - DO NOT assume state.prices exists; guard with early return
+     *   - DO NOT assume state.models exists; guard with early return
      *   - NOTE: Filters empty/whitespace strings before deduplication
      * ---/agentspec
      */
@@ -157,21 +157,21 @@
     /**
      * ---agentspec
      * what: |
-     *   Populates HTML datalists for price filter UI. Extracts unique providers and models from state.prices.models array, renders into cost-provider select and model-list datalist.
+     *   Populates HTML datalists for price filter UI. Extracts unique providers and models from state.models.models array, renders into cost-provider select and model-list datalist.
      *
      * why: |
      *   Centralizes datalist population logic to keep UI sync'd with price data state.
      *
      * guardrails:
-     *   - DO NOT render if state.prices or state.prices.models missing; early return prevents crashes
+     *   - DO NOT render if state.models or state.models.models missing; early return prevents crashes
      *   - NOTE: Assumes cost-provider and model-list elements exist in DOM
      *   - NOTE: Trims whitespace; filters empty strings to avoid blank options
      * ---/agentspec
      */
     function populatePriceDatalists() {
-        if (!state.prices || !Array.isArray(state.prices.models)) return;
+        if (!state.models || !Array.isArray(state.models.models)) return;
 
-        const models = state.prices.models;
+        const models = state.models.models;
         const providers = unique(models.map(m => (m.provider || '').trim()).filter(Boolean));
         const allModels = unique(models.map(m => (m.model || '').trim()).filter(Boolean));
 
@@ -1693,7 +1693,7 @@
         const genKwBtn = document.getElementById('btn-generate-keywords'); if (genKwBtn) genKwBtn.addEventListener('click', createKeywords);
 
         await Promise.all([
-            loadPrices(),
+            loadmodels(),
             loadConfig(),
             loadProfiles(),
             loadKeywords(),

@@ -23,11 +23,11 @@ def main() -> int:
     app = serve_rag.app
     c = TestClient(app)
 
-    # Prices
+    # models
     r = c.get('/api/models')
     assert r.status_code == 200, r.text
     models = r.json().get('models', [])
-    print('prices models:', len(models))
+    print('models models:', len(models))
 
     # Upsert a model
     r = c.post('/api/models/upsert', json={"provider":"local","model":"qwen3-coder:14b","unit":"request"})

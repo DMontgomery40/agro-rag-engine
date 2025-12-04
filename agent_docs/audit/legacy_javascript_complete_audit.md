@@ -286,7 +286,7 @@ Config Module IDs (config.js)
 - `POST /api/env/reload` - Reload environment
 - `POST /api/keywords/add` - Add keyword
 - `POST /api/repos/{repo}/validate-path` - Validate repo path
-- `GET /api/models` - Get model prices
+- `GET /api/models` - Get model models
 
 **Evaluation Endpoints:**
 - `POST /api/eval/run` - Start evaluation

@@ -4,7 +4,7 @@
 - Removed the legacy `/gui` HTML bundle, the duplicated `/public/agro` assets, and the entire `website/` Docusaurus tree (HTML, CSS, JS, screenshots, configs). The React/Vite app under `/web` is now the only GUI surface.
 - Added a MkDocs documentation stack (`mkdocs.yml`, `mkdocs/docs/**`) plus a `docs-ai` GitHub workflow and helper script (`scripts/docs_ai/generate_docs_from_diff.py`). All new docs live under `mkdocs/docs` and should be edited there going forward.
 - Checked in the latest `data/snapshots/code_chunks_agro/*.snapshot` artifacts. These are now tracked with Git LFS (pattern `data/snapshots/**/*.snapshot`) to stay under GitHub’s 100 MB limit.
-- Server/config updates to support the refactor (`server/models/prices_config.py`, cost/profile routers, config registry/store tweaks, `agro_config.json`, etc.).
+- Server/config updates to support the refactor (`server/models/models_config.py`, cost/profile routers, config registry/store tweaks, `agro_config.json`, etc.).
 - React/web updates with a focus on the onboarding experience: `web/src/components/tabs/StartTab.tsx` now includes a client‑side fallback so the stepper buttons work immediately, `web/src/modules/onboarding.js` restores the step and marks readiness, `TuneStep`, tooltips, RAG subtab, Autoprofile, etc. were kept in sync.
 - Added a new Playwright check: `tests/web-smoke/onboarding_wizard_clicks.spec.ts` exercises Next/Back/dot navigation to prevent regressions.
 

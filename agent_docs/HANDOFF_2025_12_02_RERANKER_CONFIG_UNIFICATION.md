@@ -227,7 +227,7 @@
 89. `tests/smoke/verify_metrics.py`
 90. `tests/smoke/test_pydantic_conformity.py`
 91. `tests/smoke/test_metrics_instrumentation.py`
-92. `tests/smoke/test_config_prices_consistency.py`
+92. `tests/smoke/test_config_models_consistency.py`
 93. `tests/smoke/test_enriching_toggle.py`
 94. `tests/smoke/test_trace_steps_log.py`
 95. `tests/smoke/test_evaluation_dataset.py`

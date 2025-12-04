@@ -1,12 +1,12 @@
 from typing import Dict, Any, Optional
 from fastapi import APIRouter
-from server.services.config_store import prices_get
+from server.services.config_store import models_get
 
 router = APIRouter()
 
 def _find_price_kind(provider: str, model: Optional[str], kind: str) -> Optional[Dict[str, Any]]:
     """Find a price row constrained by kind: 'gen' | 'embed' | 'rerank'."""
-    data = prices_get()
+    data = models_get()
     models = data.get("models", [])
     prov = str(provider or '').lower()
     mdl = str(model or '').lower()

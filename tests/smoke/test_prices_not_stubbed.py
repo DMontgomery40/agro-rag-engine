@@ -17,7 +17,7 @@ def _components(m: Dict[str, Any]) -> set[str]:
 
 
 @pytest.mark.smoke
-def test_prices_not_stubbed():
+def test_models_not_stubbed():
     try:
         from server.asgi import create_app  # type: ignore
     except Exception:
@@ -32,26 +32,26 @@ def test_prices_not_stubbed():
     models = data.get("models") or []
 
     # Reject the tiny default stub (<=5 models)
-    assert len(models) > 5, "prices catalog appears stubbed (<=5 models)"
+    assert len(models) > 5, "models catalog appears stubbed (<=5 models)"
 
     # Require component coverage for pickers
     comps: Set[str] = set()
     for m in models:
         comps.update(_components(m))
-    assert "GEN" in comps, "prices catalog missing GEN models"
-    assert "EMB" in comps, "prices catalog missing EMB models"
-    assert "RERANK" in comps, "prices catalog missing RERANK models"
+    assert "GEN" in comps, "models catalog missing GEN models"
+    assert "EMB" in comps, "models catalog missing EMB models"
+    assert "RERANK" in comps, "models catalog missing RERANK models"
 
     # Require provider coverage for cloud pickers
     providers = {str(m.get("provider") or "").lower() for m in models}
-    assert "openai" in providers, "prices catalog missing openai provider"
-    assert "cohere" in providers, "prices catalog missing cohere provider"
-    assert "voyage" in providers or "voyageai" in providers, "prices catalog missing voyage provider"
-    assert "local" in providers, "prices catalog missing local provider"
+    assert "openai" in providers, "models catalog missing openai provider"
+    assert "cohere" in providers, "models catalog missing cohere provider"
+    assert "voyage" in providers or "voyageai" in providers, "models catalog missing voyage provider"
+    assert "local" in providers, "models catalog missing local provider"
 
     # Require at least one local reranker entry (AGRO cross-encoder)
     assert any(
         (m.get("provider") or "").lower() in {"local", "hf", "huggingface"}
         and "cross-encoder-agro" in str(m.get("model") or "").lower()
         for m in models
-    ), "prices catalog missing AGRO cross-encoder reranker entry"
+    ), "models catalog missing AGRO cross-encoder reranker entry"

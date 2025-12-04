@@ -1,143 +1,84 @@
 import { useState, useEffect } from 'react';
 import { useRepoStore } from '@/stores/useRepoStore';
+import { useConfigStore } from '@/stores/useConfigStore';
+import { useHealthStore } from '@/stores/useHealthStore';
+import { apiUrl } from '@/api/client';
 
 /**
  * Hook for app initialization
- * Handles loading prices, config, profiles, keywords, and commit metadata
- * Triggers initial health checks and dashboard refresh
- */
-/**
- * ---agentspec
- * what: |
- *   Custom React hook that manages application initialization state and error handling.
- *   Takes no parameters; manages two state variables: isInitialized (boolean) and initError (string | null).
- *   Returns an object with isInitialized and initError properties for consuming components.
- *   Runs initialization logic once on component mount via useEffect with empty dependency array.
- *   Logs initialization start to console; catches and stores any errors that occur during init.
- *
- * why: |
- *   Centralizes app startup logic in a reusable hook to avoid duplicating initialization code across components.
- *   Separates initialization concerns (async setup, error handling, state management) from component rendering logic.
- *   Provides a single source of truth for initialization state that multiple components can subscribe to.
- *
- * guardrails:
- *   - DO NOT add side effects outside the useEffect block; all async initialization must occur within the effect
- *   - ALWAYS include error handling in the init function to prevent unhandled promise rejections
- *   - NOTE: Empty dependency array means init runs only once on mount; if re-initialization is needed, add dependencies or create a separate trigger function
- *   - ASK USER: What specific initialization tasks should this hook perform? (API calls, config loading, auth checks, etc.) Currently the init function body is incomplete
- *   - ASK USER: Should initialization errors be retryable, or should they permanently block the app?
- * ---/agentspec
+ * Handles loading config, profiles, and repos via Zustand stores
+ * NO LONGER depends on window.CoreUtils - uses typed API client
  */
 export function useAppInit() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
   const { loadRepos } = useRepoStore();
+  const { loadConfig, loadKeywords } = useConfigStore();
+  const { checkHealth } = useHealthStore();
 
   useEffect(() => {
-    /**
-     * ---agentspec
-     * what: |
-     *   Initializes the application by polling for CoreUtils availability on the window object.
-     *   Takes no parameters; runs asynchronously as a side effect.
-     *   Polls window.CoreUtils with 100ms intervals for up to 5 seconds (50 attempts × 100ms).
-     *   Returns a Promise that resolves when CoreUtils is detected or rejects/times out after 50 failed attempts.
-     *   Logs initialization start to console; does not validate CoreUtils structure or functionality.
-     *
-     * why: |
-     *   Waits for legacy modules to load CoreUtils asynchronously before proceeding with app initialization.
-     *   Polling approach accommodates unpredictable timing of legacy script loading without blocking the main thread.
-     *   This pattern bridges modern async initialization with legacy synchronous module loading patterns.
-     *
-     * guardrails:
-     *   - DO NOT remove the polling loop; CoreUtils may not be immediately available when this hook runs
-     *   - ALWAYS log initialization state for debugging; legacy module loading failures are difficult to diagnose
-     *   - NOTE: Hard-coded 5-second timeout (50 attempts) may be insufficient for slow network conditions or large legacy bundles
-     *   - NOTE: No error handling after the loop; if CoreUtils never loads, the function silently completes without indication of failure
-     *   - ASK USER: Confirm desired behavior when CoreUtils fails to load—should this throw an error, retry with backoff, or fall back to a default state?
-     * ---/agentspec
-     */
     const init = async () => {
       try {
-        console.log('[useAppInit] Starting app initialization...');
+        console.log('[useAppInit] Starting app initialization (no CoreUtils dependency)...');
 
-        // Wait for CoreUtils to be available (loaded by legacy modules)
-        let attempts = 0;
-        while (!(window as any).CoreUtils && attempts < 50) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-          attempts++;
-        }
-
-        if (!(window as any).CoreUtils) {
-          throw new Error('CoreUtils module did not load');
-        }
-
-        const { api } = (window as any).CoreUtils;
-
-        // Load initial data in parallel
+        // Load initial data in parallel using Zustand stores and typed API
         await Promise.all([
-          // Load models.json for cost estimation
-          fetch(api('/api/models'))
-            .then(r => r.json())
-            .then(prices => {
-              if ((window as any).CoreUtils.state) {
-                (window as any).CoreUtils.state.prices = prices;
-              }
-            })
-            .catch(err => console.warn('Failed to load prices:', err)),
-
-          // Load config
-          fetch(api('/api/config'))
-            .then(r => r.json())
-            .then(config => {
-              if ((window as any).CoreUtils.state) {
-                (window as any).CoreUtils.state.config = config;
-              }
-            })
+          // Load config via Zustand store
+          loadConfig()
             .catch(err => console.warn('Failed to load config:', err)),
 
-          // Load profiles
-          fetch(api('/api/profiles'))
+          // Load repos via Zustand store
+          loadRepos()
+            .catch(err => console.warn('Failed to load repos:', err)),
+
+          // Load keywords via Zustand store
+          loadKeywords()
+            .catch(err => console.warn('Failed to load keywords:', err)),
+
+          // Load models.json for cost estimation (still needed for legacy modules during transition)
+          fetch(apiUrl('/models'))
+            .then(r => r.json())
+            .then(models => {
+              // Store in window for legacy modules that still need it
+              if ((window as any).CoreUtils?.state) {
+                (window as any).CoreUtils.state.models = models;
+              }
+            })
+            .catch(err => console.warn('Failed to load models:', err)),
+
+          // Load profiles (still needed for legacy modules during transition)
+          fetch(apiUrl('/profiles'))
             .then(r => r.json())
             .then(data => {
-              if ((window as any).CoreUtils.state) {
+              // Store in window for legacy modules that still need it
+              if ((window as any).CoreUtils?.state) {
                 (window as any).CoreUtils.state.profiles = data.profiles || [];
                 (window as any).CoreUtils.state.defaultProfile = data.default || null;
               }
             })
             .catch(err => console.warn('Failed to load profiles:', err)),
 
-          // Load repos via Zustand store
-          loadRepos()
-            .catch(err => console.warn('Failed to load repos:', err)),
-
-          // Load keywords if available
-          (window as any).Keywords?.loadKeywords?.()
-            .catch((err: Error) => console.warn('Failed to load keywords:', err)),
-
-          // Load commit metadata if available
+          // Load commit metadata if available (legacy module)
           (window as any).GitCommitMeta?.loadCommitMeta?.()
             .catch((err: Error) => console.warn('Failed to load commit meta:', err))
         ]);
 
-        // Trigger initial checks
-        if ((window as any).Health?.checkHealth) {
-          await (window as any).Health.checkHealth().catch((err: Error) =>
-            console.warn('Initial health check failed:', err)
-          );
-        }
+        // Trigger initial health check via Zustand store
+        await checkHealth().catch((err: Error) =>
+          console.warn('Initial health check failed:', err)
+        );
 
+        // Legacy module initializations (temporary, will be removed as modules migrate)
         if ((window as any).Autotune?.refreshAutotune) {
           await (window as any).Autotune.refreshAutotune().catch((err: Error) =>
             console.warn('Failed to refresh autotune:', err)
           );
         }
 
-        // Initialize UI helpers
         if ((window as any).UiHelpers?.wireDayConverters) {
           (window as any).UiHelpers.wireDayConverters();
         }
 
-        // Initialize git hooks status
         if ((window as any).GitHooks?.refreshHooksStatus) {
           await (window as any).GitHooks.refreshHooksStatus().catch((err: Error) =>
             console.warn('Failed to refresh git hooks:', err)
@@ -155,15 +96,15 @@ export function useAppInit() {
       }
     };
 
-    // Wait for React to be ready and modules to load
+    // Wait for React to be ready
     if (document.readyState === 'loading') {
       window.addEventListener('DOMContentLoaded', init);
       return () => window.removeEventListener('DOMContentLoaded', init);
     } else {
-      // Give modules a moment to load
-      setTimeout(init, 150);
+      // Give a moment for initial render
+      setTimeout(init, 50);
     }
-  }, []);
+  }, [loadConfig, loadRepos, loadKeywords, checkHealth]);
 
   return { isInitialized, initError };
 }

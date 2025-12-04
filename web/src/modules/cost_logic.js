@@ -35,7 +35,7 @@ function normKey(s) {
 //   ]
 // }
 
-async function loadPrices() {
+async function loadmodels() {
   const now = Date.now();
   if (PRICE_CACHE.json && now - PRICE_CACHE.loadedAt < PRICE_TTL_MS) {
     return PRICE_CACHE.json;
@@ -88,16 +88,16 @@ function getModelType(model) {
  *   Normalization ensures case-insensitive matching; type computation centralizes model classification logic.
  *
  * guardrails:
- *   - DO NOT assume models array exists; check prices?.models first
+ *   - DO NOT assume models array exists; check models?.models first
  *   - NOTE: Returns undefined if no match found; caller must handle
  *   - ASK USER: Should fallback to partial match if exact match fails?
  * ---/agentspec
  */
-function getModelSpec(prices, providerName, modelName) {
-  const models = prices?.models || [];
+function getModelSpec(modelsData, providerName, modelName) {
+  const models = modelsData?.models || [];
   const prov = normKey(providerName);
   const mdl = normKey(modelName);
-  
+
   // Try exact match first
   for (const m of models) {
     if (normKey(m.provider) === prov && normKey(m.model) === mdl) {
@@ -139,7 +139,7 @@ function getModelSpec(prices, providerName, modelName) {
 /**
  * ---agentspec
  * what: |
- *   Computes unit cost (USD) for a model. Takes prices dict, provider, model name. Returns {costUSD, detail} or error if model unknown.
+ *   Computes unit cost (USD) for a model. Takes models dict, provider, model name. Returns {costUSD, detail} or error if model unknown.
  *
  * why: |
  *   Centralizes cost lookup logic; normalizes provider key and validates model existence before calculation.
@@ -150,10 +150,10 @@ function getModelSpec(prices, providerName, modelName) {
  *   - ASK USER: How should missing pricing tiers be handled (default to 0 or throw)?
  * ---/agentspec
  */
-function computeUnitCost(prices, opt) {
+function computeUnitCost(models, opt) {
   const provider = normKey(opt.provider);
   const model = opt.model;
-  const spec = getModelSpec(prices, provider, model);
+  const spec = getModelSpec(models, provider, model);
   if (!spec) {
     return { costUSD: 0, detail: { error: `Unknown model: ${provider}/${model}` } };
   }
@@ -205,32 +205,32 @@ function computeUnitCost(prices, opt) {
  */
 export const CostLogic = {
   async estimate(req) {
-    const prices = await loadPrices();
+    const models = await loadmodels();
     let total = 0;
     const breakdown = {};
 
     if (req?.chat) {
-      const r = computeUnitCost(prices, { type:'chat', ...req.chat });
+      const r = computeUnitCost(models, { type:'chat', ...req.chat });
       breakdown.chat = r;
       total += r.costUSD;
     }
     if (req?.embed) {
-      const r = computeUnitCost(prices, { type:'embed', ...req.embed });
+      const r = computeUnitCost(models, { type:'embed', ...req.embed });
       breakdown.embed = r;
       total += r.costUSD;
     }
     if (req?.rerank) {
-      const r = computeUnitCost(prices, { type:'rerank', ...req.rerank });
+      const r = computeUnitCost(models, { type:'rerank', ...req.rerank });
       breakdown.rerank = r;
       total += r.costUSD;
     }
-    return { totalUSD: Number(total.toFixed(6)), breakdown, pricesVersion: prices?.version || null };
+    return { totalUSD: Number(total.toFixed(6)), breakdown, modelsVersion: models?.version || null };
   },
 
   // Quick helpers the GUI can call
   async listProviders() {
-    const prices = await loadPrices();
-    const models = prices?.models || [];
+    const modelsData = await loadmodels();
+    const models = modelsData?.models || [];
     const providers = new Set();
     models.forEach(m => {
       if (m.provider) {
@@ -245,8 +245,8 @@ export const CostLogic = {
     return Array.from(providers).sort();
   },
   async listModels(providerName, modelType = null) {
-    const prices = await loadPrices();
-    const models = prices?.models || [];
+    const modelsData = await loadmodels();
+    const models = modelsData?.models || [];
     const prov = normKey(providerName);
     
     const filtered = models.filter(m => {

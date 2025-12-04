@@ -1,0 +1,18 @@
+[project]
+name = "agro-rag-engine"
+version = "1.0.0"
+description = "Enterprise-Grade RAG Engine for codebases"
+requires-python = ">=3.11"
+
+[tool.pydantic-pycharm-plugin]
+# Enable strict mode for better type checking
+parsable-type-highlight = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_functions = "test_*"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"

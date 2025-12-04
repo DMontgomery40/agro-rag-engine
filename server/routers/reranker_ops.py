@@ -193,7 +193,8 @@ def reranker_smoketest(payload: Dict[str, Any], request: Request) -> Dict[str, A
     start = time.time()
     try:
         docs = list(search_routed_multi(query, m=2, final_k=5))
-        reranked = _config.get_bool("AGRO_RERANKER_ENABLED", False)
+        reranker_mode = _config.get_str("RERANKER_MODE", "none")
+        reranked = reranker_mode != "none"
         
         retrieved_for_log = []
         for d in docs:

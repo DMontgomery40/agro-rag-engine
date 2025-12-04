@@ -137,7 +137,7 @@ export function ChatSettings() {
       setModelOptions(uniq);
     } catch (e) {
       // Silent fallback to text input
-      console.debug('[ChatSettings] prices fetch failed:', e);
+      console.debug('[ChatSettings] models fetch failed:', e);
     }
   };
 

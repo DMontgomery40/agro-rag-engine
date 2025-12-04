@@ -137,7 +137,7 @@
   - `window.Config` - Module namespace
   - `window.state.config` - Config cache
   - `window.state.keywordsCatalog` - Keywords
-  - `window.state.prices` - Pricing data
+  - `window.state.models` - Pricing data
 - **Dependencies:** CoreUtils, ErrorHelpers, Tooltips, UXFeedback, Theme
 - **Conflict Level:** CRITICAL - Massive form with complex state
 - **Notes:** Dynamic element creation, lots of callbacks, keyword manager is complex

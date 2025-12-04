@@ -149,13 +149,13 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 @router.get("/api/models")
-def get_prices():
-    return cfg.prices_get()
+def get_models():
+    return cfg.models_get()
 
 
 @router.post("/api/models/upsert")
 def upsert_price(item: Dict[str, Any]) -> Dict[str, Any]:
-    return cfg.prices_upsert(item)
+    return cfg.models_upsert(item)
 
 
 @router.post("/api/integrations/save")

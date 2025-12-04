@@ -99,9 +99,8 @@ def load_settings() -> RerankerSettings:
         raw_env[name] = val
         return val
 
-    enabled = _env_bool("AGRO_RERANKER_ENABLED", "1")
-
-    # Read RERANKER_MODE
+    # Read RERANKER_MODE - single source of truth for reranker enable/disable
+    # mode='none' means reranking disabled; no separate ENABLED boolean needed
     mode = _get("RERANKER_MODE", "").strip().lower()
     if not mode:
         raise ValueError(
@@ -112,9 +111,6 @@ def load_settings() -> RerankerSettings:
             f"RERANKER_MODE='{mode}' is invalid. "
             f"Must be one of: 'cloud', 'local', 'learning', 'none'"
         )
-
-    if not enabled:
-        mode = "none"
 
     # Read provider and models
     provider = _get("RERANKER_CLOUD_PROVIDER", "").strip().lower()
@@ -171,7 +167,7 @@ def load_settings() -> RerankerSettings:
     reload_period_sec = max(1, _env_int("AGRO_RERANKER_RELOAD_PERIOD_SEC", "60"))
 
     return RerankerSettings(
-        enabled=enabled and mode != "none",
+        enabled=mode != "none",
         mode=mode,
         provider=provider,
         cloud_model=cloud_model,

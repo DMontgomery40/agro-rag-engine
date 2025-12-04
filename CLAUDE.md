@@ -1,5 +1,7 @@
-# Playwright Verification Policy (Updated)
+# DO NOT **EVER** EDIT OR WRITE TO .env **NEVER WRITE TO .env**
 # ***Do NOT ever add "stubs", placeholders, TODOs into code,***
+
+
 You must verify work with Playwright (IF GUI) — or at least a backend smoke test in `/tests` — before reporting results. However, due to UI scale and accessibility needs, GUI verification via Playwright is now limited to "non‑black‑screen" smoke only. Deep visual/content correctness requires human review.
 # *the codebase uses Zustand via useConfigStore. The useConfig hook wraps it. I should NOT be adding local useState for config values - they should use get() and set() from the Zustand store*.
 What's required for GUI work:

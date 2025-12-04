@@ -626,7 +626,7 @@ New config keys needed:
 - ❌ Don't add user confirmation popups - sidepanel shows costs
 - ❌ Don't recreate cost calculation - use existing `/api/cost/estimate`
 - ❌ Don't modify BM25 logic - it works fine
-- ❌ Don't hardcode prices - use `models.json`
+- ❌ Don't hardcode models - use `models.json`
 - ❌ Don't create new UI for cost display - use sidepanel
 
 ---

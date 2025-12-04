@@ -94,7 +94,7 @@ PYTHONPATH=. pytest -q tests/routers/test_profiles_direct.py  # ✅ 1 passed
 ```
 
 **Docker Compatibility**:
-- Uses `common.paths.data_dir()` for prices (→ `/app/data` in Docker)
+- Uses `common.paths.data_dir()` for models (→ `/app/data` in Docker)
 - Uses `common.paths.gui_dir()` for fallback (→ `/app/gui`)
 - Profile storage: reads/writes both `data/profiles/` and `gui/profiles/`
 

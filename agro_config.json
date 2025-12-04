@@ -13,10 +13,10 @@
     "query_expansion_enabled": 1,
     "bm25_weight": 0.5582861807587417,
     "bm25_k1": 1.2,
-    "bm25_b": 0.4,
+    "bm25_b": 0.55,
     "vector_weight": 0.4417138192412582,
     "card_search_enabled": 1,
-    "multi_query_m": 3,
+    "multi_query_m": 2,
     "use_semantic_synonyms": 1,
     "topk_dense": 26,
     "topk_sparse": 24,
@@ -32,11 +32,11 @@
     "path_boosts": "/gui,/server,/indexer,/retrieval"
   },
   "layer_bonus": {
-    "gui": 0.15,
-    "retrieval": 0.15,
+    "gui": 0.0,
+    "retrieval": 0.05,
     "indexer": 0.15,
     "vendor_penalty": -0.1,
-    "freshness_bonus": 0.2,
+    "freshness_bonus": 0.1,
     "intent_matrix": {
       "gui": {
         "gui": 1.2,
@@ -104,7 +104,7 @@
     "preserve_imports": 1
   },
   "indexing": {
-    "qdrant_url": "http://qdrant:6333",
+    "qdrant_url": "http://127.0.0.1:6333",
     "collection_name": "code_chunks_agro",
     "collection_suffix": "test",
     "repo_path": "",
@@ -190,7 +190,12 @@
     "exclude_patterns": [],
     "exclude_keywords": [
       "playwright"
-    ]
+    ],
+    "code_snippet_length": 2000,
+    "max_symbols": 5,
+    "max_routes": 5,
+    "purpose_max_length": 240,
+    "quick_tips": []
   },
   "keywords": {
     "keywords_max_per_repo": 100,
@@ -234,7 +239,7 @@
     "chat_streaming_enabled": 1,
     "chat_history_max": 50,
     "chat_stream_include_thinking": 1,
-    "chat_default_model": "gpt-4o-mini",
+    "chat_default_model": "gpt-5",
     "chat_stream_timeout": 120,
     "chat_thinking_budget_tokens": 10000,
     "editor_port": 4440,

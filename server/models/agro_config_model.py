@@ -8,12 +8,14 @@ Using Pydantic provides:
 - Default values that match current hardcoded values
 - JSON schema generation for documentation
 """
+from typing import Dict, List, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-from typing import Dict, List, Literal
 
 
 class RetrievalConfig(BaseModel):
+
+
     """Configuration for retrieval and search parameters."""
 
     rrf_k_div: int = Field(
@@ -816,7 +818,40 @@ class CardsConfig(BaseModel):
         description="Keywords that, when present in code, skip the chunk"
     )
 
-    @field_validator('exclude_dirs', 'exclude_patterns', 'exclude_keywords', mode='before')
+    code_snippet_length: int = Field(
+        default=2000,
+        ge=500,
+        le=10000,
+        description="Max code snippet length in semantic cards"
+    )
+
+    max_symbols: int = Field(
+        default=5,
+        ge=1,
+        le=20,
+        description="Max symbols to include per card"
+    )
+
+    max_routes: int = Field(
+        default=5,
+        ge=1,
+        le=20,
+        description="Max API routes to include per card"
+    )
+
+    purpose_max_length: int = Field(
+        default=240,
+        ge=50,
+        le=500,
+        description="Max length for purpose field in cards"
+    )
+
+    quick_tips: List[str] = Field(
+        default_factory=list,
+        description="Quick tips shown in cards builder UI"
+    )
+
+    @field_validator('exclude_dirs', 'exclude_patterns', 'exclude_keywords', 'quick_tips', mode='before')
     @classmethod
     def _parse_list(cls, v):
         if v is None:
@@ -1569,10 +1604,15 @@ class AgroConfigRoot(BaseModel):
             'ENRICH_MIN_CHARS': self.enrichment.enrich_min_chars,
             'ENRICH_MAX_CHARS': self.enrichment.enrich_max_chars,
             'ENRICH_TIMEOUT': self.enrichment.enrich_timeout,
-            # Cards filter params (3)
+            # Cards filter params (8)
             'CARDS_EXCLUDE_DIRS': ', '.join(self.cards.exclude_dirs),
             'CARDS_EXCLUDE_PATTERNS': ', '.join(self.cards.exclude_patterns),
             'CARDS_EXCLUDE_KEYWORDS': ', '.join(self.cards.exclude_keywords),
+            'CARDS_CODE_SNIPPET_LENGTH': self.cards.code_snippet_length,
+            'CARDS_MAX_SYMBOLS': self.cards.max_symbols,
+            'CARDS_MAX_ROUTES': self.cards.max_routes,
+            'CARDS_PURPOSE_MAX_LENGTH': self.cards.purpose_max_length,
+            'CARDS_QUICK_TIPS': ', '.join(self.cards.quick_tips),
             # Keywords params (5)
             'KEYWORDS_MAX_PER_REPO': self.keywords.keywords_max_per_repo,
             'KEYWORDS_MIN_FREQ': self.keywords.keywords_min_freq,
@@ -1799,6 +1839,11 @@ class AgroConfigRoot(BaseModel):
                 exclude_dirs=data.get('CARDS_EXCLUDE_DIRS', CardsConfig().exclude_dirs),
                 exclude_patterns=data.get('CARDS_EXCLUDE_PATTERNS', []),
                 exclude_keywords=data.get('CARDS_EXCLUDE_KEYWORDS', []),
+                code_snippet_length=data.get('CARDS_CODE_SNIPPET_LENGTH', 2000),
+                max_symbols=data.get('CARDS_MAX_SYMBOLS', 5),
+                max_routes=data.get('CARDS_MAX_ROUTES', 5),
+                purpose_max_length=data.get('CARDS_PURPOSE_MAX_LENGTH', 240),
+                quick_tips=data.get('CARDS_QUICK_TIPS', []),
             ),
             keywords=KeywordsConfig(
                 keywords_max_per_repo=data.get('KEYWORDS_MAX_PER_REPO', 50),
@@ -1897,10 +1942,11 @@ DEFAULT_CONFIG = AgroConfigRoot()
 
 # Set of keys that belong in agro_config.json (not .env)
 AGRO_CONFIG_KEYS = {
-    # Retrieval params (21 - added 6 new)
+    # Retrieval params (22 - including MQ_REWRITES alias)
     'RRF_K_DIV',
     'LANGGRAPH_FINAL_K',
     'MAX_QUERY_REWRITES',
+    'MQ_REWRITES',  # Legacy alias for MAX_QUERY_REWRITES
     'FALLBACK_CONFIDENCE',
     'FINAL_K',
     'EVAL_FINAL_K',
@@ -2012,10 +2058,15 @@ AGRO_CONFIG_KEYS = {
     'ENRICH_MIN_CHARS',
     'ENRICH_MAX_CHARS',
     'ENRICH_TIMEOUT',
-    # Cards filter params (3)
+    # Cards filter params (8)
     'CARDS_EXCLUDE_DIRS',
     'CARDS_EXCLUDE_PATTERNS',
     'CARDS_EXCLUDE_KEYWORDS',
+    'CARDS_CODE_SNIPPET_LENGTH',
+    'CARDS_MAX_SYMBOLS',
+    'CARDS_MAX_ROUTES',
+    'CARDS_PURPOSE_MAX_LENGTH',
+    'CARDS_QUICK_TIPS',
     # Keywords params (5)
     'KEYWORDS_MAX_PER_REPO',
     'KEYWORDS_MIN_FREQ',

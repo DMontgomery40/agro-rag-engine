@@ -118,9 +118,8 @@ services:
     environment:
       - QDRANT_URL=${QDRANT_URL:-http://qdrant:6333}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OAUTH_ENABLED=${OAUTH_ENABLED:-false}
-      - OAUTH_TOKEN=${OAUTH_TOKEN:-}
       - GIT_BRANCH=${GIT_BRANCH}
     depends_on:
       - qdrant

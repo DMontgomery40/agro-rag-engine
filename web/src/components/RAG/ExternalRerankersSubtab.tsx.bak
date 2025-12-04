@@ -82,7 +82,7 @@ export function ExternalRerankersSubtab() {
   // Load current config on mount
   useEffect(() => {
     loadConfig();
-    loadPrices();
+    loadmodels();
   }, []);
 
   useEffect(() => {
@@ -97,11 +97,11 @@ export function ExternalRerankersSubtab() {
     }
   }, [cloudModelOptions, cloudModel]);
 
-  const loadPrices = async () => {
+  const loadmodels = async () => {
     try {
       const response = await fetch('/api/models');
       if (!response.ok) {
-        throw new Error(`Failed to fetch prices: ${response.status} ${response.statusText}`);
+        throw new Error(`Failed to fetch models: ${response.status} ${response.statusText}`);
       }
       const data = await response.json();
       const models = Array.isArray(data?.models) ? data.models : [];
@@ -121,7 +121,7 @@ export function ExternalRerankersSubtab() {
       setPriceModels(rerankEntries);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to load models.json';
-      console.error('[ExternalRerankersSubtab] Error loading prices:', err);
+      console.error('[ExternalRerankersSubtab] Error loading models:', err);
       setError((prev) => prev || errorMsg);
     }
   };
@@ -329,7 +329,7 @@ export function ExternalRerankersSubtab() {
         RERANKER_ACTIVE: 'cloud',
         RERANKER_CLOUD_MODEL: model,
       });
-      await loadPrices();
+      await loadmodels();
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to add rerank model';
       console.error('[ExternalRerankersSubtab] Error adding rerank model:', err);

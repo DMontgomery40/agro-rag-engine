@@ -119,13 +119,13 @@ def test_api_tracker_module():
 
 def test_pricing_data():
     """Verify pricing data includes all providers"""
-    prices_file = Path(__file__).parent.parent.parent / "web" / "public" / "models.json"
-    assert prices_file.exists(), "models.json not found"
+    models_file = Path(__file__).parent.parent.parent / "web" / "public" / "models.json"
+    assert models_file.exists(), "models.json not found"
 
-    with open(prices_file) as f:
-        prices = json.load(f)
+    with open(models_file) as f:
+        models = json.load(f)
 
-    models = prices.get("models", [])
+    models = models.get("models", [])
     assert len(models) > 0, "No models in models.json"
 
     # Check for Cohere models

@@ -28,7 +28,7 @@ def _norm(val: Any) -> str:
     return str(val or "").strip()
 
 
-def _prices_candidates() -> List[Path]:
+def _models_candidates() -> List[Path]:
     root = repo_root()
     env_gui = os.getenv("GUI_DIR")
     cands: List[Path] = []
@@ -47,13 +47,13 @@ def test_agro_config_pydantic_valid():
     AgroConfigRoot(**raw)  # will raise ValidationError on failure
 
 
-def test_prices_pydantic_valid():
-    from server.models.prices_config import PricesConfig
+def test_models_pydantic_valid():
+    from server.models.models_config import modelsConfig
     from server.services.config_store import _classify_components
 
-    prices_path = next((p for p in _prices_candidates() if p.exists()), None)
-    assert prices_path, "models.json not found in expected locations"
-    data_raw = _read_json(prices_path)
+    models_path = next((p for p in _models_candidates() if p.exists()), None)
+    assert models_path, "models.json not found in expected locations"
+    data_raw = _read_json(models_path)
     # Explicitly normalize components to mirror runtime behavior
     normalized_models: list[dict[str, Any]] = []
     for m in data_raw.get("models", []):
@@ -63,7 +63,7 @@ def test_prices_pydantic_valid():
         normalized_models.append(mm)
     data_raw["models"] = normalized_models
 
-    cfg = PricesConfig.model_validate(data_raw)
+    cfg = modelsConfig.model_validate(data_raw)
     assert cfg.models, "models.json has no models"
     # Ensure components are present after normalization
     comps_flat = set()
@@ -72,15 +72,15 @@ def test_prices_pydantic_valid():
         comps = list(m.components or [])
         if not comps:
             comps = _classify_components(m.model_dump())
-        assert comps, f"prices entry missing components: {m.model}"
+        assert comps, f"models entry missing components: {m.model}"
         comps_flat.update(comps)
         if "EMB" in comps:
             has_embed = True
         # Required fields present and non-empty
-        assert _norm(m.provider), f"prices entry missing provider: {m}"
-        assert _norm(m.model), f"prices entry missing model: {m}"
-        assert _norm(m.unit), f"prices entry missing unit: {m}"
-    assert _norm(cfg.currency), "prices currency missing"
+        assert _norm(m.provider), f"models entry missing provider: {m}"
+        assert _norm(m.model), f"models entry missing model: {m}"
+        assert _norm(m.unit), f"models entry missing unit: {m}"
+    assert _norm(cfg.currency), "models currency missing"
 
     # Ensure we have at least one model per component type to keep pickers alive
     assert "GEN" in comps_flat, "models.json missing any generative models"

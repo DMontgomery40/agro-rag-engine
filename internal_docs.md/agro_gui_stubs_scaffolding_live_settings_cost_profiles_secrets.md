@@ -12,7 +12,7 @@
 AGRO GUI backend (stubbed):
 - Serves / (gui/index.html) and /gui static assets
 - Live config GET/POST (/api/config)
-- Prices (/api/models)
+- models (/api/models)
 - Cost estimator (/api/cost/estimate)
 - Hardware scan (/api/scan-hw)
 - Profiles list/apply/save (/api/profiles*)
@@ -41,7 +41,7 @@ from pydantic import BaseModel, Field
 # --------------------------- Constants & Paths ---------------------------
 ROOT = Path(__file__).resolve().parent
 GUI_DIR = ROOT / "gui"
-PRICES_PATH = GUI_DIR / "models.json"
+models_PATH = GUI_DIR / "models.json"
 PROFILES_DIR = GUI_DIR / "profiles"
 DEFAULTS_PATH = PROFILES_DIR / "defaults.json"
 
@@ -296,9 +296,9 @@ def post_config(req: UpdateConfigRequest) -> Dict[str, Any]:
 
 
 @app.get("/api/models")
-def get_prices() -> Any:
+def get_models() -> Any:
     """Return models.json; if missing, create a minimal starter set."""
-    default_prices = {
+    default_models = {
         "last_updated": "2025-10-10",
         "currency": "USD",
         "models": [
@@ -315,14 +315,14 @@ def get_prices() -> Any:
              "unit": "request", "per_request": 0.0, "notes": "Local inference assumed $0; electricity optional"}
         ]
     }
-    data = _read_json(PRICES_PATH, default_prices)
+    data = _read_json(models_PATH, default_models)
     return JSONResponse(data)
 
 
 @app.post("/api/cost/estimate", response_model=CostEstimateResponse)
 def cost_estimate(req: CostEstimateRequest) -> CostEstimateResponse:
-    prices = _read_json(PRICES_PATH, {"models": []})
-    models = prices.get("models", [])
+    models = _read_json(models_PATH, {"models": []})
+    models = models.get("models", [])
 
     # Find matching pricing row
     row = None
@@ -679,7 +679,7 @@ details summary { cursor:pointer; color: var(--muted); }
   const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
   const state = {
-    prices: null,
+    models: null,
     config: null,
     profiles: [],
     defaultProfile: null,
@@ -792,10 +792,10 @@ details summary { cursor:pointer; color: var(--muted); }
     alert('Configuration updated.');
   }
 
-  // ---------------- Prices & Cost ----------------
-  async function loadPrices() {
+  // ---------------- models & Cost ----------------
+  async function loadmodels() {
     const r = await fetch('/api/models');
-    state.prices = await r.json();
+    state.models = await r.json();
   }
 
   function buildCostPayload() {
@@ -932,7 +932,7 @@ details summary { cursor:pointer; color: var(--muted); }
     bindTabs();
     bindActions();
     bindDropzone();
-    await Promise.all([loadPrices(), loadConfig(), loadProfiles()]);
+    await Promise.all([loadmodels(), loadConfig(), loadProfiles()]);
     await checkHealth();
   }
 

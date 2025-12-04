@@ -75,7 +75,7 @@ def test_embedding_config():
     assert isinstance(voyage_model, str)
 
 
-def test_reranker_backend_config():
+def test_reranker_mode_config():
     """Verify RERANKER_BACKEND uses config registry."""
     from retrieval.hybrid_search import _config_registry
 

@@ -122,3 +122,14 @@ export function escapeHtml(text: string): string {
   div.textContent = text;
   return div.innerHTML;
 }
+
+// Expose on window for legacy JS modules (docker.js, chat.js, reranker.js, etc.)
+// This replaces /modules/error-helpers.js
+if (typeof window !== 'undefined') {
+  (window as any).ErrorHelpers = {
+    createHelpfulError,
+    createInlineError,
+    createAlertError,
+    escapeHtml
+  };
+}

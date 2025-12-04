@@ -15,7 +15,16 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { SubtabErrorFallback } from '@/components/ui/SubtabErrorFallback';
 
 // Hooks
-import { useAppInit, useModuleLoader, useApplyButton } from '@/hooks';
+import { useAppInit, useModuleLoader, useApplyButton, useTheme } from '@/hooks';
+
+// Import errorHelpers to expose window.ErrorHelpers BEFORE legacy modules load
+import '@/utils/errorHelpers';
+// Import api/client to expose window.CoreUtils BEFORE legacy modules load
+// This replaces /modules/core-utils.js
+import '@/api/client';
+// Import uiHelpers to expose window.UiHelpers BEFORE legacy modules load
+// This replaces /modules/ui-helpers.js (Zustand-backed)
+import '@/utils/uiHelpers';
 
 function App() {
   const [healthDisplay, setHealthDisplay] = useState('—');
@@ -27,6 +36,9 @@ function App() {
   const { isInitialized, initError } = useAppInit();
   const { modulesLoaded, loadError, loadProgress } = useModuleLoader();
   const { handleApply: handleSaveAllChanges, isDirty, isSaving, saveError } = useApplyButton();
+
+  // Initialize theme - exposes window.Theme for legacy modules
+  useTheme();
 
   // Toggle mobile navigation
   const toggleMobileNav = () => {
@@ -64,14 +76,12 @@ function App() {
       try {
         // Load in dependency order
         // 1. Core utilities (must load first)
-        await import('./modules/fetch-shim.js');
-        await import('./modules/core-utils.js');
+        // MIGRATED: fetch-shim.js removed - was no-op (Phase 2.5)
+        // MIGRATED: core-utils.js → /api/client.ts (exposes window.CoreUtils)
+        // MIGRATED: ui-helpers.js → /utils/uiHelpers.ts (Zustand-backed, exposes window.UiHelpers)
+        // MIGRATED: theme.js → /hooks/useTheme.ts (UIStore-backed, exposes window.Theme)
 
-        // 2. UI helpers and theme (needed by many modules)
-        await import('./modules/ui-helpers.js');
-        await import('./modules/theme.js');
-
-        // 3. Test instrumentation (for debugging)
+        // 2. Test instrumentation (for debugging)
         await import('./modules/test-instrumentation.js');
 
         // 4. Navigation and tabs - REMOVED, now using React Router
@@ -118,8 +128,7 @@ function App() {
           // import('./modules/golden_questions.js'),
           // import('./modules/eval_runner.js'),
           import('./modules/eval_history.js'),
-          // Chat is React-native now; keep legacy reranker feedback only
-          import('./modules/error-helpers.js'),
+          // MIGRATED: error-helpers.js → /utils/errorHelpers.ts (exposes window.ErrorHelpers)
           import('./modules/layout_fix.js'),
           import('./modules/live-terminal.js'),
           import('./modules/trace.js'),

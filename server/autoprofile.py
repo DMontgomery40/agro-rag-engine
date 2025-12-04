@@ -148,12 +148,12 @@ def _infer_quality_score(row: Dict[str, Any], comp_type: str) -> Number:
 def _component_rows(
     comp_type: str,
     ALLOW: set,
-    prices: Dict[str, Any],
+    models: Dict[str, Any],
     include_local: bool = False,
     use_heuristics: bool = False,
 ) -> List[Dict[str, Any]]:
     rows: List[Dict[str, Any]] = []
-    models = prices.get("models") or []
+    models = models.get("models") or []
     comp = comp_type.upper()
 
     for m in models:
@@ -194,7 +194,7 @@ def _score_row(row: Dict[str, Any], wl: Dict[str, Number], comp: str) -> Number:
     return base * q
 
 
-def autoprofile(request: Dict[str, Any], prices: Dict[str, Any]) -> Tuple[Dict[str, str], Dict[str, Any]]:
+def autoprofile(request: Dict[str, Any], models: Dict[str, Any]) -> Tuple[Dict[str, str], Dict[str, Any]]:
     """Select an environment profile given workload, policy, and model pricing.
 
     Returns a tuple of (env_vars, debug_details) or ({}, reason_if_failure)
@@ -208,9 +208,9 @@ def autoprofile(request: Dict[str, Any], prices: Dict[str, Any]) -> Tuple[Dict[s
     use_heuristics = bool(request.get("use_heuristics", True))
 
     # Build candidate sets per component
-    GEN = _component_rows("GEN", ALLOW, prices, include_local, use_heuristics)
-    EMB = _component_rows("EMB", ALLOW, prices, include_local, use_heuristics)
-    RER = _component_rows("RERANK", ALLOW, prices, include_local, use_heuristics)
+    GEN = _component_rows("GEN", ALLOW, models, include_local, use_heuristics)
+    EMB = _component_rows("EMB", ALLOW, models, include_local, use_heuristics)
+    RER = _component_rows("RERANK", ALLOW, models, include_local, use_heuristics)
 
     if not GEN or not EMB or not RER:
         return {}, {"error": "No candidates for one or more components", "allow": list(ALLOW)}

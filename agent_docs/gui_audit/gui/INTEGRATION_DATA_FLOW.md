@@ -90,7 +90,7 @@ This document maps all integration points and data flows in the /gui frontend, f
 │    │    │    └──> Text/number: set value                    │
 │    │    └──> Set input.value = data.env[key]                │
 │    ├──> Render repos section (dynamic forms)                │
-│    └──> Populate model dropdowns from prices                │
+│    └──> Populate model dropdowns from models                │
 └────────────┬─────────────────────────────────────────────────┘
              │
 ┌────────────▼─────────────────────────────────────────────────┐
@@ -457,7 +457,7 @@ This document maps all integration points and data flows in the /gui frontend, f
 
 ```javascript
 window.CoreUtils.state = {
-  prices: null,        // { models: [...] } from /api/models
+  models: null,        // { models: [...] } from /api/models
   config: null,        // { env, repos, hints } from /api/config
   profiles: [],        // User-saved profiles
   defaultProfile: null // Currently active profile

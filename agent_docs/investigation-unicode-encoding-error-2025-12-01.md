@@ -26,7 +26,7 @@
 ```
 d0293a8 (HEAD) - infinite loop in storage tab fixed, ported over alerts and webhooks
 73ff78e - error boundary hardening and more zustand mapping and wiring
-9bbc40b - refactor: rename prices.json to models.json and /api/prices to /api/models
+9bbc40b - refactor: rename models.json to models.json and /api/models to /api/models
 2007c19 - docs: Add handoff document for RAG subtabs Zustand migration
 77496af - fix(chat): restore feedback buttons and add training data  ⚠️ SUSPECT
 614dbf3 - chore: migrate docs and cleanup legacy UI
@@ -86,7 +86,7 @@ The error originates from the exception handler in `generate_text()`, which catc
 }
 ```
 
-This model exists in the pricing/models configuration and has been present since before the recent refactor (commit 9bbc40b renamed `prices.json` to `models.json` but the model definitions were unchanged).
+This model exists in the pricing/models configuration and has been present since before the recent refactor (commit 9bbc40b renamed `models.json` to `models.json` but the model definitions were unchanged).
 
 ### 4. Codebase Encoding Standards
 The codebase consistently uses `ensure_ascii=False` in other JSON serialization:
@@ -164,7 +164,7 @@ When `ensure_ascii=True`:
 
 **Not a Factor**:
 - Model "gpt-5.1" is not the issue - this affects ALL models when they return Unicode
-- The `prices.json` → `models.json` refactor (commit 9bbc40b) is unrelated
+- The `models.json` → `models.json` refactor (commit 9bbc40b) is unrelated
 - No Python version changes or dependency updates caused this
 - `env_model.py` error handling is working correctly - it's catching and reporting the real error
 

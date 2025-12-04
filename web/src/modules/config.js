@@ -110,11 +110,11 @@
         } catch {}
 
         // Seed cost panel defaults from pricing if fields are empty
-        if (state.prices && Array.isArray(state.prices.models) && state.prices.models.length) {
+        if (state.models && Array.isArray(state.models.models) && state.models.models.length) {
             const costProviderEl = $('#cost-provider');
             const costModelEl = $('#cost-model');
-            if (costProviderEl && !costProviderEl.value) costProviderEl.value = state.prices.models[0].provider || '';
-            if (costModelEl && !costModelEl.value) costModelEl.value = state.prices.models[0].model || '';
+            if (costProviderEl && !costProviderEl.value) costProviderEl.value = state.models.models[0].provider || '';
+            if (costModelEl && !costModelEl.value) costModelEl.value = state.models.models[0].model || '';
         }
 
         // Cost panel autopopulate from env

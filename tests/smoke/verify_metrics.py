@@ -100,12 +100,12 @@ def main():
     print(f"File: web/public/models.json")
     print(f"{'='*60}")
 
-    prices_file = root / "web" / "public" / "models.json"
-    if prices_file.exists():
-        with open(prices_file) as f:
-            prices = json.load(f)
+    models_file = root / "web" / "public" / "models.json"
+    if models_file.exists():
+        with open(models_file) as f:
+            models = json.load(f)
 
-        models = prices.get("models", [])
+        models = models.get("models", [])
         cohere_models = [m for m in models if m.get("provider") == "cohere"]
         voyage_models = [m for m in models if m.get("provider") == "voyage"]
         openai_models = [m for m in models if m.get("provider") == "openai"]

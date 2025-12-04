@@ -1,31 +1,44 @@
 import { useMemo, useCallback } from 'react';
 
+// Typed event definitions for legacy JS → React communication
+export interface EventPayloads {
+  'config:updated': void;
+  'config:loaded': void;
+  'repo:changed': { repo: string };
+  'repo:loaded': { repo: string };
+  'chat:mount': void;
+  'chat:unmount': void;
+  'reranker:mount': void;
+  'reranker:unmount': void;
+  'indexing:started': { repo: string };
+  'indexing:completed': { repo: string; chunks: number };
+  'indexing:failed': { repo: string; error: string };
+  'cards:built': { repo: string; count: number };
+  'health:changed': { status: string };
+  'tab:switched': { tab: string; subtab?: string };
+  'theme:changed': { theme: string };
+  'react:ready': void;
+  'keywords:loaded': { count: number };
+  'profiles:loaded': { count: number };
+}
+
+export type EventName = keyof EventPayloads;
+
+// Legacy event name mapping for gradual migration
+export const LEGACY_EVENT_MAP: Record<string, EventName> = {
+  'react-ready': 'react:ready',
+  'agro:chat:mount': 'chat:mount',
+  'agro:reranker:mount': 'reranker:mount',
+  'tab-switched': 'tab:switched',
+  'agro-repo-loaded': 'repo:loaded',
+  'agro-repo-changed': 'repo:changed',
+  'repo-updated': 'repo:changed',
+  'config-updated': 'config:updated',
+};
+
 /**
  * Hook for application-wide event bus
  * Provides pub/sub mechanism for cross-component communication
- */
-/**
- * ---agentspec
- * what: |
- *   React hook that provides a global event bus for cross-component communication using the browser's CustomEvent API.
- *   Takes no parameters; returns an object with an `emit` function that accepts an event name (string) and optional data payload.
- *   The `emit` function creates and dispatches CustomEvent instances on the window object, allowing any listener to receive the event and its detail payload.
- *   Handles edge cases: undefined/null data payloads are accepted; event names are case-sensitive; listeners must be attached to window to receive events.
- *   Uses useMemo to ensure eventBus reference (window) remains stable across renders, and useCallback to memoize the emit function.
- *
- * why: |
- *   Centralizes event emission logic into a reusable hook rather than scattering window.dispatchEvent calls throughout components.
- *   Leverages the native CustomEvent API instead of a third-party library, reducing bundle size and avoiding external dependencies.
- *   Memoization prevents unnecessary function recreation on every render, improving performance in components that emit frequently.
- *   This pattern enables sibling and distant components to communicate without prop drilling or context nesting.
- *
- * guardrails:
- *   - DO NOT use this for high-frequency events (>100/sec) because CustomEvent dispatch has performance overhead; consider state management libraries for real-time data
- *   - ALWAYS pair emit calls with corresponding window.addEventListener listeners; events without listeners are silently ignored and may indicate dead code
- *   - NOTE: Events are synchronous and fire immediately; async event handling requires manual Promise wrapping in listeners
- *   - NOTE: CustomEvent detail payload is not deeply cloned; mutations in listeners will affect the original data object
- *   - ASK USER: Before adding event filtering, validation, or namespacing logic, confirm whether a state management library (Redux, Zustand, Jotai) would be more appropriate than event bus expansion
- * ---/agentspec
  */
 export function useEventBus() {
   // Use window as the event target for global events

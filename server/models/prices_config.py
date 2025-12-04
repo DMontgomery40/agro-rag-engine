@@ -35,7 +35,7 @@ class PriceEntry(BaseModel):
         return self
 
 
-class PricesConfig(BaseModel):
+class modelsConfig(BaseModel):
     """Root schema for models.json."""
 
     models: List[PriceEntry] = Field(default_factory=list)

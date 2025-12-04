@@ -1712,16 +1712,7 @@
         ]
       ),
 
-      // AGRO Learning Reranker
-      AGRO_RERANKER_ENABLED: L(
-        'Learning Reranker Enabled',
-        'Enable AGRO\u2019s built\u2011in Learning Reranker (cross\u2011encoder) for improved ordering of retrieved chunks. Requires a trained model checkpoint and triplets data for training/mining.',
-        [
-          ['AGRO: Learning Reranker', '/docs/LEARNING_RERANKER.md'],
-          ['Sentence\u2011Transformers', 'https://www.sbert.net/']
-        ],
-        [['Improves quality','info']]
-      ),
+      // AGRO Learning Reranker (RERANKER_MODE is defined earlier at ~line 236)
       AGRO_RERANKER_MODEL_PATH: L(
         'Reranker Model Path',
         'Filesystem path to the trained reranker model checkpoint directory (relative paths recommended). The service loads weights from this path on startup or when reloaded.',
@@ -1789,7 +1780,7 @@
         'Directory for shared UI assets (models.json, profile checkpoints) used by /api/models and /api/profiles. Defaults to ./web/public. Point this to a writable volume if you keep pricing catalogs or profiles in sync at runtime; the React app reads from the same source.',
         [
           ['Static Files (FastAPI)', 'https://fastapi.tiangolo.com/tutorial/static-files/'],
-          ['Prices catalog', '/web/models.json'],
+          ['models catalog', '/web/models.json'],
           ['Profiles API', '/api/profiles']
         ],
         [['Recommended', 'info']]
@@ -2026,6 +2017,107 @@
           ['Retrieval Configuration', '/docs/RETRIEVAL.md']
         ],
         [['Valid', 'info']]
+      ),
+
+      // Docker Settings
+      DOCKER_STATUS_TIMEOUT: L(
+        'Docker Status Timeout',
+        'Maximum seconds to wait when checking Docker daemon status. Increase if your Docker host is slow to respond or under heavy load. If health checks timeout frequently, raise this value. Range: 1-30 seconds.',
+        [
+          ['Docker Health Checks', 'https://docs.docker.com/engine/reference/commandline/inspect/'],
+          ['Docker Daemon', 'https://docs.docker.com/config/daemon/']
+        ],
+        [['Performance', 'info']]
+      ),
+      DOCKER_CONTAINER_LIST_TIMEOUT: L(
+        'Container List Timeout',
+        'Maximum seconds to wait when listing all Docker containers. Increase if you have many containers (100+) or slow Docker API response. Range: 1-60 seconds.',
+        [
+          ['Docker ps command', 'https://docs.docker.com/engine/reference/commandline/ps/'],
+          ['Container Management', 'https://docs.docker.com/config/containers/']
+        ],
+        [['Performance', 'info']]
+      ),
+      DOCKER_CONTAINER_ACTION_TIMEOUT: L(
+        'Container Action Timeout',
+        'Maximum seconds to wait for container start/stop/restart operations. Containers with complex startup sequences or cleanup hooks may need higher values. If container actions timeout, increase this. Range: 5-120 seconds.',
+        [
+          ['Container Lifecycle', 'https://docs.docker.com/config/containers/start-containers-automatically/'],
+          ['Stop Containers', 'https://docs.docker.com/engine/reference/commandline/stop/']
+        ],
+        [['Container operations', 'info']]
+      ),
+      DOCKER_INFRA_UP_TIMEOUT: L(
+        'Infrastructure Up Timeout',
+        'Maximum seconds to wait when starting AGRO infrastructure services (Qdrant, Redis, Grafana, Loki, etc.) via docker-compose. First-time startup may pull images and take longer. If infra up fails with timeout, increase this value. Range: 30-300 seconds.',
+        [
+          ['Docker Compose', 'https://docs.docker.com/compose/'],
+          ['AGRO Infrastructure', '/infra/docker-compose.yml']
+        ],
+        [['Infrastructure startup', 'info'], ['May pull images', 'warn']]
+      ),
+      DOCKER_INFRA_DOWN_TIMEOUT: L(
+        'Infrastructure Down Timeout',
+        'Maximum seconds to wait when stopping AGRO infrastructure services. Containers with data persistence may need time to flush to disk. If infra down fails, increase this value. Range: 10-120 seconds.',
+        [
+          ['Docker Compose Down', 'https://docs.docker.com/compose/reference/down/'],
+          ['Graceful Shutdown', 'https://docs.docker.com/engine/reference/commandline/stop/#extended-description']
+        ],
+        [['Infrastructure shutdown', 'info']]
+      ),
+      DOCKER_LOGS_TAIL: L(
+        'Log Lines to Tail',
+        'Number of log lines to display when viewing container logs. Higher values show more history but may slow down log retrieval. Use 50-100 for quick checks, 500-1000 for debugging. Range: 10-1000 lines.',
+        [
+          ['Docker Logs', 'https://docs.docker.com/engine/reference/commandline/logs/'],
+          ['Log Management', 'https://docs.docker.com/config/containers/logging/']
+        ],
+        [['Log visibility', 'info']]
+      ),
+      DOCKER_LOGS_TIMESTAMPS: L(
+        'Include Log Timestamps',
+        'Whether to include timestamps in Docker log output. Timestamps help correlate events across containers but add visual noise. Set to 1 to show timestamps, 0 to hide them.',
+        [
+          ['Docker Logs Timestamps', 'https://docs.docker.com/engine/reference/commandline/logs/#options'],
+          ['Log Analysis', 'https://grafana.com/docs/loki/latest/']
+        ],
+        [['Log format', 'info']]
+      ),
+      DOCKER_INFRASTRUCTURE_SERVICES: L(
+        'Infrastructure Services',
+        'AGRO infrastructure containers that power the RAG engine. Includes Qdrant (vector DB), Redis (cache/checkpoints), Grafana (monitoring), Loki (log aggregation), Prometheus (metrics), and Alertmanager (notifications). Start all services with "Start All" or manage individually.',
+        [
+          ['AGRO Architecture', '/docs/ARCHITECTURE.md'],
+          ['Infrastructure Setup', '/infra/docker-compose.yml']
+        ],
+        [['Core services', 'info']]
+      ),
+      DOCKER_STATUS: L(
+        'Docker Status',
+        'Real-time status of the Docker daemon connection. Shows whether AGRO can communicate with Docker to manage containers. If status is unhealthy, ensure Docker Desktop is running or the Docker daemon is accessible.',
+        [
+          ['Docker Daemon', 'https://docs.docker.com/config/daemon/'],
+          ['Troubleshooting', 'https://docs.docker.com/config/daemon/troubleshoot/']
+        ],
+        [['Health check', 'info']]
+      ),
+      DOCKER_ALL_CONTAINERS: L(
+        'All Containers',
+        'Complete list of Docker containers on this host, including running, stopped, and paused containers. Use this view to manage container lifecycle (start, stop, restart, pause, remove) and view logs for debugging.',
+        [
+          ['Container States', 'https://docs.docker.com/engine/reference/commandline/ps/'],
+          ['Container Management', 'https://docs.docker.com/config/containers/']
+        ],
+        [['Container management', 'info']]
+      ),
+      DOCKER_SETTINGS: L(
+        'Docker Settings',
+        'Configuration settings for Docker timeouts and log behavior. These settings control how long AGRO waits for Docker operations and how logs are displayed. Adjust these if you experience timeouts or need more/less log output.',
+        [
+          ['Docker Configuration', 'https://docs.docker.com/config/'],
+          ['AGRO Config', '/agro_config.json']
+        ],
+        [['Configurable', 'info']]
       ),
     };
   }

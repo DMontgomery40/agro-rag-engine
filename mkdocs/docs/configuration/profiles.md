@@ -176,8 +176,8 @@ Content-Type: application/json
 
 Internally:
 
-1. The router calls `prices_get()` from `config_store` to get model prices.
-2. Calls `_ap_select(payload, prices)`.
+1. The router calls `models_get()` from `config_store` to get model models.
+2. Calls `_ap_select(payload, models)`.
 3. If `env` is empty, it returns `422` with the reason.
 4. Otherwise:
 

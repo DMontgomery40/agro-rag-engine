@@ -742,8 +742,8 @@ def _read_json(path: Path, default: Any) -> Any:
             return default
     return default
 
-# ---- Prices helper for auto-profile
-def _default_prices() -> Dict[str, Any]:
+# ---- models helper for auto-profile
+def _default_models() -> Dict[str, Any]:
     return {
         "last_updated": "2025-10-10",
         "currency": "USD",
@@ -762,10 +762,10 @@ def _default_prices() -> Dict[str, Any]:
         ]
     }
 
-def _read_prices() -> Dict[str, Any]:
-    data = _read_json(GUI_DIR / "prices.json", {"models": []})
+def _read_models() -> Dict[str, Any]:
+    data = _read_json(GUI_DIR / "models.json", {"models": []})
     if not data or not isinstance(data, dict) or not data.get("models"):
-        return _default_prices()
+        return _default_models()
     return data
 
 @app.post("/api/env/reload")
@@ -1018,15 +1018,15 @@ def validate_repo_path(repo_name: str, payload: Dict[str, Any]) -> Dict[str, Any
         }
 
 @app.get("/api/models")
-def get_prices():
-    prices_path = GUI_DIR / "prices.json"
-    data = _read_json(prices_path, _default_prices())
+def get_models():
+    models_path = GUI_DIR / "models.json"
+    data = _read_json(models_path, _default_models())
     return JSONResponse(data)
 
 @app.post("/api/models/upsert")
 def upsert_price(item: Dict[str, Any]) -> Dict[str, Any]:
-    prices_path = GUI_DIR / "prices.json"
-    data = _read_json(prices_path, {"models": []})
+    models_path = GUI_DIR / "models.json"
+    data = _read_json(models_path, {"models": []})
     models: List[Dict[str, Any]] = list(data.get("models", []))
     key = (str(item.get("provider")), str(item.get("model")))
     idx = next((i for i, m in enumerate(models) if (str(m.get("provider")), str(m.get("model"))) == key), None)
@@ -1036,7 +1036,7 @@ def upsert_price(item: Dict[str, Any]) -> Dict[str, Any]:
         models[idx].update(item)
     data["models"] = models
     data["last_updated"] = __import__('datetime').datetime.now().strftime('%Y-%m-%d')
-    _write_json(prices_path, data)
+    _write_json(models_path, data)
     return {"ok": True, "count": len(models)}
 
 @app.get("/api/keywords")
@@ -1491,7 +1491,7 @@ def _estimate_query_cost(question: str, answer: str, num_docs: int) -> float:
 
 def _find_price(provider: str, model: Optional[str]) -> Optional[Dict[str, Any]]:
     """Generic price lookup (backwards-compat) — used for generation rows."""
-    data = _read_json(GUI_DIR / "prices.json", {"models": []})
+    data = _read_json(GUI_DIR / "models.json", {"models": []})
     models = data.get("models", [])
     # Prefer exact provider+model, else fallback to first matching provider
     try:
@@ -1515,7 +1515,7 @@ def _find_price(provider: str, model: Optional[str]) -> Optional[Dict[str, Any]]
 
 def _find_price_kind(provider: str, model: Optional[str], kind: str) -> Optional[Dict[str, Any]]:
     """Find a price row constrained by kind: 'gen' | 'embed' | 'rerank'."""
-    data = _read_json(GUI_DIR / "prices.json", {"models": []})
+    data = _read_json(GUI_DIR / "models.json", {"models": []})
     models = data.get("models", [])
     prov = str(provider or '').lower()
     mdl = str(model or '').lower()
@@ -1566,7 +1566,7 @@ def _estimate_cost(
     rerank_provider: Optional[str] = None,
     rerank_model: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Estimate daily and monthly costs using gui/prices.json.
+    """Estimate daily and monthly costs using gui/models.json.
 
     Semantics (simple and robust):
       - tokens_in/out are per-request tokens; multiplied by requests_per_day for generation costs.
@@ -1712,8 +1712,8 @@ except Exception:
 def api_profile_autoselect(payload: Dict[str, Any]):
     if _ap_select is None:
         raise HTTPException(status_code=500, detail="autoprofile module not available")
-    prices = _read_prices()
-    env, reason = _ap_select(payload, prices)
+    models = _read_models()
+    env, reason = _ap_select(payload, models)
     if not env:
         raise HTTPException(status_code=422, detail=reason)
     return {"env": env, "reason": reason}
