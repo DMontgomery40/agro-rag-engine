@@ -390,7 +390,7 @@
         const prof = {
             GEN_MODEL: hasLocal && Number(budget) === 0 ? 'qwen3-coder:14b' : 'gpt-4o-mini',
             EMBEDDING_TYPE: (Number(budget) === 0) ? (hasLocal ? 'local' : 'mxbai') : 'openai',
-            RERANK_BACKEND: rprov,
+            RERANKER_MODE: rprov,
             MAX_QUERY_REWRITES: Number(budget) > 50 ? '6' : '3',
             TOPK_SPARSE: '75',
             TOPK_DENSE: '75',
@@ -1673,6 +1673,9 @@
 
     const wireDayConverters = window.UiHelpers?.wireDayConverters || (() => {});
 
+    // ---------------- Keywords (delegated) ----------------
+    const loadKeywords = window.Keywords?.loadKeywords || (async () => {});
+
     // ---------------- Init ----------------
     async function init() {
         bindTabs();
@@ -2063,10 +2066,6 @@
             alert('Failed to set Auto‑Tune: ' + e.message);
         }
     }
-
-    // ---------------- Keywords ----------------
-    // Delegated to Keywords module (gui/js/keywords.js)
-    const loadKeywords = window.Keywords?.loadKeywords || (async () => {});
 
     // DUPLICATE REMOVED: Indexing + Cards (use window.IndexStatus)
     // ---------------- Indexing + Cards ----------------

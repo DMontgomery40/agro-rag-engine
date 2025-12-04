@@ -14,11 +14,13 @@ export function Integrations() {
 
   // LangSmith (API keys are in .env only)
   const [langSmithEnabled, setLangSmithEnabled] = useState(false);
+  const [langSmithApiKey, setLangSmithApiKey] = useState('');
   const [langSmithProject, setLangSmithProject] = useState('agro');
   const [langSmithEndpoint, setLangSmithEndpoint] = useState('https://api.smith.langchain.com');
 
   // Grafana (API keys are in .env only)
   const [grafanaEnabled, setGrafanaEnabled] = useState(false);
+  const [grafanaApiKey, setGrafanaApiKey] = useState('');
   const [grafanaDashboardUrl, setGrafanaDashboardUrl] = useState('http://localhost:3000');
 
   // VS Code Extension
@@ -37,6 +39,8 @@ export function Integrations() {
   const [notifyWarning, setNotifyWarning] = useState(true);
   const [notifyInfo, setNotifyInfo] = useState(false);
   const [includeResolved, setIncludeResolved] = useState(false);
+  const [slackWebhookUrl, setSlackWebhookUrl] = useState('');
+  const [discordWebhookUrl, setDiscordWebhookUrl] = useState('');
 
   // MCP & Channels settings
   const [httpResponsesModel, setHttpResponsesModel] = useState('');
