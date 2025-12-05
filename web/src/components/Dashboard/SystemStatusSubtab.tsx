@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import * as DashAPI from '@/api/dashboard';
 import { QuickActions } from './QuickActions';
 import { IndexDisplayPanels } from './IndexDisplayPanels';
+import { useDockerStore } from '@/stores/useDockerStore';
 
 export function SystemStatusSubtab() {
   const [health, setHealth] = useState<string>('—');
@@ -20,6 +21,19 @@ export function SystemStatusSubtab() {
   const [topFolders, setTopFolders] = useState<
     Array<{ name: string; profile?: string; chunkCount: number; storageBytes: number }>
   >([]);
+
+  // Dev Stack state from Zustand (Pydantic: DevStackStatusResponse)
+  const {
+    devStackStatus,
+    devStackLoading,
+    restartingFrontend,
+    restartingBackend,
+    restartingStack,
+    fetchDevStackStatus,
+    restartFrontend,
+    restartBackend,
+    restartStack,
+  } = useDockerStore();
 
   const formatBytes = (bytes: number) => {
     if (!bytes || bytes <= 0) return '0 B';

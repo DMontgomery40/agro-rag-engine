@@ -26,7 +26,7 @@ async def stream_build_logs(
     if build_type == "cards":
         # Start actual cards build process
         process = subprocess.Popen(
-            ["python", "-m", "indexer.build_cards", "--repo", repo],
+            [sys.executable, "-m", "indexer.build_cards", "--repo", repo],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             bufsize=1,
@@ -166,9 +166,9 @@ async def stream_operation(
     async def generate():
         # Map operations to actual commands
         commands = {
-            "index": ["python", "-m", "indexer.index_repo"],
-            "eval": ["python", "-m", "eval.eval_loop"],
-            "train": ["python", "-m", "reranker.train"],
+            "index": [sys.executable, "-m", "indexer.index_repo"],
+            "eval": [sys.executable, "-m", "eval.eval_loop"],
+            "train": [sys.executable, "-m", "reranker.train"],
         }
 
         if operation not in commands:

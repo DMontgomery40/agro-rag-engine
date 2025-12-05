@@ -16,9 +16,32 @@ from typing import Any, Dict, Optional
 import docker
 from docker.errors import DockerException
 from fastapi import APIRouter
+from pydantic import BaseModel, Field
 
 from common.paths import repo_root
 from server.services.config_registry import get_config_registry
+
+
+# ============================================================================
+# Pydantic Response Models (for Dev Stack endpoints)
+# ============================================================================
+
+class DevStackStatusResponse(BaseModel):
+    """Response model for dev stack status - maps to frontend DevStackStatus type."""
+    frontend_running: bool = Field(description="Whether the frontend (Vite) is running")
+    backend_running: bool = Field(description="Whether the backend (Uvicorn) is running")
+    frontend_port: int = Field(description="Frontend port from DEV_FRONTEND_PORT config")
+    backend_port: int = Field(description="Backend port from DEV_BACKEND_PORT config")
+
+
+class DevStackRestartResponse(BaseModel):
+    """Response model for dev stack restart operations."""
+    success: bool = Field(description="Whether the restart operation succeeded")
+    message: Optional[str] = Field(default=None, description="Status message")
+    error: Optional[str] = Field(default=None, description="Error message if failed")
+    port: Optional[int] = Field(default=None, description="Port for single-service restarts")
+    frontend_port: Optional[int] = Field(default=None, description="Frontend port for stack restart")
+    backend_port: Optional[int] = Field(default=None, description="Backend port for stack restart")
 
 router = APIRouter()
 logger = logging.getLogger("agro.docker")
@@ -130,6 +153,9 @@ def _get_docker_config() -> Dict[str, Any]:
         "infra_down_timeout": registry.get_int("DOCKER_INFRA_DOWN_TIMEOUT", 30),
         "logs_tail": registry.get_int("DOCKER_LOGS_TAIL", 100),
         "logs_timestamps": registry.get_bool("DOCKER_LOGS_TIMESTAMPS", True),
+        "dev_frontend_port": registry.get_int("DEV_FRONTEND_PORT", 5173),
+        "dev_backend_port": registry.get_int("DEV_BACKEND_PORT", 8012),
+        "dev_stack_restart_timeout": registry.get_int("DEV_STACK_RESTART_TIMEOUT", 30),
     }
 
 
@@ -800,3 +826,179 @@ def docker_container_logs(
         }
     except Exception as e:
         return {"success": False, "logs": "", "error": str(e)}
+
+
+# ============================================================================
+# Dev Stack Endpoints (Frontend/Backend/Full Stack restart)
+# ============================================================================
+
+def _check_port_listening(port: int) -> bool:
+    """Check if a process is listening on the given port."""
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(1)
+        return s.connect_ex(('127.0.0.1', port)) == 0
+
+
+@router.get("/api/dev/status", response_model=DevStackStatusResponse)
+def dev_stack_status() -> DevStackStatusResponse:
+    """Get dev stack status (frontend and backend running state)."""
+    cfg = _get_docker_config()
+    frontend_port = cfg["dev_frontend_port"]
+    backend_port = cfg["dev_backend_port"]
+
+    return DevStackStatusResponse(
+        frontend_running=_check_port_listening(frontend_port),
+        backend_running=_check_port_listening(backend_port),
+        frontend_port=frontend_port,
+        backend_port=backend_port,
+    )
+
+
+@router.post("/api/dev/frontend/restart", response_model=DevStackRestartResponse)
+def dev_frontend_restart() -> DevStackRestartResponse:
+    """Restart the dev frontend (Vite)."""
+    cfg = _get_docker_config()
+    root = repo_root()
+
+    try:
+        # Kill existing vite process
+        subprocess.run(
+            ["pkill", "-f", "vite"],
+            capture_output=True,
+            timeout=5,
+            env=_SUBPROCESS_ENV,
+        )
+
+        # Small delay to ensure process is terminated
+        import time
+        time.sleep(1)
+
+        # Start new frontend process in background
+        subprocess.Popen(
+            ["npm", "run", "dev"],
+            cwd=str(root / "web"),
+            env=_SUBPROCESS_ENV,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+
+        # Wait briefly and check if it started
+        time.sleep(3)
+        running = _check_port_listening(cfg["dev_frontend_port"])
+
+        return DevStackRestartResponse(
+            success=running,
+            message="Frontend restarted" if running else "Frontend restart initiated",
+            port=cfg["dev_frontend_port"],
+        )
+    except Exception as e:
+        return DevStackRestartResponse(success=False, error=str(e))
+
+
+@router.post("/api/dev/backend/restart", response_model=DevStackRestartResponse)
+def dev_backend_restart() -> DevStackRestartResponse:
+    """Restart the dev backend (Uvicorn).
+
+    Spawns new process first, then kills current - ensures response is sent.
+    """
+    cfg = _get_docker_config()
+    root = repo_root()
+    backend_port = cfg["dev_backend_port"]
+
+    try:
+        import sys
+        import time
+
+        # Start new backend process in background FIRST (on different port temporarily)
+        # Then we return response and kill ourselves
+        subprocess.Popen(
+            [
+                sys.executable, "-m", "uvicorn",
+                "server.asgi:create_app",
+                "--factory",
+                "--host", "127.0.0.1",
+                "--port", str(backend_port),
+            ],
+            cwd=str(root),
+            env=_SUBPROCESS_ENV,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+
+        # Schedule self-termination after response is sent
+        import threading
+        def delayed_kill():
+            time.sleep(0.5)
+            subprocess.run(["pkill", "-f", "uvicorn server.asgi"], capture_output=True, env=_SUBPROCESS_ENV)
+        threading.Thread(target=delayed_kill, daemon=True).start()
+
+        return DevStackRestartResponse(
+            success=True,
+            message="Backend restart initiated - new process spawned",
+            port=backend_port,
+        )
+    except Exception as e:
+        return DevStackRestartResponse(success=False, error=str(e))
+
+
+@router.post("/api/dev/stack/restart", response_model=DevStackRestartResponse)
+def dev_stack_restart() -> DevStackRestartResponse:
+    """Restart both frontend and backend."""
+    cfg = _get_docker_config()
+    root = repo_root()
+    frontend_port = cfg["dev_frontend_port"]
+    backend_port = cfg["dev_backend_port"]
+
+    try:
+        import sys
+        import time
+
+        # Kill frontend first (safe)
+        subprocess.run(["pkill", "-f", "vite"], capture_output=True, timeout=5, env=_SUBPROCESS_ENV)
+
+        time.sleep(1)
+
+        # Start frontend
+        subprocess.Popen(
+            ["npm", "run", "dev"],
+            cwd=str(root / "web"),
+            env=_SUBPROCESS_ENV,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+
+        # Spawn new backend
+        subprocess.Popen(
+            [
+                sys.executable, "-m", "uvicorn",
+                "server.asgi:create_app",
+                "--factory",
+                "--host", "127.0.0.1",
+                "--port", str(backend_port),
+            ],
+            cwd=str(root),
+            env=_SUBPROCESS_ENV,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+
+        # Schedule backend self-termination after response
+        import threading
+        def delayed_kill():
+            time.sleep(0.5)
+            subprocess.run(["pkill", "-f", "uvicorn server.asgi"], capture_output=True, env=_SUBPROCESS_ENV)
+        threading.Thread(target=delayed_kill, daemon=True).start()
+
+        return DevStackRestartResponse(
+            success=True,
+            message="Full stack restart initiated",
+            frontend_port=frontend_port,
+            backend_port=backend_port,
+        )
+    except Exception as e:
+        return DevStackRestartResponse(success=False, error=str(e))

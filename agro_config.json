@@ -138,8 +138,8 @@
   },
   "generation": {
     "gen_model": "gpt-5",
-    "gen_temperature": 0.22,
-    "gen_max_tokens": 2048,
+    "gen_temperature": 0.0,
+    "gen_max_tokens": 1000,
     "gen_top_p": 1.0,
     "gen_timeout": 60,
     "gen_retry_max": 2,
@@ -278,6 +278,7 @@
     "lightweight_cards": "Extract key information from this code: symbols (function/class names), purpose (one sentence), keywords (technical terms). Return JSON only."
   },
   "docker": {
+    "docker_host": "",
     "docker_status_timeout": 5,
     "docker_container_list_timeout": 10,
     "docker_container_action_timeout": 30,

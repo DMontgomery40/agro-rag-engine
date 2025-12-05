@@ -1122,6 +1122,27 @@ class UIConfig(BaseModel):
         description="Include reasoning/thinking in streamed responses when supported by model"
     )
 
+    chat_show_confidence: int = Field(
+        default=0,
+        ge=0,
+        le=1,
+        description="Show confidence badge on chat answers"
+    )
+
+    chat_show_citations: int = Field(
+        default=1,
+        ge=0,
+        le=1,
+        description="Show citations list on chat answers"
+    )
+
+    chat_show_trace: int = Field(
+        default=0,
+        ge=0,
+        le=1,
+        description="Show routing trace panel by default"
+    )
+
     chat_default_model: str = Field(
         default="gpt-4o-mini",
         description="Default model for chat if not specified in request"
@@ -1444,6 +1465,27 @@ class DockerConfig(BaseModel):
         description="Include timestamps in Docker logs (1=yes, 0=no)"
     )
 
+    dev_frontend_port: int = Field(
+        default=5173,
+        ge=1024,
+        le=65535,
+        description="Port for dev frontend (Vite)"
+    )
+
+    dev_backend_port: int = Field(
+        default=8012,
+        ge=1024,
+        le=65535,
+        description="Port for dev backend (Uvicorn)"
+    )
+
+    dev_stack_restart_timeout: int = Field(
+        default=30,
+        ge=5,
+        le=120,
+        description="Timeout for dev stack restart operations (seconds)"
+    )
+
 
 class AgroConfigRoot(BaseModel):
     """Root configuration model for agro_config.json.
@@ -1653,10 +1695,13 @@ class AgroConfigRoot(BaseModel):
             'AGRO_RERANKER_MINE_MODE': self.training.agro_reranker_mine_mode,
             'AGRO_RERANKER_MINE_RESET': self.training.agro_reranker_mine_reset,
             'AGRO_TRIPLETS_PATH': self.training.agro_triplets_path,
-    # UI params (21)
+            # UI params (21)
             'CHAT_STREAMING_ENABLED': self.ui.chat_streaming_enabled,
             'CHAT_HISTORY_MAX': self.ui.chat_history_max,
             'CHAT_STREAM_INCLUDE_THINKING': self.ui.chat_stream_include_thinking,
+            'CHAT_SHOW_CONFIDENCE': self.ui.chat_show_confidence,
+            'CHAT_SHOW_CITATIONS': self.ui.chat_show_citations,
+            'CHAT_SHOW_TRACE': self.ui.chat_show_trace,
             'CHAT_DEFAULT_MODEL': self.ui.chat_default_model,
             'CHAT_STREAM_TIMEOUT': self.ui.chat_stream_timeout,
             'CHAT_THINKING_BUDGET_TOKENS': self.ui.chat_thinking_budget_tokens,
@@ -1691,7 +1736,7 @@ class AgroConfigRoot(BaseModel):
             'PROMPT_CODE_ENRICHMENT': self.system_prompts.code_enrichment,
             'PROMPT_EVAL_ANALYSIS': self.system_prompts.eval_analysis,
             'PROMPT_LIGHTWEIGHT_CARDS': self.system_prompts.lightweight_cards,
-            # Docker params (8)
+            # Docker params (11)
             'DOCKER_HOST': self.docker.docker_host,
             'DOCKER_STATUS_TIMEOUT': self.docker.docker_status_timeout,
             'DOCKER_CONTAINER_LIST_TIMEOUT': self.docker.docker_container_list_timeout,
@@ -1700,6 +1745,9 @@ class AgroConfigRoot(BaseModel):
             'DOCKER_INFRA_DOWN_TIMEOUT': self.docker.docker_infra_down_timeout,
             'DOCKER_LOGS_TAIL': self.docker.docker_logs_tail,
             'DOCKER_LOGS_TIMESTAMPS': self.docker.docker_logs_timestamps,
+            'DEV_FRONTEND_PORT': self.docker.dev_frontend_port,
+            'DEV_BACKEND_PORT': self.docker.dev_backend_port,
+            'DEV_STACK_RESTART_TIMEOUT': self.docker.dev_stack_restart_timeout,
         }
 
     @classmethod
@@ -1893,6 +1941,9 @@ class AgroConfigRoot(BaseModel):
                 chat_streaming_enabled=data.get('CHAT_STREAMING_ENABLED', 1),
                 chat_history_max=data.get('CHAT_HISTORY_MAX', 50),
                 chat_stream_include_thinking=data.get('CHAT_STREAM_INCLUDE_THINKING', 1),
+                chat_show_confidence=data.get('CHAT_SHOW_CONFIDENCE', 0),
+                chat_show_citations=data.get('CHAT_SHOW_CITATIONS', 1),
+                chat_show_trace=data.get('CHAT_SHOW_TRACE', 0),
                 chat_default_model=data.get('CHAT_DEFAULT_MODEL', 'gpt-4o-mini'),
                 chat_stream_timeout=data.get('CHAT_STREAM_TIMEOUT', 120),
                 chat_thinking_budget_tokens=data.get('CHAT_THINKING_BUDGET_TOKENS', 10000),
@@ -1940,6 +1991,9 @@ class AgroConfigRoot(BaseModel):
                 docker_infra_down_timeout=data.get('DOCKER_INFRA_DOWN_TIMEOUT', 30),
                 docker_logs_tail=data.get('DOCKER_LOGS_TAIL', 100),
                 docker_logs_timestamps=data.get('DOCKER_LOGS_TIMESTAMPS', 1),
+                dev_frontend_port=data.get('DEV_FRONTEND_PORT', 5173),
+                dev_backend_port=data.get('DEV_BACKEND_PORT', 8012),
+                dev_stack_restart_timeout=data.get('DEV_STACK_RESTART_TIMEOUT', 30),
             ),
         )
 
@@ -2109,10 +2163,13 @@ AGRO_CONFIG_KEYS = {
     'AGRO_RERANKER_MINE_MODE',
     'AGRO_RERANKER_MINE_RESET',
     'AGRO_TRIPLETS_PATH',
-    # UI params (22)
+    # UI params (25)
     'CHAT_STREAMING_ENABLED',
     'CHAT_HISTORY_MAX',
     'CHAT_STREAM_INCLUDE_THINKING',
+    'CHAT_SHOW_CONFIDENCE',
+    'CHAT_SHOW_CITATIONS',
+    'CHAT_SHOW_TRACE',
     'CHAT_DEFAULT_MODEL',
     'CHAT_STREAM_TIMEOUT',
     'CHAT_THINKING_BUDGET_TOKENS',
@@ -2147,7 +2204,7 @@ AGRO_CONFIG_KEYS = {
     'PROMPT_LIGHTWEIGHT_CARDS',
     'PROMPT_CODE_ENRICHMENT',
     'PROMPT_EVAL_ANALYSIS',
-    # Docker params (8)
+    # Docker params (11)
     'DOCKER_HOST',
     'DOCKER_STATUS_TIMEOUT',
     'DOCKER_CONTAINER_LIST_TIMEOUT',
@@ -2156,6 +2213,9 @@ AGRO_CONFIG_KEYS = {
     'DOCKER_INFRA_DOWN_TIMEOUT',
     'DOCKER_LOGS_TAIL',
     'DOCKER_LOGS_TIMESTAMPS',
+    'DEV_FRONTEND_PORT',
+    'DEV_BACKEND_PORT',
+    'DEV_STACK_RESTART_TIMEOUT',
 }
 
 

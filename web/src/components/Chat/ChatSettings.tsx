@@ -2,7 +2,7 @@
 // Configuration for chat model, behavior, and display options
 
 import { useState, useEffect } from 'react';
-import { useAPI } from '@/hooks';
+import { useAPI, useConfig } from '@/hooks';
 
 interface ChatConfig {
   systemPrompt: string;
@@ -20,25 +20,28 @@ interface ChatConfig {
   autoSave: boolean;
 }
 
-const DEFAULT_CONFIG: ChatConfig = {
-  systemPrompt: 'You are a helpful AI assistant that answers questions about codebases using RAG (Retrieval-Augmented Generation). Provide accurate, concise answers with citations.',
-  model: '',  // Will be loaded from agro_config.json GEN_MODEL
-  temperature: 0,
-  maxTokens: 1000,
-  topP: 1,
-  finalK: 10,
-  frequencyPenalty: 0,
-  presencePenalty: 0,
-  streaming: true,
-  showConfidence: false,
-  showCitations: true,
-  showTrace: false,
-  autoSave: true
-};
+const DEFAULT_SYSTEM_PROMPT =
+  'You are a helpful AI assistant that answers questions about codebases using RAG (Retrieval-Augmented Generation). Provide accurate, concise answers with citations.';
 
 export function ChatSettings() {
   const { api } = useAPI();
-  const [config, setConfig] = useState<ChatConfig>(DEFAULT_CONFIG);
+  const { get, set, env } = useConfig();
+  const [config, setConfig] = useState<ChatConfig>(() => ({
+    systemPrompt: get('PROMPT_MAIN_RAG_CHAT', DEFAULT_SYSTEM_PROMPT),
+    model: get('GEN_MODEL', ''),
+    temperature: get('GEN_TEMPERATURE', 0),
+    maxTokens: get('GEN_MAX_TOKENS', 1000),
+    topP: get('GEN_TOP_P', 1),
+    finalK: get('FINAL_K', 10),
+    topK: get('FINAL_K', 10),
+    frequencyPenalty: 0,
+    presencePenalty: 0,
+    streaming: Boolean(get('CHAT_STREAMING_ENABLED', 1)),
+    showConfidence: Boolean(get('CHAT_SHOW_CONFIDENCE', 0)),
+    showCitations: Boolean(get('CHAT_SHOW_CITATIONS', 1)),
+    showTrace: Boolean(get('CHAT_SHOW_TRACE', 0)),
+    autoSave: true
+  }));
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string>('');
   const [modelOptions, setModelOptions] = useState<string[]>([]);
@@ -46,73 +49,28 @@ export function ChatSettings() {
     window.dispatchEvent(new CustomEvent('agro-chat-config-updated', { detail: cfg }));
   };
 
-  // Load config on mount
+  // Load model options on mount
   useEffect(() => {
-    loadConfig();
     loadModelOptions();
   }, []);
 
-  const loadConfig = async () => {
-    try {
-      // First, get GEN_MODEL from agro_config.json via /api/config
-      let genModel = '';
-      try {
-        const mainConfigResp = await fetch(api('config'));
-        if (mainConfigResp.ok) {
-          const mainConfig = await mainConfigResp.json();
-          genModel = mainConfig.env?.GEN_MODEL || '';
-        }
-      } catch (e) {
-        console.warn('[ChatSettings] Could not load GEN_MODEL from config:', e);
-      }
-
-      // Try to load chat-specific config from API
-      const response = await fetch(api('chat/config'));
-      if (response.ok) {
-        const data = await response.json();
-        // Normalize legacy topK -> finalK if present in stored config
-        const normalized = { ...data };
-        if (normalized.topK && !normalized.finalK) {
-          normalized.finalK = normalized.topK;
-          delete normalized.topK;
-        }
-        // Always align model with backend GEN_MODEL if provided
-        if (genModel) {
-          normalized.model = genModel;
-        }
-        setConfig({ ...DEFAULT_CONFIG, ...normalized });
-      } else {
-        // Fall back to localStorage
-        const saved = localStorage.getItem('agro-chat-config');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed.topK && !parsed.finalK) { parsed.finalK = parsed.topK; delete parsed.topK; }
-          // Align model with backend GEN_MODEL if provided
-          if (genModel) {
-            parsed.model = genModel;
-          }
-          setConfig({ ...DEFAULT_CONFIG, ...parsed });
-        } else if (genModel) {
-          // No chat config saved, use GEN_MODEL from agro_config
-          setConfig({ ...DEFAULT_CONFIG, model: genModel });
-        }
-      }
-    } catch (error) {
-      console.error('[ChatSettings] Failed to load config:', error);
-      // Try localStorage fallback
-      const saved = localStorage.getItem('agro-chat-config');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (parsed.topK && !parsed.finalK) { parsed.finalK = parsed.topK; delete parsed.topK; }
-          if (genModel) {
-            parsed.model = genModel;
-          }
-          setConfig({ ...DEFAULT_CONFIG, ...parsed });
-        } catch {}
-      }
-    }
-  };
+  // Sync form with Pydantic/Zustand config
+  useEffect(() => {
+    setConfig(prev => ({
+      ...prev,
+      systemPrompt: get('PROMPT_MAIN_RAG_CHAT', prev.systemPrompt || DEFAULT_SYSTEM_PROMPT),
+      model: get('GEN_MODEL', prev.model),
+      temperature: get('GEN_TEMPERATURE', prev.temperature),
+      maxTokens: get('GEN_MAX_TOKENS', prev.maxTokens),
+      topP: get('GEN_TOP_P', prev.topP),
+      finalK: get('FINAL_K', prev.finalK),
+      topK: get('FINAL_K', prev.topK),
+      streaming: Boolean(get('CHAT_STREAMING_ENABLED', prev.streaming ? 1 : 0)),
+      showConfidence: Boolean(get('CHAT_SHOW_CONFIDENCE', prev.showConfidence ? 1 : 0)),
+      showCitations: Boolean(get('CHAT_SHOW_CITATIONS', prev.showCitations ? 1 : 0)),
+      showTrace: Boolean(get('CHAT_SHOW_TRACE', prev.showTrace ? 1 : 0)),
+    }));
+  }, [env, get]);
 
   const loadModelOptions = async () => {
     try {
@@ -146,25 +104,24 @@ export function ChatSettings() {
     setSaveStatus('');
 
     try {
-      // Save to API
-      const response = await fetch(api('chat/config'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config)
+      set({
+        GEN_MODEL: config.model,
+        GEN_TEMPERATURE: config.temperature,
+        GEN_MAX_TOKENS: config.maxTokens,
+        GEN_TOP_P: config.topP,
+        FINAL_K: config.finalK,
+        CHAT_STREAMING_ENABLED: config.streaming ? 1 : 0,
+        CHAT_SHOW_CONFIDENCE: config.showConfidence ? 1 : 0,
+        CHAT_SHOW_CITATIONS: config.showCitations ? 1 : 0,
+        CHAT_SHOW_TRACE: config.showTrace ? 1 : 0,
+        CHAT_DEFAULT_MODEL: config.model,
+        PROMPT_MAIN_RAG_CHAT: config.systemPrompt,
       });
-
-      if (response.ok) {
-        setSaveStatus('Settings saved successfully!');
-        broadcastConfig(config);
-      } else {
-        throw new Error('API save failed');
-      }
-    } catch (error) {
-      console.error('[ChatSettings] Failed to save to API, using localStorage:', error);
-      // Fallback to localStorage
-      localStorage.setItem('agro-chat-config', JSON.stringify(config));
-      setSaveStatus('Settings saved locally');
+      setSaveStatus('Settings saved successfully!');
       broadcastConfig(config);
+    } catch (error) {
+      console.error('[ChatSettings] Failed to save config:', error);
+      setSaveStatus('Failed to save settings');
     } finally {
       setSaving(false);
       setTimeout(() => setSaveStatus(''), 3000);
@@ -173,16 +130,43 @@ export function ChatSettings() {
 
   const handleReset = () => {
     if (confirm('Reset all chat settings to defaults?')) {
-      setConfig(DEFAULT_CONFIG);
-      localStorage.removeItem('agro-chat-config');
+      const resetConfig: ChatConfig = {
+        systemPrompt: DEFAULT_SYSTEM_PROMPT,
+        model: get('GEN_MODEL', ''),
+        temperature: 0,
+        maxTokens: 1000,
+        topP: 1,
+        finalK: 10,
+        frequencyPenalty: 0,
+        presencePenalty: 0,
+        streaming: true,
+        showConfidence: false,
+        showCitations: true,
+        showTrace: false,
+        autoSave: true
+      };
+      setConfig(resetConfig);
+      set({
+        GEN_MODEL: resetConfig.model,
+        GEN_TEMPERATURE: resetConfig.temperature,
+        GEN_MAX_TOKENS: resetConfig.maxTokens,
+        GEN_TOP_P: resetConfig.topP,
+        FINAL_K: resetConfig.finalK,
+        CHAT_STREAMING_ENABLED: resetConfig.streaming ? 1 : 0,
+        CHAT_SHOW_CONFIDENCE: resetConfig.showConfidence ? 1 : 0,
+        CHAT_SHOW_CITATIONS: resetConfig.showCitations ? 1 : 0,
+        CHAT_SHOW_TRACE: resetConfig.showTrace ? 1 : 0,
+        CHAT_DEFAULT_MODEL: resetConfig.model,
+        PROMPT_MAIN_RAG_CHAT: resetConfig.systemPrompt,
+      });
       setSaveStatus('Settings reset to defaults');
-      broadcastConfig(DEFAULT_CONFIG);
+      broadcastConfig(resetConfig);
       setTimeout(() => setSaveStatus(''), 3000);
     }
   };
 
   const handleUseDefault = () => {
-    setConfig(prev => ({ ...prev, systemPrompt: DEFAULT_CONFIG.systemPrompt }));
+    setConfig(prev => ({ ...prev, systemPrompt: DEFAULT_SYSTEM_PROMPT }));
   };
 
   const handleSaveAsTemplate = async () => {
@@ -423,13 +407,13 @@ export function ChatSettings() {
             }}>
               Top-K (results)
             </label>
-            <input
-              type="number"
-              id="chat-top-k"
-              value={config.topK}
-              onChange={(e) => setConfig(prev => ({ ...prev, topK: Math.max(1, parseInt(e.target.value) || DEFAULT_CONFIG.topK) }))}
-              min="1"
-              max="100"
+              <input
+                type="number"
+                id="chat-top-k"
+                value={config.topK}
+                onChange={(e) => setConfig(prev => ({ ...prev, topK: Math.max(1, parseInt(e.target.value) || 10) }))}
+                min="1"
+                max="100"
               style={{
                 width: '100%',
                 background: 'var(--input-bg)',

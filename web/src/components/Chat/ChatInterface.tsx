@@ -4,13 +4,12 @@
 
 import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useAPI } from '@/hooks';
+import { useAPI, useConfig } from '@/hooks';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { RepoSelector } from '@/components/ui/RepoSelector';
 import { EmbeddingMismatchWarning } from '@/components/ui/EmbeddingMismatchWarning';
 import { useEmbeddingStatus } from '@/hooks/useEmbeddingStatus';
 import { useRepoStore } from '@/stores/useRepoStore';
-import { useConfigStore } from '@/stores';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -171,7 +170,10 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
   
   // Check if index exists for "no index" warning
   const { status: embeddingStatus } = useEmbeddingStatus();
-  const [tracePreference, setTracePreference] = useState<boolean>(() => Boolean(traceOpen));
+  const [tracePreference, setTracePreference] = useState<boolean>(() => {
+    if (traceOpen !== undefined) return Boolean(traceOpen);
+    return chatShowTrace;
+  });
   const [currentTrace, setCurrentTrace] = useState<TraceStep[]>([]);
   const [showSettings, setShowSettings] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -261,29 +263,46 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
     };
   }, [streaming, typing]);
 
-  // Chat settings state - model loaded from Pydantic config
-  const { config } = useConfigStore();
-  const [model, setModel] = useState('');  // Loaded from GEN_MODEL
-  const [temperature, setTemperature] = useState(0);
-  const [maxTokens, setMaxTokens] = useState(1000);
-  const [topP, setTopP] = useState(1);
-  const [topK, setTopK] = useState(10);
-  const [streamPref, setStreamPref] = useState<boolean>(true);
-  const [showConfidence, setShowConfidence] = useState<boolean>(false);
-  const [showCitations, setShowCitations] = useState<boolean>(true);
-
-  // Load model from Pydantic config on mount
-  useEffect(() => {
-    if (config?.env?.GEN_MODEL && !model) {
-      setModel(config.env.GEN_MODEL);
-    }
-  }, [config?.env?.GEN_MODEL, model]);
+  // Chat settings state - Pydantic/Zustand-backed
+  const { get, set: setConfigValue } = useConfig();
+  const model = get('GEN_MODEL_CHAT', get('GEN_MODEL', ''));
+  const systemPrompt = get('PROMPT_MAIN_RAG_CHAT', '');
+  const temperature = get('GEN_TEMPERATURE', 0);
+  const maxTokens = get('GEN_MAX_TOKENS', 1000);
+  const topP = get('GEN_TOP_P', 1);
+  const topK = get('FINAL_K', 10);
+  const chatStreamingEnabled = Boolean(get('CHAT_STREAMING_ENABLED', 1));
+  const chatShowConfidence = Boolean(get('CHAT_SHOW_CONFIDENCE', 0));
+  const chatShowCitations = Boolean(get('CHAT_SHOW_CITATIONS', 1));
+  const chatShowTrace = Boolean(get('CHAT_SHOW_TRACE', 0));
+  const [streamPref, setStreamPref] = useState<boolean>(() => chatStreamingEnabled);
+  const [showConfidence, setShowConfidence] = useState<boolean>(() => chatShowConfidence);
+  const [showCitations, setShowCitations] = useState<boolean>(() => chatShowCitations);
   const traceRef = useRef<TraceStep[]>([]);
   const [modelOptions, setModelOptions] = useState<string[]>([]);
   const [fastMode, setFastMode] = useState<boolean>(() => {
     const params = new URLSearchParams(window.location.search || '');
     return params.get('fast') === '1' || params.get('smoke') === '1';
   });
+
+  // Sync local UI toggles when config changes
+  useEffect(() => {
+    setStreamPref(chatStreamingEnabled);
+  }, [chatStreamingEnabled]);
+
+  useEffect(() => {
+    setShowConfidence(chatShowConfidence);
+  }, [chatShowConfidence]);
+
+  useEffect(() => {
+    setShowCitations(chatShowCitations);
+  }, [chatShowCitations]);
+
+  useEffect(() => {
+    if (traceOpen === undefined) {
+      setTracePreference(chatShowTrace);
+    }
+  }, [chatShowTrace, traceOpen]);
 
   // Define notifyTrace before useEffects that use it
   const notifyTrace = useCallback((steps: TraceStep[], open: boolean, source: 'config' | 'response' | 'clear' = 'response') => {
@@ -293,30 +312,9 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
     onTraceUpdate?.(steps, effectiveOpen, source);
   }, [onTraceUpdate, tracePreference]);
 
-  // Load chat config + model options
+  // Load model options (backend discovery)
   useEffect(() => {
     (async () => {
-      try {
-        const res = await fetch(api('chat/config'));
-        if (res.ok) {
-          const data = await res.json();
-          if (data.model) setModel(String(data.model));
-          if (typeof data.temperature === 'number') setTemperature(data.temperature);
-          if (typeof data.maxTokens === 'number') setMaxTokens(data.maxTokens);
-          if (typeof data.topP === 'number') setTopP(data.topP);
-          if (typeof data.topK === 'number') setTopK(data.topK);
-          if (typeof data.streaming === 'boolean') setStreamPref(Boolean(data.streaming));
-          if (typeof data.showTrace === 'boolean') {
-            setTracePreference(Boolean(data.showTrace));
-            onTracePreferenceChange?.(Boolean(data.showTrace));
-            notifyTrace(traceRef.current, Boolean(data.showTrace), 'config');
-          }
-          if (typeof data.showConfidence === 'boolean') setShowConfidence(Boolean(data.showConfidence));
-          if (typeof data.showCitations === 'boolean') setShowCitations(Boolean(data.showCitations));
-        }
-      } catch (e) {
-        console.error('[ChatInterface] Failed to load chat config:', e);
-      }
       try {
         const p = await fetch(api('/api/models'));
         if (p.ok) {
@@ -329,21 +327,34 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
         }
       } catch {}
     })();
-  }, [api, notifyTrace]);
+  }, [api]);
 
   // React to config updates from ChatSettings (cross-component sync)
   useEffect(() => {
     const handler = (event: Event) => {
       const detail = (event as CustomEvent).detail || {};
       if (detail && typeof detail === 'object') {
-        if (Object.prototype.hasOwnProperty.call(detail, 'streaming')) setStreamPref(Boolean(detail.streaming));
-        if (Object.prototype.hasOwnProperty.call(detail, 'showConfidence')) setShowConfidence(Boolean(detail.showConfidence));
-        if (Object.prototype.hasOwnProperty.call(detail, 'showCitations')) setShowCitations(Boolean(detail.showCitations));
+        if (Object.prototype.hasOwnProperty.call(detail, 'streaming')) {
+          const val = Boolean(detail.streaming);
+          setStreamPref(val);
+          setConfigValue('CHAT_STREAMING_ENABLED', val ? 1 : 0);
+        }
+        if (Object.prototype.hasOwnProperty.call(detail, 'showConfidence')) {
+          const val = Boolean(detail.showConfidence);
+          setShowConfidence(val);
+          setConfigValue('CHAT_SHOW_CONFIDENCE', val ? 1 : 0);
+        }
+        if (Object.prototype.hasOwnProperty.call(detail, 'showCitations')) {
+          const val = Boolean(detail.showCitations);
+          setShowCitations(val);
+          setConfigValue('CHAT_SHOW_CITATIONS', val ? 1 : 0);
+        }
         if (Object.prototype.hasOwnProperty.call(detail, 'showTrace')) {
           const pref = Boolean(detail.showTrace);
           setTracePreference(pref);
           onTracePreferenceChange?.(pref);
           notifyTrace(traceRef.current, pref, 'config');
+          setConfigValue('CHAT_SHOW_TRACE', pref ? 1 : 0);
         }
       }
     };
@@ -469,7 +480,8 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
         max_tokens: maxTokens,
         multi_query: 1,
         final_k: topK,
-        system_prompt: '',
+        top_p: topP,
+        system_prompt: systemPrompt,
         fast_mode: fast,
         stream: true,
         include_reasoning: false,
@@ -483,6 +495,7 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
 
     const reader = response.body?.getReader();
     const decoder = new TextDecoder();
+    let streamBuffer = '';
     let accumulatedContent = '';
     let thinkingContent = '';
     let assistantMessageId = `assistant-${Date.now()}`;
@@ -496,114 +509,118 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
       throw new Error('Response body is not readable');
     }
 
+    const processDataLine = (line: string) => {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith('data:')) return;
+      const data = trimmed.slice(5).trim();
+      if (!data || data === '[DONE]') return;
+
+      try {
+        const parsed = JSON.parse(data);
+        const chunkType = parsed.type;
+
+        switch (chunkType) {
+          case 'thinking':
+            if (parsed.content) {
+              thinkingContent += parsed.content;
+            }
+            break;
+
+          case 'content':
+            if (parsed.content) {
+              accumulatedContent += parsed.content;
+            }
+            break;
+
+          case 'citations':
+            if (parsed.data?.citations) {
+              citations = parsed.data.citations;
+            }
+            if (typeof parsed.data?.confidence === 'number') {
+              confidence = parsed.data.confidence;
+            }
+            break;
+
+          case 'trace':
+            if (parsed.data) {
+              traceData = parsed.data;
+              const steps = parsed.data.steps || [];
+              notifyTrace(steps, tracePreference, 'response');
+            }
+            break;
+
+          case 'meta':
+            if (parsed.data) {
+              meta = parsed.data;
+            }
+            break;
+
+          case 'done':
+            if (parsed.data?.event_id) {
+              eventId = parsed.data.event_id;
+            }
+            if (typeof parsed.data?.confidence === 'number') {
+              confidence = parsed.data.confidence;
+            }
+            break;
+
+          case 'error':
+            console.error('[ChatInterface] Stream error:', parsed.data?.message);
+            accumulatedContent = `Error: ${parsed.data?.message || 'Unknown error'}`;
+            break;
+
+          default:
+            if (parsed.content) {
+              accumulatedContent += parsed.content;
+            }
+            if (parsed.citations) {
+              citations = parsed.citations;
+            }
+            if (typeof parsed.confidence === 'number') {
+              confidence = parsed.confidence;
+            }
+        }
+
+        const assistantMessage: Message = {
+          id: assistantMessageId,
+          role: 'assistant',
+          content: accumulatedContent,
+          timestamp: Date.now(),
+          citations,
+          traceData,
+          confidence,
+          meta,
+          eventId
+        };
+
+        setMessages(prev => {
+          const withoutLast = prev.filter(m => m.id !== assistantMessageId);
+          return [...withoutLast, assistantMessage];
+        });
+      } catch (error) {
+        console.error('[ChatInterface] Failed to parse SSE data:', error, data);
+      }
+    };
+
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n');
+      streamBuffer += decoder.decode(value, { stream: true });
+      const lines = streamBuffer.split('\n');
+      streamBuffer = lines.pop() || '';
 
       for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6).trim();
-          if (!data || data === '[DONE]') continue;
-
-          try {
-            const parsed = JSON.parse(data);
-            const chunkType = parsed.type;
-
-            switch (chunkType) {
-              case 'thinking':
-                // Accumulate thinking/reasoning content
-                if (parsed.content) {
-                  thinkingContent += parsed.content;
-                }
-                break;
-
-              case 'content':
-                // Main answer content
-                if (parsed.content) {
-                  accumulatedContent += parsed.content;
-                }
-                break;
-
-              case 'citations':
-                // Citations with optional confidence
-                if (parsed.data?.citations) {
-                  citations = parsed.data.citations;
-                }
-                if (typeof parsed.data?.confidence === 'number') {
-                  confidence = parsed.data.confidence;
-                }
-                break;
-
-              case 'trace':
-                // Trace data
-                if (parsed.data) {
-                  traceData = parsed.data;
-                  const steps = parsed.data.steps || [];
-                  notifyTrace(steps, tracePreference, 'response');
-                }
-                break;
-
-              case 'meta':
-                // Provider metadata
-                if (parsed.data) {
-                  meta = parsed.data;
-                }
-                break;
-
-              case 'done':
-                // Stream complete
-                if (parsed.data?.event_id) {
-                  eventId = parsed.data.event_id;
-                }
-                if (typeof parsed.data?.confidence === 'number') {
-                  confidence = parsed.data.confidence;
-                }
-                break;
-
-              case 'error':
-                // Error occurred
-                console.error('[ChatInterface] Stream error:', parsed.data?.message);
-                accumulatedContent = `Error: ${parsed.data?.message || 'Unknown error'}`;
-                break;
-
-              default:
-                // Legacy format fallback
-                if (parsed.content) {
-                  accumulatedContent += parsed.content;
-                }
-                if (parsed.citations) {
-                  citations = parsed.citations;
-                }
-                if (typeof parsed.confidence === 'number') {
-                  confidence = parsed.confidence;
-                }
-            }
-
-            // Update message in real-time
-            const assistantMessage: Message = {
-              id: assistantMessageId,
-              role: 'assistant',
-              content: accumulatedContent,
-              timestamp: Date.now(),
-              citations,
-              traceData,
-              confidence,
-              meta,
-              eventId // For feedback correlation
-            };
-
-            setMessages(prev => {
-              const withoutLast = prev.filter(m => m.id !== assistantMessageId);
-              return [...withoutLast, assistantMessage];
-            });
-          } catch (error) {
-            console.error('[ChatInterface] Failed to parse SSE data:', error, data);
-          }
-        }
+        processDataLine(line);
       }
+    }
+
+    const remaining = decoder.decode();
+    if (remaining) {
+      streamBuffer += remaining;
+    }
+    if (streamBuffer.trim()) {
+      processDataLine(streamBuffer);
     }
 
     // Save final state
@@ -627,7 +644,8 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
         max_tokens: maxTokens,
         multi_query: 1,
         final_k: topK,
-        system_prompt: '',
+        top_p: topP,
+        system_prompt: systemPrompt,
         fast_mode: fast
       })
     });
@@ -698,7 +716,7 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
       // }
       if (data.trace && Array.isArray(data.trace.steps)) {
         const steps = data.trace.steps;
-        notifyTrace(steps, true, 'response');
+        notifyTrace(steps, tracePreference, 'response');
       } else {
         // Fallback: read latest persisted trace for richer detail
         try {
@@ -708,7 +726,7 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
             if (j && j.trace && Array.isArray(j.trace.events)) {
               const evs = j.trace.events.map((e: any) => ({ step: e.kind, duration: e.data?.duration_ms, details: e.data || {} }));
               if (evs.length) {
-                notifyTrace(evs, true, 'response');
+                notifyTrace(evs, tracePreference, 'response');
               }
             }
           }
@@ -1592,7 +1610,7 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
               {modelOptions.length > 0 ? (
                 <select
                   value={model}
-                  onChange={(e) => setModel(e.target.value)}
+                  onChange={(e) => setConfigValue('GEN_MODEL', e.target.value)}
                   style={{
                     width: '100%',
                     background: 'var(--input-bg)',
@@ -1609,7 +1627,7 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
                 <input
                   type="text"
                   value={model}
-                  onChange={(e) => setModel(e.target.value)}
+                  onChange={(e) => setConfigValue('GEN_MODEL', e.target.value)}
                   style={{
                     width: '100%',
                     background: 'var(--input-bg)',
@@ -1639,7 +1657,7 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
                 max="2"
                 step="0.1"
                 value={temperature}
-                onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                onChange={(e) => setConfigValue('GEN_TEMPERATURE', parseFloat(e.target.value))}
                 style={{ width: '100%' }}
               />
             </div>
@@ -1657,7 +1675,7 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
               <input
                 type="number"
                 value={maxTokens}
-                onChange={(e) => setMaxTokens(parseInt(e.target.value))}
+                onChange={(e) => setConfigValue('GEN_MAX_TOKENS', parseInt(e.target.value))}
                 min="1"
                 max="32000"
                 style={{
@@ -1688,7 +1706,7 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
                 max="1"
                 step="0.01"
                 value={topP}
-                onChange={(e) => setTopP(parseFloat(e.target.value))}
+                onChange={(e) => setConfigValue('GEN_TOP_P', parseFloat(e.target.value))}
                 style={{ width: '100%' }}
               />
             </div>
@@ -1706,7 +1724,7 @@ export function ChatInterface({ traceOpen, onTraceUpdate, onTracePreferenceChang
               <input
                 type="number"
                 value={topK}
-                onChange={(e) => setTopK(Math.max(1, parseInt(e.target.value) || 10))}
+                onChange={(e) => setConfigValue('FINAL_K', Math.max(1, parseInt(e.target.value) || 10))}
                 min="1"
                 max="100"
                 style={{
