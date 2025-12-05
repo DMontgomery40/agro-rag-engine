@@ -1,26 +1,19 @@
 /**
  * AGRO - Centralized Repository State Management
- * 
+ *
  * Provides a single source of truth for:
  * - Available repositories list
  * - Currently active repository
  * - Repo switching with backend propagation
- * 
+ *
  * All components should use this store instead of local state for repo selection.
  */
 
 import { create } from 'zustand';
+import type { Repository, RepoIndexingConfig } from '@web/types';
 
-export interface Repository {
-  name: string;
-  slug?: string;
-  path?: string;
-  branch?: string;
-  exclude_paths?: string[];
-  keywords?: string[];
-  path_boosts?: string[];
-  layer_bonuses?: Record<string, Record<string, number>>;
-}
+// Re-export types for backward compatibility
+export type { Repository, RepoIndexingConfig };
 
 interface RepoStore {
   // State
@@ -37,6 +30,7 @@ interface RepoStore {
   setActiveRepo: (repoName: string) => Promise<void>;
   refreshActiveRepo: () => Promise<void>;
   getRepoByName: (name: string) => Repository | undefined;
+  updateRepoIndexing: (repoName: string, indexing: Partial<RepoIndexingConfig>) => Promise<void>;
 }
 
 // Determine API base URL
@@ -191,6 +185,51 @@ export const useRepoStore = create<RepoStore>((set, get) => ({
 
   getRepoByName: (name: string) => {
     return get().repos.find(r => r.name === name || r.slug === name);
+  },
+
+  updateRepoIndexing: async (repoName: string, indexing: Partial<RepoIndexingConfig>) => {
+    const { repos } = get();
+    const targetRepo = repos.find(r => r.name === repoName || r.slug === repoName);
+    if (!targetRepo) {
+      set({ error: `Repository "${repoName}" not found` });
+      return;
+    }
+
+    try {
+      const apiBase = getApiBase();
+      const response = await fetch(`${apiBase}/repos/${repoName}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ indexing })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to update repo indexing config');
+      }
+
+      // Update local state
+      const updatedRepos = repos.map(r => {
+        if (r.name === repoName || r.slug === repoName) {
+          return {
+            ...r,
+            indexing: { ...r.indexing, ...indexing } as RepoIndexingConfig
+          };
+        }
+        return r;
+      });
+
+      set({ repos: updatedRepos, error: null });
+
+      // Broadcast for listeners
+      window.dispatchEvent(new CustomEvent('agro-repo-indexing-updated', {
+        detail: { repo: repoName, indexing }
+      }));
+
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Failed to update indexing config' });
+      throw error;
+    }
   }
 }));
 

@@ -177,3 +177,70 @@ def exclude_paths(name: str) -> List[str]:
     lst = r.get("exclude_paths") or []
     return [str(x) for x in lst if isinstance(x, str)]
 
+
+def get_repo_indexing_config(name: str) -> Dict[str, Any]:
+    """Get merged indexing config for a repo (repo overrides + global fallback).
+
+    Per-repo indexing config in repos.json can override global settings from agro_config.json.
+    If repo has use_global=True or no indexing section, returns global defaults.
+    Otherwise merges repo-specific overrides on top of global config.
+
+    Returns dict with keys like: embedding_type, embedding_model, embedding_dim,
+    chunk_size, chunk_overlap, chunking_strategy, bm25_tokenizer, etc.
+    """
+    from server.services.config_registry import ConfigRegistry
+
+    # Get global indexing config from registry
+    # Fields match RepoIndexingConfig Pydantic model (no provider-specific fields)
+    # embedding_model is generic - works with any provider from models.json
+    registry = ConfigRegistry()
+    global_config = {
+        'embedding_type': registry.get_str('EMBEDDING_TYPE', 'openai'),
+        'embedding_model': registry.get_str('EMBEDDING_MODEL', 'text-embedding-3-large'),
+        'embedding_dim': registry.get_int('EMBEDDING_DIM', 3072),
+        'chunk_size': registry.get_int('CHUNK_SIZE', 1000),
+        'chunk_overlap': registry.get_int('CHUNK_OVERLAP', 200),
+        'chunking_strategy': registry.get_str('CHUNKING_STRATEGY', 'ast'),
+        'bm25_tokenizer': registry.get_str('BM25_TOKENIZER', 'stemmer'),
+        'bm25_stemmer_lang': registry.get_str('BM25_STEMMER_LANG', 'english'),
+        'bm25_stopwords_lang': registry.get_str('BM25_STOPWORDS_LANG', 'english'),
+        'indexing_batch_size': registry.get_int('INDEXING_BATCH_SIZE', 100),
+        'indexing_workers': registry.get_int('INDEXING_WORKERS', 4),
+    }
+
+    # Check for repo-specific overrides
+    r = _find_repo(name)
+    if not r:
+        return global_config
+
+    repo_indexing = r.get("indexing") or {}
+
+    # If use_global is True or not specified, return global config
+    if repo_indexing.get("use_global", True):
+        return global_config
+
+    # Merge repo overrides on top of global config
+    merged = {**global_config}
+    for key, value in repo_indexing.items():
+        if key != "use_global" and value is not None:
+            merged[key] = value
+
+    return merged
+
+
+def get_repo_indexing_overrides(name: str) -> Optional[Dict[str, Any]]:
+    """Get just the repo-specific indexing overrides (not merged with global).
+
+    Returns None if repo has no indexing section or use_global=True.
+    Returns the indexing dict if repo has custom overrides.
+    """
+    r = _find_repo(name)
+    if not r:
+        return None
+
+    repo_indexing = r.get("indexing")
+    if not repo_indexing or repo_indexing.get("use_global", True):
+        return None
+
+    return repo_indexing
+

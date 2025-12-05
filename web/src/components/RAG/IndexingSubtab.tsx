@@ -19,7 +19,7 @@ import { useEmbeddingStatus } from '@/hooks/useEmbeddingStatus';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { useRepoStore } from '@/stores/useRepoStore';
 import { useDockerStore } from '@/stores/useDockerStore';
-import { LiveTerminal, type LiveTerminalHandle } from '../LiveTerminal/LiveTerminal';
+import { LiveTerminal, type LiveTerminalHandle } from '@/components/LiveTerminal';
 import { TerminalService } from '@/services/TerminalService';
 import { EmbeddingMismatchWarning } from '@/components/ui/EmbeddingMismatchWarning';
 import { TooltipIcon } from '@/components/ui/TooltipIcon';
@@ -53,12 +53,7 @@ const COMPONENT_CARDS: Array<{
   { id: 'enrichment', icon: '✨', label: 'Enrichment', description: 'Code understanding and semantic cards' },
 ];
 
-const EMBEDDING_PROVIDERS = [
-  { id: 'openai', icon: '🤖', label: 'OpenAI', description: 'text-embedding-3 models' },
-  { id: 'voyage', icon: '🚀', label: 'Voyage', description: 'Code-optimized embeddings' },
-  { id: 'local', icon: '💻', label: 'Local', description: 'SentenceTransformer models' },
-  { id: 'mxbai', icon: '🔷', label: 'MXBAI', description: 'Mixedbread embeddings' },
-];
+// Embedding providers loaded dynamically from models.json via useModels('EMB')
 
 const CHUNKING_STRATEGIES = [
   { id: 'ast', label: 'AST-aware', description: 'Parse code structure, preserve functions' },
@@ -93,7 +88,7 @@ export function IndexingSubtab() {
   const [progress, setProgress] = useState({ current: 0, total: 100, status: 'Ready' });
   const [terminalVisible, setTerminalVisible] = useState(false);
 
-  // Models from CostLogic (same pattern as RerankerConfigSubtab)
+  // Models from models.json via CostLogic (same pattern as RerankerConfigSubtab)
   const [allProviders, setAllProviders] = useState<string[]>([]);
   const [embeddingModels, setEmbeddingModels] = useState<string[]>([]);
   const [modelsLoading, setModelsLoading] = useState(true);
@@ -184,15 +179,13 @@ export function IndexingSubtab() {
     fetchContainers();
   }, [fetchContainers]);
 
-  // Load providers from CostLogic
+  // Load providers from CostLogic (same pattern as RerankerConfigSubtab)
   const loadProviders = useCallback(async () => {
     setModelsLoading(true);
     setModelsError(null);
     try {
-      if (window.CostLogic?.listProviders) {
-        const providers = await window.CostLogic.listProviders();
-        setAllProviders(providers);
-      }
+      const providers = await window.CostLogic.listProviders();
+      setAllProviders(providers);
     } catch (e: any) {
       console.error('[IndexingSubtab] Failed to load providers:', e);
       setModelsError(e?.message || 'Failed to load providers');
@@ -201,9 +194,9 @@ export function IndexingSubtab() {
     }
   }, []);
 
-  // Load embedding models when provider changes
+  // Load embedding models when provider changes (same pattern as Sidepanel)
   const loadEmbeddingModels = useCallback(async (provider: string) => {
-    if (!provider || !window.CostLogic?.listModels) {
+    if (!provider) {
       setEmbeddingModels([]);
       return;
     }
@@ -223,6 +216,12 @@ export function IndexingSubtab() {
   useEffect(() => {
     loadEmbeddingModels(embeddingType);
   }, [embeddingType, loadEmbeddingModels]);
+
+  // Filter providers that have embed models
+  const embProviders = useMemo(() => {
+    // Show all providers - model dropdown will be empty if no embed models for that provider
+    return allProviders;
+  }, [allProviders]);
 
   // Check API key status (never expose actual key)
   useEffect(() => {
@@ -257,25 +256,18 @@ export function IndexingSubtab() {
   // HANDLERS
   // ==========================================================================
 
-  const handleProviderChange = useCallback((provider: string) => {
+  const handleProviderChange = useCallback(async (provider: string) => {
     set('EMBEDDING_TYPE', provider);
-    // Set sensible defaults for provider
-    switch (provider) {
-      case 'openai':
-        set('EMBEDDING_MODEL', 'text-embedding-3-large');
-        set('EMBEDDING_DIM', 3072);
-        break;
-      case 'voyage':
-        set('VOYAGE_MODEL', 'voyage-code-3');
-        break;
-      case 'local':
-        set('EMBEDDING_MODEL_LOCAL', 'all-MiniLM-L6-v2');
-        break;
-      case 'mxbai':
-        set('EMBEDDING_MODEL_LOCAL', 'mxbai-embed-large-v1');
-        break;
+    // Auto-select first model from models.json when provider changes (same pattern as RerankerConfigSubtab)
+    try {
+      const models = await window.CostLogic.listModels(provider, 'embed');
+      if (models.length > 0 && !models.includes(embeddingModel)) {
+        set('EMBEDDING_MODEL', models[0]);
+      }
+    } catch (e) {
+      console.error('[IndexingSubtab] Failed to load models for provider:', e);
     }
-  }, [set]);
+  }, [set, embeddingModel]);
 
   const handleStartIndex = useCallback(async () => {
     if (!activeRepo) return;
@@ -536,112 +528,74 @@ export function IndexingSubtab() {
               <TooltipIcon name="EMBEDDING_TYPE" />
             </h4>
 
-            {/* Provider Sub-Cards */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
-              gap: '12px',
-              marginBottom: '20px'
-            }}>
-              {EMBEDDING_PROVIDERS.map(provider => (
-                <button
-                  key={provider.id}
-                  onClick={() => handleProviderChange(provider.id)}
-                  style={{
-                    padding: '12px',
-                    background: embeddingType === provider.id
-                      ? 'rgba(var(--accent-rgb), 0.1)'
-                      : 'var(--bg-elev2)',
-                    border: embeddingType === provider.id
-                      ? '2px solid var(--accent)'
-                      : '1px solid var(--line)',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    textAlign: 'center',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <div style={{ fontSize: '20px', marginBottom: '4px' }}>{provider.icon}</div>
-                  <div style={{
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    color: embeddingType === provider.id ? 'var(--accent)' : 'var(--fg)'
-                  }}>
-                    {provider.label}
-                  </div>
-                </button>
-              ))}
-            </div>
+            {/* Provider Sub-Cards - loaded from models.json via CostLogic */}
+            {modelsLoading ? (
+              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--fg-muted)' }}>
+                Loading providers...
+              </div>
+            ) : (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: `repeat(${Math.min(embProviders.length, 4)}, 1fr)`,
+                gap: '12px',
+                marginBottom: '20px'
+              }}>
+                {embProviders.map((provider: string) => (
+                  <button
+                    key={provider}
+                    onClick={() => handleProviderChange(provider)}
+                    style={{
+                      padding: '12px',
+                      background: embeddingType === provider
+                        ? 'rgba(var(--accent-rgb), 0.1)'
+                        : 'var(--bg-elev2)',
+                      border: embeddingType === provider
+                        ? '2px solid var(--accent)'
+                        : '1px solid var(--line)',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <div style={{
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      color: embeddingType === provider ? 'var(--accent)' : 'var(--fg)'
+                    }}>
+                      {provider}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
 
-            {/* Model Selection */}
+            {/* Model Selection - models loaded from models.json via CostLogic */}
             <div className="input-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
               <div className="input-group">
                 <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
                   Model
                   <TooltipIcon name="EMBEDDING_MODEL" />
                 </label>
-                {embeddingType === 'openai' && (
-                  <select
-                    value={embeddingModel}
-                    onChange={(e) => set('EMBEDDING_MODEL', e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      background: 'var(--input-bg)',
-                      border: '1px solid var(--line)',
-                      borderRadius: '6px',
-                      color: 'var(--fg)',
-                      fontSize: '13px'
-                    }}
-                  >
-                    {embeddingModels.length > 0 ? (
-                      embeddingModels.map(m => <option key={m} value={m}>{m}</option>)
-                    ) : (
-                      <>
-                        <option value="text-embedding-3-large">text-embedding-3-large</option>
-                        <option value="text-embedding-3-small">text-embedding-3-small</option>
-                        <option value="text-embedding-ada-002">text-embedding-ada-002</option>
-                      </>
-                    )}
-                  </select>
-                )}
-                {embeddingType === 'voyage' && (
-                  <select
-                    value={voyageModel}
-                    onChange={(e) => set('VOYAGE_MODEL', e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      background: 'var(--input-bg)',
-                      border: '1px solid var(--line)',
-                      borderRadius: '6px',
-                      color: 'var(--fg)',
-                      fontSize: '13px'
-                    }}
-                  >
-                    <option value="voyage-code-3">voyage-code-3</option>
-                    <option value="voyage-code-2">voyage-code-2</option>
-                    <option value="voyage-large-2">voyage-large-2</option>
-                  </select>
-                )}
-                {(embeddingType === 'local' || embeddingType === 'mxbai') && (
-                  <input
-                    type="text"
-                    value={embeddingModelLocal}
-                    onChange={(e) => set('EMBEDDING_MODEL_LOCAL', e.target.value)}
-                    placeholder="e.g., all-MiniLM-L6-v2"
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      background: 'var(--input-bg)',
-                      border: '1px solid var(--line)',
-                      borderRadius: '6px',
-                      color: 'var(--fg)',
-                      fontSize: '13px',
-                      fontFamily: 'var(--font-mono)'
-                    }}
-                  />
-                )}
+                <select
+                  value={embeddingModel}
+                  onChange={(e) => set('EMBEDDING_MODEL', e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--line)',
+                    borderRadius: '6px',
+                    color: 'var(--fg)',
+                    fontSize: '13px'
+                  }}
+                >
+                  {embeddingModels.length > 0 ? (
+                    embeddingModels.map(m => <option key={m} value={m}>{m}</option>)
+                  ) : (
+                    <option value="">No models for {embeddingType}</option>
+                  )}
+                </select>
               </div>
 
               {embeddingType === 'openai' && (

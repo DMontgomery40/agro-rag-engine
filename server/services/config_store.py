@@ -384,6 +384,12 @@ def repos_get(repo_name: str) -> Optional[Dict[str, Any]]:
     return None
 
 
+def _get_repo_indexing_allowed_keys() -> set:
+    """Get allowed keys for per-repo indexing config from Pydantic model."""
+    from server.models.repo_model import RepoIndexingConfig
+    return set(RepoIndexingConfig.model_fields.keys())
+
+
 def repos_patch(repo_name: str, payload: Dict[str, Any]) -> bool:
     """Update repository configuration in repos.json (not Pydantic - repos.json is separate from agro_config.json)."""
     repos_path = repo_root() / "repos.json"
@@ -400,6 +406,15 @@ def repos_patch(repo_name: str, payload: Dict[str, Any]) -> bool:
                 repo["layer_bonuses"] = payload["layer_bonuses"]
             if "exclude_paths" in payload and isinstance(payload["exclude_paths"], list):
                 repo["exclude_paths"] = [str(x) for x in payload["exclude_paths"]]
+            # Per-repo indexing config overrides - keys validated against Pydantic models
+            if "indexing" in payload and isinstance(payload["indexing"], dict):
+                indexing_update = payload["indexing"]
+                existing_indexing = repo.get("indexing", {})
+                # Merge update into existing (don't replace wholesale)
+                merged_indexing = {**existing_indexing, **indexing_update}
+                # Filter to only Pydantic-defined keys
+                allowed_keys = _get_repo_indexing_allowed_keys()
+                repo["indexing"] = {k: v for k, v in merged_indexing.items() if k in allowed_keys}
             _write_json(repos_path, cfg)
             return True
     return False

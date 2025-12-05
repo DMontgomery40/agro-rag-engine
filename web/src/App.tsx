@@ -109,9 +109,10 @@ function App() {
           import('./modules/index_status.js'),
           import('./modules/mcp_rag.js'),
           import('./modules/mcp_server.js'),
-          import('./modules/index_profiles.js'),
-          import('./modules/indexing.js'),
-          import('./modules/simple_index.js'),
+          // REMOVED: Legacy JS indexing modules - IndexingSubtab now uses pure React/TypeScript
+          // import('./modules/index_profiles.js'),
+          // import('./modules/indexing.js'),
+          // import('./modules/simple_index.js'),
           import('./modules/docker.js'),
           import('./modules/grafana.js'),
           import('./modules/vscode.js'),

@@ -313,8 +313,7 @@ class EmbeddingConfig(BaseModel):
 
     embedding_type: str = Field(
         default="openai",
-        pattern="^(openai|voyage|local|mxbai)$",
-        description="Embedding provider"
+        description="Embedding provider (dynamic - validated against models.json at runtime)"
     )
     embedding_model: str = Field(
         default="text-embedding-3-large",
@@ -322,10 +321,27 @@ class EmbeddingConfig(BaseModel):
     )
     embedding_dim: int = Field(
         default=3072,
-        ge=512,
-        le=3072,
+        ge=128,
+        le=4096,
         description="Embedding dimensions"
     )
+
+    @field_validator('embedding_type', mode='before')
+    @classmethod
+    def normalize_embedding_type(cls, v: str) -> str:
+        """Normalize embedding provider aliases."""
+        if isinstance(v, str):
+            val = v.strip().lower()
+            # Map common aliases
+            if val in {'hf', 'hugging_face', 'hugging-face'}:
+                return 'huggingface'
+            if val in {'sentence_transformers', 'sentence-transformers', 'st'}:
+                return 'local'
+            if val in {'mxbai', 'mixedbread'}:
+                return 'local'  # mxbai models run under local provider
+            return val
+        return v
+
     voyage_model: str = Field(
         default="voyage-code-3",
         description="Voyage embedding model"
@@ -369,8 +385,9 @@ class EmbeddingConfig(BaseModel):
     @classmethod
     def validate_dim_matches_model(cls, v):
         """Ensure dimensions match typical model output."""
-        if v not in [128, 256, 384, 512, 768, 1024, 1536, 3072]:
-            raise ValueError(f'Uncommon embedding dimension: {v}. Expected one of [128, 256, 384, 512, 768, 1024, 1536, 3072]')
+        common_dims = [128, 256, 384, 512, 768, 1024, 1536, 2048, 3072, 4096]
+        if v not in common_dims:
+            raise ValueError(f'Uncommon embedding dimension: {v}. Expected one of {common_dims}')
         return v
 
 

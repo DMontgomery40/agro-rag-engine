@@ -81,7 +81,7 @@
     }
   },
   "embedding": {
-    "embedding_type": "local",
+    "embedding_type": "openai",
     "embedding_model": "text-embedding-3-large",
     "embedding_dim": 3072,
     "voyage_model": "voyage-code-3",
@@ -99,7 +99,7 @@
     "max_chunk_size": 2000000,
     "min_chunk_chars": 50,
     "greedy_fallback_target": 800,
-    "chunking_strategy": "hybrid",
+    "chunking_strategy": "ast",
     "preserve_imports": 1
   },
   "indexing": {
@@ -121,7 +121,7 @@
     "repos_file": "./repos.json"
   },
   "reranking": {
-    "reranker_mode": "learning",
+    "reranker_mode": "cloud",
     "reranker_cloud_provider": "cohere",
     "reranker_cloud_model": "rerank-3.5",
     "reranker_local_model": "cross-encoder/ms-marco-MiniLM-L-12-v2",
@@ -136,7 +136,7 @@
     "transformers_trust_remote_code": 1
   },
   "generation": {
-    "gen_model": "gpt-5",
+    "gen_model": "gpt-5-mini",
     "gen_temperature": 0.0,
     "gen_max_tokens": 1000,
     "gen_top_p": 1.0,

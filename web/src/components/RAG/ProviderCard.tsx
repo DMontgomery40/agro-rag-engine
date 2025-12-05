@@ -114,35 +114,4 @@ export function ProviderCard({
   );
 }
 
-/**
- * Provider definitions for embedding providers
- * Matches Pydantic EmbeddingConfig.embedding_type pattern: ^(openai|voyage|local|mxbai)$
- */
-export const EMBEDDING_PROVIDERS = [
-  {
-    id: 'openai',
-    icon: '🤖',
-    label: 'OpenAI',
-    description: 'text-embedding-3 models with high quality',
-  },
-  {
-    id: 'voyage',
-    icon: '🚀',
-    label: 'Voyage',
-    description: 'Code-optimized embeddings (voyage-code-3)',
-  },
-  {
-    id: 'local',
-    icon: '💻',
-    label: 'Local',
-    description: 'SentenceTransformer models, no API costs',
-  },
-  {
-    id: 'mxbai',
-    icon: '🔷',
-    label: 'MXBAI',
-    description: 'Mixedbread embeddings (mxbai-embed)',
-  },
-] as const;
-
-export type EmbeddingProviderId = typeof EMBEDDING_PROVIDERS[number]['id'];
+// Provider definitions removed - providers now loaded dynamically from models.json via useModels('EMB')

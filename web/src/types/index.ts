@@ -54,6 +54,28 @@ export interface EnvConfig {
   EVAL_MULTI_M?: number;
 }
 
+/**
+ * Per-repo indexing configuration overrides.
+ * Mirrors server/models/repo_model.py::RepoIndexingConfig (Pydantic)
+ *
+ * NOTE: Provider-specific fields (voyage_model, embedding_model_local) are NOT included.
+ * The embedding_model field is generic and works for any provider.
+ */
+export interface RepoIndexingConfig {
+  use_global: boolean;
+  embedding_type?: string;
+  embedding_model?: string;
+  embedding_dim?: number;
+  chunk_size?: number;
+  chunk_overlap?: number;
+  chunking_strategy?: string;
+  indexing_batch_size?: number;
+  indexing_workers?: number;
+  bm25_tokenizer?: string;
+  bm25_stemmer_lang?: string;
+  bm25_stopwords_lang?: string;
+}
+
 export interface Repository {
   name: string;
   path?: string;
@@ -64,6 +86,7 @@ export interface Repository {
   keywords?: string[];
   path_boosts?: string[];
   layer_bonuses?: Record<string, Record<string, number>>;
+  indexing?: RepoIndexingConfig;
 }
 
 export interface KeywordCatalog {
