@@ -62,6 +62,11 @@ Never use .env for configuration. .env is for secrets only and must never be edi
 ### Verification Required
 - **GUI work**: Playwright smoke test (renders, no black screen, nav works)
 - **Backend work**: Smoke test in `/tests/` exercising endpoints
+- **Config changes**: MANDATORY config contract test after any config-related changes:
+  ```bash
+  pytest tests/test_agro_config.py::TestConfigContractEnforcement -v
+  ```
+  This validates: no `os.getenv` for config keys, JSON/Pydantic/registry parity, no hardcoded fallbacks
 - Never report "done" without proof it works
 
 ### Configuration & Accessibility
@@ -80,6 +85,17 @@ Never use .env for configuration. .env is for secrets only and must never be edi
 - New UI elements must have tooltips (see `useTooltips.ts`)
 - Don't add features without asking user first
 - JetBrains IDE MCP must ALWAYS be used over Grep
+
+### Security - No dangerouslySetInnerHTML
+- NEVER use `dangerouslySetInnerHTML` anywhere in the codebase
+- If pre-existing, it MUST be fixed immediately—no exceptions
+- Use safe alternatives: React components, sanitization libraries, or plain text
+
+### Legacy JS Phase-Out
+- All legacy JS modules in `/web/modules` are being phased out
+- NEVER add new `.js` modules—use TypeScript only
+- When encountering legacy JS that needs modification, refactor to TypeScript
+- Archive refactored legacy files to `/web/_archived`
 
 ## Quick Reference
 

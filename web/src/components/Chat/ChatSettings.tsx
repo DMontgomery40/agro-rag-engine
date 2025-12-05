@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAPI, useConfig } from '@/hooks';
+import { TooltipIcon } from '@/components/ui/TooltipIcon';
 
 interface ChatConfig {
   systemPrompt: string;
@@ -216,9 +217,13 @@ export function ChatSettings() {
           margin: '0 0 16px 0',
           fontSize: '16px',
           fontWeight: '600',
-          color: 'var(--fg)'
+          color: 'var(--fg)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
         }}>
           System Prompt
+          <TooltipIcon name="PROMPT_MAIN_RAG_CHAT" />
         </h3>
 
         <textarea
@@ -300,9 +305,13 @@ export function ChatSettings() {
               fontSize: '12px',
               fontWeight: '600',
               color: 'var(--fg-muted)',
-              marginBottom: '6px'
+              marginBottom: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
             }}>
               Model
+              <TooltipIcon name="GEN_MODEL" />
             </label>
             {modelOptions.length > 0 ? (
               <select
@@ -347,9 +356,13 @@ export function ChatSettings() {
               fontSize: '12px',
               fontWeight: '600',
               color: 'var(--fg-muted)',
-              marginBottom: '6px'
+              marginBottom: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
             }}>
               Max Tokens (1-32000)
+              <TooltipIcon name="GEN_MAX_TOKENS" />
             </label>
             <input
               type="number"
@@ -375,9 +388,13 @@ export function ChatSettings() {
               fontSize: '12px',
               fontWeight: '600',
               color: 'var(--fg-muted)',
-              marginBottom: '6px'
+              marginBottom: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
             }} title="Final K: number of results to keep after fusion and reranking. Higher = broader context, more latency.">
               Final K (results)
+              <TooltipIcon name="FINAL_K" />
             </label>
             <input
               type="number"
@@ -403,9 +420,13 @@ export function ChatSettings() {
               fontSize: '12px',
               fontWeight: '600',
               color: 'var(--fg-muted)',
-              marginBottom: '6px'
+              marginBottom: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
             }}>
               Top-K (results)
+              <TooltipIcon name="FINAL_K" />
             </label>
               <input
                 type="number"
@@ -432,9 +453,13 @@ export function ChatSettings() {
               fontSize: '12px',
               fontWeight: '600',
               color: 'var(--fg-muted)',
-              marginBottom: '6px'
+              marginBottom: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
             }}>
               Temperature
+              <TooltipIcon name="GEN_TEMPERATURE" />
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px', gap: '8px', alignItems: 'center' }}>
               <input
@@ -467,10 +492,6 @@ export function ChatSettings() {
                 aria-label="Temperature input"
               />
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--fg-muted)' }}>
-              <span>Focused</span>
-              <span>Creative</span>
-            </div>
           </div>
 
           <div>
@@ -479,9 +500,13 @@ export function ChatSettings() {
               fontSize: '12px',
               fontWeight: '600',
               color: 'var(--fg-muted)',
-              marginBottom: '6px'
+              marginBottom: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
             }}>
               Top-p: {config.topP.toFixed(2)}
+              <TooltipIcon name="GEN_TOP_P" />
             </label>
             <input
               type="range"
@@ -502,9 +527,13 @@ export function ChatSettings() {
               fontSize: '12px',
               fontWeight: '600',
               color: 'var(--fg-muted)',
-              marginBottom: '6px'
+              marginBottom: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
             }}>
               Frequency Penalty: {config.frequencyPenalty.toFixed(1)}
+              <TooltipIcon name="FREQUENCY_PENALTY" />
             </label>
             <input
               type="range"
@@ -523,9 +552,13 @@ export function ChatSettings() {
               fontSize: '12px',
               fontWeight: '600',
               color: 'var(--fg-muted)',
-              marginBottom: '6px'
+              marginBottom: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
             }}>
               Presence Penalty: {config.presencePenalty.toFixed(1)}
+              <TooltipIcon name="PRESENCE_PENALTY" />
             </label>
             <input
               type="range"
@@ -573,9 +606,7 @@ export function ChatSettings() {
               style={{ width: '16px', height: '16px', cursor: 'pointer' }}
             />
             Enable streaming responses
-            <span style={{ fontSize: '11px', color: 'var(--fg-muted)', marginLeft: 'auto' }}>
-              (shows responses as they generate)
-            </span>
+            <TooltipIcon name="CHAT_STREAMING_ENABLED" />
           </label>
 
           <label style={{
@@ -593,9 +624,7 @@ export function ChatSettings() {
               style={{ width: '16px', height: '16px', cursor: 'pointer' }}
             />
             Show routing trace
-            <span style={{ fontSize: '11px', color: 'var(--fg-muted)', marginLeft: 'auto' }}>
-              (displays retrieval steps)
-            </span>
+            <TooltipIcon name="CHAT_SHOW_TRACE" />
           </label>
 
           <label style={{
@@ -613,9 +642,7 @@ export function ChatSettings() {
               style={{ width: '16px', height: '16px', cursor: 'pointer' }}
             />
             Show confidence score
-            <span style={{ fontSize: '11px', color: 'var(--fg-muted)', marginLeft: 'auto' }}>
-              (adds [Confidence: XX%] before answers)
-            </span>
+            <TooltipIcon name="CHAT_SHOW_CONFIDENCE" />
           </label>
 
           <label style={{
@@ -633,9 +660,7 @@ export function ChatSettings() {
               style={{ width: '16px', height: '16px', cursor: 'pointer' }}
             />
             Show citations
-            <span style={{ fontSize: '11px', color: 'var(--fg-muted)', marginLeft: 'auto' }}>
-              (file paths + line ranges)
-            </span>
+            <TooltipIcon name="CHAT_SHOW_CITATIONS" />
           </label>
 
           <label style={{

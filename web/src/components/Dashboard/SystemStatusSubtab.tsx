@@ -179,19 +179,26 @@ export function SystemStatusSubtab() {
 
   useEffect(() => {
     refreshStatus();
+    fetchDevStackStatus();
 
     // Poll status every 30 seconds
-    const interval = setInterval(refreshStatus, 30000);
+    const interval = setInterval(() => {
+      refreshStatus();
+      fetchDevStackStatus();
+    }, 30000);
 
     // Listen for manual refresh events
-    const handleRefresh = () => refreshStatus();
+    const handleRefresh = () => {
+      refreshStatus();
+      fetchDevStackStatus();
+    };
     window.addEventListener('dashboard-refresh', handleRefresh);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener('dashboard-refresh', handleRefresh);
     };
-  }, []);
+  }, [fetchDevStackStatus]);
 
   return (
     <div
@@ -283,6 +290,166 @@ export function SystemStatusSubtab() {
                 {/* <StatusItem label="Auto-Tune" value={autotune} id="dash-autotune" color="var(--warn)" /> */}
                 <StatusItem label="Docker" value={docker} id="dash-docker" color="var(--link)" />
                 <StatusItem label="Git Hooks" value={gitHooks} id="dash-git-hooks" color="var(--ok)" />
+
+                {/* Dev Stack Controls - Pydantic: DevStackStatusResponse */}
+                <div
+                  className="dev-stack-section"
+                  style={{
+                    marginTop: '8px',
+                    padding: '12px',
+                    background: 'var(--card-bg)',
+                    border: '1px solid var(--line)',
+                    borderRadius: '4px',
+                    borderLeft: '3px solid var(--link)',
+                    transition: 'border-color var(--timing-fast) var(--ease-out), box-shadow var(--timing-fast) var(--ease-out)'
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      color: 'var(--link)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      marginBottom: '10px'
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: '6px',
+                        height: '6px',
+                        borderRadius: '50%',
+                        background: 'var(--link)',
+                        boxShadow: '0 0 6px var(--link)'
+                      }}
+                    />
+                    Dev Stack
+                  </span>
+
+                  {/* Status indicators */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        fontSize: '11px'
+                      }}
+                    >
+                      <span style={{ color: 'var(--fg-muted)' }}>Frontend</span>
+                      <span
+                        className={devStackStatus?.frontend_running ? 'status-running' : 'status-stopped'}
+                        style={{
+                          color: devStackStatus?.frontend_running ? 'var(--ok)' : 'var(--err)',
+                          fontWeight: 600,
+                          fontFamily: "'SF Mono', monospace"
+                        }}
+                      >
+                        {devStackLoading ? '...' : devStackStatus?.frontend_running ? `running :${devStackStatus.frontend_port}` : 'stopped'}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        fontSize: '11px'
+                      }}
+                    >
+                      <span style={{ color: 'var(--fg-muted)' }}>Backend</span>
+                      <span
+                        className={devStackStatus?.backend_running ? 'status-running' : 'status-stopped'}
+                        style={{
+                          color: devStackStatus?.backend_running ? 'var(--ok)' : 'var(--err)',
+                          fontWeight: 600,
+                          fontFamily: "'SF Mono', monospace"
+                        }}
+                      >
+                        {devStackLoading ? '...' : devStackStatus?.backend_running ? `running :${devStackStatus.backend_port}` : 'stopped'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Restart buttons */}
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={restartFrontend}
+                      disabled={restartingFrontend || restartingStack}
+                      className="dev-stack-btn"
+                      style={{
+                        flex: 1,
+                        minWidth: '70px',
+                        padding: '6px 8px',
+                        background: 'var(--bg-elev2)',
+                        color: 'var(--fg)',
+                        border: '1px solid var(--line)',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        fontWeight: 500,
+                        cursor: restartingFrontend || restartingStack ? 'wait' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      {restartingFrontend && <span className="loading-spinner" style={{ width: '10px', height: '10px' }} />}
+                      ↻ Frontend
+                    </button>
+
+                    <button
+                      onClick={restartBackend}
+                      disabled={restartingBackend || restartingStack}
+                      className="dev-stack-btn"
+                      style={{
+                        flex: 1,
+                        minWidth: '70px',
+                        padding: '6px 8px',
+                        background: 'var(--bg-elev2)',
+                        color: 'var(--fg)',
+                        border: '1px solid var(--line)',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        fontWeight: 500,
+                        cursor: restartingBackend || restartingStack ? 'wait' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      {restartingBackend && <span className="loading-spinner" style={{ width: '10px', height: '10px' }} />}
+                      ↻ Backend
+                    </button>
+
+                    <button
+                      onClick={restartStack}
+                      disabled={restartingFrontend || restartingBackend || restartingStack}
+                      className="dev-stack-btn btn-primary"
+                      style={{
+                        flex: 1,
+                        minWidth: '80px',
+                        padding: '6px 8px',
+                        background: 'var(--accent)',
+                        color: 'var(--accent-contrast)',
+                        border: 'none',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        fontWeight: 600,
+                        cursor: restartingFrontend || restartingBackend || restartingStack ? 'wait' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      {restartingStack && <span className="loading-spinner" style={{ width: '10px', height: '10px', borderTopColor: 'var(--accent-contrast)' }} />}
+                      ↻ Full Stack
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 

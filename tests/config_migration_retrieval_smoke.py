@@ -52,13 +52,13 @@ def test_hydration_max_chars_config():
         f"Module var doesn't match registry: {hybrid_search._HYDRATION_MAX_CHARS} != {hyd_max_reg}"
 
 
-def test_disable_rerank_config():
-    """Verify DISABLE_RERANK uses config registry."""
-    from retrieval import hybrid_search
+def test_reranker_mode_config():
+    """Verify RERANKER_MODE uses config registry (DISABLE_RERANK was removed)."""
+    from retrieval.hybrid_search import _config_registry
 
-    disable_rerank_reg = hybrid_search._config_registry.get_int('DISABLE_RERANK', -1)
-    assert hybrid_search._DISABLE_RERANK == disable_rerank_reg, \
-        f"Module var doesn't match registry: {hybrid_search._DISABLE_RERANK} != {disable_rerank_reg}"
+    reranker_mode = _config_registry.get_str('RERANKER_MODE', 'local')
+    assert reranker_mode in {'none', 'local', 'learning', 'cloud'}, \
+        f"Invalid RERANKER_MODE: {reranker_mode}"
 
 
 def test_embedding_config():

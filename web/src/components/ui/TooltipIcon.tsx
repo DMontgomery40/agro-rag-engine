@@ -1,3 +1,4 @@
+import type React from 'react';
 import { useState, useRef, useEffect } from 'react';
 import { useTooltips } from '@/hooks/useTooltips';
 
@@ -19,6 +20,55 @@ export function TooltipIcon({ name }: TooltipIconProps) {
 
   // Get tooltip HTML content
   const content = tooltips[name] || `<span class="tt-title">${name}</span><div>No tooltip available.</div>`;
+
+  // Render tooltip content safely (no dangerouslySetInnerHTML)
+  const renderNodes = (nodes: NodeListOf<ChildNode>): React.ReactNode[] => {
+    const out: React.ReactNode[] = [];
+    nodes.forEach((n, idx) => {
+      if (n.nodeType === Node.TEXT_NODE) {
+        out.push(n.textContent);
+        return;
+      }
+      if (n.nodeType === Node.ELEMENT_NODE) {
+        const el = n as HTMLElement;
+        const children = renderNodes(el.childNodes as NodeListOf<ChildNode>);
+        const key = `${el.tagName}-${idx}`;
+        const tag = el.tagName.toLowerCase();
+        const commonProps = { key, className: el.className || undefined };
+        switch (tag) {
+          case 'a': {
+            const href = el.getAttribute('href') || '#';
+            return out.push(
+              <a {...commonProps} href={href} target="_blank" rel="noopener noreferrer">
+                {children}
+              </a>
+            );
+          }
+          case 'div':
+          case 'span':
+            return out.push(React.createElement(tag, commonProps, children));
+          case 'br':
+            return out.push(<br key={key} />);
+          default:
+            return;
+        }
+      }
+    });
+    return out;
+  };
+
+  const renderContent = (): React.ReactNode => {
+    if (typeof window === 'undefined' || typeof DOMParser === 'undefined') {
+      return content;
+    }
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(content, 'text/html');
+      return renderNodes(doc.body.childNodes as NodeListOf<ChildNode>);
+    } catch {
+      return content;
+    }
+  };
 
   // Handle click outside to close
   useEffect(() => {
@@ -68,10 +118,13 @@ export function TooltipIcon({ name }: TooltipIconProps) {
       </span>
       <div
         className={`tooltip-bubble ${visible ? 'tooltip-visible' : ''}`}
+        onMouseEnter={show}
+        onMouseLeave={hide}
         role="tooltip"
-        dangerouslySetInnerHTML={{ __html: content }}
-      />
+        aria-label={`Tooltip for ${name}`}
+      >
+        {renderContent()}
+      </div>
     </span>
   );
 }
-

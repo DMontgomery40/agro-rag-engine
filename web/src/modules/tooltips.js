@@ -1439,11 +1439,31 @@
       // Generation & Temperature
       GEN_TEMPERATURE: L(
         'Default Response Creativity',
-        'Global default temperature for generation. 0.0 = deterministic; small values (0.04\u20130.2) add slight variation in prose. Use per\u2011model tuning for creative tasks vs. code answers.',
+        'Global default temperature for generation. 0.0 = deterministic; small values (0.04-0.2) add slight variation in prose. Use per-model tuning for creative tasks vs. code answers.',
         [
           ['Sampling Controls', 'https://platform.openai.com/docs/guides/text-generation'],
           ['Nucleus/Top\u2011p', 'https://en.wikipedia.org/wiki/Nucleus_sampling']
         ]
+      ),
+      FREQUENCY_PENALTY: L(
+        'Frequency Penalty',
+        'Penalizes tokens that appear frequently in the generated text so far. Higher values reduce repetition and boilerplate; lower values allow more reuse of prior tokens. Typical ranges: 0.0-0.5 for code answers to avoid runaway repetition; 0.5-1.0 for verbose prose or summarization; >1.0 is rarely needed and can destabilize outputs. Applies per-token during sampling. Combine with TOP_P/TEMPERATURE carefully: high frequency penalty + high temperature can over-constrain and reduce coherence.',
+        [
+          ['OpenAI Sampling', 'https://platform.openai.com/docs/guides/text-generation'],
+          ['Frequency Penalty API', 'https://platform.openai.com/docs/api-reference/chat/create#chat-create-frequency_penalty'],
+          ['Decoding Strategies', 'https://huggingface.co/blog/how-to-generate']
+        ],
+        [['Anti-repetition','info'], ['Tune carefully','warn']]
+      ),
+      PRESENCE_PENALTY: L(
+        'Presence Penalty',
+        'Penalizes tokens that have already appeared, encouraging the model to introduce new topics/entities. Higher values increase exploration and reduce reuse of the same concepts. Use 0.0-0.4 for factual/code responses; 0.4-0.8 for brainstorming; >0.8 can push the model toward excessive novelty. Presence penalty interacts with TEMPERATURE/TOP_P: higher penalties with high temperature can make answers meander. For RAG, keep modest (<=0.5) to prevent drifting away from cited context.',
+        [
+          ['Presence Penalty API', 'https://platform.openai.com/docs/api-reference/chat/create#chat-create-presence_penalty'],
+          ['Decoding Trade-offs', 'https://huggingface.co/blog/how-to-generate'],
+          ['RAG Best Practices', 'https://langchain-ai.github.io/langgraph/'],
+        ],
+        [['Encourage novelty','info'], ['Risk: drift','warn']]
       ),
       GEN_MODEL_CHAT: L(
         'Chat-Specific Model',
@@ -2373,5 +2393,4 @@
 
   window.Tooltips = { buildTooltipMap, attachTooltips, attachManualTooltips };
 })();
-
 

@@ -154,7 +154,8 @@ def test_multi_query_disabled_uses_single_variant(monkeypatch, stub_pipeline):
 
     monkeypatch.setattr(hybrid_search, "search", _recording_search)
     monkeypatch.setattr(hybrid_search, "expand_queries", lambda q, m=1: [q])
-    monkeypatch.setattr(hybrid_search, "_DISABLE_RERANK", 1)
+    # Mock RERANKER_MODE='none' to disable reranking
+    monkeypatch.setattr(hybrid_search._cfg, "get_str", lambda k, d='': 'none' if k == 'RERANKER_MODE' else d)
 
     results = hybrid_search.search_routed_multi("single shot", repo_override="agro", m=1, final_k=2)
 
@@ -171,7 +172,8 @@ def test_multi_query_expands_and_merges(monkeypatch, stub_pipeline):
 
     monkeypatch.setattr(hybrid_search, "search", _recording_search)
     monkeypatch.setattr(hybrid_search, "expand_queries", lambda q, m=2: [q, f"{q} alt"])
-    monkeypatch.setattr(hybrid_search, "_DISABLE_RERANK", 1)
+    # Mock RERANKER_MODE='none' to disable reranking
+    monkeypatch.setattr(hybrid_search._cfg, "get_str", lambda k, d='': 'none' if k == 'RERANKER_MODE' else d)
 
     results = hybrid_search.search_routed_multi("fan out", repo_override="agro", m=2, final_k=3)
 

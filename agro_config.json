@@ -21,8 +21,7 @@
     "topk_dense": 26,
     "topk_sparse": 24,
     "hydration_mode": "lazy",
-    "hydration_max_chars": 2000,
-    "disable_rerank": 1
+    "hydration_max_chars": 2000
   },
   "scoring": {
     "card_bonus": 0.8,
@@ -122,7 +121,7 @@
     "repos_file": "./repos.json"
   },
   "reranking": {
-    "reranker_mode": "cloud",
+    "reranker_mode": "learning",
     "reranker_cloud_provider": "cohere",
     "reranker_cloud_model": "rerank-3.5",
     "reranker_local_model": "cross-encoder/ms-marco-MiniLM-L-12-v2",

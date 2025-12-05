@@ -171,12 +171,7 @@ class RetrievalConfig(BaseModel):
         description="Max characters for result hydration"
     )
 
-    disable_rerank: int = Field(
-        default=0,
-        ge=0,
-        le=1,
-        description="Disable reranking completely"
-    )
+    # REMOVED: disable_rerank - use RERANKER_MODE='none' instead
 
     @field_validator('rrf_k_div')
     @classmethod
@@ -1559,7 +1554,7 @@ class AgroConfigRoot(BaseModel):
             'USE_SEMANTIC_SYNONYMS': self.retrieval.use_semantic_synonyms,
             'TOPK_DENSE': self.retrieval.topk_dense,
             'TOPK_SPARSE': self.retrieval.topk_sparse,
-            'DISABLE_RERANK': self.retrieval.disable_rerank,
+            # REMOVED: DISABLE_RERANK - use RERANKER_MODE='none' instead
             # Scoring params
             'CARD_BONUS': self.scoring.card_bonus,
             'FILENAME_BOOST_EXACT': self.scoring.filename_boost_exact,
@@ -1787,7 +1782,7 @@ class AgroConfigRoot(BaseModel):
                 topk_sparse=data.get('TOPK_SPARSE', 75),
                 hydration_mode=data.get('HYDRATION_MODE', 'lazy'),
                 hydration_max_chars=data.get('HYDRATION_MAX_CHARS', 2000),
-                disable_rerank=data.get('DISABLE_RERANK', 0),
+                # REMOVED: disable_rerank - use RERANKER_MODE='none' instead
             ),
             scoring=ScoringConfig(
                 card_bonus=data.get('CARD_BONUS', 0.08),
@@ -2027,7 +2022,7 @@ AGRO_CONFIG_KEYS = {
     'TOPK_SPARSE',
     'HYDRATION_MODE',
     'HYDRATION_MAX_CHARS',
-    'DISABLE_RERANK',
+    # REMOVED: DISABLE_RERANK - use RERANKER_MODE='none' instead
     # Scoring params (5 - added 2 new)
     'CARD_BONUS',
     'FILENAME_BOOST_EXACT',
@@ -2227,7 +2222,7 @@ RAG_EVAL_CONFIG_KEYS = {
     'FINAL_K', 'EVAL_FINAL_K', 'CONF_TOP1', 'CONF_AVG5', 'CONF_ANY', 'EVAL_MULTI',
     'QUERY_EXPANSION_ENABLED', 'BM25_WEIGHT', 'BM25_K1', 'BM25_B', 'VECTOR_WEIGHT',
     'CARD_SEARCH_ENABLED', 'MULTI_QUERY_M', 'USE_SEMANTIC_SYNONYMS',
-    'TOPK_DENSE', 'TOPK_SPARSE', 'HYDRATION_MODE', 'HYDRATION_MAX_CHARS', 'DISABLE_RERANK',
+    'TOPK_DENSE', 'TOPK_SPARSE', 'HYDRATION_MODE', 'HYDRATION_MAX_CHARS',
 
     # Scoring params (5 keys) - affect result ranking
     'CARD_BONUS', 'FILENAME_BOOST_EXACT', 'FILENAME_BOOST_PARTIAL', 'VENDOR_MODE', 'PATH_BOOSTS',

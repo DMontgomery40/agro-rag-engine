@@ -77,7 +77,7 @@ def extract_config_snapshot() -> Dict[str, Any]:
     config['use_semantic_synonyms'] = _config_registry.get_int('USE_SEMANTIC_SYNONYMS', 1)
 
     # Reranking parameters
-    config['disable_rerank'] = _config_registry.get_int('DISABLE_RERANK', 0)
+    config['reranker_mode'] = _config_registry.get_str('RERANKER_MODE', 'local')
     config['agro_reranker_enabled'] = _config_registry.get_int('AGRO_RERANKER_ENABLED', 1)
     config['agro_reranker_alpha'] = _config_registry.get_float('AGRO_RERANKER_ALPHA', 0.7)
     config['cohere_reranker_enabled'] = _config_registry.get_int('COHERE_RERANKER_ENABLED', 1)

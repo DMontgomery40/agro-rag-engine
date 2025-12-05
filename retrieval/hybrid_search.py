@@ -458,10 +458,7 @@ def rerank(query: str, docs: List[Dict], k: int = 10) -> List[Dict]:
     if not docs:
         return []
 
-    # Check if reranking is disabled (DISABLE_RERANK=1 or RERANKER_MODE='none')
-    if _cfg.get_int('DISABLE_RERANK', 0):
-        return docs[:k]
-
+    # Check if reranking is disabled via RERANKER_MODE='none'
     mode = _cfg.get_str('RERANKER_MODE', 'local').lower()
     if mode == 'none':
         return docs[:k]

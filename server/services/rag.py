@@ -161,7 +161,7 @@ def do_chat(payload: Dict[str, Any], request: Optional[Request] = None) -> JSONR
             bool(request) and (request.query_params.get('fast') in {'1','true','on'})
         )
         if fast:
-            os.environ['DISABLE_RERANK'] = '1'
+            os.environ['RERANKER_MODE'] = 'none'
             os.environ['VECTOR_BACKEND'] = os.environ.get('VECTOR_BACKEND') or 'faiss'
             os.environ['MAX_QUERY_REWRITES'] = '1'
             from retrieval.hybrid_search import search_routed
@@ -428,7 +428,7 @@ async def do_chat_stream(payload: Dict[str, Any], request: Optional[Request] = N
             # Fast/fallback mode: retrieval only, no streaming LLM
             t0 = _t.time()
             if fast:
-                os.environ['DISABLE_RERANK'] = '1'
+                os.environ['RERANKER_MODE'] = 'none'
                 from retrieval.hybrid_search import search_routed
                 sr = search_routed(question, repo_override=repo, trace=trace_obj)
             else:
