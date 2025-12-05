@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { configApi } from '@/api';
+import { configApi } from '@/api/config';
 import type { AppConfig, EnvConfig, ConfigUpdate, KeywordCatalog, Repository } from '@web/types';
 
 interface ConfigStore {

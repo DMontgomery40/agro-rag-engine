@@ -478,7 +478,7 @@ def eval_list_runs() -> Dict[str, Any]:
         return {"ok": True, "runs": []}
 
     runs = []
-    for eval_file in sorted(eval_dir.glob('eval_*.json'), reverse=True):
+    for eval_file in eval_dir.glob('eval_*.json'):
         # Skip special baseline file - it's not a real eval run
         if eval_file.name == 'eval_baseline.json':
             continue
@@ -495,13 +495,18 @@ def eval_list_runs() -> Dict[str, Any]:
                 'topk_accuracy': data.get('topk_accuracy', 0),
                 'total': data.get('total', 0),
                 'duration_secs': data.get('duration_secs', 0),
-                'has_config': bool(data.get('config'))  # Let UI know if config exists
+                'has_config': bool(data.get('config')),  # Let UI know if config exists
+                '_mtime': eval_file.stat().st_mtime  # File modification time for sorting
             })
         except Exception:
             continue
 
-    # Sort by run_id descending (newest first) - run_ids are timestamps like 20251125_201234
-    runs.sort(key=lambda r: r['run_id'], reverse=True)
+    # Sort by file modification time descending (newest first)
+    # This is more reliable than run_id since run_ids can have timezone issues
+    runs.sort(key=lambda r: r['_mtime'], reverse=True)
+    # Remove internal _mtime field before returning
+    for r in runs:
+        r.pop('_mtime', None)
 
     return {"ok": True, "runs": runs}
 

@@ -30,22 +30,7 @@ export default function RAGTab() {
       // Allow DOM to paint then initialize
       setTimeout(initDataQuality, 0);
     }
-    if (activeSubtab === 'indexing') {
-      const initIndexing = () => {
-        try { (window as any).Config?.loadConfig?.(); } catch {}
-        try { (window as any).Indexing?.initIndexing?.(); } catch {}
-        try { (window as any).initIndexProfiles?.(); } catch {}
-        try { (window as any).SimpleIndex?.loadRepos?.(); } catch {}
-        try {
-          const btn = document.getElementById('simple-index-btn') as HTMLButtonElement | null;
-          if (btn && !btn.dataset.bound) {
-            btn.dataset.bound = '1';
-            btn.addEventListener('click', () => (window as any).SimpleIndex?.runRealIndex?.());
-          }
-        } catch {}
-      };
-      setTimeout(initIndexing, 0);
-    }
+    // IndexingSubtab is fully React - no legacy init needed
     if (activeSubtab === 'learning-ranker') {
       setTimeout(initLearningRanker, 0);
     }

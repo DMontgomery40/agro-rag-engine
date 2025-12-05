@@ -4,32 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="06981a01-68f6-4278-af0e-6fdee9153f5c" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/test-results/.last-run.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.cursor/rules" beforeDir="false" afterPath="$PROJECT_DIR$/.cursor/rules" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/AGENTS.md" beforeDir="false" afterPath="$PROJECT_DIR$/AGENTS.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CLAUDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/CLAUDE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/agro_config.json" beforeDir="false" afterPath="$PROJECT_DIR$/agro_config.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/eval/eval_rag_instrumented.py" beforeDir="false" afterPath="$PROJECT_DIR$/eval/eval_rag_instrumented.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/retrieval/hybrid_search.py" beforeDir="false" afterPath="$PROJECT_DIR$/retrieval/hybrid_search.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/models/agro_config_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/models/agro_config_model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/routers/docker.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/routers/docker.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/routers/stream_logs.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/routers/stream_logs.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/services/rag.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/services/rag.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-results/tests-web-smoke-docker-set-121e9-page-renders-without-errors/error-context.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/config_migration_retrieval_smoke.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/config_migration_retrieval_smoke.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_agro_config.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_agro_config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tests/test_hybrid_pipeline_modes.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_hybrid_pipeline_modes.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/api/docker.ts" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/api/docker.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/components/Chat/ChatInterface.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/components/Chat/ChatInterface.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/components/Chat/ChatSettings.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/components/Chat/ChatSettings.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/components/Dashboard/SystemStatusSubtab.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/components/Dashboard/SystemStatusSubtab.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/components/ui/TooltipIcon.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/components/ui/TooltipIcon.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/modules/tooltips.js" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/modules/tooltips.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/stores/useDockerStore.ts" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/stores/useDockerStore.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/styles/micro-interactions.css" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/styles/micro-interactions.css" afterDir="false" />
-    </list>
+    <list default="true" id="06981a01-68f6-4278-af0e-6fdee9153f5c" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -114,7 +89,7 @@
       <option name="presentableId" value="Default" />
       <updated>1764820245918</updated>
       <workItem from="1764820247767" duration="653000" />
-      <workItem from="1764820913189" duration="35494000" />
+      <workItem from="1764820913189" duration="35890000" />
     </task>
     <servers />
   </component>

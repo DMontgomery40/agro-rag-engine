@@ -29,10 +29,12 @@ export function SystemStatusSubtab() {
     restartingFrontend,
     restartingBackend,
     restartingStack,
+    clearingCache,
     fetchDevStackStatus,
     restartFrontend,
     restartBackend,
     restartStack,
+    clearCacheAndRestart,
   } = useDockerStore();
 
   const formatBytes = (bytes: number) => {
@@ -198,7 +200,7 @@ export function SystemStatusSubtab() {
       clearInterval(interval);
       window.removeEventListener('dashboard-refresh', handleRefresh);
     };
-  }, [fetchDevStackStatus]);
+  }, []); // Empty array - run once on mount, Zustand actions are stable
 
   return (
     <div
@@ -376,7 +378,7 @@ export function SystemStatusSubtab() {
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                     <button
                       onClick={restartFrontend}
-                      disabled={restartingFrontend || restartingStack}
+                      disabled={restartingFrontend || restartingStack || clearingCache}
                       className="dev-stack-btn"
                       style={{
                         flex: 1,
@@ -388,7 +390,7 @@ export function SystemStatusSubtab() {
                         borderRadius: '4px',
                         fontSize: '10px',
                         fontWeight: 500,
-                        cursor: restartingFrontend || restartingStack ? 'wait' : 'pointer',
+                        cursor: restartingFrontend || restartingStack || clearingCache ? 'wait' : 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -401,7 +403,7 @@ export function SystemStatusSubtab() {
 
                     <button
                       onClick={restartBackend}
-                      disabled={restartingBackend || restartingStack}
+                      disabled={restartingBackend || restartingStack || clearingCache}
                       className="dev-stack-btn"
                       style={{
                         flex: 1,
@@ -413,7 +415,7 @@ export function SystemStatusSubtab() {
                         borderRadius: '4px',
                         fontSize: '10px',
                         fontWeight: 500,
-                        cursor: restartingBackend || restartingStack ? 'wait' : 'pointer',
+                        cursor: restartingBackend || restartingStack || clearingCache ? 'wait' : 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -426,7 +428,7 @@ export function SystemStatusSubtab() {
 
                     <button
                       onClick={restartStack}
-                      disabled={restartingFrontend || restartingBackend || restartingStack}
+                      disabled={restartingFrontend || restartingBackend || restartingStack || clearingCache}
                       className="dev-stack-btn btn-primary"
                       style={{
                         flex: 1,
@@ -438,7 +440,7 @@ export function SystemStatusSubtab() {
                         borderRadius: '4px',
                         fontSize: '10px',
                         fontWeight: 600,
-                        cursor: restartingFrontend || restartingBackend || restartingStack ? 'wait' : 'pointer',
+                        cursor: restartingFrontend || restartingBackend || restartingStack || clearingCache ? 'wait' : 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -447,6 +449,32 @@ export function SystemStatusSubtab() {
                     >
                       {restartingStack && <span className="loading-spinner" style={{ width: '10px', height: '10px', borderTopColor: 'var(--accent-contrast)' }} />}
                       ↻ Full Stack
+                    </button>
+
+                    <button
+                      onClick={clearCacheAndRestart}
+                      disabled={restartingFrontend || restartingBackend || restartingStack || clearingCache}
+                      className="dev-stack-btn"
+                      title="Clear Python bytecode cache (__pycache__, .pyc) and restart backend"
+                      style={{
+                        flex: 1,
+                        minWidth: '90px',
+                        padding: '6px 8px',
+                        background: 'var(--warn)',
+                        color: 'var(--bg)',
+                        border: 'none',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        fontWeight: 600,
+                        cursor: restartingFrontend || restartingBackend || restartingStack || clearingCache ? 'wait' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      {clearingCache && <span className="loading-spinner" style={{ width: '10px', height: '10px', borderTopColor: 'var(--bg)' }} />}
+                      🗑 Clear Cache
                     </button>
                   </div>
                 </div>

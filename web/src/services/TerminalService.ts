@@ -48,11 +48,17 @@ class TerminalServiceClass {
       }
     });
     const url = `${this.baseUrl}/api/eval/run/stream${qs.toString() ? `?${qs.toString()}` : ''}`;
+    console.log('[TerminalService] Creating EventSource for URL:', url);
 
     const sse = new EventSource(url);
     const terminal: TerminalInstance = { id: terminalId, sse, onLine, onProgress, onError, onComplete };
 
+    sse.onopen = () => {
+      console.log('[TerminalService] SSE connection opened for', terminalId);
+    };
+
     sse.onmessage = (event) => {
+      console.log('[TerminalService] SSE message received:', event.data);
       try {
         const data = JSON.parse(event.data);
         switch (data.type) {

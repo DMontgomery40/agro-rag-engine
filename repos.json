@@ -23,8 +23,7 @@
         "bin/",
         "reports/",
         "screenshots/",
-        "web/dist",
-        "gui"
+        "web/dist"
       ],
       "keywords": [
         "alertmanager",

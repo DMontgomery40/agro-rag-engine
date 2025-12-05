@@ -38,6 +38,8 @@ export { useEmbeddingStatus } from '@/hooks/useEmbeddingStatus';
 export { useDashboard } from './useDashboard';
 export { useIndexing } from './useIndexing';
 export type { IndexStatus } from './useIndexing';
+export { useModels, getRecommendedChunkSize } from './useModels';
+export type { Model } from './useModels';
 export { useReranker } from './useReranker';
 export { useKeywords } from './useKeywords';
 export { useMCPRag } from './useMCPRag';

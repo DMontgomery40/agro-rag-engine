@@ -1,1399 +1,1404 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { LiveTerminal, LiveTerminalHandle } from '../LiveTerminal/LiveTerminal';
-import { TerminalService } from '@/services/TerminalService';
-import { useRepoStore } from '@/stores/useRepoStore';
-import { RepoSelector } from '@/components/ui/RepoSelector';
-import { EmbeddingMismatchWarning, EmbeddingMatchIndicator } from '@/components/ui/EmbeddingMismatchWarning';
-
-interface IndexStats {
-  // API returns total_chunks at root level
-  total_chunks?: number;
-  // Legacy fields for backwards compatibility
-  chunks?: number;
-  vectors?: number;
-  collections?: string[];
-  lastIndexed?: string;
-  // From actual API response
-  repos?: Array<{
-    name: string;
-    chunk_count: number;
-  }>;
-  embedding_config?: {
-    provider: string;
-    model: string;
-    dimensions: number;
-  };
-}
-
-interface RepoInfo {
-  name: string;
-  path: string;
-  branch?: string;
-}
-
 /**
- * ---agentspec
- * what: |
- *   React component managing two indexing workflows: simple (repo URL + dense flag) and advanced (repo + embedding type selection). Renders UI for both modes with state management.
+ * IndexingSubtab - Enterprise RAG Indexing Configuration
  *
- * why: |
- *   Separates simple vs. advanced indexing flows to reduce cognitive load and support progressive disclosure.
+ * Follows RerankerConfigSubtab pattern:
+ * - useConfig with get()/set() for all config values
+ * - Component cards for selecting configuration section
+ * - Dynamic config panels per component
+ * - Advanced settings in collapsible details
+ * - Index stats panel with summary cards
+ * - LiveTerminal with slide animation
  *
- * guardrails:
- *   - DO NOT persist state across unmounts; use sessionStorage if needed
- *   - NOTE: embeddingType defaults to 'openai'; validate against allowed types before API call
- *   - ASK USER: Should advanced mode support custom embedding models?
- * ---/agentspec
+ * Target users: Advanced RAG engineers who train cross-encoders
+ * and monitor loss functions in Grafana.
  */
+
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { useConfig } from '@/hooks/useConfig';
+import { useEmbeddingStatus } from '@/hooks/useEmbeddingStatus';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
+import { useRepoStore } from '@/stores/useRepoStore';
+import { useDockerStore } from '@/stores/useDockerStore';
+import { LiveTerminal, type LiveTerminalHandle } from '../LiveTerminal/LiveTerminal';
+import { TerminalService } from '@/services/TerminalService';
+import { EmbeddingMismatchWarning } from '@/components/ui/EmbeddingMismatchWarning';
+import { TooltipIcon } from '@/components/ui/TooltipIcon';
+import { getIndexStats, type IndexStats } from '@/api/dashboard';
+
+// CostLogic is loaded globally from cost_logic.js (same as RerankerConfigSubtab)
+declare global {
+  interface Window {
+    CostLogic: {
+      listProviders: () => Promise<string[]>;
+      listModels: (provider: string, type?: string) => Promise<string[]>;
+    };
+  }
+}
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+type IndexingComponent = 'embedding' | 'chunking' | 'bm25' | 'enrichment';
+
+const COMPONENT_CARDS: Array<{
+  id: IndexingComponent;
+  icon: string;
+  label: string;
+  description: string;
+}> = [
+  { id: 'embedding', icon: '🔢', label: 'Embedding', description: 'Vector generation provider and model' },
+  { id: 'chunking', icon: '🧩', label: 'Chunking', description: 'Code splitting strategy and sizes' },
+  { id: 'bm25', icon: '📝', label: 'BM25', description: 'Sparse search tokenization' },
+  { id: 'enrichment', icon: '✨', label: 'Enrichment', description: 'Code understanding and semantic cards' },
+];
+
+const EMBEDDING_PROVIDERS = [
+  { id: 'openai', icon: '🤖', label: 'OpenAI', description: 'text-embedding-3 models' },
+  { id: 'voyage', icon: '🚀', label: 'Voyage', description: 'Code-optimized embeddings' },
+  { id: 'local', icon: '💻', label: 'Local', description: 'SentenceTransformer models' },
+  { id: 'mxbai', icon: '🔷', label: 'MXBAI', description: 'Mixedbread embeddings' },
+];
+
+const CHUNKING_STRATEGIES = [
+  { id: 'ast', label: 'AST-aware', description: 'Parse code structure, preserve functions' },
+  { id: 'greedy', label: 'Greedy', description: 'Simple token-based splitting' },
+  { id: 'hybrid', label: 'Hybrid', description: 'AST with greedy fallback' },
+];
+
+// ============================================================================
+// COMPONENT
+// ============================================================================
+
 export function IndexingSubtab() {
-  // Simple indexing state
-  const [simpleRepo, setSimpleRepo] = useState<string>('');
-  const [simpleDense, setSimpleDense] = useState<boolean>(true);
-  const [simpleRunning, setSimpleRunning] = useState<boolean>(false);
+  // ==========================================================================
+  // HOOKS (following RerankerConfigSubtab pattern)
+  // ==========================================================================
 
-  // Advanced indexing state
-  const [indexRepo, setIndexRepo] = useState<string>('');
-  const [embeddingType, setEmbeddingType] = useState<string>('openai');
-  const [skipDense, setSkipDense] = useState<string>('0');
-  const [enrichChunks, setEnrichChunks] = useState<string>('0');
-  const [indexStatus, setIndexStatus] = useState<string>('Ready to index...');
-  const [indexProgress, setIndexProgress] = useState<number>(0);
-  const [indexRunning, setIndexRunning] = useState<boolean>(false);
+  const { get, set, error: configError } = useConfig();
+  const { refresh: refreshEmbedding } = useEmbeddingStatus();
+  const { handleApiError } = useErrorHandler();
+  const { activeRepo, repos, loadRepos } = useRepoStore();
+  const { containers, fetchContainers } = useDockerStore();
 
-  // Index status display
-  const [indexStats, setIndexStats] = useState<IndexStats | null>(null);
-
-  // Index profiles
-  const [activeProfile, setActiveProfile] = useState<string>('shared');
-
-  // Advanced settings state
-  const [outDirBase, setOutDirBase] = useState<string>('./out');
-  const [collectionName, setCollectionName] = useState<string>('');
-  const [chunkSize, setChunkSize] = useState<number>(1000);
-  const [chunkOverlap, setChunkOverlap] = useState<number>(200);
-  const [astOverlapLines, setAstOverlapLines] = useState<number>(20);
-  const [maxChunkSize, setMaxChunkSize] = useState<number>(2000000);
-  const [minChunkChars, setMinChunkChars] = useState<number>(50);
-  const [greedyFallbackTarget, setGreedyFallbackTarget] = useState<number>(800);
-  const [chunkingStrategy, setChunkingStrategy] = useState<string>('ast');
-  const [preserveImports, setPreserveImports] = useState<string>('1');
-  const [indexingBatchSize, setIndexingBatchSize] = useState<number>(100);
-  const [indexingWorkers, setIndexingWorkers] = useState<number>(4);
-  const [bm25Tokenizer, setBm25Tokenizer] = useState<string>('stemmer');
-  const [bm25StemmerLang, setBm25StemmerLang] = useState<string>('english');
-  const [indexExcludedExts, setIndexExcludedExts] = useState<string>('.png,.jpg,.gif,.ico,.svg,.woff,.ttf');
-  const [indexMaxFileSizeMb, setIndexMaxFileSizeMb] = useState<number>(10);
-
-  // Embedding model picker state (NEW - REQUIRED)
-  const [embeddingModel, setEmbeddingModel] = useState<string>('text-embedding-3-large');
-  const [embeddingDim, setEmbeddingDim] = useState<number>(3072);
-  const [voyageModel, setVoyageModel] = useState<string>('voyage-code-3');
-  const [embeddingModelLocal, setEmbeddingModelLocal] = useState<string>('all-MiniLM-L6-v2');
-  const [embeddingBatchSize, setEmbeddingBatchSize] = useState<number>(64);
-  const [embeddingMaxTokens, setEmbeddingMaxTokens] = useState<number>(8000);
-  const [embeddingCacheEnabled, setEmbeddingCacheEnabled] = useState<string>('1');
-  const [embeddingTimeout, setEmbeddingTimeout] = useState<number>(30);
-  const [embeddingRetryMax, setEmbeddingRetryMax] = useState<number>(3);
-
-  // Repository list - use centralized store
-  const { repos: storeRepos, activeRepo, loadRepos: storeLoadRepos } = useRepoStore();
-  /**
-   * ---agentspec
-   * what: |
-   *   Maps store repos to {name, path, branch} objects. Manages UI state for repo selection, branch tracking, terminal visibility, and terminal ref access via callback.
-   *
-   * why: |
-   *   Centralizes repo metadata transformation and provides unified terminal access pattern (ref or global fallback).
-   *
-   * guardrails:
-   *   - DO NOT assume terminalRef.current exists; fallback to window.terminal_indexing_terminal required
-   *   - NOTE: Global terminal access is anti-pattern; migrate to context/provider
-   * ---/agentspec
-   */
-  const repos = storeRepos.map(r => ({ name: r.name, path: r.path || '', branch: r.branch }));
-  const [currentRepo, setCurrentRepo] = useState<string>('');
-  const [currentBranch, setCurrentBranch] = useState<string>('');
-  const [terminalVisible, setTerminalVisible] = useState<boolean>(false);
+  // Terminal ref
   const terminalRef = useRef<LiveTerminalHandle>(null);
 
-  /**
-   * ---agentspec
-   * what: |
-   *   Retrieves terminal instance from ref or global fallback. Resets terminal state: shows, clears, sets title.
-   *
-   * why: |
-   *   Centralizes terminal access pattern; handles both local ref and global singleton gracefully.
-   *
-   * guardrails:
-   *   - DO NOT assume terminal exists; all calls use optional chaining (?.)
-   *   - NOTE: Global fallback `window.terminal_indexing_terminal` is last resort only
-   * ---/agentspec
-   */
-  const getTerminal = useCallback(() => {
-    return terminalRef.current || (window as any).terminal_indexing_terminal;
+  // ==========================================================================
+  // UI STATE
+  // ==========================================================================
+
+  const [selectedComponent, setSelectedComponent] = useState<IndexingComponent>('embedding');
+  const [isIndexing, setIsIndexing] = useState(false);
+  const [progress, setProgress] = useState({ current: 0, total: 100, status: 'Ready' });
+  const [terminalVisible, setTerminalVisible] = useState(false);
+
+  // Models from CostLogic (same pattern as RerankerConfigSubtab)
+  const [allProviders, setAllProviders] = useState<string[]>([]);
+  const [embeddingModels, setEmbeddingModels] = useState<string[]>([]);
+  const [modelsLoading, setModelsLoading] = useState(true);
+  const [modelsError, setModelsError] = useState<string | null>(null);
+
+  // Index stats
+  const [indexStats, setIndexStats] = useState<IndexStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsExpanded, setStatsExpanded] = useState(false);
+
+  // API key status
+  const [apiKeyConfigured, setApiKeyConfigured] = useState<boolean | null>(null);
+
+  // ==========================================================================
+  // CONFIG VALUES (via useConfig get/set - NOT useConfigField!)
+  // ==========================================================================
+
+  // Embedding
+  const embeddingType = String(get('EMBEDDING_TYPE', 'openai'));
+  const embeddingModel = String(get('EMBEDDING_MODEL', 'text-embedding-3-large'));
+  const embeddingDim = Number(get('EMBEDDING_DIM', 3072));
+  const voyageModel = String(get('VOYAGE_MODEL', 'voyage-code-3'));
+  const embeddingModelLocal = String(get('EMBEDDING_MODEL_LOCAL', 'all-MiniLM-L6-v2'));
+  const embeddingBatchSize = Number(get('EMBEDDING_BATCH_SIZE', 64));
+  const embeddingMaxTokens = Number(get('EMBEDDING_MAX_TOKENS', 8000));
+  const embeddingCacheEnabled = Number(get('EMBEDDING_CACHE_ENABLED', 1));
+  const embeddingTimeout = Number(get('EMBEDDING_TIMEOUT', 30));
+  const embeddingRetryMax = Number(get('EMBEDDING_RETRY_MAX', 3));
+
+  // Chunking
+  const chunkSize = Number(get('CHUNK_SIZE', 1000));
+  const chunkOverlap = Number(get('CHUNK_OVERLAP', 200));
+  const chunkingStrategy = String(get('CHUNKING_STRATEGY', 'ast'));
+  const astOverlapLines = Number(get('AST_OVERLAP_LINES', 20));
+  const maxChunkSize = Number(get('MAX_CHUNK_SIZE', 2000));
+  const minChunkChars = Number(get('MIN_CHUNK_CHARS', 50));
+  const greedyFallbackTarget = Number(get('GREEDY_FALLBACK_TARGET', 800));
+  const preserveImports = Number(get('PRESERVE_IMPORTS', 1));
+
+  // BM25
+  const bm25Tokenizer = String(get('BM25_TOKENIZER', 'stemmer'));
+  const bm25StemmerLang = String(get('BM25_STEMMER_LANG', 'english'));
+  const bm25StopwordsLang = String(get('BM25_STOPWORDS_LANG', 'english'));
+
+  // Enrichment / Run Options
+  const skipDense = Number(get('SKIP_DENSE', 0));
+  const enrichChunks = Number(get('ENRICH_CODE_CHUNKS', 1));
+
+  // ==========================================================================
+  // DERIVED STATE
+  // ==========================================================================
+
+  const qdrantContainer = containers.find(c => c.name?.toLowerCase().includes('qdrant'));
+  const isQdrantReady = qdrantContainer?.status?.toLowerCase().includes('running') ?? false;
+  const canIndex = isQdrantReady && !isIndexing && !!activeRepo;
+
+  // Current model based on provider
+  const currentModel = useMemo(() => {
+    switch (embeddingType) {
+      case 'openai': return embeddingModel;
+      case 'voyage': return voyageModel;
+      default: return embeddingModelLocal;
+    }
+  }, [embeddingType, embeddingModel, voyageModel, embeddingModelLocal]);
+
+  // API key env name
+  const apiKeyEnvName = useMemo(() => {
+    switch (embeddingType) {
+      case 'openai': return 'OPENAI_API_KEY';
+      case 'voyage': return 'VOYAGE_API_KEY';
+      default: return null;
+    }
+  }, [embeddingType]);
+
+  // ==========================================================================
+  // EFFECTS
+  // ==========================================================================
+
+  // Load repos on mount
+  useEffect(() => {
+    if (repos.length === 0) {
+      loadRepos();
+    }
+  }, [repos.length, loadRepos]);
+
+  // Fetch containers on mount
+  useEffect(() => {
+    fetchContainers();
+  }, [fetchContainers]);
+
+  // Load providers from CostLogic
+  const loadProviders = useCallback(async () => {
+    setModelsLoading(true);
+    setModelsError(null);
+    try {
+      if (window.CostLogic?.listProviders) {
+        const providers = await window.CostLogic.listProviders();
+        setAllProviders(providers);
+      }
+    } catch (e: any) {
+      console.error('[IndexingSubtab] Failed to load providers:', e);
+      setModelsError(e?.message || 'Failed to load providers');
+    } finally {
+      setModelsLoading(false);
+    }
   }, []);
 
-  /**
-   * ---agentspec
-   * what: |
-   *   resetTerminal clears terminal, shows it, sets title. appendTerminalLine writes line to terminal. Both use getTerminal() hook to access terminal instance.
-   *
-   * why: |
-   *   Encapsulates terminal mutations behind callbacks to decouple UI logic from terminal API.
-   *
-   * guardrails:
-   *   - DO NOT call if getTerminal() returns null; add null checks
-   *   - NOTE: Assumes terminal supports show(), clear(), setTitle(), write() methods
-   * ---/agentspec
-   */
-  const resetTerminal = useCallback((title: string) => {
-    const t = getTerminal();
-    t?.show?.();
-    t?.clear?.();
-    t?.setTitle?.(title);
-  }, [getTerminal]);
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Two terminal utility hooks. appendTerminalLine appends text to terminal; updateTerminalProgress updates progress bar with percent + optional message.
-   *
-   * why: |
-   *   Encapsulates terminal ref access + optional chaining to prevent null errors in render.
-   *
-   * guardrails:
-   *   - DO NOT call if getTerminal() returns null; methods are optional
-   *   - NOTE: Progress percent should be 0–100
-   * ---/agentspec
-   */
-  const appendTerminalLine = useCallback((line: string) => {
-    const t = getTerminal();
-    t?.appendLine?.(line);
-  }, [getTerminal]);
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Updates terminal progress bar with percent + optional message. Calls terminal's updateProgress method if available.
-   *
-   * why: |
-   *   Encapsulates terminal ref access; useCallback prevents unnecessary re-renders.
-   *
-   * guardrails:
-   *   - DO NOT call if terminal ref is null; method guards with optional chaining
-   *   - NOTE: Message param is optional; percent alone is valid
-   * ---/agentspec
-   */
-  const updateTerminalProgress = useCallback((percent: number, message?: string) => {
-    const t = getTerminal();
-    t?.updateProgress?.(percent, message);
-  }, [getTerminal]);
-
-  // Load config on mount
-  useEffect(() => {
-    loadConfig();
-    if (storeRepos.length === 0) {
-      storeLoadRepos();
-    }
-    loadIndexStats();
-  }, [storeRepos.length, storeLoadRepos]);
-  
-  // Sync currentRepo with store's activeRepo or first repo when available
-  useEffect(() => {
-    if (repos.length > 0 && !currentRepo) {
-      const initialRepo = activeRepo || repos[0].name;
-      setCurrentRepo(initialRepo);
-      setSimpleRepo(initialRepo);
-      setIndexRepo(initialRepo);
-      /**
-       * ---agentspec
-       * what: |
-       *   Fetches config from /api/config endpoint. Parses JSON response into data object.
-       *
-       * why: |
-       *   Centralizes config loading at component mount for consistent app state initialization.
-       *
-       * guardrails:
-       *   - DO NOT assume response.ok; add error handling for failed requests
-       *   - NOTE: Blocks render until config loads; consider async boundary
-       * ---/agentspec
-       */
-      const repo = repos.find(r => r.name === initialRepo);
-      setCurrentBranch(repo?.branch || '—');
-    }
-  }, [repos, activeRepo, currentRepo]);
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Fetches config from /api/config endpoint. Extracts env object and sets embedding type/model state. Returns Promise<void>.
-   *
-   * why: |
-   *   Centralizes config loading at app startup; decouples client state from hardcoded defaults.
-   *
-   * guardrails:
-   *   - DO NOT assume response.json() succeeds; add error handling
-   *   - NOTE: Sets state synchronously; no validation of env values
-   *   - ASK USER: Should invalid EMBEDDING_TYPE values trigger fallback or error?
-   * ---/agentspec
-   */
-  const loadConfig = async () => {
-    try {
-      const response = await fetch('/api/config');
-      const data = await response.json();
-      const env = data.env || {};
-
-      // Load embedding settings
-      setEmbeddingType(env.EMBEDDING_TYPE || 'openai');
-      setEmbeddingModel(env.EMBEDDING_MODEL || 'text-embedding-3-large');
-      setEmbeddingDim(parseInt(env.EMBEDDING_DIM || '3072', 10));
-      setVoyageModel(env.VOYAGE_MODEL || 'voyage-code-3');
-      setEmbeddingModelLocal(env.EMBEDDING_MODEL_LOCAL || 'all-MiniLM-L6-v2');
-      setEmbeddingBatchSize(parseInt(env.EMBEDDING_BATCH_SIZE || '64', 10));
-      setEmbeddingMaxTokens(parseInt(env.EMBEDDING_MAX_TOKENS || '8000', 10));
-      setEmbeddingCacheEnabled(env.EMBEDDING_CACHE_ENABLED || '1');
-      setEmbeddingTimeout(parseInt(env.EMBEDDING_TIMEOUT || '30', 10));
-      setEmbeddingRetryMax(parseInt(env.EMBEDDING_RETRY_MAX || '3', 10));
-
-      // Load chunking settings
-      setChunkSize(parseInt(env.CHUNK_SIZE || '1000', 10));
-      setChunkOverlap(parseInt(env.CHUNK_OVERLAP || '200', 10));
-      setAstOverlapLines(parseInt(env.AST_OVERLAP_LINES || '20', 10));
-      setMaxChunkSize(parseInt(env.MAX_CHUNK_SIZE || '2000000', 10));
-      setMinChunkChars(parseInt(env.MIN_CHUNK_CHARS || '50', 10));
-      setGreedyFallbackTarget(parseInt(env.GREEDY_FALLBACK_TARGET || '800', 10));
-      setChunkingStrategy(env.CHUNKING_STRATEGY || 'ast');
-      setPreserveImports(env.PRESERVE_IMPORTS || '1');
-
-      // Load indexing settings
-      setOutDirBase(env.OUT_DIR_BASE || './out');
-      setCollectionName(env.COLLECTION_NAME || '');
-      setIndexingBatchSize(parseInt(env.INDEXING_BATCH_SIZE || '100', 10));
-      setIndexingWorkers(parseInt(env.INDEXING_WORKERS || '4', 10));
-      setBm25Tokenizer(env.BM25_TOKENIZER || 'stemmer');
-      setBm25StemmerLang(env.BM25_STEMMER_LANG || 'english');
-      setIndexExcludedExts(env.INDEX_EXCLUDED_EXTS || '.png,.jpg,.gif,.ico,.svg,.woff,.ttf');
-      setIndexMaxFileSizeMb(parseInt(env.INDEX_MAX_FILE_SIZE_MB || '10', 10));
-      setSkipDense(env.SKIP_DENSE || '0');
-      setEnrichChunks(env.ENRICH_CODE_CHUNKS || '0');
-    } catch (error) {
-      console.error('Failed to load config:', error);
-    }
-  };
-
-  // Repos are now loaded via the store - see useEffect above
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Fetches index statistics from /api/index/stats endpoint. Sets response data to indexStats state; logs errors silently.
-   *
-   * why: |
-   *   Encapsulates API call for stats retrieval with error handling to prevent UI crashes.
-   *
-   * guardrails:
-   *   - DO NOT silently swallow errors; add user-facing error state
-   *   - NOTE: No retry logic; transient failures will fail silently
-   *   - ASK USER: Add loading state during fetch?
-   * ---/agentspec
-   */
-  const loadIndexStats = async () => {
-    try {
-      const response = await fetch('/api/index/stats');
-      const data = await response.json();
-      setIndexStats(data);
-    } catch (error) {
-      console.error('Failed to load index stats:', error);
-    }
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Validates repo selection, starts indexing process, displays terminal output. Sets UI state flags (running, visible) and resets terminal log.
-   *
-   * why: |
-   *   Centralizes pre-flight checks and state management before delegating to indexing backend.
-   *
-   * guardrails:
-   *   - DO NOT index without repo selection; alert user first
-   *   - NOTE: Terminal visibility tied to indexing start; ensure cleanup on error
-   * ---/agentspec
-   */
-  const handleSimpleIndex = async () => {
-    if (!simpleRepo) {
-      alert('Please select a repository');
+  // Load embedding models when provider changes
+  const loadEmbeddingModels = useCallback(async (provider: string) => {
+    if (!provider || !window.CostLogic?.listModels) {
+      setEmbeddingModels([]);
       return;
     }
+    try {
+      const models = await window.CostLogic.listModels(provider, 'embed');
+      setEmbeddingModels(models);
+    } catch (e: any) {
+      console.error('[IndexingSubtab] Failed to load models:', e);
+      setEmbeddingModels([]);
+    }
+  }, []);
 
-    setSimpleRunning(true);
+  useEffect(() => {
+    loadProviders();
+  }, [loadProviders]);
+
+  useEffect(() => {
+    loadEmbeddingModels(embeddingType);
+  }, [embeddingType, loadEmbeddingModels]);
+
+  // Check API key status (never expose actual key)
+  useEffect(() => {
+    if (apiKeyEnvName) {
+      fetch(`/api/secrets/check?keys=${apiKeyEnvName}`)
+        .then(r => r.json())
+        .then(data => setApiKeyConfigured(data[apiKeyEnvName] === true))
+        .catch(() => setApiKeyConfigured(null));
+    } else {
+      setApiKeyConfigured(null);
+    }
+  }, [apiKeyEnvName]);
+
+  // Load index stats
+  const loadStats = useCallback(async () => {
+    setStatsLoading(true);
+    try {
+      const stats = await getIndexStats();
+      setIndexStats(stats);
+    } catch (e) {
+      console.error('[IndexingSubtab] Failed to load stats:', e);
+    } finally {
+      setStatsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
+
+  // ==========================================================================
+  // HANDLERS
+  // ==========================================================================
+
+  const handleProviderChange = useCallback((provider: string) => {
+    set('EMBEDDING_TYPE', provider);
+    // Set sensible defaults for provider
+    switch (provider) {
+      case 'openai':
+        set('EMBEDDING_MODEL', 'text-embedding-3-large');
+        set('EMBEDDING_DIM', 3072);
+        break;
+      case 'voyage':
+        set('VOYAGE_MODEL', 'voyage-code-3');
+        break;
+      case 'local':
+        set('EMBEDDING_MODEL_LOCAL', 'all-MiniLM-L6-v2');
+        break;
+      case 'mxbai':
+        set('EMBEDDING_MODEL_LOCAL', 'mxbai-embed-large-v1');
+        break;
+    }
+  }, [set]);
+
+  const handleStartIndex = useCallback(async () => {
+    if (!activeRepo) return;
+
+    setIsIndexing(true);
+    setProgress({ current: 0, total: 100, status: 'Starting...' });
     setTerminalVisible(true);
-    resetTerminal(`Indexing: ${simpleRepo}`);
-    appendTerminalLine(`🚀 Starting indexing for repo=${simpleRepo} dense=${simpleDense ? 'on' : 'off'}`);
-    setIndexProgress(0);
-    setIndexStatus('Starting indexing...');
+
+    // Clear and show terminal
+    terminalRef.current?.show?.();
+    terminalRef.current?.clear?.();
+    terminalRef.current?.setTitle?.(`Indexing: ${activeRepo}`);
+    terminalRef.current?.appendLine?.(`🚀 Starting indexing for ${activeRepo}`);
+    terminalRef.current?.appendLine?.(`   Provider: ${embeddingType}, Model: ${currentModel}`);
+    terminalRef.current?.appendLine?.(`   Chunk Size: ${chunkSize}, Strategy: ${chunkingStrategy}`);
 
     try {
       TerminalService.streamIndexRun('indexing_terminal', {
-        repo: simpleRepo,
-        skip_dense: !simpleDense,
-        enrich: false,
+        repo: activeRepo,
+        skip_dense: skipDense === 1,
+        enrich: enrichChunks === 1,
         onLine: (line) => {
-          appendTerminalLine(line);
-          setIndexStatus((prev) => `${prev ? `${prev}\n` : ''}${line}`);
+          terminalRef.current?.appendLine?.(line);
         },
         onProgress: (percent, message) => {
-          const pct = percent || 0;
-          setIndexProgress(pct);
-          setIndexStatus(message || 'Indexing...');
-          updateTerminalProgress(pct, message);
+          setProgress({ current: percent, total: 100, status: message || `Progress: ${percent}%` });
+          terminalRef.current?.updateProgress?.(percent, message);
         },
         onError: (err) => {
-          appendTerminalLine(`\x1b[31mError: ${err}\x1b[0m`);
-          setIndexStatus(`Error: ${err}`);
-          setSimpleRunning(false);
+          terminalRef.current?.appendLine?.(`\x1b[31mError: ${err}\x1b[0m`);
+          setProgress(prev => ({ ...prev, status: `Error: ${err}` }));
+          setIsIndexing(false);
         },
         onComplete: async () => {
-          updateTerminalProgress(100, 'Complete');
-          setIndexProgress(100);
-          setIndexStatus('Indexing complete');
-          setSimpleRunning(false);
-          await loadIndexStats();
+          terminalRef.current?.updateProgress?.(100, 'Complete');
+          terminalRef.current?.appendLine?.(`\x1b[32m✓ Indexing complete!\x1b[0m`);
+          setProgress({ current: 100, total: 100, status: 'Complete' });
+          setIsIndexing(false);
+          refreshEmbedding();
+          loadStats();
         }
       });
     } catch (error) {
-      appendTerminalLine(`\x1b[31mFailed: ${error}\x1b[0m`);
-      setIndexStatus(`Failed: ${error}`);
-      setSimpleRunning(false);
+      const msg = handleApiError(error, 'Indexing');
+      terminalRef.current?.appendLine?.(`\x1b[31mFailed: ${msg}\x1b[0m`);
+      setProgress(prev => ({ ...prev, status: `Failed: ${msg}` }));
+      setIsIndexing(false);
     }
-  };
+  }, [activeRepo, embeddingType, currentModel, chunkSize, chunkingStrategy, skipDense, enrichChunks, handleApiError, refreshEmbedding, loadStats]);
 
-  /**
-   * ---agentspec
-   * what: |
-   *   Validates repo selection, starts indexing process, displays terminal output. Sets UI state flags (indexRunning, terminalVisible) and resets terminal with repo name.
-   *
-   * why: |
-   *   Centralizes indexing trigger logic with validation and UI coordination in one handler.
-   *
-   * guardrails:
-   *   - DO NOT index without repo selection; alert user first
-   *   - NOTE: Assumes resetTerminal() exists and accepts string argument
-   * ---/agentspec
-   */
-  const handleStartIndexing = async () => {
-    if (!indexRepo) {
-      alert('Please select a repository');
-      return;
-    }
-
-    setIndexRunning(true);
-    setTerminalVisible(true);
-    resetTerminal(`Indexing: ${indexRepo}`);
-    appendTerminalLine(`🚀 Starting indexing for repo=${indexRepo}, skip_dense=${skipDense}, enrich=${enrichChunks}`);
-    setIndexStatus('Starting indexing...');
-    setIndexProgress(0);
-
-    try {
-      TerminalService.streamIndexRun('indexing_terminal', {
-        repo: indexRepo,
-        skip_dense: parseInt(skipDense, 10) === 1,
-        enrich: parseInt(enrichChunks, 10) === 1,
-        onLine: (line) => {
-          appendTerminalLine(line);
-          setIndexStatus((prev) => `${prev ? `${prev}\n` : ''}${line}`);
-        },
-        onProgress: (percent, message) => {
-          const pct = percent || 0;
-          setIndexProgress(pct);
-          setIndexStatus(message || 'Indexing...');
-          updateTerminalProgress(pct, message);
-        },
-        onError: (err) => {
-          appendTerminalLine(`\x1b[31mError: ${err}\x1b[0m`);
-          setIndexStatus(`Error: ${err}`);
-          setIndexRunning(false);
-        },
-        onComplete: async () => {
-          updateTerminalProgress(100, 'Complete');
-          setIndexProgress(100);
-          setIndexStatus('Indexing complete');
-          setIndexRunning(false);
-          await loadIndexStats();
-        }
-      });
-    } catch (error) {
-      appendTerminalLine(`\x1b[31mFailed: ${error}\x1b[0m`);
-      setIndexStatus(`Failed: ${error}`);
-      setIndexRunning(false);
-    }
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Stops active indexing by disconnecting SSE stream. Sets indexing flags to false, appends stop message to terminal.
-   *
-   * why: |
-   *   Backend auto-terminates process on client disconnect; UI state sync prevents orphaned operations.
-   *
-   * guardrails:
-   *   - DO NOT call if indexing already stopped; check setIndexRunning state first
-   *   - NOTE: Terminal message uses ANSI yellow (\x1b[33m); ensure TerminalService supports color codes
-   * ---/agentspec
-   */
-  const handleStopIndexing = async () => {
-    // Disconnect the SSE stream; backend terminates the process when client disconnects
+  const handleStopIndex = useCallback(() => {
     TerminalService.disconnect('indexing_terminal');
-    setIndexRunning(false);
-    setSimpleRunning(false);
-    setIndexStatus(prev => `${prev ? `${prev}\n` : ''}Indexing stopped by user.`);
-    appendTerminalLine('\x1b[33mIndexing stopped by user.\x1b[0m');
+    setIsIndexing(false);
+    setProgress(prev => ({ ...prev, status: 'Stopped' }));
+    terminalRef.current?.appendLine?.(`\x1b[33m⚠ Indexing stopped by user\x1b[0m`);
+  }, []);
+
+  // ==========================================================================
+  // RENDER HELPERS
+  // ==========================================================================
+
+  const formatBytes = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
   };
 
-  /**
-   * ---agentspec
-   * what: |
-   *   Saves embedding configuration (type, model, dimensions, Voyage model) to env object. Triggers async save with error handling.
-   *
-   * why: |
-   *   Centralizes embedding config updates in one handler to prevent scattered state mutations.
-   *
-   * guardrails:
-   *   - DO NOT save without validation; embeddingDim must be numeric
-   *   - NOTE: Assumes env object exists; will fail silently if undefined
-   * ---/agentspec
-   */
-  const handleSaveSettings = async () => {
-    try {
-      const config = {
-        env: {
-          // Embedding settings
-          EMBEDDING_TYPE: embeddingType,
-          EMBEDDING_MODEL: embeddingModel,
-          EMBEDDING_DIM: embeddingDim,
-          VOYAGE_MODEL: voyageModel,
-          EMBEDDING_MODEL_LOCAL: embeddingModelLocal,
-          EMBEDDING_BATCH_SIZE: embeddingBatchSize,
-          EMBEDDING_MAX_TOKENS: embeddingMaxTokens,
-          EMBEDDING_CACHE_ENABLED: embeddingCacheEnabled,
-          EMBEDDING_TIMEOUT: embeddingTimeout,
-          EMBEDDING_RETRY_MAX: embeddingRetryMax,
-          // Chunking settings
-          CHUNK_SIZE: chunkSize,
-          CHUNK_OVERLAP: chunkOverlap,
-          AST_OVERLAP_LINES: astOverlapLines,
-          MAX_CHUNK_SIZE: maxChunkSize,
-          MIN_CHUNK_CHARS: minChunkChars,
-          GREEDY_FALLBACK_TARGET: greedyFallbackTarget,
-          CHUNKING_STRATEGY: chunkingStrategy,
-          PRESERVE_IMPORTS: preserveImports,
-          // Indexing settings
-          COLLECTION_NAME: collectionName,
-          INDEXING_BATCH_SIZE: indexingBatchSize,
-          INDEXING_WORKERS: indexingWorkers,
-          BM25_TOKENIZER: bm25Tokenizer,
-          BM25_STEMMER_LANG: bm25StemmerLang,
-          INDEX_EXCLUDED_EXTS: indexExcludedExts,
-          INDEX_MAX_FILE_SIZE_MB: indexMaxFileSizeMb
-        }
-      };
-
-      const response = await fetch('/api/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config)
-      });
-
-      if (response.ok) {
-        alert('Settings saved successfully');
-      } else {
-        const error = await response.text();
-        alert(`Failed to save settings: ${error}`);
-      }
-    } catch (error) {
-      console.error('Failed to save settings:', error);
-      alert(`Error: ${error}`);
-    }
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Applies configuration profile (shared/full) by setting environment variables. Maps profile name to key-value pairs and updates runtime config.
-   *
-   * why: |
-   *   Centralizes profile logic; avoids scattered conditional config across codebase.
-   *
-   * guardrails:
-   *   - DO NOT mutate profiles object after apply; treat as immutable
-   *   - NOTE: Async wrapper; ensure caller awaits before using new config
-   *   - ASK USER: Persist to .env or memory-only?
-   * ---/agentspec
-   */
-  const handleApplyProfile = async () => {
-    const profiles: Record<string, any> = {
-      shared: {
-        SKIP_DENSE: '1',
-        ENRICH_CODE_CHUNKS: '0',
-        BM25_TOKENIZER: 'stemmer'
-      },
-      full: {
-        SKIP_DENSE: '0',
-        ENRICH_CODE_CHUNKS: '1',
-        BM25_TOKENIZER: 'stemmer'
-      },
-      dev: {
-        SKIP_DENSE: '0',
-        ENRICH_CODE_CHUNKS: '0',
-        CHUNK_SIZE: 500
-      }
-    };
-
-    const profile = profiles[activeProfile];
-    if (!profile) return;
-
-    try {
-      const response = await fetch('/api/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ env: profile })
-      });
-
-      if (response.ok) {
-        alert(`Applied ${activeProfile} profile`);
-        await loadConfig();
-      }
-    } catch (error) {
-      console.error('Failed to apply profile:', error);
-    }
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Refreshes index statistics by calling loadIndexStats(). Triggers async stats reload on user action.
-   *
-   * why: |
-   *   Decouples UI refresh trigger from data-fetch logic; allows manual stats updates without page reload.
-   *
-   * guardrails:
-   *   - DO NOT call loadIndexStats() without await; stats may be stale
-   *   - NOTE: EmbeddingMismatchWarning must render before stats to surface critical mismatches
-   * ---/agentspec
-   */
-  const handleRefreshStats = async () => {
-    await loadIndexStats();
-  };
+  // ==========================================================================
+  // RENDER
+  // ==========================================================================
 
   return (
-    <>
-      {/* Embedding Mismatch Warning - Critical visibility at top of indexing page */}
-      <EmbeddingMismatchWarning variant="full" showActions={true} />
-
-      {/* Current Repo Display */}
-      <div style={{ background: 'var(--bg-elev1)', border: '2px solid var(--ok)', borderRadius: '8px', padding: '16px 24px', marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ color: 'var(--fg-muted)', fontSize: '13px', fontFamily: "'SF Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.5px' }}>Current Repo:</span>
-          <select
-            id="indexing-repo-selector"
-            value={currentRepo}
-            onChange={(e) => {
-              setCurrentRepo(e.target.value);
-              /**
-               * ---agentspec
-               * what: |
-               *   Renders dropdown menu of repos. On selection, updates currentBranch state from repo.branch. Returns JSX option elements.
-               *
-               * why: |
-               *   Decouples repo selection from branch display; allows independent state management.
-               *
-               * guardrails:
-               *   - DO NOT assume repo.branch exists; fallback to '—' prevents undefined
-               *   - NOTE: Loading state blocks interaction until repos array populated
-               * ---/agentspec
-               */
-              const repo = repos.find(r => r.name === e.target.value);
-              setCurrentBranch(repo?.branch || '—');
-            }}
-            style={{ background: 'var(--ok)', color: '#000', border: 'none', padding: '6px 12px', borderRadius: '4px', fontSize: '14px', fontWeight: '700', fontFamily: "'SF Mono', monospace", cursor: 'pointer' }}
-          >
-            {repos.length === 0 ? (
-              <option value="">Loading...</option>
-            ) : (
-              repos.map(repo => (
-                <option key={repo.name} value={repo.name}>{repo.name}</option>
-              ))
-            )}
-          </select>
-        </div>
-        <div style={{ color: 'var(--fg-muted)', fontSize: '11px', fontFamily: "'SF Mono', monospace" }}>
-          <span style={{ color: 'var(--fg-muted)' }}>Branch:</span> <span id="indexing-branch-display" style={{ color: 'var(--link)', fontWeight: '600' }}>{currentBranch}</span>
-        </div>
-      </div>
-
-      {/* ONE SIMPLE INDEX BUTTON */}
-      <div className="settings-section" style={{ borderLeft: '3px solid var(--ok)', padding: '32px' }}>
-        <h2 style={{ margin: '0 0 24px 0', fontSize: '24px', fontWeight: '700' }}>
-          Index Repository
-        </h2>
-
-        <div style={{ maxWidth: '800px' }}>
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>Repository:</label>
-            <select
-              id="simple-repo-select"
-              value={simpleRepo}
-              onChange={(e) => setSimpleRepo(e.target.value)}
-              style={{ width: '100%', padding: '12px', fontSize: '16px', border: '2px solid var(--line)', borderRadius: '8px', background: 'var(--input-bg)', color: 'var(--fg)' }}
-            >
-              {repos.length === 0 ? (
-                <option value="">Loading...</option>
-              ) : (
-                repos.map(repo => (
-                  <option key={repo.name} value={repo.name}>{repo.name}</option>
-                ))
-              )}
-            </select>
-          </div>
-
-          <div style={{ marginBottom: '24px' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', fontSize: '16px' }}>
-              <input
-                type="checkbox"
-                id="simple-dense-check"
-                checked={simpleDense}
-                onChange={(e) => setSimpleDense(e.target.checked)}
-                style={{ width: '24px', height: '24px', cursor: 'pointer' }}
-              />
-              <span style={{ fontWeight: '600' }}>Include Dense Embeddings (Recommended)</span>
-            </label>
-            <p style={{ fontSize: '13px', color: 'var(--fg-muted)', margin: '8px 0 0 36px' }}>Enables semantic vector search via Qdrant</p>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <button
-              id="simple-index-btn"
-              onClick={handleSimpleIndex}
-              disabled={simpleRunning}
-              style={{
-                flex: 1,
-                padding: '20px',
-                fontSize: '20px',
-                fontWeight: '700',
-                background: simpleRunning ? 'var(--fg-muted)' : 'var(--ok)',
-                color: '#000',
-                border: 'none',
-                borderRadius: '12px',
-                cursor: simpleRunning ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s',
-                boxShadow: '0 4px 12px rgba(0,255,136,0.3)'
-              }}
-            >
-              {simpleRunning ? 'INDEXING...' : 'INDEX NOW'}
-            </button>
-            {/* Green checkmark when embeddings match */}
-            <EmbeddingMatchIndicator />
-          </div>
-        </div>
-      </div>
-
-      {/* Indexing Operations */}
-      <div className="settings-section" style={{ borderLeft: '3px solid var(--link)' }}>
-        <h3>
-          <span style={{ color: 'var(--link)' }}>●</span> Build Index
-          <span className="help-icon" data-tooltip="INDEXING_PROCESS">?</span>
+    <div className="subtab-panel" style={{ padding: '24px' }}>
+      {/* Header */}
+      <div style={{ marginBottom: '28px' }}>
+        <h3 style={{
+          fontSize: '18px',
+          fontWeight: 600,
+          color: 'var(--fg)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          marginBottom: '8px'
+        }}>
+          <span style={{ fontSize: '22px' }}>📦</span>
+          Code Indexing
+          <TooltipIcon name="INDEXING" />
         </h3>
+        <p style={{
+          fontSize: '14px',
+          color: 'var(--fg-muted)',
+          lineHeight: 1.6,
+          maxWidth: '800px'
+        }}>
+          Configure embedding generation, code chunking, sparse search, and enrichment.
+          Each component can be tuned independently for optimal retrieval quality.
+        </p>
+      </div>
 
-        <div className="input-row">
-          <div className="input-group">
-            <label>Repository to Index</label>
-            <select
-              id="index-repo-select"
-              value={indexRepo}
-              onChange={(e) => setIndexRepo(e.target.value)}
-              style={{ background: 'var(--bg-elev2)', color: 'var(--fg)', border: '1px solid var(--line)', padding: '8px', borderRadius: '4px' }}
-            >
-              {repos.map(repo => (
-                <option key={repo.name} value={repo.name}>{repo.name}</option>
-              ))}
-            </select>
-          </div>
-          <div className="input-group">
-            <label>
-              Embedding Type
-              <span className="help-icon" data-tooltip="EMBEDDING_TYPE">?</span>
-            </label>
-            <select
-              name="EMBEDDING_TYPE"
-              value={embeddingType}
-              onChange={(e) => setEmbeddingType(e.target.value)}
-              style={{ background: 'var(--bg-elev2)', color: 'var(--fg)', border: '1px solid var(--line)', padding: '8px', borderRadius: '4px' }}
-            >
-              <option value="openai">OpenAI (text-embedding-3-large)</option>
-              <option value="local">Local (BGE-small, no API)</option>
-              <option value="voyage">Voyage AI</option>
-            </select>
-          </div>
-          <div className="input-group">
-            <label>Skip Dense Index</label>
-            <select
-              id="index-skip-dense"
-              value={skipDense}
-              onChange={(e) => setSkipDense(e.target.value)}
-              style={{ background: 'var(--bg-elev2)', color: 'var(--fg)', border: '1px solid var(--line)', padding: '8px', borderRadius: '4px' }}
-            >
-              <option value="0">No (full index)</option>
-              <option value="1">Yes (BM25 only, faster)</option>
-            </select>
-          </div>
-          <div className="input-group">
-            <label>Enrich Code Chunks</label>
-            <select
-              id="index-enrich-chunks"
-              value={enrichChunks}
-              onChange={(e) => setEnrichChunks(e.target.value)}
-              style={{ background: 'var(--bg-elev2)', color: 'var(--fg)', border: '1px solid var(--line)', padding: '8px', borderRadius: '4px' }}
-            >
-              <option value="0">No (faster indexing)</option>
-              <option value="1">Yes (adds summaries + keywords)</option>
-            </select>
-            <p className="small" style={{ color: 'var(--fg-muted)', marginTop: '4px' }}>Generate AI summaries and extract keywords for each code chunk. Improves semantic search but slower.</p>
-          </div>
+      {/* Error Banner */}
+      {(configError || modelsError) && (
+        <div style={{
+          background: 'rgba(var(--error-rgb), 0.1)',
+          border: '1px solid var(--error)',
+          borderRadius: '8px',
+          padding: '12px 16px',
+          marginBottom: '20px',
+          color: 'var(--error)',
+          fontSize: '13px'
+        }}>
+          {configError || modelsError}
         </div>
+      )}
 
-        {/* Index Status */}
-        <div className="settings-section" style={{ marginTop: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <h3 style={{ margin: 0 }}>Index Status</h3>
-            <button
-              id="btn-refresh-index-stats"
-              onClick={handleRefreshStats}
-              className="small-button"
-              style={{ background: 'var(--bg-elev2)', color: 'var(--link)', border: '1px solid var(--link)' }}
-            >
-              Refresh
-            </button>
-          </div>
-          <div id="index-status-display" style={{ background: 'var(--card-bg)', border: '1px solid var(--line)', borderRadius: '6px', padding: '12px', minHeight: '80px' }}>
-            {indexStats ? (
-              <>
-                <div>Chunks: {indexStats.total_chunks ?? indexStats.chunks ?? 0}</div>
-                <div>Embedding: {indexStats.embedding_config?.provider || 'unknown'} ({indexStats.embedding_config?.dimensions || '?'}d)</div>
-                {indexStats.repos && indexStats.repos.length > 0 && (
-                  <div>Repos: {indexStats.repos.map(r => `${r.name} (${r.chunk_count})`).join(', ')}</div>
-                )}
-                {indexStats.lastIndexed && (
-                  <div>Last Indexed: {indexStats.lastIndexed}</div>
-                )}
-              </>
-            ) : (
-              <div>No index data available</div>
-            )}
-          </div>
+      {/* Embedding Mismatch Warning */}
+      <EmbeddingMismatchWarning variant="inline" showActions />
+
+      {/* Qdrant Warning */}
+      {!isQdrantReady && (
+        <div style={{
+          background: 'rgba(var(--warn-rgb), 0.1)',
+          border: '1px solid var(--warn)',
+          borderRadius: '8px',
+          padding: '12px 16px',
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          fontSize: '13px'
+        }}>
+          <span style={{ fontSize: '16px' }}>⚠️</span>
+          <span style={{ color: 'var(--warn)' }}>
+            Qdrant not running. Start it in the <strong>Infrastructure</strong> tab before indexing.
+          </span>
         </div>
+      )}
 
-        <div className="input-row" style={{ display: 'flex', gap: '8px' }}>
-          <button
-            className="small-button"
-            id="btn-index-start"
-            onClick={handleStartIndexing}
-            disabled={indexRunning}
-            style={{
-              flex: 1,
-              background: 'var(--accent)',
-              color: 'var(--accent-contrast)',
-              padding: '12px',
-              fontWeight: '600',
-              cursor: indexRunning ? 'not-allowed' : 'pointer',
-              opacity: indexRunning ? 0.6 : 1
-            }}
-          >
-            {indexRunning ? 'RUNNING...' : '▶ Start Indexing'}
-          </button>
-          <button
-            className="small-button"
-            id="btn-index-stop"
-            onClick={handleStopIndexing}
-            disabled={!indexRunning}
-            style={{
-              flex: 1,
-              background: 'var(--err)',
-              color: 'var(--fg)',
-              padding: '12px',
-              fontWeight: '600',
-              cursor: !indexRunning ? 'not-allowed' : 'pointer',
-              opacity: !indexRunning ? 0.6 : 1
-            }}
-          >
-            ■ Stop
-          </button>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
-          <button
-            onClick={() => {
-              setTerminalVisible(!terminalVisible);
-              const t = getTerminal();
-              t?.show?.();
-            }}
-            data-tooltip="INDEX_LOGS_TERMINAL"
-            title="Show the sliding terminal with raw indexing logs"
-            style={{
-              background: 'var(--bg-elev2)',
-              color: 'var(--link)',
-              border: '1px solid var(--link)',
-              padding: '8px 12px',
-              borderRadius: '6px',
-              fontSize: '12px',
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
-          >
-            {terminalVisible ? 'Hide Logs' : 'See Logs'}
-          </button>
-        </div>
-
-        <div style={{ marginTop: '16px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: 'var(--accent)' }}>Progress</label>
-          <div className="progress" style={{ background: 'var(--card-bg)', border: '1px solid var(--line)', borderRadius: '6px', height: '24px', overflow: 'hidden' }}>
-            <div
-              id="index-bar"
-              style={{
-                height: '100%',
-                width: `${indexProgress}%`,
-                background: 'linear-gradient(90deg, var(--accent), var(--link))',
-                transition: 'width 0.3s ease',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <span id="index-bar-text" style={{ fontSize: '11px', color: 'var(--accent-contrast)', fontWeight: '600', mixBlendMode: 'difference' }}>
-                {indexProgress > 0 ? `${indexProgress}%` : ''}
-              </span>
-            </div>
-          </div>
-          <div
-            id="index-status"
-            className="result-display"
-            style={{
-              minHeight: '100px',
-              maxHeight: '300px',
-              overflowY: 'auto',
-              marginTop: '12px',
-              background: 'var(--card-bg)',
-              color: 'var(--fg-muted)',
-              padding: '12px',
-              border: '1px solid var(--line)',
-              borderRadius: '6px',
-              fontFamily: "'SF Mono', monospace",
-              fontSize: '11px',
-              lineHeight: '1.6',
-              whiteSpace: 'pre-wrap'
-            }}
-          >
-            {indexStatus || 'Ready to index...'}
-          </div>
-        </div>
-
-        <div
+      {/* Repository Selection */}
+      <div style={{ marginBottom: '24px' }}>
+        <label style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          marginBottom: '8px',
+          fontSize: '13px',
+          fontWeight: 600,
+          color: 'var(--fg)'
+        }}>
+          Target Repository
+          <TooltipIcon name="REPO" />
+        </label>
+        <select
+          value={activeRepo}
+          onChange={(e) => useRepoStore.getState().setActiveRepo(e.target.value)}
           style={{
-            maxHeight: terminalVisible ? '400px' : '0',
-            opacity: terminalVisible ? 1 : 0,
-            overflow: 'hidden',
-            transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease',
-            marginTop: terminalVisible ? '12px' : '0'
+            width: '100%',
+            maxWidth: '400px',
+            padding: '10px 12px',
+            background: 'var(--input-bg)',
+            border: '1px solid var(--line)',
+            borderRadius: '6px',
+            color: 'var(--fg)',
+            fontSize: '13px'
           }}
         >
-          <LiveTerminal
-            ref={terminalRef}
-            id="indexing_terminal"
-            title="Indexing Logs"
-            initialContent={['Ready for indexing logs...']}
-          />
-        </div>
+          {repos.length === 0 ? (
+            <option value="">No repositories</option>
+          ) : (
+            repos.map(repo => (
+              <option key={repo.name} value={repo.name}>{repo.name}</option>
+            ))
+          )}
+        </select>
+      </div>
+
+      {/* Component Cards Grid */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(4, 1fr)',
+        gap: '16px',
+        marginBottom: '24px'
+      }}>
+        {COMPONENT_CARDS.map(comp => (
+          <button
+            key={comp.id}
+            onClick={() => setSelectedComponent(comp.id)}
+            style={{
+              padding: '20px 16px',
+              background: selectedComponent === comp.id
+                ? 'linear-gradient(135deg, rgba(var(--accent-rgb), 0.15), rgba(var(--accent-rgb), 0.05))'
+                : 'var(--card-bg)',
+              border: selectedComponent === comp.id
+                ? '2px solid var(--accent)'
+                : '1px solid var(--line)',
+              borderRadius: '12px',
+              cursor: 'pointer',
+              textAlign: 'left',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              position: 'relative',
+              overflow: 'hidden'
+            }}
+          >
+            {selectedComponent === comp.id && (
+              <div style={{
+                position: 'absolute',
+                top: '8px',
+                right: '8px',
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: 'var(--accent)',
+                boxShadow: '0 0 8px var(--accent)'
+              }} />
+            )}
+            <div style={{ fontSize: '28px', marginBottom: '10px' }}>{comp.icon}</div>
+            <div style={{
+              fontSize: '14px',
+              fontWeight: 600,
+              color: selectedComponent === comp.id ? 'var(--accent)' : 'var(--fg)',
+              marginBottom: '6px'
+            }}>
+              {comp.label}
+            </div>
+            <div style={{
+              fontSize: '12px',
+              color: 'var(--fg-muted)',
+              lineHeight: 1.4
+            }}>
+              {comp.description}
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {/* Dynamic Config Panel */}
+      <div style={{
+        background: 'var(--card-bg)',
+        border: '1px solid var(--line)',
+        borderRadius: '12px',
+        padding: '24px',
+        marginBottom: '24px'
+      }}>
+        {/* EMBEDDING PANEL */}
+        {selectedComponent === 'embedding' && (
+          <div>
+            <h4 style={{
+              fontSize: '14px',
+              fontWeight: 600,
+              color: 'var(--fg)',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              🔢 Embedding Configuration
+              <TooltipIcon name="EMBEDDING_TYPE" />
+            </h4>
+
+            {/* Provider Sub-Cards */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: '12px',
+              marginBottom: '20px'
+            }}>
+              {EMBEDDING_PROVIDERS.map(provider => (
+                <button
+                  key={provider.id}
+                  onClick={() => handleProviderChange(provider.id)}
+                  style={{
+                    padding: '12px',
+                    background: embeddingType === provider.id
+                      ? 'rgba(var(--accent-rgb), 0.1)'
+                      : 'var(--bg-elev2)',
+                    border: embeddingType === provider.id
+                      ? '2px solid var(--accent)'
+                      : '1px solid var(--line)',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div style={{ fontSize: '20px', marginBottom: '4px' }}>{provider.icon}</div>
+                  <div style={{
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: embeddingType === provider.id ? 'var(--accent)' : 'var(--fg)'
+                  }}>
+                    {provider.label}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Model Selection */}
+            <div className="input-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              <div className="input-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                  Model
+                  <TooltipIcon name="EMBEDDING_MODEL" />
+                </label>
+                {embeddingType === 'openai' && (
+                  <select
+                    value={embeddingModel}
+                    onChange={(e) => set('EMBEDDING_MODEL', e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      background: 'var(--input-bg)',
+                      border: '1px solid var(--line)',
+                      borderRadius: '6px',
+                      color: 'var(--fg)',
+                      fontSize: '13px'
+                    }}
+                  >
+                    {embeddingModels.length > 0 ? (
+                      embeddingModels.map(m => <option key={m} value={m}>{m}</option>)
+                    ) : (
+                      <>
+                        <option value="text-embedding-3-large">text-embedding-3-large</option>
+                        <option value="text-embedding-3-small">text-embedding-3-small</option>
+                        <option value="text-embedding-ada-002">text-embedding-ada-002</option>
+                      </>
+                    )}
+                  </select>
+                )}
+                {embeddingType === 'voyage' && (
+                  <select
+                    value={voyageModel}
+                    onChange={(e) => set('VOYAGE_MODEL', e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      background: 'var(--input-bg)',
+                      border: '1px solid var(--line)',
+                      borderRadius: '6px',
+                      color: 'var(--fg)',
+                      fontSize: '13px'
+                    }}
+                  >
+                    <option value="voyage-code-3">voyage-code-3</option>
+                    <option value="voyage-code-2">voyage-code-2</option>
+                    <option value="voyage-large-2">voyage-large-2</option>
+                  </select>
+                )}
+                {(embeddingType === 'local' || embeddingType === 'mxbai') && (
+                  <input
+                    type="text"
+                    value={embeddingModelLocal}
+                    onChange={(e) => set('EMBEDDING_MODEL_LOCAL', e.target.value)}
+                    placeholder="e.g., all-MiniLM-L6-v2"
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      background: 'var(--input-bg)',
+                      border: '1px solid var(--line)',
+                      borderRadius: '6px',
+                      color: 'var(--fg)',
+                      fontSize: '13px',
+                      fontFamily: 'var(--font-mono)'
+                    }}
+                  />
+                )}
+              </div>
+
+              {embeddingType === 'openai' && (
+                <div className="input-group">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                    Dimensions
+                    <TooltipIcon name="EMBEDDING_DIM" />
+                  </label>
+                  <select
+                    value={embeddingDim}
+                    onChange={(e) => set('EMBEDDING_DIM', parseInt(e.target.value))}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      background: 'var(--input-bg)',
+                      border: '1px solid var(--line)',
+                      borderRadius: '6px',
+                      color: 'var(--fg)',
+                      fontSize: '13px'
+                    }}
+                  >
+                    <option value={3072}>3072 (full quality)</option>
+                    <option value={1536}>1536 (balanced)</option>
+                    <option value={512}>512 (compact)</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* API Key Status */}
+            {apiKeyEnvName && (
+              <div style={{
+                marginTop: '16px',
+                padding: '12px 16px',
+                background: apiKeyConfigured === true
+                  ? 'rgba(var(--ok-rgb), 0.1)'
+                  : 'rgba(var(--warn-rgb), 0.1)',
+                borderRadius: '8px',
+                border: `1px solid ${apiKeyConfigured === true ? 'var(--ok)' : 'var(--warn)'}`,
+                fontSize: '12px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: apiKeyConfigured === true ? 'var(--ok)' : 'var(--warn)'
+                }}>
+                  <span style={{ fontSize: '14px' }}>{apiKeyConfigured === true ? '✓' : '⚠'}</span>
+                  <span style={{ fontWeight: 600 }}>
+                    {apiKeyEnvName}: {apiKeyConfigured === true ? 'Configured' : 'Not configured'}
+                  </span>
+                </div>
+                {apiKeyConfigured !== true && (
+                  <div style={{ marginTop: '4px', color: 'var(--fg-muted)' }}>
+                    Add <code style={{
+                      background: 'var(--bg-elev2)',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: '11px'
+                    }}>{apiKeyEnvName}=your_key</code> to your <code style={{
+                      background: 'var(--bg-elev2)',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: '11px'
+                    }}>.env</code> file.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* CHUNKING PANEL */}
+        {selectedComponent === 'chunking' && (
+          <div>
+            <h4 style={{
+              fontSize: '14px',
+              fontWeight: 600,
+              color: 'var(--fg)',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              🧩 Chunking Configuration
+              <TooltipIcon name="CHUNKING_STRATEGY" />
+            </h4>
+
+            {/* Strategy Cards */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '12px',
+              marginBottom: '20px'
+            }}>
+              {CHUNKING_STRATEGIES.map(strat => (
+                <button
+                  key={strat.id}
+                  onClick={() => set('CHUNKING_STRATEGY', strat.id)}
+                  style={{
+                    padding: '16px',
+                    background: chunkingStrategy === strat.id
+                      ? 'rgba(var(--accent-rgb), 0.1)'
+                      : 'var(--bg-elev2)',
+                    border: chunkingStrategy === strat.id
+                      ? '2px solid var(--accent)'
+                      : '1px solid var(--line)',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div style={{
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: chunkingStrategy === strat.id ? 'var(--accent)' : 'var(--fg)',
+                    marginBottom: '4px'
+                  }}>
+                    {strat.label}
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--fg-muted)' }}>
+                    {strat.description}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Chunk Parameters */}
+            <div className="input-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+              <div className="input-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                  Chunk Size
+                  <TooltipIcon name="CHUNK_SIZE" />
+                </label>
+                <input
+                  type="number"
+                  value={chunkSize}
+                  onChange={(e) => set('CHUNK_SIZE', parseInt(e.target.value) || 1000)}
+                  min={100}
+                  max={10000}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--line)',
+                    borderRadius: '6px',
+                    color: 'var(--fg)',
+                    fontSize: '13px'
+                  }}
+                />
+              </div>
+              <div className="input-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                  Chunk Overlap
+                  <TooltipIcon name="CHUNK_OVERLAP" />
+                </label>
+                <input
+                  type="number"
+                  value={chunkOverlap}
+                  onChange={(e) => set('CHUNK_OVERLAP', parseInt(e.target.value) || 200)}
+                  min={0}
+                  max={1000}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--line)',
+                    borderRadius: '6px',
+                    color: 'var(--fg)',
+                    fontSize: '13px'
+                  }}
+                />
+              </div>
+              <div className="input-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                  AST Overlap Lines
+                  <TooltipIcon name="AST_OVERLAP_LINES" />
+                </label>
+                <input
+                  type="number"
+                  value={astOverlapLines}
+                  onChange={(e) => set('AST_OVERLAP_LINES', parseInt(e.target.value) || 20)}
+                  min={0}
+                  max={100}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--line)',
+                    borderRadius: '6px',
+                    color: 'var(--fg)',
+                    fontSize: '13px'
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Preserve Imports Toggle */}
+            <div style={{ marginTop: '16px' }}>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                cursor: 'pointer'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={preserveImports === 1}
+                  onChange={(e) => set('PRESERVE_IMPORTS', e.target.checked ? 1 : 0)}
+                />
+                <span style={{ fontSize: '13px', color: 'var(--fg)' }}>Preserve Imports</span>
+                <TooltipIcon name="PRESERVE_IMPORTS" />
+              </label>
+              <p style={{ fontSize: '11px', color: 'var(--fg-muted)', marginTop: '4px', marginLeft: '24px' }}>
+                Keep import statements at the top of each chunk for better code understanding
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* BM25 PANEL */}
+        {selectedComponent === 'bm25' && (
+          <div>
+            <h4 style={{
+              fontSize: '14px',
+              fontWeight: 600,
+              color: 'var(--fg)',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              📝 BM25 / Tokenization
+              <TooltipIcon name="BM25_TOKENIZER" />
+            </h4>
+
+            <div className="input-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+              <div className="input-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                  Tokenizer
+                  <TooltipIcon name="BM25_TOKENIZER" />
+                </label>
+                <select
+                  value={bm25Tokenizer}
+                  onChange={(e) => set('BM25_TOKENIZER', e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--line)',
+                    borderRadius: '6px',
+                    color: 'var(--fg)',
+                    fontSize: '13px'
+                  }}
+                >
+                  <option value="stemmer">Stemmer</option>
+                  <option value="word">Word</option>
+                  <option value="whitespace">Whitespace</option>
+                </select>
+              </div>
+              <div className="input-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                  Stemmer Language
+                  <TooltipIcon name="BM25_STEMMER_LANG" />
+                </label>
+                <input
+                  type="text"
+                  value={bm25StemmerLang}
+                  onChange={(e) => set('BM25_STEMMER_LANG', e.target.value)}
+                  placeholder="english"
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--line)',
+                    borderRadius: '6px',
+                    color: 'var(--fg)',
+                    fontSize: '13px'
+                  }}
+                />
+              </div>
+              <div className="input-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                  Stopwords Language
+                  <TooltipIcon name="BM25_STOPWORDS_LANG" />
+                </label>
+                <input
+                  type="text"
+                  value={bm25StopwordsLang}
+                  onChange={(e) => set('BM25_STOPWORDS_LANG', e.target.value)}
+                  placeholder="english"
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--line)',
+                    borderRadius: '6px',
+                    color: 'var(--fg)',
+                    fontSize: '13px'
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{
+              marginTop: '16px',
+              padding: '12px 16px',
+              background: 'var(--bg-elev2)',
+              borderRadius: '8px',
+              fontSize: '12px',
+              color: 'var(--fg-muted)'
+            }}>
+              <strong>BM25</strong> (Best Matching 25) provides sparse keyword search alongside dense vector search.
+              The tokenizer determines how text is split into searchable terms.
+            </div>
+          </div>
+        )}
+
+        {/* ENRICHMENT PANEL */}
+        {selectedComponent === 'enrichment' && (
+          <div>
+            <h4 style={{
+              fontSize: '14px',
+              fontWeight: 600,
+              color: 'var(--fg)',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              ✨ Enrichment & Processing
+              <TooltipIcon name="ENRICH_CODE_CHUNKS" />
+            </h4>
+
+            <div style={{ display: 'grid', gap: '16px' }}>
+              <div style={{
+                padding: '16px',
+                background: 'var(--bg-elev2)',
+                borderRadius: '8px',
+                border: enrichChunks === 1 ? '2px solid var(--accent)' : '1px solid var(--line)'
+              }}>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  cursor: 'pointer'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={enrichChunks === 1}
+                    onChange={(e) => set('ENRICH_CODE_CHUNKS', e.target.checked ? 1 : 0)}
+                    style={{ width: '18px', height: '18px' }}
+                  />
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--fg)' }}>
+                      Enrich Code Chunks
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'var(--fg-muted)', marginTop: '2px' }}>
+                      Add semantic descriptions to code chunks using LLM analysis
+                    </div>
+                  </div>
+                  <TooltipIcon name="ENRICH_CODE_CHUNKS" />
+                </label>
+              </div>
+
+              <div style={{
+                padding: '16px',
+                background: 'var(--bg-elev2)',
+                borderRadius: '8px',
+                border: skipDense === 1 ? '2px solid var(--warn)' : '1px solid var(--line)'
+              }}>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  cursor: 'pointer'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={skipDense === 1}
+                    onChange={(e) => set('SKIP_DENSE', e.target.checked ? 1 : 0)}
+                    style={{ width: '18px', height: '18px' }}
+                  />
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--fg)' }}>
+                      Skip Dense Vectors
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'var(--fg-muted)', marginTop: '2px' }}>
+                      Only generate BM25 index (faster, no embedding API calls)
+                    </div>
+                  </div>
+                  <TooltipIcon name="SKIP_DENSE" />
+                </label>
+                {skipDense === 1 && (
+                  <div style={{
+                    marginTop: '8px',
+                    padding: '8px 12px',
+                    background: 'rgba(var(--warn-rgb), 0.1)',
+                    borderRadius: '4px',
+                    color: 'var(--warn)',
+                    fontSize: '11px'
+                  }}>
+                    ⚠️ Semantic search will be unavailable without dense vectors
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Advanced Settings */}
-      <div className="settings-section" style={{ borderLeft: '3px solid var(--link)' }}>
-        <h3>
-          <span style={{ color: 'var(--link)' }}>●</span> Advanced Settings
-        </h3>
-
-        <div className="input-row">
-          <div className="input-group">
-            <label>Output Directory Base</label>
-            <input
-              type="text"
-              name="OUT_DIR_BASE"
-              placeholder="./out"
-              value={outDirBase}
-              disabled
-              style={{ background: 'var(--bg-elev1)', cursor: 'not-allowed' }}
-            />
-            <p className="small" style={{ color: 'var(--fg-muted)' }}>Where to store index files (chunks, BM25, etc.)</p>
-            <p className="small" style={{ color: 'var(--accent)', fontStyle: 'italic' }}>
-              <strong>Note:</strong> This setting is managed in the <strong>Infrastructure</strong> tab. Value shown here is read-only.
-            </p>
+      <details style={{ marginBottom: '24px' }}>
+        <summary style={{
+          cursor: 'pointer',
+          fontSize: '14px',
+          fontWeight: 500,
+          color: 'var(--fg-muted)',
+          padding: '12px 0'
+        }}>
+          Advanced Settings
+        </summary>
+        <div style={{
+          background: 'var(--card-bg)',
+          border: '1px solid var(--line)',
+          borderRadius: '8px',
+          padding: '20px',
+          marginTop: '8px'
+        }}>
+          <div className="input-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '16px' }}>
+            <div className="input-group">
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                Batch Size
+                <TooltipIcon name="EMBEDDING_BATCH_SIZE" />
+              </label>
+              <input
+                type="number"
+                value={embeddingBatchSize}
+                onChange={(e) => set('EMBEDDING_BATCH_SIZE', parseInt(e.target.value) || 64)}
+                min={1}
+                max={256}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  background: 'var(--input-bg)',
+                  border: '1px solid var(--line)',
+                  borderRadius: '6px',
+                  color: 'var(--fg)',
+                  fontSize: '13px'
+                }}
+              />
+            </div>
+            <div className="input-group">
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                Max Tokens
+                <TooltipIcon name="EMBEDDING_MAX_TOKENS" />
+              </label>
+              <input
+                type="number"
+                value={embeddingMaxTokens}
+                onChange={(e) => set('EMBEDDING_MAX_TOKENS', parseInt(e.target.value) || 8000)}
+                min={100}
+                max={16000}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  background: 'var(--input-bg)',
+                  border: '1px solid var(--line)',
+                  borderRadius: '6px',
+                  color: 'var(--fg)',
+                  fontSize: '13px'
+                }}
+              />
+            </div>
+            <div className="input-group">
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                Timeout (s)
+                <TooltipIcon name="EMBEDDING_TIMEOUT" />
+              </label>
+              <input
+                type="number"
+                value={embeddingTimeout}
+                onChange={(e) => set('EMBEDDING_TIMEOUT', parseInt(e.target.value) || 30)}
+                min={5}
+                max={120}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  background: 'var(--input-bg)',
+                  border: '1px solid var(--line)',
+                  borderRadius: '6px',
+                  color: 'var(--fg)',
+                  fontSize: '13px'
+                }}
+              />
+            </div>
           </div>
-          <div className="input-group">
-            <label>
-              Collection Name
-              <span className="help-icon" data-tooltip="COLLECTION_NAME">?</span>
-            </label>
-            <input
-              type="text"
-              name="COLLECTION_NAME"
-              placeholder="code_chunks_{'{repo}'}"
-              value={collectionName}
-              onChange={(e) => setCollectionName(e.target.value)}
-            />
-            <p className="small" style={{ color: 'var(--fg-muted)' }}>Qdrant collection name (leave empty for auto)</p>
-          </div>
-        </div>
-
-        {/* Embedding Model Picker (NEW - REQUIRED) */}
-        <h4 style={{ marginTop: '24px', marginBottom: '12px', fontSize: '16px', fontWeight: '600', color: 'var(--accent)' }}>Embedding Models</h4>
-        <div className="input-row">
-          <div className="input-group">
-            <label>
-              Embedding Model
-              <span className="help-icon" data-tooltip="EMBEDDING_MODEL">?</span>
-            </label>
-            <input
-              type="text"
-              id="EMBEDDING_MODEL"
-              name="EMBEDDING_MODEL"
-              value={embeddingModel}
-              onChange={(e) => setEmbeddingModel(e.target.value)}
-            />
-          </div>
-          <div className="input-group">
-            <label>
-              Embedding Dimensions
-              <span className="help-icon" data-tooltip="EMBEDDING_DIM">?</span>
-            </label>
-            <input
-              type="number"
-              id="EMBEDDING_DIM"
-              name="EMBEDDING_DIM"
-              value={embeddingDim}
-              onChange={(e) => setEmbeddingDim(parseInt(e.target.value, 10))}
-              min={512}
-              max={3072}
-              step={256}
-            />
-          </div>
-        </div>
-
-        <div className="input-row">
-          <div className="input-group">
-            <label>
-              Voyage Model
-              <span className="help-icon" data-tooltip="VOYAGE_MODEL">?</span>
-            </label>
-            <input
-              type="text"
-              id="VOYAGE_MODEL"
-              name="VOYAGE_MODEL"
-              value={voyageModel}
-              onChange={(e) => setVoyageModel(e.target.value)}
-            />
-          </div>
-          <div className="input-group">
-            <label>
-              Local Embedding Model
-              <span className="help-icon" data-tooltip="EMBEDDING_MODEL_LOCAL">?</span>
-            </label>
-            <input
-              type="text"
-              id="EMBEDDING_MODEL_LOCAL"
-              name="EMBEDDING_MODEL_LOCAL"
-              value={embeddingModelLocal}
-              onChange={(e) => setEmbeddingModelLocal(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="input-row">
-          <div className="input-group">
-            <label>
-              Embedding Batch Size
-              <span className="help-icon" data-tooltip="EMBEDDING_BATCH_SIZE">?</span>
-            </label>
-            <input
-              type="number"
-              id="EMBEDDING_BATCH_SIZE"
-              name="EMBEDDING_BATCH_SIZE"
-              value={embeddingBatchSize}
-              onChange={(e) => setEmbeddingBatchSize(parseInt(e.target.value, 10))}
-              min={1}
-              max={256}
-              step={8}
-            />
-          </div>
-          <div className="input-group">
-            <label>
-              Embedding Max Tokens
-              <span className="help-icon" data-tooltip="EMBEDDING_MAX_TOKENS">?</span>
-            </label>
-            <input
-              type="number"
-              id="EMBEDDING_MAX_TOKENS"
-              name="EMBEDDING_MAX_TOKENS"
-              value={embeddingMaxTokens}
-              onChange={(e) => setEmbeddingMaxTokens(parseInt(e.target.value, 10))}
-              min={512}
-              max={8192}
-              step={512}
-            />
-          </div>
-        </div>
-
-        <div className="input-row">
-          <div className="input-group">
-            <label>
-              Embedding Cache Enabled
-              <span className="help-icon" data-tooltip="EMBEDDING_CACHE_ENABLED">?</span>
-            </label>
-            <select
-              id="EMBEDDING_CACHE_ENABLED"
-              name="EMBEDDING_CACHE_ENABLED"
-              value={embeddingCacheEnabled}
-              onChange={(e) => setEmbeddingCacheEnabled(e.target.value)}
-            >
-              <option value="1">Enabled</option>
-              <option value="0">Disabled</option>
-            </select>
-          </div>
-          <div className="input-group">
-            <label>
-              Embedding Timeout (seconds)
-              <span className="help-icon" data-tooltip="EMBEDDING_TIMEOUT">?</span>
-            </label>
-            <input
-              type="number"
-              id="EMBEDDING_TIMEOUT"
-              name="EMBEDDING_TIMEOUT"
-              value={embeddingTimeout}
-              onChange={(e) => setEmbeddingTimeout(parseInt(e.target.value, 10))}
-              min={5}
-              max={120}
-              step={5}
-            />
+          <div className="input-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+            <div className="input-group">
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                Max Retries
+                <TooltipIcon name="EMBEDDING_RETRY_MAX" />
+              </label>
+              <input
+                type="number"
+                value={embeddingRetryMax}
+                onChange={(e) => set('EMBEDDING_RETRY_MAX', parseInt(e.target.value) || 3)}
+                min={0}
+                max={10}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  background: 'var(--input-bg)',
+                  border: '1px solid var(--line)',
+                  borderRadius: '6px',
+                  color: 'var(--fg)',
+                  fontSize: '13px'
+                }}
+              />
+            </div>
+            <div className="input-group">
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                Max Chunk Size
+                <TooltipIcon name="MAX_CHUNK_SIZE" />
+              </label>
+              <input
+                type="number"
+                value={maxChunkSize}
+                onChange={(e) => set('MAX_CHUNK_SIZE', parseInt(e.target.value) || 2000)}
+                min={500}
+                max={20000}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  background: 'var(--input-bg)',
+                  border: '1px solid var(--line)',
+                  borderRadius: '6px',
+                  color: 'var(--fg)',
+                  fontSize: '13px'
+                }}
+              />
+            </div>
+            <div className="input-group">
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                cursor: 'pointer',
+                marginTop: '28px'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={embeddingCacheEnabled === 1}
+                  onChange={(e) => set('EMBEDDING_CACHE_ENABLED', e.target.checked ? 1 : 0)}
+                />
+                <span style={{ fontSize: '13px' }}>Enable Cache</span>
+                <TooltipIcon name="EMBEDDING_CACHE_ENABLED" />
+              </label>
+            </div>
           </div>
         </div>
+      </details>
 
-        <div className="input-row">
-          <div className="input-group">
-            <label>
-              Embedding Retry Max
-              <span className="help-icon" data-tooltip="EMBEDDING_RETRY_MAX">?</span>
-            </label>
-            <input
-              type="number"
-              id="EMBEDDING_RETRY_MAX"
-              name="EMBEDDING_RETRY_MAX"
-              value={embeddingRetryMax}
-              onChange={(e) => setEmbeddingRetryMax(parseInt(e.target.value, 10))}
-              min={1}
-              max={5}
-              step={1}
-            />
-          </div>
-        </div>
-
-        {/* Chunking Settings */}
-        <h4 style={{ marginTop: '24px', marginBottom: '12px', fontSize: '16px', fontWeight: '600', color: 'var(--accent)' }}>Chunking Configuration</h4>
-        <div className="input-row">
-          <div className="input-group">
-            <label>
-              Chunk Size (tokens)
-              <span className="help-icon" data-tooltip="CHUNK_SIZE">?</span>
-            </label>
-            <input
-              type="number"
-              name="CHUNK_SIZE"
-              value={chunkSize}
-              onChange={(e) => setChunkSize(parseInt(e.target.value, 10))}
-              min={100}
-              max={4000}
-              step={100}
-            />
-          </div>
-          <div className="input-group">
-            <label>
-              Chunk Overlap (tokens)
-              <span className="help-icon" data-tooltip="CHUNK_OVERLAP">?</span>
-            </label>
-            <input
-              type="number"
-              name="CHUNK_OVERLAP"
-              value={chunkOverlap}
-              onChange={(e) => setChunkOverlap(parseInt(e.target.value, 10))}
-              min={0}
-              max={1000}
-              step={50}
-            />
-          </div>
-        </div>
-
-        <div className="input-row">
-          <div className="input-group">
-            <label>
-              AST Overlap Lines
-              <span className="help-icon" data-tooltip="AST_OVERLAP_LINES">?</span>
-            </label>
-            <input
-              type="number"
-              id="AST_OVERLAP_LINES"
-              name="AST_OVERLAP_LINES"
-              value={astOverlapLines}
-              onChange={(e) => setAstOverlapLines(parseInt(e.target.value, 10))}
-              min={0}
-              max={100}
-              step={5}
-            />
-          </div>
-          <div className="input-group">
-            <label>
-              Max Chunk Size (bytes)
-              <span className="help-icon" data-tooltip="MAX_CHUNK_SIZE">?</span>
-            </label>
-            <input
-              type="number"
-              id="MAX_CHUNK_SIZE"
-              name="MAX_CHUNK_SIZE"
-              value={maxChunkSize}
-              onChange={(e) => setMaxChunkSize(parseInt(e.target.value, 10))}
-              min={10000}
-              max={10000000}
-              step={100000}
-            />
-          </div>
-        </div>
-
-        <div className="input-row">
-          <div className="input-group">
-            <label>
-              Min Chunk Chars
-              <span className="help-icon" data-tooltip="MIN_CHUNK_CHARS">?</span>
-            </label>
-            <input
-              type="number"
-              id="MIN_CHUNK_CHARS"
-              name="MIN_CHUNK_CHARS"
-              value={minChunkChars}
-              onChange={(e) => setMinChunkChars(parseInt(e.target.value, 10))}
-              min={10}
-              max={500}
-              step={10}
-            />
-          </div>
-          <div className="input-group">
-            <label>
-              Greedy Fallback Target
-              <span className="help-icon" data-tooltip="GREEDY_FALLBACK_TARGET">?</span>
-            </label>
-            <input
-              type="number"
-              id="GREEDY_FALLBACK_TARGET"
-              name="GREEDY_FALLBACK_TARGET"
-              value={greedyFallbackTarget}
-              onChange={(e) => setGreedyFallbackTarget(parseInt(e.target.value, 10))}
-              min={200}
-              max={2000}
-              step={100}
-            />
-          </div>
-        </div>
-
-        <div className="input-row">
-          <div className="input-group">
-            <label>
-              Chunking Strategy
-              <span className="help-icon" data-tooltip="CHUNKING_STRATEGY">?</span>
-            </label>
-            <select
-              id="CHUNKING_STRATEGY"
-              name="CHUNKING_STRATEGY"
-              value={chunkingStrategy}
-              onChange={(e) => setChunkingStrategy(e.target.value)}
-            >
-              <option value="ast">AST-based</option>
-              <option value="greedy">Greedy</option>
-              <option value="hybrid">Hybrid</option>
-            </select>
-          </div>
-          <div className="input-group">
-            <label>
-              Preserve Imports
-              <span className="help-icon" data-tooltip="PRESERVE_IMPORTS">?</span>
-            </label>
-            <select
-              id="PRESERVE_IMPORTS"
-              name="PRESERVE_IMPORTS"
-              value={preserveImports}
-              onChange={(e) => setPreserveImports(e.target.value)}
-            >
-              <option value="1">Yes</option>
-              <option value="0">No</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Indexing Parameters */}
-        <h4 style={{ marginTop: '24px', marginBottom: '12px', fontSize: '16px', fontWeight: '600', color: 'var(--accent)' }}>Indexing Parameters</h4>
-        <div className="input-row">
-          <div className="input-group">
-            <label>
-              Indexing Batch Size
-              <span className="help-icon" data-tooltip="INDEXING_BATCH_SIZE">?</span>
-            </label>
-            <input
-              type="number"
-              id="INDEXING_BATCH_SIZE"
-              name="INDEXING_BATCH_SIZE"
-              value={indexingBatchSize}
-              onChange={(e) => setIndexingBatchSize(parseInt(e.target.value, 10))}
-              min={10}
-              max={1000}
-              step={10}
-            />
-          </div>
-          <div className="input-group">
-            <label>
-              Indexing Workers
-              <span className="help-icon" data-tooltip="INDEXING_WORKERS">?</span>
-            </label>
-            <input
-              type="number"
-              id="INDEXING_WORKERS"
-              name="INDEXING_WORKERS"
-              value={indexingWorkers}
-              onChange={(e) => setIndexingWorkers(parseInt(e.target.value, 10))}
-              min={1}
-              max={16}
-              step={1}
-            />
-          </div>
-        </div>
-
-        <div className="input-row">
-          <div className="input-group">
-            <label>
-              BM25 Tokenizer
-              <span className="help-icon" data-tooltip="BM25_TOKENIZER">?</span>
-            </label>
-            <select
-              id="BM25_TOKENIZER"
-              name="BM25_TOKENIZER"
-              value={bm25Tokenizer}
-              onChange={(e) => setBm25Tokenizer(e.target.value)}
-            >
-              <option value="stemmer">Stemmer</option>
-              <option value="lowercase">Lowercase</option>
-              <option value="whitespace">Whitespace</option>
-            </select>
-          </div>
-          <div className="input-group">
-            <label>
-              BM25 Stemmer Language
-              <span className="help-icon" data-tooltip="BM25_STEMMER_LANG">?</span>
-            </label>
-            <input
-              type="text"
-              id="BM25_STEMMER_LANG"
-              name="BM25_STEMMER_LANG"
-              value={bm25StemmerLang}
-              onChange={(e) => setBm25StemmerLang(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="input-row">
-          <div className="input-group">
-            <label>
-              Index Excluded Extensions
-              <span className="help-icon" data-tooltip="INDEX_EXCLUDED_EXTS">?</span>
-            </label>
-            <input
-              type="text"
-              id="INDEX_EXCLUDED_EXTS"
-              name="INDEX_EXCLUDED_EXTS"
-              value={indexExcludedExts}
-              onChange={(e) => setIndexExcludedExts(e.target.value)}
-            />
-          </div>
-          <div className="input-group">
-            <label>
-              Max File Size (MB)
-              <span className="help-icon" data-tooltip="INDEX_MAX_FILE_SIZE_MB">?</span>
-            </label>
-            <input
-              type="number"
-              id="INDEX_MAX_FILE_SIZE_MB"
-              name="INDEX_MAX_FILE_SIZE_MB"
-              value={indexMaxFileSizeMb}
-              onChange={(e) => setIndexMaxFileSizeMb(parseInt(e.target.value, 10))}
-              min={1}
-              max={100}
-              step={1}
-            />
-          </div>
-        </div>
-
+      {/* Index Stats Panel */}
+      <div style={{
+        background: 'var(--card-bg)',
+        border: '1px solid var(--line)',
+        borderRadius: '8px',
+        marginBottom: '24px'
+      }}>
         <button
-          className="small-button"
-          id="btn-save-index-settings"
-          onClick={handleSaveSettings}
-          style={{ background: 'var(--link)', color: 'var(--accent-contrast)', fontWeight: '600', marginTop: '16px' }}
+          onClick={() => setStatsExpanded(!statsExpanded)}
+          style={{
+            width: '100%',
+            padding: '16px',
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}
         >
-          Save Settings
-        </button>
-      </div>
-
-      {/* Index Profiles */}
-      <div className="settings-section" style={{ borderLeft: '3px solid var(--err)' }}>
-        <h3>
-          <span style={{ color: 'var(--err)' }}>●</span> Index Profiles
-          <span className="help-icon" data-tooltip="INDEX_PROFILES">?</span>
-        </h3>
-
-        <div className="input-row">
-          <div className="input-group" style={{ flex: 2 }}>
-            <label>Active Profile</label>
-            <select
-              id="index-profile-select"
-              value={activeProfile}
-              onChange={(e) => setActiveProfile(e.target.value)}
-              style={{ background: 'var(--bg-elev2)', color: 'var(--fg)', border: '1px solid var(--line)', padding: '8px', borderRadius: '4px' }}
-            >
-              <option value="shared">Shared (BM25-only, fast)</option>
-              <option value="full">Full (BM25 + embeddings)</option>
-              <option value="dev">Development (small subset)</option>
-            </select>
-          </div>
-          <div className="input-group">
-            <label>&nbsp;</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '16px' }}>📊</span>
+            <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--fg)' }}>Index Stats</span>
             <button
-              className="small-button"
-              id="btn-apply-profile"
-              onClick={handleApplyProfile}
-              style={{ background: 'var(--err)', color: 'var(--fg)', fontWeight: '600', width: '100%' }}
+              onClick={(e) => { e.stopPropagation(); loadStats(); }}
+              style={{
+                padding: '4px 8px',
+                fontSize: '11px',
+                background: 'var(--bg-elev2)',
+                border: '1px solid var(--line)',
+                borderRadius: '4px',
+                color: 'var(--fg-muted)',
+                cursor: 'pointer'
+              }}
             >
-              Apply Profile
+              ↻ Refresh
             </button>
           </div>
+          <span style={{ fontSize: '12px', color: 'var(--fg-muted)' }}>
+            {statsExpanded ? '▼' : '▶'}
+          </span>
+        </button>
+
+        {statsExpanded && indexStats && (
+          <div style={{ padding: '0 16px 16px' }}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+              gap: '12px'
+            }}>
+              {[
+                { label: 'Total Storage', value: formatBytes(indexStats.total_storage || 0), icon: '💾' },
+                { label: 'Qdrant Vectors', value: formatBytes(indexStats.qdrant_size || 0), icon: '🔷' },
+                { label: 'BM25 Index', value: formatBytes(indexStats.bm25_index_size || 0), icon: '📑' },
+                { label: 'Chunks JSON', value: formatBytes(indexStats.chunks_json_size || 0), icon: '📦' },
+                { label: 'Keywords', value: String(indexStats.keyword_count || 0), icon: '🔑' },
+                { label: 'Repos Indexed', value: String(indexStats.profile_count || 0), icon: '📁' },
+              ].map(item => (
+                <div key={item.label} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '10px',
+                  background: 'var(--bg)',
+                  borderRadius: '8px',
+                  border: '1px solid var(--line)'
+                }}>
+                  <span style={{ fontSize: '20px' }}>{item.icon}</span>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--fg)' }}>{item.value}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--fg-muted)' }}>{item.label}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Action Panel */}
+      <div style={{
+        background: 'linear-gradient(135deg, var(--bg) 0%, var(--bg-elev1) 100%)',
+        border: '1px solid var(--line)',
+        borderRadius: '12px',
+        padding: '20px',
+        marginBottom: '24px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: isIndexing ? '16px' : 0 }}>
+          {isIndexing ? (
+            <>
+              <button
+                onClick={handleStopIndex}
+                style={{
+                  padding: '12px 24px',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  background: 'var(--error)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                }}
+              >
+                Stop Indexing
+              </button>
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginBottom: '6px',
+                  fontSize: '12px'
+                }}>
+                  <span style={{ color: 'var(--fg)' }}>{progress.status}</span>
+                  <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{progress.current}%</span>
+                </div>
+                <div style={{
+                  height: '6px',
+                  background: 'var(--line)',
+                  borderRadius: '3px',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    width: `${progress.current}%`,
+                    height: '100%',
+                    background: 'linear-gradient(90deg, var(--accent), var(--link))',
+                    borderRadius: '3px',
+                    transition: 'width 0.3s ease'
+                  }} />
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={handleStartIndex}
+                disabled={!canIndex}
+                style={{
+                  padding: '12px 32px',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  background: canIndex ? 'var(--accent)' : 'var(--bg-elev2)',
+                  color: canIndex ? '#000' : 'var(--fg-muted)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: canIndex ? 'pointer' : 'not-allowed',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <span>🚀</span>
+                Index Now
+              </button>
+              {terminalVisible && (
+                <button
+                  onClick={() => setTerminalVisible(false)}
+                  style={{
+                    padding: '10px 14px',
+                    background: 'var(--bg-elev2)',
+                    color: 'var(--fg-muted)',
+                    border: '1px solid var(--line)',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ✕ Hide Logs
+                </button>
+              )}
+            </>
+          )}
         </div>
 
-        <div id="profile-description" style={{ marginTop: '12px', padding: '12px', background: 'var(--bg-elev2)', border: '1px solid var(--line)', borderRadius: '6px', fontSize: '12px', color: 'var(--fg-muted)' }}>
-          {activeProfile === 'shared' && 'Fast BM25-only indexing without dense embeddings. No API calls required.'}
-          {activeProfile === 'full' && 'Full indexing with BM25 + dense embeddings. Best quality but requires API calls.'}
-          {activeProfile === 'dev' && 'Lightweight development profile for testing.'}
+        {/* Live Terminal - slides down */}
+        <div style={{
+          maxHeight: terminalVisible ? '400px' : '0',
+          opacity: terminalVisible ? 1 : 0,
+          overflow: 'hidden',
+          transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease',
+          marginTop: terminalVisible ? '16px' : '0'
+        }}>
+          <LiveTerminal
+            ref={terminalRef}
+            id="indexing_terminal"
+            title="Indexing Output"
+            initialContent={['Ready for indexing...']}
+          />
         </div>
       </div>
-    </>
+    </div>
   );
 }

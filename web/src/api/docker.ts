@@ -117,6 +117,15 @@ export const dockerApi = {
     const { data } = await apiClient.post<DevStackRestartResult>(api('/dev/stack/restart'));
     return data;
   },
+
+  /**
+   * Clear Python bytecode cache and restart the backend.
+   * Use this when code changes aren't being picked up by normal restarts.
+   */
+  async clearCacheAndRestart(): Promise<DevStackRestartResult> {
+    const { data } = await apiClient.post<DevStackRestartResult>(api('/dev/backend/clear-cache-restart'));
+    return data;
+  },
 };
 
 // Dev Stack Types

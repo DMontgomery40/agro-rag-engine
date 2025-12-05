@@ -1,7 +1,6 @@
 import { create } from 'zustand';
-import { dockerApi } from '@/api';
+import { dockerApi, type DevStackStatus } from '@/api/docker';
 import type { DockerStatus, DockerContainer } from '@web/types';
-import type { DevStackStatus } from '@/api/docker';
 
 interface DockerStore {
   status: DockerStatus | null;
@@ -15,6 +14,7 @@ interface DockerStore {
   restartingFrontend: boolean;
   restartingBackend: boolean;
   restartingStack: boolean;
+  clearingCache: boolean;
 
   // Actions
   fetchStatus: () => Promise<void>;
@@ -32,6 +32,7 @@ interface DockerStore {
   restartFrontend: () => Promise<void>;
   restartBackend: () => Promise<void>;
   restartStack: () => Promise<void>;
+  clearCacheAndRestart: () => Promise<void>;
 
   reset: () => void;
 }
@@ -48,6 +49,7 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
   restartingFrontend: false,
   restartingBackend: false,
   restartingStack: false,
+  clearingCache: false,
 
   fetchStatus: async () => {
     set({ loading: true, error: null });
@@ -222,6 +224,24 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
     }
   },
 
+  clearCacheAndRestart: async () => {
+    set({ clearingCache: true, error: null });
+    try {
+      const result = await dockerApi.clearCacheAndRestart();
+      if (!result.success) {
+        set({ clearingCache: false, error: result.error || 'Cache clear failed' });
+        return;
+      }
+      set({ clearingCache: false });
+      // Backend restarts - refresh after delay
+      setTimeout(() => get().fetchDevStackStatus(), 5000);
+    } catch (error) {
+      // Request may fail because backend restarted - expected behavior
+      set({ clearingCache: false });
+      setTimeout(() => get().fetchDevStackStatus(), 5000);
+    }
+  },
+
   reset: () => set({
     status: null,
     containers: [],
@@ -232,5 +252,6 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
     restartingFrontend: false,
     restartingBackend: false,
     restartingStack: false,
+    clearingCache: false,
   }),
 }));

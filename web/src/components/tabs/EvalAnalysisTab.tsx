@@ -75,8 +75,10 @@ export const EvalAnalysisTab: React.FC = () => {
 
   // Run full evaluation
   const runFullEvaluation = useCallback(async () => {
+    console.log('[EvalAnalysisTab] runFullEvaluation called, evalRunning:', evalRunning);
     if (evalRunning) return;
 
+    console.log('[EvalAnalysisTab] Starting eval run...');
     setEvalRunning(true);
     setEvalProgress({ current: 0, total: 100, status: 'Starting evaluation...' });
     setTerminalVisible(true);
@@ -86,6 +88,7 @@ export const EvalAnalysisTab: React.FC = () => {
     appendTerminalLine('🧪 Starting full RAG evaluation...');
     appendTerminalLine(`Settings: use_multi=${evalSettings.useMulti ? 'true' : 'false'}, final_k=${evalSettings.finalK}, sample_limit=${sampleLimit || 'all'}`);
 
+    console.log('[EvalAnalysisTab] Calling TerminalService.streamEvalRun with settings:', evalSettings);
     try {
       TerminalService.streamEvalRun('eval_analysis_terminal', {
         use_multi: evalSettings.useMulti,
@@ -108,22 +111,28 @@ export const EvalAnalysisTab: React.FC = () => {
           appendTerminalLine(`\x1b[31mError: ${message}\x1b[0m`);
         },
         onComplete: async () => {
+          console.log('[EvalAnalysisTab] onComplete fired - refreshing runs list');
           try {
             // Refresh runs list to get new eval
-            const response = await fetch('/api/eval/runs');
+            const response = await fetch('/api/eval/runs', { cache: 'no-store' });
             if (response.ok) {
               const data = await response.json();
+              console.log('[EvalAnalysisTab] Got runs response:', data);
               const sortedRuns = (data.runs || []).sort((a: EvalRunMeta, b: EvalRunMeta) =>
                 b.run_id.localeCompare(a.run_id)
               );
+              console.log('[EvalAnalysisTab] Setting runs:', sortedRuns.length, 'first:', sortedRuns[0]?.run_id);
               setRuns(sortedRuns);
               // Auto-select the newest run
               if (sortedRuns.length > 0) {
+                console.log('[EvalAnalysisTab] Auto-selecting newest run:', sortedRuns[0].run_id);
                 setSelectedRunId(sortedRuns[0].run_id);
                 if (sortedRuns.length > 1) {
                   setCompareRunId(sortedRuns[1].run_id);
                 }
               }
+            } else {
+              console.error('[EvalAnalysisTab] Failed to fetch runs:', response.status);
             }
             appendTerminalLine('\x1b[32m✓ Evaluation complete!\x1b[0m');
           } catch (err) {

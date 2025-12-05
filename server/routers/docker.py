@@ -833,11 +833,25 @@ def docker_container_logs(
 # ============================================================================
 
 def _check_port_listening(port: int) -> bool:
-    """Check if a process is listening on the given port."""
+    """Check if a process is listening on the given port.
+
+    Uses getaddrinfo to properly resolve 'localhost' which handles both IPv4
+    and IPv6 (Vite often listens on IPv6 ::1 only, not 127.0.0.1).
+    """
     import socket
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.settimeout(1)
-        return s.connect_ex(('127.0.0.1', port)) == 0
+    try:
+        for res in socket.getaddrinfo('localhost', port, socket.AF_UNSPEC, socket.SOCK_STREAM):
+            af, socktype, proto, canonname, sa = res
+            try:
+                with socket.socket(af, socktype, proto) as s:
+                    s.settimeout(1)
+                    if s.connect_ex(sa) == 0:
+                        return True
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return False
 
 
 @router.get("/api/dev/status", response_model=DevStackStatusResponse)
@@ -938,6 +952,84 @@ def dev_backend_restart() -> DevStackRestartResponse:
         return DevStackRestartResponse(
             success=True,
             message="Backend restart initiated - new process spawned",
+            port=backend_port,
+        )
+    except Exception as e:
+        return DevStackRestartResponse(success=False, error=str(e))
+
+
+@router.post("/api/dev/backend/clear-cache-restart", response_model=DevStackRestartResponse)
+def dev_backend_clear_cache_restart() -> DevStackRestartResponse:
+    """Clear Python bytecode cache and restart the backend.
+
+    This clears all __pycache__ directories and .pyc files to ensure
+    the new process loads fresh code. Use this when code changes aren't
+    being picked up by normal restarts.
+    """
+    cfg = _get_docker_config()
+    root = repo_root()
+    backend_port = cfg["dev_backend_port"]
+
+    try:
+        import sys
+        import time
+
+        # Clear Python bytecode cache
+        cache_dirs_cleared = 0
+        pyc_files_cleared = 0
+
+        for dirpath, dirnames, filenames in os.walk(str(root)):
+            # Skip .venv, node_modules, .git
+            if any(skip in dirpath for skip in ['.venv', 'node_modules', '.git', '.idea']):
+                continue
+
+            # Remove __pycache__ directories
+            if '__pycache__' in dirnames:
+                cache_path = os.path.join(dirpath, '__pycache__')
+                try:
+                    shutil.rmtree(cache_path)
+                    cache_dirs_cleared += 1
+                except Exception:
+                    pass
+
+            # Remove .pyc files
+            for filename in filenames:
+                if filename.endswith('.pyc'):
+                    try:
+                        os.remove(os.path.join(dirpath, filename))
+                        pyc_files_cleared += 1
+                    except Exception:
+                        pass
+
+        logger.info(f"Cleared {cache_dirs_cleared} __pycache__ dirs, {pyc_files_cleared} .pyc files")
+
+        # Start new backend process with --reload flag to auto-reload on changes
+        subprocess.Popen(
+            [
+                sys.executable, "-m", "uvicorn",
+                "server.asgi:create_app",
+                "--factory",
+                "--host", "127.0.0.1",
+                "--port", str(backend_port),
+                "--reload",  # Enable auto-reload for development
+            ],
+            cwd=str(root),
+            env=_SUBPROCESS_ENV,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+
+        # Schedule self-termination after response is sent
+        import threading
+        def delayed_kill():
+            time.sleep(0.5)
+            subprocess.run(["pkill", "-f", "uvicorn server.asgi"], capture_output=True, env=_SUBPROCESS_ENV)
+        threading.Thread(target=delayed_kill, daemon=True).start()
+
+        return DevStackRestartResponse(
+            success=True,
+            message=f"Cache cleared ({cache_dirs_cleared} dirs, {pyc_files_cleared} files) and backend restart initiated with --reload",
             port=backend_port,
         )
     except Exception as e:
