@@ -500,6 +500,29 @@
         ],
         [['Advanced indexing', 'info'], ['Requires reindex', 'reindex']]
       ),
+      BM25_VOCAB_PREVIEW: L(
+        'BM25 Vocabulary Preview',
+        'Inspect tokenized vocabulary from BM25 sparse index. Shows term frequencies for debugging. Use cases: verify code identifiers preserved, check stemmer behavior, identify noise terms, debug zero-result queries. Vocabulary reflects tokenizer: whitespace (exact, best for code), stemmer (normalized, best for prose), standard (balanced). Large vocabularies (>100K) indicate insufficient stopword filtering.',
+        [
+          ['BM25S: Eager Sparse Scoring (arXiv 2024)', 'https://arxiv.org/abs/2407.03618'],
+          ['BMX: Entropy-weighted BM25 Extension', 'https://arxiv.org/abs/2408.06643'],
+          ['Tokenization Foundations (ICLR 2025)', 'https://arxiv.org/abs/2407.11606'],
+          ['BM25 Algorithm', 'https://en.wikipedia.org/wiki/Okapi_BM25'],
+          ['Text Tokenization', 'https://en.wikipedia.org/wiki/Lexical_analysis#Tokenization']
+        ],
+        [['DEBUGGING', 'info'], ['REINDEX TO UPDATE', 'warn']]
+      ),
+      PER_REPO_INDEXING: L(
+        'Per-Repository Indexing Configuration',
+        'Override global indexing settings per repo. Enables optimization for different codebases. Scenarios: docs repos (larger chunks 1500-2000, stemmer), dense code (smaller chunks 500-800, whitespace), mixed (AST + hybrid), legacy (greedy if AST fails). Checked = inherit agro_config.json. Unchecked = repos.json overrides take precedence. Unchanged fields still inherit global. Changes apply on reindex.',
+        [
+          ['Monorepo Configuration Patterns', 'https://monorepo.tools/'],
+          ['Multi-Repo Search Strategies', 'https://www.aviator.co/blog/monorepo-a-hands-on-guide-for-managing-repositories-and-microservices/'],
+          ['Configuration Override Patterns', 'https://en.wikipedia.org/wiki/Configuration_file'],
+          ['Cascading Configuration', 'https://en.wikipedia.org/wiki/Cascading_Style_Sheets#Specificity']
+        ],
+        [['ADVANCED', 'warn'], ['PER-REPO', 'info']]
+      ),
       MQ_REWRITES: L(
         'Multi‑Query Rewrites',
         'Number of query variations to generate for improved recall. Each rewrite searches independently, then results are fused and reranked. For example, query "auth flow" might expand to "authentication flow", "login process", "user authentication". Higher values (4-6) improve recall for vague questions like "Where is X implemented?" but increase API calls and latency. Start at 2-3 for general use.',

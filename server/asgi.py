@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from common.paths import repo_root, gui_dir, docs_dir, files_root
-from common.config_loader import load_repos
+from common.config_loader import _load_repos_raw
 from server.api_interceptor import setup_interceptor
 from server.frequency_limiter import FrequencyAnomalyMiddleware
 from server.metrics import init_metrics_fastapi
@@ -324,7 +324,7 @@ def create_app() -> FastAPI:
         import socket
         import requests
 
-        repo_cfg = load_repos()
+        repo_cfg = _load_repos_raw()
         repo_name = os.getenv("REPO") or repo_cfg.get("default_repo") or "local"
         repo_mode = "repo" if repo_name and repo_name != "local" else "local"
 

@@ -4,7 +4,7 @@
     {
       "name": "agro",
       "slug": "agro",
-      "path": "/Users/davidmontgomery/agro-rag-engine",
+      "path": ".",
       "exclude_paths": [
         "docs",
         "agent_docs",

@@ -8,7 +8,7 @@ from pathlib import Path
 # Add parent to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from common.config_loader import get_repo_paths, _expand_env_vars
+from common.config_loader import _get_repo_paths_raw, _expand_env_vars
 
 
 def test_env_var_expansion():
@@ -46,7 +46,7 @@ def test_repo_path_resolution():
     from common.config_loader import clear_cache
     clear_cache()
 
-    paths = get_repo_paths('agro')
+    paths = _get_repo_paths_raw('agro')
     print(f"Docker mode (REPO_ROOT unset): {paths[0]}")
     assert paths[0] == '/app', f"Expected /app in Docker mode, got {paths[0]}"
 
@@ -55,7 +55,7 @@ def test_repo_path_resolution():
     os.environ['REPO_ROOT'] = local_path
     clear_cache()
 
-    paths = get_repo_paths('agro')
+    paths = _get_repo_paths_raw('agro')
     print(f"Local mode (REPO_ROOT={local_path}): {paths[0]}")
     assert paths[0] == local_path, f"Expected {local_path} in local mode, got {paths[0]}"
 

@@ -26,7 +26,7 @@ import uuid
 # Local imports
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from common.config_loader import get_repo_paths, out_dir, exclude_paths
+from common.config_loader import _get_repo_paths_raw, out_dir, exclude_paths
 from retrieval.ast_chunker import collect_files, chunk_code, lang_from_path
 from server.services.config_registry import get_config_registry
 
@@ -146,7 +146,7 @@ def main():
     
     # Get repo paths
     try:
-        bases = get_repo_paths(REPO)
+        bases = _get_repo_paths_raw(REPO)
     except:
         bases = [str(Path(__file__).parent.parent)]
     

@@ -68,28 +68,8 @@ export function RepositoryConfig({ onExcludePathsChange }: RepositoryConfigProps
     setTimeout(() => { isInitializing.current = false; }, 100);
   }, [repoData?.name]); // Only re-sync when repo changes
 
-  /**
-   * ---agentspec
-   * what: |
-   *   Debounced save for repo path. Compares input to store value, saves only if changed.
-   *
-   * why: |
-   *   Prevents excessive API calls on rapid typing; 1s debounce batches updates.
-   *
-   * guardrails:
-   *   - DO NOT save if value unchanged (prevents redundant writes)
-   *   - NOTE: Cleanup clears timeout on unmount/re-render
-   * ---/agentspec
-   */
-  useEffect(() => {
-    if (!repoData || isInitializing.current) return;
-    if (repoData.path === repoPathInput) return;
-    
-    const timeoutId = setTimeout(() => {
-      updateRepo(activeRepo, { path: repoPathInput });
-    }, 1000);
-    return () => clearTimeout(timeoutId);
-  }, [repoPathInput, repoData, activeRepo, updateRepo]);
+  // NOTE: Path auto-save removed to prevent overwriting relative paths with absolute paths.
+  // Path changes now require explicit save. See: Pydantic migration for repos.json
 
   /**
    * ---agentspec

@@ -102,6 +102,23 @@ export function IndexingSubtab() {
   // API key status
   const [apiKeyConfigured, setApiKeyConfigured] = useState<boolean | null>(null);
 
+  const [useGlobalSettings, setUseGlobalSettings] = useState(true);
+  const [repoIndexingConfig, setRepoIndexingConfig] = useState<Record<string, any> | null>(null);
+  // Vocab preview state
+  const [vocabPreview, setVocabPreview] = useState<{ term: string; doc_count: number }[]>([]);
+  const [vocabLoading, setVocabLoading] = useState(false);
+  const [vocabTopN, setVocabTopN] = useState(50);
+  const [vocabTotal, setVocabTotal] = useState(0);
+  const [vocabExpanded, setVocabExpanded] = useState(false);
+  // Compatibility warnings state
+  const [compatibilityWarnings, setCompatibilityWarnings] = useState<{
+    type: 'error' | 'warning' | 'info';
+    message: string;
+    recommendation: string;
+  }[]>([]);
+
+
+
   // ==========================================================================
   // CONFIG VALUES (via useConfig get/set - NOT useConfigField!)
   // ==========================================================================
@@ -252,6 +269,71 @@ export function IndexingSubtab() {
     loadStats();
   }, [loadStats]);
 
+    // Load repo-specific indexing config when activeRepo changes
+    useEffect(() => {
+        if (!activeRepo) return;
+
+        const repo = repos.find(r => r.name === activeRepo);
+        if (repo?.indexing) {
+            setRepoIndexingConfig(repo.indexing);
+            setUseGlobalSettings(repo.indexing.use_global !== false);
+        } else {
+            setRepoIndexingConfig(null);
+            setUseGlobalSettings(true);
+        }
+    }, [activeRepo, repos]);
+    // Check compatibility warnings when config changes
+  useEffect(() => {
+    const warnings: typeof compatibilityWarnings = [];
+
+    // Code model + stemmer tokenizer warning
+    if (bm25Tokenizer === 'stemmer' && chunkingStrategy === 'ast') {
+      warnings.push({
+        type: 'info',
+        message: 'Stemmer tokenizer may alter code identifiers',
+        recommendation: 'Consider "whitespace" tokenizer for code-heavy repos to preserve exact function/variable names'
+      });
+    }
+
+    // Small chunks with code warning
+    if (chunkSize < 300 && chunkingStrategy === 'ast') {
+      warnings.push({
+        type: 'warning',
+        message: `Chunk size (${chunkSize}) may be too small for code`,
+        recommendation: 'AST chunking works best with 500-1500 token chunks to capture full functions'
+      });
+    }
+
+    // Large chunks warning
+    if (chunkSize > 2000) {
+      warnings.push({
+        type: 'warning',
+        message: `Large chunk size (${chunkSize}) may reduce retrieval precision`,
+        recommendation: 'Consider 800-1500 for balanced context and precision'
+      });
+    }
+
+    // Greedy chunking warning
+    if (chunkingStrategy === 'greedy') {
+      warnings.push({
+        type: 'info',
+        message: 'Greedy chunking ignores code structure',
+        recommendation: 'Use AST or Hybrid strategy for code repos to preserve function boundaries'
+      });
+    }
+
+    // Skip dense warning
+    if (skipDense === 1) {
+      warnings.push({
+        type: 'error',
+        message: 'Dense vectors disabled - semantic search unavailable',
+        recommendation: 'Enable dense vectors for best retrieval quality'
+      });
+    }
+
+    setCompatibilityWarnings(warnings);
+  }, [bm25Tokenizer, chunkingStrategy, chunkSize, skipDense]);
+
   // ==========================================================================
   // HANDLERS
   // ==========================================================================
@@ -317,6 +399,34 @@ export function IndexingSubtab() {
       setIsIndexing(false);
     }
   }, [activeRepo, embeddingType, currentModel, chunkSize, chunkingStrategy, skipDense, enrichChunks, handleApiError, refreshEmbedding, loadStats]);
+const handleToggleGlobalSettings = useCallback(async (useGlobal: boolean) => {
+    if (!activeRepo) return;
+
+    setUseGlobalSettings(useGlobal);
+    try {
+        await useRepoStore.getState().updateRepoIndexing(activeRepo, { use_global: useGlobal });
+    } catch (e) {
+        console.error('[IndexingSubtab] Failed to update use_global:', e);
+    }
+}, [activeRepo]);
+
+const loadVocabPreview = useCallback(async () => {
+  if (!activeRepo) return;
+  
+  setVocabLoading(true);
+  try {
+    const response = await fetch(`/api/index/vocab-preview?repo=${activeRepo}&top_n=${vocabTopN}`);
+    if (!response.ok) throw new Error('Failed to load vocab');
+    const data = await response.json();
+    setVocabPreview(data.terms || []);
+    setVocabTotal(data.total_terms || 0);
+  } catch (e) {
+    console.error('[IndexingSubtab] Vocab preview error:', e);
+    setVocabPreview([]);
+  } finally {
+    setVocabLoading(false);
+  }
+}, [activeRepo, vocabTopN]);
 
   const handleStopIndex = useCallback(() => {
     TerminalService.disconnect('indexing_terminal');
@@ -407,43 +517,158 @@ export function IndexingSubtab() {
         </div>
       )}
 
-      {/* Repository Selection */}
-      <div style={{ marginBottom: '24px' }}>
-        <label style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          marginBottom: '8px',
-          fontSize: '13px',
-          fontWeight: 600,
-          color: 'var(--fg)'
-        }}>
-          Target Repository
-          <TooltipIcon name="REPO" />
-        </label>
-        <select
-          value={activeRepo}
-          onChange={(e) => useRepoStore.getState().setActiveRepo(e.target.value)}
-          style={{
-            width: '100%',
-            maxWidth: '400px',
-            padding: '10px 12px',
-            background: 'var(--input-bg)',
-            border: '1px solid var(--line)',
-            borderRadius: '6px',
-            color: 'var(--fg)',
-            fontSize: '13px'
-          }}
-        >
-          {repos.length === 0 ? (
-            <option value="">No repositories</option>
-          ) : (
-            repos.map(repo => (
-              <option key={repo.name} value={repo.name}>{repo.name}</option>
-            ))
-          )}
-        </select>
-      </div>
+      {/* Repository Selection + Per-Repo Config Toggle */}
+          <div style={{ marginBottom: '24px' }}>
+        <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            {/* Repo Dropdown */}
+            <div style={{ flex: '1', minWidth: '200px', maxWidth: '400px' }}>
+                <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    marginBottom: '8px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: 'var(--fg)'
+                }}>
+                    Target Repository
+                    <TooltipIcon name="REPO" />
+                </label>
+                <select
+                    value={activeRepo}
+                    onChange={(e) => useRepoStore.getState().setActiveRepo(e.target.value)}
+                    style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        background: 'var(--input-bg)',
+                        border: !useGlobalSettings ? '2px solid var(--accent)' : '1px solid var(--line)',
+                        borderRadius: '6px',
+                        color: 'var(--fg)',
+                        fontSize: '13px'
+                    }}
+                >
+                    {repos.length === 0 ? (
+                        <option value="">No repositories</option>
+                    ) : (
+                        repos.map(repo => (
+                            <option key={repo.name} value={repo.name}>
+                                {repo.name} {repo.indexing && !repo.indexing.use_global ? '⚙️' : ''}
+                            </option>
+                        ))
+                    )}
+                </select>
+            </div>
+
+            {/* Use Global Settings Toggle */}
+            <div style={{
+                padding: '12px 16px',
+                background: useGlobalSettings ? 'var(--bg-elev2)' : 'rgba(var(--accent-rgb), 0.1)',
+                border: useGlobalSettings ? '1px solid var(--line)' : '2px solid var(--accent)',
+                borderRadius: '8px',
+                transition: 'all 0.2s ease'
+            }}>
+                <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    cursor: 'pointer'
+                }}>
+                    <input
+                        type="checkbox"
+                        checked={useGlobalSettings}
+                        onChange={(e) => handleToggleGlobalSettings(e.target.checked)}
+                        style={{ width: '16px', height: '16px' }}
+                    />
+                    <div>
+                        <div style={{
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            color: useGlobalSettings ? 'var(--fg)' : 'var(--accent)'
+                        }}>
+                            Use Global Settings
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--fg-muted)' }}>
+                            {useGlobalSettings
+                                ? 'Using shared indexing config'
+                                : `Custom config for ${activeRepo}`
+                            }
+                        </div>
+                    </div>
+                    <TooltipIcon name="PER_REPO_INDEXING" />
+                </label>
+            </div>
+        </div>
+
+        {/* Override indicator banner */}
+        {!useGlobalSettings && repoIndexingConfig && (
+            <div style={{
+                marginTop: '12px',
+                padding: '10px 14px',
+                background: 'rgba(var(--accent-rgb), 0.08)',
+                border: '1px solid var(--accent)',
+                borderRadius: '6px',
+                fontSize: '12px',
+                color: 'var(--accent)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+            }}>
+                <span>⚙️</span>
+                <span>
+              <strong>{activeRepo}</strong> has custom indexing settings.
+              Changes below will only affect this repository.
+            </span>
+            </div>
+        )}
+    </div>
+
+      {/* Compatibility Warnings */}
+      {compatibilityWarnings.length > 0 && (
+        <div style={{ marginBottom: '20px' }}>
+          {compatibilityWarnings.map((warn, idx) => (
+            <div
+              key={idx}
+              style={{
+                padding: '12px 16px',
+                marginBottom: '8px',
+                background: warn.type === 'error' 
+                  ? 'rgba(var(--error-rgb), 0.1)'
+                  : warn.type === 'warning'
+                    ? 'rgba(var(--warn-rgb), 0.1)'
+                    : 'rgba(var(--accent-rgb), 0.08)',
+                border: `1px solid ${
+                  warn.type === 'error' 
+                    ? 'var(--error)' 
+                    : warn.type === 'warning' 
+                      ? 'var(--warn)' 
+                      : 'var(--accent)'
+                }`,
+                borderRadius: '8px',
+                fontSize: '13px'
+              }}
+            >
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginBottom: '4px',
+                color: warn.type === 'error' 
+                  ? 'var(--error)' 
+                  : warn.type === 'warning' 
+                    ? 'var(--warn)' 
+                    : 'var(--accent)',
+                fontWeight: 600
+              }}>
+                <span>{warn.type === 'error' ? '❌' : warn.type === 'warning' ? '⚠️' : 'ℹ️'}</span>
+                {warn.message}
+              </div>
+              <div style={{ color: 'var(--fg-muted)', fontSize: '12px', marginLeft: '24px' }}>
+                💡 {warn.recommendation}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Component Cards Grid */}
       <div style={{
@@ -1159,6 +1384,124 @@ export function IndexingSubtab() {
               </label>
             </div>
           </div>
+
+          {/* Vocab Preview Panel */}
+          <details
+            open={vocabExpanded}
+            onToggle={(e) => setVocabExpanded((e.target as HTMLDetailsElement).open)}
+            style={{ marginTop: '20px' }}
+          >
+            <summary style={{
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: 600,
+              color: 'var(--fg)',
+              padding: '8px 0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              🔍 Vocabulary Preview
+              <TooltipIcon name="BM25_VOCAB_PREVIEW" />
+            </summary>
+
+            <div style={{
+              marginTop: '12px',
+              padding: '16px',
+              background: 'var(--bg-elev2)',
+              borderRadius: '8px',
+              border: '1px solid var(--line)'
+            }}>
+              {/* Controls */}
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px' }}>
+                <label style={{ fontSize: '12px', color: 'var(--fg-muted)' }}>
+                  Top N:
+                  <input
+                    type="number"
+                    value={vocabTopN}
+                    onChange={(e) => setVocabTopN(Math.max(10, Math.min(500, parseInt(e.target.value) || 50)))}
+                    min={10}
+                    max={500}
+                    style={{
+                      width: '70px',
+                      marginLeft: '8px',
+                      padding: '4px 8px',
+                      background: 'var(--input-bg)',
+                      border: '1px solid var(--line)',
+                      borderRadius: '4px',
+                      color: 'var(--fg)',
+                      fontSize: '12px'
+                    }}
+                  />
+                </label>
+                <button
+                  onClick={loadVocabPreview}
+                  disabled={vocabLoading}
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: '12px',
+                    background: 'var(--accent)',
+                    color: '#000',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: vocabLoading ? 'wait' : 'pointer',
+                    opacity: vocabLoading ? 0.7 : 1
+                  }}
+                >
+                  {vocabLoading ? 'Loading...' : 'Load Vocabulary'}
+                </button>
+              </div>
+
+              {/* Vocab Grid */}
+              {vocabPreview.length > 0 ? (
+                <>
+                  <div style={{
+                    maxHeight: '280px',
+                    overflowY: 'auto',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+                    gap: '4px',
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '11px'
+                  }}>
+                    {vocabPreview.map((item, idx) => (
+                      <div
+                        key={`${item.term}-${idx}`}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          padding: '4px 8px',
+                          background: 'var(--bg)',
+                          borderRadius: '4px'
+                        }}
+                      >
+                        <span style={{ color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {item.term}
+                        </span>
+                        <span style={{ color: 'var(--fg-muted)', marginLeft: '8px' }}>
+                          {item.doc_count}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{
+                    marginTop: '8px',
+                    fontSize: '11px',
+                    color: 'var(--fg-muted)',
+                    display: 'flex',
+                    justifyContent: 'space-between'
+                  }}>
+                    <span>Tokenizer: {bm25Tokenizer}</span>
+                    <span>Showing {vocabPreview.length} of {vocabTotal} terms</span>
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontSize: '12px', color: 'var(--fg-muted)', textAlign: 'center', padding: '20px' }}>
+                  Click "Load Vocabulary" to inspect tokenized terms
+                </div>
+              )}
+            </div>
+          </details>
         </div>
       </details>
 

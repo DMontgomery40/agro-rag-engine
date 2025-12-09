@@ -145,6 +145,7 @@ services:
       - ./scripts:/app/scripts
       - ./reranker:/app/reranker
       - /var/run/docker.sock:/var/run/docker.sock
+      - /Users/davidmontgomery/agro-rag-engine:/app
 
   mcp-http:
     build:

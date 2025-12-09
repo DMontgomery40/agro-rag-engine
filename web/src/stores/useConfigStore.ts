@@ -35,13 +35,16 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   keywordsLoading: false,
 
   loadConfig: async () => {
+    console.log('[useConfigStore] loadConfig called');
     set({ loading: true, error: null });
     try {
       // Reload from agro_config.json first
       await configApi.reloadConfig().catch(() => {});
       const config = await configApi.load();
+      console.log('[useConfigStore] loadConfig success, env keys:', Object.keys(config?.env || {}));
       set({ config, loading: false, error: null });
     } catch (error) {
+      console.error('[useConfigStore] loadConfig error:', error);
       set({
         loading: false,
         error: error instanceof Error ? error.message : 'Failed to load configuration'
@@ -93,8 +96,12 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
 
   updateEnv: (key: string, value: string | number | boolean) => {
     const { config } = get();
-    if (!config) return;
+    if (!config) {
+      console.warn('[useConfigStore] updateEnv called but config is null, key:', key);
+      return;
+    }
 
+    console.log('[useConfigStore] updateEnv:', key, '=', value);
     set({
       config: {
         ...config,

@@ -120,8 +120,11 @@ export function useConfig() {
       ? { [keyOrUpdates]: value }
       : keyOrUpdates;
 
+    console.log('[useConfig] set called with:', updates);
+
     // Update local state immediately for responsive UI (optimistic update)
     Object.entries(updates).forEach(([k, v]) => {
+      console.log('[useConfig] calling updateEnv for:', k, '=', v);
       updateEnv(k, v);
       pendingUpdates.current[k] = v;
     });

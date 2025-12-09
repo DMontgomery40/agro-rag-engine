@@ -5,9 +5,72 @@ These models define repo-specific overrides that can be set in repos.json.
 When use_global is True (or indexing is undefined), global settings from agro_config.json apply.
 """
 
-from typing import Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
+
+
+class RepositoryConfig(BaseModel):
+    """Full repository configuration.
+
+    This is the canonical Pydantic model for repo config. All repo settings
+    should flow through this model, not raw repos.json access.
+    """
+
+    name: str = Field(
+        ...,
+        description="Repository identifier (e.g., 'agro', 'my-project')"
+    )
+    slug: Optional[str] = Field(
+        default=None,
+        description="URL-safe identifier. Defaults to name if not set."
+    )
+    path: str = Field(
+        default=".",
+        description="Repo location - use relative paths (e.g., '.') for Docker compatibility"
+    )
+    exclude_paths: List[str] = Field(
+        default_factory=list,
+        description="Paths to skip during indexing (e.g., ['docs', 'tests', 'node_modules'])"
+    )
+    keywords: List[str] = Field(
+        default_factory=list,
+        description="Curated search keywords for this repo"
+    )
+    path_boosts: List[str] = Field(
+        default_factory=list,
+        description="Path prefixes that boost relevance (e.g., ['server/', 'src/core/'])"
+    )
+    layer_bonuses: Dict[str, Dict[str, float]] = Field(
+        default_factory=dict,
+        description="Intent-to-layer multiplier matrix for relevance tuning"
+    )
+    indexing: Optional["RepoIndexingConfig"] = Field(
+        default=None,
+        description="Per-repo indexing overrides. If None, uses global config."
+    )
+
+    class Config:
+        extra = "forbid"
+
+
+class ReposConfig(BaseModel):
+    """Root configuration for all repositories.
+
+    This replaces the raw repos.json structure with a validated Pydantic model.
+    """
+
+    default_repo: Optional[str] = Field(
+        default=None,
+        description="Default repository name to use when none specified"
+    )
+    repos: List[RepositoryConfig] = Field(
+        default_factory=list,
+        description="List of configured repositories"
+    )
+
+    class Config:
+        extra = "forbid"
 
 
 class RepoIndexingConfig(BaseModel):
@@ -89,3 +152,7 @@ class RepoIndexingConfig(BaseModel):
 
     class Config:
         extra = "forbid"  # Reject unknown fields
+
+
+# Update forward references
+RepositoryConfig.model_rebuild()

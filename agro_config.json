@@ -110,7 +110,7 @@
     "vector_backend": "qdrant",
     "indexing_batch_size": 100,
     "indexing_workers": 4,
-    "bm25_tokenizer": "stemmer",
+    "bm25_tokenizer": "whitespace",
     "bm25_stemmer_lang": "english",
     "bm25_stopwords_lang": "en",
     "index_excluded_exts": ".png,.jpg,.gif,.ico,.svg,.woff,.ttf",

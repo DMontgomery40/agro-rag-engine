@@ -6,7 +6,7 @@ import subprocess
 import requests
 from fastapi import APIRouter
 
-from common.config_loader import load_repos
+from common.config_loader import _load_repos_raw
 from common.paths import repo_root
 from server.services.config_registry import get_config_registry
 
@@ -21,7 +21,7 @@ _config_registry = get_config_registry()
 def pipeline_summary() -> Dict[str, Any]:
     """Return a concise snapshot of the active pipeline configuration and health."""
     ROOT = repo_root()
-    repo_cfg = load_repos()
+    repo_cfg = _load_repos_raw()
     repo_name = _config_registry.get_str("REPO", repo_cfg.get("default_repo") or "local")
     repo_mode = "repo" if repo_name and repo_name != "local" else "local"
 

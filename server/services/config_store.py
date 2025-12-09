@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from pydantic import ValidationError
 
-from common.config_loader import load_repos
+from common.config_loader import _load_repos_raw
 from common.paths import repo_root, gui_dir
 from server.services.config_registry import get_config_registry
 from server.models.agro_config_model import AGRO_CONFIG_KEYS
@@ -205,7 +205,7 @@ def get_config(unmask: bool = False) -> Dict[str, Any]:
     payload so the API does not 500.
     """
     try:
-        cfg = load_repos() or {}
+        cfg = _load_repos_raw() or {}
     except Exception:
         cfg = {"default_repo": None, "repos": []}
 
@@ -370,14 +370,14 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 def repos_all() -> Dict[str, Any]:
     try:
-        cfg = load_repos()
+        cfg = _load_repos_raw()
         return {"default_repo": cfg.get("default_repo"), "repos": cfg.get("repos", [])}
     except Exception:
         return {"default_repo": None, "repos": []}
 
 
 def repos_get(repo_name: str) -> Optional[Dict[str, Any]]:
-    cfg = load_repos()
+    cfg = _load_repos_raw()
     for repo in cfg.get("repos", []):
         if str(repo.get("name", "")).lower() == repo_name.lower():
             return repo
@@ -563,7 +563,7 @@ def config_schema() -> Dict[str, Any]:
             pass
         return data
 
-    repos_cfg = load_repos()
+    repos_cfg = _load_repos_raw()
     default_repo = repos_cfg.get("default_repo")
 
     schema: Dict[str, Any] = {

@@ -3,7 +3,10 @@ from __future__ import annotations
 import os
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from server.models.repo_model import ReposConfig, RepositoryConfig
 
 _CACHE: Dict[str, Any] = {}
 
@@ -20,7 +23,7 @@ def _repos_file_path() -> Path:
     return Path(__file__).resolve().parents[1] / "repos.json"
 
 
-def load_repos() -> Dict[str, Any]:
+def _load_repos_raw() -> Dict[str, Any]:
     global _CACHE
     if "config" in _CACHE:
         return _CACHE["config"]
@@ -45,12 +48,12 @@ def load_repos() -> Dict[str, Any]:
 
 
 def list_repos() -> List[str]:
-    cfg = load_repos()
+    cfg = _load_repos_raw()
     return [str(r.get("name")) for r in cfg.get("repos", []) if r.get("name")]
 
 
 def get_default_repo() -> str:
-    cfg = load_repos()
+    cfg = _load_repos_raw()
     if cfg.get("default_repo"):
         return str(cfg["default_repo"]).strip()
     repos = cfg.get("repos", [])
@@ -63,7 +66,7 @@ def _find_repo(name: str) -> Optional[Dict[str, Any]]:
     name_low = (name or "").strip().lower()
     if not name_low:
         return None
-    for r in load_repos().get("repos", []):
+    for r in _load_repos_raw().get("repos", []):
         if (r.get("name") or "").strip().lower() == name_low:
             return r
     return None
@@ -88,7 +91,7 @@ def _expand_env_vars(path_str: str) -> str:
     return path_str
 
 
-def get_repo_paths(name: str) -> List[str]:
+def _get_repo_paths_raw(name: str) -> List[str]:
     r = _find_repo(name)
     if not r:
         raise ValueError(f"Unknown repo: {name}. Known: {', '.join(list_repos()) or '[]'}")
@@ -243,4 +246,46 @@ def get_repo_indexing_overrides(name: str) -> Optional[Dict[str, Any]]:
         return None
 
     return repo_indexing
+
+
+# =============================================================================
+# Pydantic-validated accessors (use these for new code)
+# =============================================================================
+
+def load_repos() -> "ReposConfig":
+    """Load repos.json with Pydantic validation.
+
+    This is the preferred way to access repo config. Returns a validated
+    ReposConfig model instead of raw dict.
+    """
+    from server.models.repo_model import ReposConfig
+
+    raw = _load_repos_raw()
+    return ReposConfig.model_validate(raw)
+
+
+def get_repo_validated(name: str) -> Optional["RepositoryConfig"]:
+    """Get a single repo config with Pydantic validation.
+
+    Returns None if repo not found.
+    """
+    config = load_repos()
+    name_low = (name or "").strip().lower()
+    for repo in config.repos:
+        if repo.name.lower() == name_low:
+            return repo
+    return None
+
+
+def get_repo_paths(name: str) -> List[str]:
+    """Get repo paths with Pydantic validation - preserves relative paths.
+
+    Returns List[str] for API compatibility with get_repo_paths().
+    Unlike get_repo_paths(), this preserves relative paths without
+    expanding to absolute. This is important for Docker compatibility.
+    """
+    repo = get_repo_validated(name)
+    if not repo:
+        raise ValueError(f"Unknown repo: {name}. Known: {', '.join(list_repos()) or '[]'}")
+    return [repo.path]
 

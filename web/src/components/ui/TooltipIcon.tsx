@@ -1,5 +1,4 @@
-import type React from 'react';
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useTooltips } from '@/hooks/useTooltips';
 
 interface TooltipIconProps {
@@ -59,13 +58,20 @@ export function TooltipIcon({ name }: TooltipIconProps) {
 
   const renderContent = (): React.ReactNode => {
     if (typeof window === 'undefined' || typeof DOMParser === 'undefined') {
+      console.warn('[TooltipIcon] DOMParser not available, returning raw content');
       return content;
     }
     try {
       const parser = new DOMParser();
       const doc = parser.parseFromString(content, 'text/html');
-      return renderNodes(doc.body.childNodes as NodeListOf<ChildNode>);
-    } catch {
+      const nodes = renderNodes(doc.body.childNodes as NodeListOf<ChildNode>);
+      // If renderNodes returns empty array, something went wrong
+      if (Array.isArray(nodes) && nodes.length === 0 && content.length > 0) {
+        console.warn('[TooltipIcon] renderNodes returned empty for non-empty content:', name);
+      }
+      return nodes;
+    } catch (e) {
+      console.error('[TooltipIcon] Error parsing tooltip HTML:', e, 'for key:', name);
       return content;
     }
   };
