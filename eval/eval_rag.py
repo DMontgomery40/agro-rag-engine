@@ -143,7 +143,11 @@ def capture_eval_config() -> dict:
         return {}
 
     # Exclude secrets (API keys, tokens, etc.) from eval tracking
-    secret_patterns = ['API_KEY', 'SECRET', 'TOKEN', 'PASSWORD', 'CREDENTIAL']
+    # Keys ending with _TOKEN are usually secrets, but TOKENIZER is not
+    secret_suffixes = ['_API_KEY', '_SECRET', '_TOKEN', '_PASSWORD', '_CREDENTIAL']
+    # But explicitly allow these keys that contain TOKEN but aren't secrets
+    token_whitelist = {'BM25_TOKENIZER', 'MAX_CHUNK_TOKENS', 'EMBEDDING_MAX_TOKENS',
+                       'GEN_MAX_TOKENS', 'CHAT_THINKING_BUDGET_TOKENS'}
 
     config = {}
     for key, info in all_config.items():
@@ -153,9 +157,10 @@ def capture_eval_config() -> dict:
         if key_upper not in RAG_EVAL_CONFIG_KEYS:
             continue
 
-        # Skip secrets
-        if any(pattern in key_upper for pattern in secret_patterns):
-            continue
+        # Skip secrets - check suffixes, but allow whitelisted keys
+        if key_upper not in token_whitelist:
+            if any(key_upper.endswith(suffix) for suffix in secret_suffixes):
+                continue
 
         # Store with lowercase key for consistency
         config[key.lower()] = info['value']

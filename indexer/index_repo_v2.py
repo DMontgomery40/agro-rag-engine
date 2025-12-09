@@ -234,9 +234,17 @@ def main():
         parts.append(c['code'])
         corpus.append(' '.join(parts))
     
-    # Tokenize with stemming and stopwords
-    stemmer = Stemmer('english')
-    tokenizer = Tokenizer(stemmer=stemmer, stopwords='en')
+    # Tokenize with config-driven stemming and stopwords
+    tokenizer_type = _cfg.get_str('BM25_TOKENIZER', 'stemmer').lower()
+    stemmer_lang = _cfg.get_str('BM25_STEMMER_LANG', 'english')
+    stopwords_lang = _cfg.get_str('BM25_STOPWORDS_LANG', 'en')
+
+    if tokenizer_type == 'whitespace':
+        tokenizer = Tokenizer(stemmer=None, stopwords=[], splitter=r"\s+")
+    else:
+        stemmer = Stemmer(stemmer_lang)
+        tokenizer = Tokenizer(stemmer=stemmer, stopwords=stopwords_lang)
+
     corpus_tokens = tokenizer.tokenize(corpus)
     
     # Build BM25 index

@@ -412,11 +412,17 @@ class ChunkingConfig(BaseModel):
         le=100,
         description="Overlap lines for AST chunking"
     )
-    max_chunk_size: int = Field(
+    max_indexable_file_size: int = Field(
         default=2000000,
         ge=10000,
         le=10000000,
-        description="Max file size to chunk (bytes)"
+        description="Max file size to index (bytes) - files larger than this are skipped"
+    )
+    max_chunk_tokens: int = Field(
+        default=8000,
+        ge=100,
+        le=32000,
+        description="Maximum tokens per chunk - chunks exceeding this are split recursively"
     )
     min_chunk_chars: int = Field(
         default=50,
@@ -543,8 +549,8 @@ class RerankingConfig(BaseModel):
     )
 
     reranker_cloud_model: str = Field(
-        default="rerank-3.5",
-        description="Cloud reranker model name when mode=cloud"
+        default="rerank-v3.5",
+        description="Cloud reranker model name when mode=cloud (Cohere: rerank-v3.5)"
     )
 
     reranker_local_model: str = Field(
@@ -1596,11 +1602,12 @@ class AgroConfigRoot(BaseModel):
             'EMBEDDING_CACHE_ENABLED': self.embedding.embedding_cache_enabled,
             'EMBEDDING_TIMEOUT': self.embedding.embedding_timeout,
             'EMBEDDING_RETRY_MAX': self.embedding.embedding_retry_max,
-            # Chunking params (8 new)
+            # Chunking params (9 new)
             'CHUNK_SIZE': self.chunking.chunk_size,
             'CHUNK_OVERLAP': self.chunking.chunk_overlap,
             'AST_OVERLAP_LINES': self.chunking.ast_overlap_lines,
-            'MAX_CHUNK_SIZE': self.chunking.max_chunk_size,
+            'MAX_INDEXABLE_FILE_SIZE': self.chunking.max_indexable_file_size,
+            'MAX_CHUNK_TOKENS': self.chunking.max_chunk_tokens,
             'MIN_CHUNK_CHARS': self.chunking.min_chunk_chars,
             'GREEDY_FALLBACK_TARGET': self.chunking.greedy_fallback_target,
             'CHUNKING_STRATEGY': self.chunking.chunking_strategy,
@@ -1832,7 +1839,8 @@ class AgroConfigRoot(BaseModel):
                 chunk_size=data.get('CHUNK_SIZE', 1000),
                 chunk_overlap=data.get('CHUNK_OVERLAP', 200),
                 ast_overlap_lines=data.get('AST_OVERLAP_LINES', 20),
-                max_chunk_size=data.get('MAX_CHUNK_SIZE', 2000000),
+                max_indexable_file_size=data.get('MAX_INDEXABLE_FILE_SIZE', 2000000),
+                max_chunk_tokens=data.get('MAX_CHUNK_TOKENS', 8000),
                 min_chunk_chars=data.get('MIN_CHUNK_CHARS', 50),
                 greedy_fallback_target=data.get('GREEDY_FALLBACK_TARGET', 800),
                 chunking_strategy=data.get('CHUNKING_STRATEGY', 'ast'),
@@ -1860,7 +1868,7 @@ class AgroConfigRoot(BaseModel):
                 # Unified RERANKER_MODE with backwards compat fallback to old keys
                 reranker_mode=data.get('RERANKER_MODE') or data.get('RERANKER_ACTIVE') or data.get('RERANKER_BACKEND') or 'local',
                 reranker_cloud_provider=data.get('RERANKER_CLOUD_PROVIDER') or data.get('RERANKER_PROVIDER') or 'cohere',
-                reranker_cloud_model=data.get('RERANKER_CLOUD_MODEL') or data.get('COHERE_RERANK_MODEL') or 'rerank-3.5',
+                reranker_cloud_model=data.get('RERANKER_CLOUD_MODEL') or data.get('COHERE_RERANK_MODEL') or 'rerank-v3.5',
                 reranker_local_model=data.get('RERANKER_LOCAL_MODEL') or data.get('RERANKER_MODEL') or 'cross-encoder/ms-marco-MiniLM-L-12-v2',
                 agro_reranker_alpha=data.get('AGRO_RERANKER_ALPHA', 0.7),
                 agro_reranker_topn=data.get('AGRO_RERANKER_TOPN', 50),
@@ -2064,11 +2072,12 @@ AGRO_CONFIG_KEYS = {
     'EMBEDDING_CACHE_ENABLED',
     'EMBEDDING_TIMEOUT',
     'EMBEDDING_RETRY_MAX',
-    # Chunking params (8)
+    # Chunking params (9)
     'CHUNK_SIZE',
     'CHUNK_OVERLAP',
     'AST_OVERLAP_LINES',
-    'MAX_CHUNK_SIZE',
+    'MAX_INDEXABLE_FILE_SIZE',
+    'MAX_CHUNK_TOKENS',
     'MIN_CHUNK_CHARS',
     'GREEDY_FALLBACK_TARGET',
     'CHUNKING_STRATEGY',
@@ -2234,12 +2243,14 @@ AGRO_CONFIG_KEYS = {
 # Keys that affect RAG retrieval accuracy - shown in EvalAnalysis
 # Filtered from AGRO_CONFIG_KEYS to exclude UI/infrastructure settings
 RAG_EVAL_CONFIG_KEYS = {
-    # Retrieval params (24 keys) - CORE RAG behavior
+    # Retrieval params (27 keys) - CORE RAG behavior
     'RRF_K_DIV', 'LANGGRAPH_FINAL_K', 'MAX_QUERY_REWRITES', 'FALLBACK_CONFIDENCE',
     'FINAL_K', 'EVAL_FINAL_K', 'CONF_TOP1', 'CONF_AVG5', 'CONF_ANY', 'EVAL_MULTI',
     'QUERY_EXPANSION_ENABLED', 'BM25_WEIGHT', 'BM25_K1', 'BM25_B', 'VECTOR_WEIGHT',
     'CARD_SEARCH_ENABLED', 'MULTI_QUERY_M', 'USE_SEMANTIC_SYNONYMS',
     'TOPK_DENSE', 'TOPK_SPARSE', 'HYDRATION_MODE', 'HYDRATION_MAX_CHARS',
+    # BM25 tokenizer settings - CRITICAL for search quality
+    'BM25_TOKENIZER', 'BM25_STEMMER_LANG', 'BM25_STOPWORDS_LANG',
 
     # Scoring params (5 keys) - affect result ranking
     'CARD_BONUS', 'FILENAME_BOOST_EXACT', 'FILENAME_BOOST_PARTIAL', 'VENDOR_MODE', 'PATH_BOOSTS',
@@ -2252,9 +2263,9 @@ RAG_EVAL_CONFIG_KEYS = {
     'EMBEDDING_TYPE', 'EMBEDDING_MODEL', 'EMBEDDING_DIM', 'VOYAGE_MODEL',
     'EMBEDDING_MODEL_LOCAL', 'EMBEDDING_BATCH_SIZE',
 
-    # Chunking params (8 keys) - affects how code is split for retrieval
-    'CHUNK_SIZE', 'CHUNK_OVERLAP', 'AST_OVERLAP_LINES', 'MAX_CHUNK_SIZE',
-    'MIN_CHUNK_CHARS', 'GREEDY_FALLBACK_TARGET', 'CHUNKING_STRATEGY', 'PRESERVE_IMPORTS',
+    # Chunking params (9 keys) - affects how code is split for retrieval
+    'CHUNK_SIZE', 'CHUNK_OVERLAP', 'AST_OVERLAP_LINES', 'MAX_INDEXABLE_FILE_SIZE',
+    'MAX_CHUNK_TOKENS', 'MIN_CHUNK_CHARS', 'GREEDY_FALLBACK_TARGET', 'CHUNKING_STRATEGY', 'PRESERVE_IMPORTS',
 
     # Reranking params (9 keys) - directly affects result quality
     'RERANKER_MODE', 'RERANKER_CLOUD_PROVIDER', 'RERANKER_CLOUD_MODEL', 'RERANKER_LOCAL_MODEL',

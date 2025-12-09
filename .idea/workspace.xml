@@ -4,22 +4,25 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="06981a01-68f6-4278-af0e-6fdee9153f5c" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/server/models/repo_model.py" afterDir="false" />
+    <list default="true" id="06981a01-68f6-4278-af0e-6fdee9153f5c" name="Changes" comment="indexing subtab refactor">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/agro_config.json" beforeDir="false" afterPath="$PROJECT_DIR$/agro_config.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common/config_loader.py" beforeDir="false" afterPath="$PROJECT_DIR$/common/config_loader.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common/token_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/common/token_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/eval/eval_rag.py" beforeDir="false" afterPath="$PROJECT_DIR$/eval/eval_rag.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/indexer/build_cards.py" beforeDir="false" afterPath="$PROJECT_DIR$/indexer/build_cards.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/indexer/index_repo.py" beforeDir="false" afterPath="$PROJECT_DIR$/indexer/index_repo.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/indexer/index_repo_v2.py" beforeDir="false" afterPath="$PROJECT_DIR$/indexer/index_repo_v2.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/models/cross-encoder-agro/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/models/cross-encoder-agro/README.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/models/cross-encoder-agro/model.safetensors" beforeDir="false" afterPath="$PROJECT_DIR$/models/cross-encoder-agro/model.safetensors" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/cross-encoder-agro/tokenizer.json" beforeDir="false" afterPath="$PROJECT_DIR$/models/cross-encoder-agro/tokenizer.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/models/cross-encoder-agro/vocab.txt" beforeDir="false" afterPath="$PROJECT_DIR$/models/cross-encoder-agro/vocab.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/retrieval/hybrid_search.py" beforeDir="false" afterPath="$PROJECT_DIR$/retrieval/hybrid_search.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/retrieval/hybrid_search_v2.py" beforeDir="false" afterPath="$PROJECT_DIR$/retrieval/hybrid_search_v2.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/cards_builder.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/cards_builder.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/index_stats.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/index_stats.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/server/models/agro_config_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/models/agro_config_model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/routers/indexing.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/routers/indexing.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/services/config_store.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/services/config_store.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/App.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/.last-run.json" beforeDir="false" afterPath="$PROJECT_DIR$/test-results/.last-run.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web/src/components/Evaluation/EvalDrillDown.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/components/Evaluation/EvalDrillDown.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/web/src/components/RAG/IndexingSubtab.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/components/RAG/IndexingSubtab.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/components/RAG/ProviderCard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/components/RAG/ProviderCard.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/stores/useRepoStore.ts" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/stores/useRepoStore.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/types/index.ts" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/types/index.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web/src/modules/tooltips.js" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/modules/tooltips.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -56,6 +59,7 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Node.js.IndexingSubtab.tsx.executor": "Debug",
     "Node.js.useEventBus.ts.executor": "Debug",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
@@ -109,8 +113,17 @@
       <option name="presentableId" value="Default" />
       <updated>1764820245918</updated>
       <workItem from="1764820247767" duration="653000" />
-      <workItem from="1764820913189" duration="37964000" />
+      <workItem from="1764820913189" duration="63403000" />
     </task>
+    <task id="LOCAL-00001" summary="indexing subtab refactor">
+      <option name="closed" value="true" />
+      <created>1764969823325</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1764969823325</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -123,6 +136,53 @@
         <option value="$PROJECT_DIR$/web/src/components/tabs/StartTab.jsx" />
       </list>
     </option>
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="RECENT_FILTERS">
+      <map>
+        <entry key="Branch">
+          <value>
+            <list>
+              <RecentGroup>
+                <option name="FILTER_VALUES">
+                  <option value="HEAD" />
+                </option>
+              </RecentGroup>
+              <RecentGroup>
+                <option name="FILTER_VALUES">
+                  <option value="origin/development" />
+                </option>
+              </RecentGroup>
+            </list>
+          </value>
+        </entry>
+      </map>
+    </option>
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="HEAD" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="indexing subtab refactor" />
+    <option name="LAST_COMMIT_MESSAGE" value="indexing subtab refactor" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

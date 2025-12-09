@@ -294,50 +294,120 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
   const regressions = results.filter((_, idx) => getRegressionStatus(idx) === 'regression').length;
   const improvements = results.filter((_, idx) => getRegressionStatus(idx) === 'improvement').length;
 
+  // Categories that affect retrieval accuracy (show by default)
+  const RETRIEVAL_CATEGORIES = [
+    'BM25 Search', 'Embedding', 'Retrieval', 'Reranking', 'Chunking',
+    'Weighting', 'Layer Bonuses', 'Keywords', 'Query Expansion'
+  ];
+  // Categories that DON'T affect retrieval (hidden by default)
+  const NON_RETRIEVAL_CATEGORIES = [
+    'Prompts (Post-Retrieval)', 'Hydration', 'Eval Metadata', 'Infrastructure', 'Other'
+  ];
+
   // Group config by category for better organization - COMPREHENSIVE categorization
+  // PRIORITY: Categories that affect search quality appear first
   const groupedConfig = (() => {
     const groups: Record<string, Array<[string, any]>> = {
-      'Retrieval': [],
-      'Weighting': [],
-      'Layer Bonuses': [],
-      'Reranking': [],
-      'Embedding & Chunking': [],
-      'Exclusions': [],
-      'Infrastructure': [],
+      // RETRIEVAL categories (show by default)
+      'BM25 Search': [],       // CRITICAL: tokenizer, stemmer, k1, b - affects ALL search
+      'Embedding': [],         // CRITICAL: type, model, dim - affects vector search
+      'Retrieval': [],         // top_k, rrf, multi_m - result counts
+      'Reranking': [],         // reranker settings
+      'Chunking': [],          // chunk size, overlap - affects index quality
+      'Weighting': [],         // search weights
+      'Layer Bonuses': [],     // path-based boosts - affects ranking
+      'Keywords': [],          // keyword boosting
+      'Query Expansion': [],   // query prompts that modify search
+      // NON-RETRIEVAL categories (hidden by default)
+      'Prompts (Post-Retrieval)': [], // prompts for answer generation, not retrieval
+      'Hydration': [],         // post-retrieval context expansion
+      'Eval Metadata': [],     // golden paths, baseline paths
+      'Infrastructure': [],    // qdrant, redis, urls
       'Other': []
     };
 
     Object.entries(evalRun.config || {}).forEach(([key, value]) => {
       const lowerKey = key.toLowerCase();
-      if (lowerKey.includes('topk_') || lowerKey.includes('final_k') || lowerKey.includes('rrf_') ||
-          lowerKey.includes('multi_m') || lowerKey.includes('use_multi')) {
+
+      // BM25 Search - CRITICAL for lexical search quality
+      if (lowerKey.includes('bm25_') || lowerKey.includes('tokenizer') ||
+          lowerKey.includes('stemmer') || lowerKey.includes('stopwords')) {
+        groups['BM25 Search'].push([key, value]);
+      }
+      // Embedding - CRITICAL for vector search
+      else if (lowerKey.includes('embed') || lowerKey.includes('dimension') ||
+               lowerKey === 'embedding_type' || lowerKey === 'embedding_model' ||
+               lowerKey === 'embedding_dim' || lowerKey === 'embedding_batch_size') {
+        groups['Embedding'].push([key, value]);
+      }
+      // Query Expansion prompts - these DO affect retrieval
+      else if (lowerKey.includes('prompt_query') || lowerKey.includes('prompt_semantic_cards')) {
+        groups['Query Expansion'].push([key, value]);
+      }
+      // Post-retrieval prompts - DON'T affect retrieval
+      else if (lowerKey.includes('prompt_')) {
+        groups['Prompts (Post-Retrieval)'].push([key, value]);
+      }
+      // Hydration - post-retrieval
+      else if (lowerKey.includes('hydration')) {
+        groups['Hydration'].push([key, value]);
+      }
+      // Eval metadata - just paths
+      else if (lowerKey.includes('golden_path') || lowerKey.includes('baseline_path') ||
+               lowerKey.includes('eval_multi_m')) {
+        groups['Eval Metadata'].push([key, value]);
+      }
+      // Retrieval - result configuration
+      else if (lowerKey.includes('topk_') || lowerKey.includes('final_k') || lowerKey.includes('rrf_') ||
+          lowerKey.includes('multi_m') || lowerKey.includes('use_multi') || lowerKey.includes('topk_dense') ||
+          lowerKey.includes('topk_sparse') || lowerKey.includes('langgraph')) {
         groups['Retrieval'].push([key, value]);
-      } else if (lowerKey.includes('_weight') || lowerKey.includes('keywords_boost') ||
-                 lowerKey.includes('recency_') || lowerKey.includes('filename_boost') ||
-                 lowerKey.includes('vendor_penalty')) {
-        groups['Weighting'].push([key, value]);
-      } else if (lowerKey.includes('layer_bonus_')) {
-        groups['Layer Bonuses'].push([key, value]);
-      } else if (lowerKey.includes('rerank') || lowerKey.includes('disable_rerank') ||
-                 lowerKey.includes('cross_encoder')) {
+      }
+      // Reranking
+      else if (lowerKey.includes('rerank') || lowerKey.includes('disable_rerank') ||
+               lowerKey.includes('cross_encoder') || lowerKey.includes('agro_reranker')) {
         groups['Reranking'].push([key, value]);
-      } else if (lowerKey.includes('embed') || lowerKey.includes('chunk_') ||
-                 lowerKey.includes('dimension')) {
-        groups['Embedding & Chunking'].push([key, value]);
-      } else if (lowerKey.includes('exclude_') || lowerKey.includes('_excluded_') ||
-                 lowerKey.includes('path_boost')) {
-        groups['Exclusions'].push([key, value]);
-      } else if (lowerKey.includes('qdrant') || lowerKey.includes('redis') ||
-                 lowerKey.includes('host') || lowerKey.includes('port') ||
-                 lowerKey.includes('url') || lowerKey.includes('timeout')) {
+      }
+      // Chunking
+      else if (lowerKey.includes('chunk_') || lowerKey.includes('max_chunk') ||
+               lowerKey.includes('min_chunk') || lowerKey.includes('ast_overlap')) {
+        groups['Chunking'].push([key, value]);
+      }
+      // Keywords
+      else if (lowerKey.includes('keyword')) {
+        groups['Keywords'].push([key, value]);
+      }
+      // Weighting
+      else if (lowerKey.includes('_weight') || lowerKey.includes('recency_') ||
+               lowerKey.includes('filename_boost') || lowerKey.includes('vendor_penalty') ||
+               lowerKey.includes('card_bonus')) {
+        groups['Weighting'].push([key, value]);
+      }
+      // Layer Bonuses
+      else if (lowerKey.includes('layer_bonus_') || lowerKey.includes('freshness_bonus') ||
+               lowerKey.includes('layer_intent')) {
+        groups['Layer Bonuses'].push([key, value]);
+      }
+      // Infrastructure
+      else if (lowerKey.includes('qdrant') || lowerKey.includes('redis') ||
+               lowerKey.includes('host') || lowerKey.includes('port') ||
+               lowerKey.includes('url') || lowerKey.includes('timeout')) {
         groups['Infrastructure'].push([key, value]);
-      } else {
+      }
+      // Other
+      else {
         groups['Other'].push([key, value]);
       }
     });
 
     return groups;
   })();
+
+  // Count keys in retrieval vs non-retrieval categories
+  const retrievalKeyCount = RETRIEVAL_CATEGORIES.reduce((sum, cat) =>
+    sum + (groupedConfig[cat]?.length || 0), 0);
+  const nonRetrievalKeyCount = NON_RETRIEVAL_CATEGORIES.reduce((sum, cat) =>
+    sum + (groupedConfig[cat]?.length || 0), 0);
 
   return (
     <div className="eval-drill-down" style={{ padding: '24px' }}>
@@ -477,7 +547,7 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
               padding: '2px 8px',
               borderRadius: '10px'
             }}>
-              {Object.keys(evalRun.config || {}).length} keys
+              {retrievalKeyCount} retrieval keys
             </span>
           </div>
           <span style={{ fontSize: '12px', color: 'var(--fg-muted)' }}>
@@ -496,121 +566,79 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
           </div>
         ) : configExpanded && (
           <div style={{ padding: '0 16px 16px' }}>
-            {/* Named categories in grid */}
+            {/* Show only retrieval-relevant categories - hide prompts, hydration, eval paths, infrastructure */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
-              {Object.entries(groupedConfig).filter(([category]) => category !== 'Other').map(([category, params]) => {
-                if (params.length === 0) return null;
-                return (
-                  <div key={category} style={{
-                    background: 'var(--bg-elev2)',
-                    borderRadius: '6px',
-                    padding: '10px'
-                  }}>
-                    <div style={{
-                      fontSize: '10px',
-                      fontWeight: 600,
-                      color: 'var(--accent)',
-                      textTransform: 'uppercase',
-                      marginBottom: '8px',
-                      letterSpacing: '0.5px'
+              {Object.entries(groupedConfig)
+                .filter(([category]) => RETRIEVAL_CATEGORIES.includes(category))
+                .map(([category, params]) => {
+                  if (params.length === 0) return null;
+                  return (
+                    <div key={category} style={{
+                      background: 'var(--bg-elev2)',
+                      borderRadius: '6px',
+                      padding: '10px'
                     }}>
-                      {category} ({params.length})
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      {params.map(([key, value]) => (
-                        <div key={key} style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'flex-start',
-                          gap: '6px',
-                          fontSize: '11px',
-                          padding: '3px 6px',
-                          background: 'var(--card-bg)',
-                          borderRadius: '3px',
-                          minWidth: 0
-                        }}>
-                          <span style={{
-                            color: 'var(--fg)',
-                            fontFamily: 'monospace',
-                            flexShrink: 0,
-                            fontSize: '10px'
-                          }}>{key}</span>
-                          <span style={{
-                            color: 'var(--link)',
-                            fontWeight: 600,
-                            fontFamily: 'monospace',
-                            textAlign: 'right',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            maxWidth: '140px',
-                            fontSize: '10px'
+                      <div style={{
+                        fontSize: '10px',
+                        fontWeight: 600,
+                        color: 'var(--accent)',
+                        textTransform: 'uppercase',
+                        marginBottom: '8px',
+                        letterSpacing: '0.5px'
+                      }}>
+                        {category} ({params.length})
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {params.map(([key, value]) => (
+                          <div key={key} style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'flex-start',
+                            gap: '6px',
+                            fontSize: '11px',
+                            padding: '3px 6px',
+                            background: 'var(--card-bg)',
+                            borderRadius: '3px',
+                            minWidth: 0
                           }}>
-                            {formatConfigValue(value, key)}
-                          </span>
-                        </div>
-                      ))}
+                            <span style={{
+                              color: 'var(--fg)',
+                              fontFamily: 'monospace',
+                              flexShrink: 0,
+                              fontSize: '10px'
+                            }}>{key}</span>
+                            <span style={{
+                              color: 'var(--link)',
+                              fontWeight: 600,
+                              fontFamily: 'monospace',
+                              textAlign: 'right',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              maxWidth: '140px',
+                              fontSize: '10px'
+                            }}>
+                              {formatConfigValue(value, key)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
 
-            {/* "Other" items - consistent styling with main categories */}
-            {groupedConfig['Other'] && groupedConfig['Other'].length > 0 && (
+            {/* Show count of hidden non-retrieval keys */}
+            {nonRetrievalKeyCount > 0 && (
               <div style={{
-                background: 'var(--bg-elev2)',
+                marginTop: '12px',
+                padding: '8px 12px',
+                background: 'var(--bg-elev1)',
                 borderRadius: '6px',
-                padding: '10px',
-                marginTop: '12px'
+                border: '1px dashed var(--line)',
+                fontSize: '11px',
+                color: 'var(--fg-muted)'
               }}>
-                <div style={{
-                  fontSize: '10px',
-                  fontWeight: 600,
-                  color: 'var(--accent)',
-                  textTransform: 'uppercase',
-                  marginBottom: '8px',
-                  letterSpacing: '0.5px'
-                }}>
-                  Other ({groupedConfig['Other'].length})
-                </div>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                  gap: '4px'
-                }}>
-                  {groupedConfig['Other'].map(([key, value]) => (
-                    <div key={key} style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      gap: '6px',
-                      fontSize: '11px',
-                      padding: '3px 6px',
-                      background: 'var(--card-bg)',
-                      borderRadius: '3px',
-                      minWidth: 0
-                    }}>
-                      <span style={{
-                        color: 'var(--fg)',
-                        fontFamily: 'monospace',
-                        flexShrink: 0,
-                        fontSize: '10px'
-                      }} title={key}>{key}</span>
-                      <span style={{
-                        color: 'var(--link)',
-                        fontWeight: 600,
-                        fontFamily: 'monospace',
-                        textAlign: 'right',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        maxWidth: '140px',
-                        fontSize: '10px'
-                      }}>
-                        {formatConfigValue(value, key)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                {nonRetrievalKeyCount} non-retrieval keys hidden (prompts, hydration, eval paths, infrastructure)
               </div>
             )}
           </div>

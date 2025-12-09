@@ -140,7 +140,8 @@ export function IndexingSubtab() {
   const chunkOverlap = Number(get('CHUNK_OVERLAP', 200));
   const chunkingStrategy = String(get('CHUNKING_STRATEGY', 'ast'));
   const astOverlapLines = Number(get('AST_OVERLAP_LINES', 20));
-  const maxChunkSize = Number(get('MAX_CHUNK_SIZE', 2000));
+  const maxChunkTokens = Number(get('MAX_CHUNK_TOKENS', 8000));
+  const maxIndexableFileSize = Number(get('MAX_INDEXABLE_FILE_SIZE', 2000000));
   const minChunkChars = Number(get('MIN_CHUNK_CHARS', 50));
   const greedyFallbackTarget = Number(get('GREEDY_FALLBACK_TARGET', 800));
   const preserveImports = Number(get('PRESERVE_IMPORTS', 1));
@@ -1021,6 +1022,76 @@ const loadVocabPreview = useCallback(async () => {
               </div>
             </div>
 
+            {/* Row 2: Token Limits */}
+            <div className="input-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginTop: '16px' }}>
+              <div className="input-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                  Max Chunk Tokens
+                  <TooltipIcon name="MAX_CHUNK_TOKENS" />
+                </label>
+                <input
+                  type="number"
+                  value={maxChunkTokens}
+                  onChange={(e) => set('MAX_CHUNK_TOKENS', parseInt(e.target.value) || 8000)}
+                  min={100}
+                  max={32000}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--line)',
+                    borderRadius: '6px',
+                    color: 'var(--fg)',
+                    fontSize: '13px'
+                  }}
+                />
+              </div>
+              <div className="input-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                  Min Chunk Chars
+                  <TooltipIcon name="MIN_CHUNK_CHARS" />
+                </label>
+                <input
+                  type="number"
+                  value={minChunkChars}
+                  onChange={(e) => set('MIN_CHUNK_CHARS', parseInt(e.target.value) || 50)}
+                  min={10}
+                  max={500}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--line)',
+                    borderRadius: '6px',
+                    color: 'var(--fg)',
+                    fontSize: '13px'
+                  }}
+                />
+              </div>
+              <div className="input-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                  Greedy Fallback Target
+                  <TooltipIcon name="GREEDY_FALLBACK_TARGET" />
+                </label>
+                <input
+                  type="number"
+                  value={greedyFallbackTarget}
+                  onChange={(e) => set('GREEDY_FALLBACK_TARGET', parseInt(e.target.value) || 800)}
+                  min={200}
+                  max={2000}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--line)',
+                    borderRadius: '6px',
+                    color: 'var(--fg)',
+                    fontSize: '13px'
+                  }}
+                />
+              </div>
+            </div>
+
             {/* Preserve Imports Toggle */}
             <div style={{ marginTop: '16px' }}>
               <label style={{
@@ -1346,15 +1417,16 @@ const loadVocabPreview = useCallback(async () => {
             </div>
             <div className="input-group">
               <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                Max Chunk Size
-                <TooltipIcon name="MAX_CHUNK_SIZE" />
+                Max File Size (MB)
+                <TooltipIcon name="MAX_INDEXABLE_FILE_SIZE" />
               </label>
               <input
                 type="number"
-                value={maxChunkSize}
-                onChange={(e) => set('MAX_CHUNK_SIZE', parseInt(e.target.value) || 2000)}
-                min={500}
-                max={20000}
+                value={Math.round(maxIndexableFileSize / 1000000)}
+                onChange={(e) => set('MAX_INDEXABLE_FILE_SIZE', (parseFloat(e.target.value) || 2) * 1000000)}
+                min={0.01}
+                max={10}
+                step={0.1}
                 style={{
                   width: '100%',
                   padding: '10px 12px',

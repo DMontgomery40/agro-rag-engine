@@ -244,12 +244,15 @@ def get_index_stats() -> Dict[str, Any]:
                 stats["total_storage"] += card_size
                 stats["storage_breakdown"]["cards"] += card_size
 
-            stats["repos"].append(repo_stats)
+            # Only append repos that have actual index data (chunks file or bm25 index)
+            # This excludes non-index directories like out/editor (VS Code server data)
+            if chunks_file.exists() or bm25_dir.exists():
+                stats["repos"].append(repo_stats)
 
-            # Try to resolve a last-index timestamp for this repo under this profile
-            ts = _last_index_timestamp_for_repo(base_path, repo_name)
-            if ts:
-                discovered_ts.append(ts)
+                # Try to resolve a last-index timestamp for this repo under this profile
+                ts = _last_index_timestamp_for_repo(base_path, repo_name)
+                if ts:
+                    discovered_ts.append(ts)
 
     # Embedding storage + rough costs when we have chunks
     if total_chunks > 0:

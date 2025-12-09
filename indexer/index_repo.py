@@ -206,35 +206,51 @@ def get_embedding_func():
 
         # Use provider limits (already computed at module level)
         def embed(texts: List[str]) -> List[List[float]]:
-            # Create token-aware batches using FFD
-            batches = create_token_aware_batches(
+            # Create token-aware batches using FFD - get indices for reordering!
+            # CRITICAL: create_token_aware_batches REORDERS texts for efficient packing,
+            # so we need indices to put embeddings back in original order
+            batches, batch_indices = create_token_aware_batches(
                 texts,
                 max_tokens_per_batch=MAX_TOKENS,
                 max_batch_size=BATCH_SIZE,
-                provider='openai'
+                provider='openai',
+                return_indices=True
             )
 
-            all_embs = []
-            for i, batch in enumerate(batches):
+            # Collect embeddings in batch order (will reorder at end)
+            batch_embs = []  # List of (original_idx, embedding) tuples
+
+            for i, (batch, indices) in enumerate(zip(batches, batch_indices)):
                 try:
                     # Validate batch before sending
                     if not batch:
                         logger.warning(f"Skipping empty batch {i+1}/{len(batches)}")
                         continue
 
-                    # Filter out empty strings
-                    valid_batch = [t for t in batch if t and t.strip()]
-                    if not valid_batch:
+                    # Filter out empty strings while tracking which indices remain
+                    valid_items = [(t, idx) for t, idx in zip(batch, indices) if t and t.strip()]
+                    if not valid_items:
                         logger.warning(f"Skipping batch {i+1}/{len(batches)} - all texts empty")
                         continue
 
+                    valid_batch = [t for t, _ in valid_items]
+                    valid_indices = [idx for _, idx in valid_items]
+
                     r = client.embeddings.create(input=valid_batch, model=EMBEDDING_MODEL)
-                    all_embs.extend([d.embedding for d in r.data])
+
+                    # Pair each embedding with its original index
+                    for emb_data, orig_idx in zip(r.data, valid_indices):
+                        batch_embs.append((orig_idx, emb_data.embedding))
+
                 except Exception as e:
                     logger.error(f"Embedding failed for batch {i+1}/{len(batches)} with {len(batch)} texts")
                     logger.error(f"First text preview: {repr(batch[0][:100]) if batch else 'EMPTY'}")
                     logger.error(f"Error: {e}")
                     raise
+
+            # CRITICAL: Reorder embeddings back to original text order
+            batch_embs.sort(key=lambda x: x[0])
+            all_embs = [emb for _, emb in batch_embs]
 
             return all_embs
 
@@ -344,9 +360,21 @@ def main():
         parts.append(c['code'])
         corpus.append(' '.join(parts))
     
-    # Tokenize with stemming and stopwords
-    stemmer = Stemmer('english')
-    tokenizer = Tokenizer(stemmer=stemmer, stopwords='en')
+    # Tokenize with config-driven stemming and stopwords
+    tokenizer_type = _cfg.get_str('BM25_TOKENIZER', 'stemmer').lower()
+    stemmer_lang = _cfg.get_str('BM25_STEMMER_LANG', 'english')
+    stopwords_lang = _cfg.get_str('BM25_STOPWORDS_LANG', 'en')
+
+    if tokenizer_type == 'whitespace':
+        # Whitespace tokenization - no stemming, no stopwords, split on whitespace
+        tokenizer = Tokenizer(stemmer=None, stopwords=[], splitter=r"\s+")
+        print(f"   Using whitespace tokenizer (no stemming)")
+    else:
+        # Stemmer tokenization - full text processing
+        stemmer = Stemmer(stemmer_lang)
+        tokenizer = Tokenizer(stemmer=stemmer, stopwords=stopwords_lang)
+        print(f"   Using stemmer tokenizer (lang={stemmer_lang}, stopwords={stopwords_lang})")
+
     corpus_tokens = tokenizer.tokenize(corpus)
     
     # Build BM25 index
@@ -384,16 +412,32 @@ def main():
     
     # Embed and store in Qdrant
     print(f"\n4. Embedding and storing in Qdrant...")
-    
+
     embed_func, embed_dim = get_embedding_func()
-    
+
+    # Filter out empty chunks BEFORE embedding to maintain alignment
+    valid_chunks = [c for c in chunks if c.get('code') and c['code'].strip()]
+    skipped = len(chunks) - len(valid_chunks)
+    if skipped > 0:
+        print(f"   Skipping {skipped} empty chunks")
+
     # Get texts for embedding
-    texts = [c['code'] for c in chunks]
-    
+    texts = [c['code'] for c in valid_chunks]
+
     # Embed in batches
     print(f"   Embedding {len(texts)} chunks...")
     embeddings = embed_func(texts)
     print(f"   Got {len(embeddings)} embeddings (dim={embed_dim})")
+
+    # CRITICAL: Verify alignment - embeddings must match chunks exactly
+    if len(embeddings) != len(valid_chunks):
+        raise RuntimeError(
+            f"Embedding count mismatch! Got {len(embeddings)} embeddings for "
+            f"{len(valid_chunks)} chunks. This will corrupt the index!"
+        )
+
+    # Use valid_chunks from here on
+    chunks = valid_chunks
     
     # Connect to Qdrant
     qc = QdrantClient(url=QDRANT_URL)

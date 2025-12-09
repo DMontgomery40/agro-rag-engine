@@ -348,9 +348,17 @@ def bm25_search(query: str, repo: str, k: int = 50) -> List[tuple]:
         print(f"[bm25] Failed to load index: {e}")
         return []
     
-    # Load tokenizer with vocab
-    stemmer = Stemmer('english')
-    tokenizer = Tokenizer(stemmer=stemmer, stopwords='en')
+    # Load tokenizer with vocab - config-driven
+    tokenizer_type = _cfg.get_str('BM25_TOKENIZER', 'stemmer').lower()
+    stemmer_lang = _cfg.get_str('BM25_STEMMER_LANG', 'english')
+    stopwords_lang = _cfg.get_str('BM25_STOPWORDS_LANG', 'en')
+
+    if tokenizer_type == 'whitespace':
+        tokenizer = Tokenizer(stemmer=None, stopwords=[], splitter=r"\s+")
+    else:
+        stemmer = Stemmer(stemmer_lang)
+        tokenizer = Tokenizer(stemmer=stemmer, stopwords=stopwords_lang)
+
     try:
         tokenizer.load_vocab(idx_dir)
     except:

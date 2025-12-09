@@ -98,6 +98,7 @@ def create_token_aware_batches(
     max_tokens_per_batch: int,
     max_batch_size: int,
     provider: str = "openai",
+    return_indices: bool = False,
 ) -> List[List[str]]:
     """Create batches that respect token limits using FFD bin packing.
 
@@ -107,29 +108,41 @@ def create_token_aware_batches(
     3. Greedily pack texts into batches
     4. Truncate oversized texts with warning
 
+    IMPORTANT: This function REORDERS texts for efficient packing! If you need
+    to preserve original order (e.g., for embedding alignment), use return_indices=True
+    and reorder results back using the returned indices.
+
     Args:
         texts: List of texts to batch
         max_tokens_per_batch: Maximum total tokens per batch (hard limit)
         max_batch_size: Maximum number of texts per batch (soft limit)
         provider: Embedding provider for token counting
+        return_indices: If True, returns (batches, batch_indices) where batch_indices
+                        contains the original indices for reordering results
 
     Returns:
-        List of batches, where each batch is a list of texts
+        If return_indices=False: List of batches, where each batch is a list of texts
+        If return_indices=True: Tuple of (batches, batch_indices) where batch_indices
+                                is List[List[int]] with original indices for each batch
 
     Example:
         >>> texts = ["short", "medium text here", "a very long text..."]
         >>> batches = create_token_aware_batches(texts, 8000, 64, "openai")
         >>> len(batches)  # May be multiple batches
         2
+
+        >>> # With indices for reordering:
+        >>> batches, indices = create_token_aware_batches(texts, 8000, 64, "openai", return_indices=True)
+        >>> # Process batches, then reorder results using indices
     """
     if not texts:
-        return []
+        return ([], []) if return_indices else []
 
     counter = get_token_counter(provider)
 
-    # Count tokens for all texts (with caching)
-    text_tokens: List[Tuple[str, int]] = []
-    for text in texts:
+    # Count tokens for all texts (with caching) - track original index
+    text_tokens: List[Tuple[int, str, int]] = []  # (original_idx, text, token_count)
+    for idx, text in enumerate(texts):
         token_count = counter.count_tokens(text)
 
         # Truncate if single text exceeds limit
@@ -141,17 +154,19 @@ def create_token_aware_batches(
             text, _ = counter.truncate_to_tokens(text, max_tokens_per_batch)
             token_count = max_tokens_per_batch
 
-        text_tokens.append((text, token_count))
+        text_tokens.append((idx, text, token_count))
 
     # Sort by token count (descending) for better packing (FFD algorithm)
-    text_tokens.sort(key=lambda x: x[1], reverse=True)
+    text_tokens.sort(key=lambda x: x[2], reverse=True)
 
     # FFD bin packing
     batches: List[List[str]] = []
+    batch_indices: List[List[int]] = []
     current_batch: List[str] = []
+    current_indices: List[int] = []
     current_tokens = 0
 
-    for text, tokens in text_tokens:
+    for orig_idx, text, tokens in text_tokens:
         # Check if adding this text would exceed limits
         would_exceed_tokens = current_tokens + tokens > max_tokens_per_batch
         would_exceed_size = len(current_batch) >= max_batch_size
@@ -159,16 +174,20 @@ def create_token_aware_batches(
         if current_batch and (would_exceed_tokens or would_exceed_size):
             # Save current batch and start new one
             batches.append(current_batch)
+            batch_indices.append(current_indices)
             current_batch = []
+            current_indices = []
             current_tokens = 0
 
         # Add to current batch
         current_batch.append(text)
+        current_indices.append(orig_idx)
         current_tokens += tokens
 
     # Don't forget the last batch
     if current_batch:
         batches.append(current_batch)
+        batch_indices.append(current_indices)
 
     # Log batch statistics
     if batches:
@@ -182,4 +201,6 @@ def create_token_aware_batches(
             f"({avg_tokens / max_tokens_per_batch * 100:.0f}% utilization)"
         )
 
+    if return_indices:
+        return batches, batch_indices
     return batches

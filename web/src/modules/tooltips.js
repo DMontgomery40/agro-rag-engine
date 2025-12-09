@@ -1356,9 +1356,9 @@
         ],
         [['Advanced chunking', 'info'], ['Requires reindex', 'reindex']]
       ),
-      MAX_CHUNK_SIZE: L(
-        'Max Chunk Size (Tokens)',
-        'Maximum token length for a single code chunk during AST-based chunking. Limits chunk size to fit within embedding model token limits (typically 512-8192 tokens). Larger chunks (1000-2000 tokens) capture more context per chunk, reducing fragmentation of large functions/classes. Smaller chunks (200-512 tokens) create more granular units, improving precision but potentially losing broader context.\n\nSweet spot: 512-768 tokens for balanced chunking. This fits most embedding models (e.g., OpenAI text-embedding-3 supports up to 8191 tokens, but 512-768 is practical). Use 768-1024 for code with large docstrings or complex classes where context matters. Use 256-512 for tight memory budgets or when targeting very specific code snippets. AST chunking respects syntax, so chunks won\'t split mid-function even if size limit is hit (falls back to greedy chunking).\n\nToken count is approximate (based on whitespace heuristics, not exact tokenization). Actual embedding input may vary slightly. If a logical unit (function, class) exceeds MAX_CHUNK_SIZE, the chunker splits it using GREEDY_FALLBACK_TARGET for sub-chunking while preserving structure where possible.\n\n• Range: 200-2000 tokens (typical)\n• Small: 256-512 tokens (precision, tight memory)\n• Balanced: 512-768 tokens (recommended, fits most models)\n• Large: 768-1024 tokens (more context, larger functions)\n• Very large: 1024-2000 tokens (maximum context, risky for some models)\n• Constraint: Must not exceed embedding model token limit',
+      MAX_CHUNK_TOKENS: L(
+        'Max Chunk Tokens',
+        'Maximum token length for a single code chunk during AST-based chunking. Limits chunk size to fit within embedding model token limits (typically 512-8192 tokens). Larger chunks (1000-2000 tokens) capture more context per chunk, reducing fragmentation of large functions/classes. Smaller chunks (200-512 tokens) create more granular units, improving precision but potentially losing broader context.\n\nSweet spot: 512-768 tokens for balanced chunking. This fits most embedding models (e.g., OpenAI text-embedding-3 supports up to 8191 tokens, but 512-768 is practical). Use 768-1024 for code with large docstrings or complex classes where context matters. Use 256-512 for tight memory budgets or when targeting very specific code snippets. AST chunking respects syntax, so chunks won\'t split mid-function even if size limit is hit (falls back to greedy chunking).\n\nToken count is approximate (based on whitespace heuristics, not exact tokenization). Actual embedding input may vary slightly. If a logical unit (function, class) exceeds MAX_CHUNK_TOKENS, the chunker splits it using GREEDY_FALLBACK_TARGET for sub-chunking while preserving structure where possible.\n\n• Range: 200-2000 tokens (typical)\n• Small: 256-512 tokens (precision, tight memory)\n• Balanced: 512-768 tokens (recommended, fits most models)\n• Large: 768-1024 tokens (more context, larger functions)\n• Very large: 1024-2000 tokens (maximum context, risky for some models)\n• Constraint: Must not exceed embedding model token limit',
         [
           ['Token Limits by Model', 'https://platform.openai.com/docs/guides/embeddings/embedding-models'],
           ['cAST Paper', 'https://arxiv.org/abs/2506.15655'],
@@ -1366,6 +1366,16 @@
           ['Token Estimation', 'https://github.com/openai/tiktoken']
         ],
         [['Advanced chunking', 'info'], ['Requires reindex', 'reindex']]
+      ),
+      MAX_INDEXABLE_FILE_SIZE: L(
+        'Max Indexable File Size',
+        'Maximum file size in bytes that will be indexed. Files larger than this limit are skipped during indexing to prevent memory issues and avoid indexing large binary or generated files. Default is 2MB (2,000,000 bytes). Increase for codebases with legitimately large source files; decrease to speed up indexing and reduce memory usage.\n\nSweet spot: 1-2 MB for most codebases. Use 500KB-1MB for memory-constrained environments or when you want to exclude large auto-generated files. Use 2-5MB for codebases with large source files (e.g., bundled assets, data files that should be searchable). Files exceeding this limit are logged as skipped.\n\nExample: A 5MB SQL dump file would be skipped with MAX_INDEXABLE_FILE_SIZE=2000000. To include it, increase to 6000000 (6MB). Large files that are indexed will be chunked normally, but may take longer to process and consume more embedding API tokens.\n\n• Range: 100KB - 10MB (typical)\n• Tight: 100KB - 500KB (skip most large files, fast indexing)\n• Balanced: 1MB - 2MB (recommended, handles normal source files)\n• Large: 2MB - 5MB (include larger source files)\n• Very large: 5MB - 10MB (include data files, maximum coverage)\n• Trade-off: Higher limit = more coverage, slower indexing, more memory',
+        [
+          ['Indexing Guide', '/docs/INDEXING.md#file-limits'],
+          ['Memory Optimization', '/docs/PERFORMANCE_AND_COST.md#memory'],
+          ['File Filtering', '/docs/INDEXING.md#filtering']
+        ],
+        [['File filtering', 'info'], ['Requires reindex', 'reindex']]
       ),
       MIN_CHUNK_CHARS: L(
         'Min Chunk Chars',
