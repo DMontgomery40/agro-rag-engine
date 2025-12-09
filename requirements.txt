@@ -17,7 +17,9 @@ bm25s[hf]==0.2.14
 PyStemmer==3.0.0
 
 # Chunking / parsing
-# Prefer wheels that exist; skip on Python >=3.13 and fall back to regex chunking
+# tree-sitter-languages 1.10.2 requires tree-sitter 0.20.x (NOT 0.25.x)
+# Pin both to ensure compatibility
+tree-sitter==0.20.4; python_version < "3.13"
 tree_sitter_languages==1.10.2; python_version < "3.13"
 
 # Reranking & Torch (MPS on Apple Silicon)
