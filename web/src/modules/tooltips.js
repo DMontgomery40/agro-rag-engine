@@ -512,6 +512,33 @@
         ],
         [['DEBUGGING', 'info'], ['REINDEX TO UPDATE', 'warn']]
       ),
+      BM25_TOKENIZER_RESOLVED: L(
+        'Resolved Tokenizer',
+        'The actual tokenization settings that will be applied during indexing. Shows the combined effect of tokenizer type, stemmer language, and stopwords language. This is the effective configuration after all settings are resolved.',
+        [
+          ['BM25 Algorithm', 'https://en.wikipedia.org/wiki/Okapi_BM25'],
+          ['Tokenization', 'https://en.wikipedia.org/wiki/Lexical_analysis#Tokenization']
+        ],
+        [['Read-only', 'info']]
+      ),
+      INDEX_VALIDATION_ERROR: L(
+        'Validation Error',
+        'Configuration issues that must be fixed before indexing can proceed. Common errors: embedding dimension mismatch with existing index, missing API keys for cloud providers, chunk overlap exceeding chunk size. Fix these issues and try again.',
+        [
+          ['Indexing Guide', '/docs/INDEXING.md'],
+          ['Embedding Configuration', '/docs/EMBEDDINGS.md']
+        ],
+        [['Blocks indexing', 'warn']]
+      ),
+      INDEX_VALIDATION_WARNING: L(
+        'Validation Warning',
+        'Configuration may reduce retrieval quality but indexing can still proceed. Common warnings: skip dense vectors enabled (BM25-only mode), very large chunk sizes (>2000), small chunks with AST strategy. Review and confirm to proceed.',
+        [
+          ['Retrieval Best Practices', '/docs/RETRIEVAL.md'],
+          ['Chunk Size Tuning', '/docs/INDEXING.md#chunk-sizing']
+        ],
+        [['Quality impact', 'info']]
+      ),
       PER_REPO_INDEXING: L(
         'Per-Repository Indexing Configuration',
         'Override global indexing settings per repo. Enables optimization for different codebases. Scenarios: docs repos (larger chunks 1500-2000, stemmer), dense code (smaller chunks 500-800, whitespace), mixed (AST + hybrid), legacy (greedy if AST fails). Checked = inherit agro_config.json. Unchecked = repos.json overrides take precedence. Unchanged fields still inherit global. Changes apply on reindex.',

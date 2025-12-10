@@ -232,3 +232,18 @@ async def update_runtime_mode(update: RuntimeModeUpdate) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to update runtime mode: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/config/eval-key-categories")
+def get_eval_key_categories_endpoint() -> Dict[str, Any]:
+    """Return key→category mapping for eval config display.
+
+    Categories are derived from Pydantic model structure in agro_config_model.py.
+    This endpoint enables the frontend to group config keys by category without
+    hardcoding the mappings in the UI.
+
+    Returns:
+        Dict with "categories" key containing {config_key: category_name} mapping
+    """
+    from server.models.agro_config_model import get_eval_key_categories
+    return {"categories": get_eval_key_categories()}

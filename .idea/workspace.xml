@@ -7,22 +7,16 @@
     <list default="true" id="06981a01-68f6-4278-af0e-6fdee9153f5c" name="Changes" comment="indexing subtab refactor">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/agro_config.json" beforeDir="false" afterPath="$PROJECT_DIR$/agro_config.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common/token_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/common/token_utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/eval/eval_rag.py" beforeDir="false" afterPath="$PROJECT_DIR$/eval/eval_rag.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/indexer/build_cards.py" beforeDir="false" afterPath="$PROJECT_DIR$/indexer/build_cards.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/indexer/index_repo.py" beforeDir="false" afterPath="$PROJECT_DIR$/indexer/index_repo.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/indexer/index_repo_v2.py" beforeDir="false" afterPath="$PROJECT_DIR$/indexer/index_repo_v2.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common/config_loader.py" beforeDir="false" afterPath="$PROJECT_DIR$/common/config_loader.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/models/cross-encoder-agro/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/models/cross-encoder-agro/README.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/models/cross-encoder-agro/model.safetensors" beforeDir="false" afterPath="$PROJECT_DIR$/models/cross-encoder-agro/model.safetensors" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/retrieval/hybrid_search.py" beforeDir="false" afterPath="$PROJECT_DIR$/retrieval/hybrid_search.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/retrieval/hybrid_search_v2.py" beforeDir="false" afterPath="$PROJECT_DIR$/retrieval/hybrid_search_v2.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/cards_builder.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/cards_builder.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/index_stats.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/index_stats.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/server/models/agro_config_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/models/agro_config_model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-results/.last-run.json" beforeDir="false" afterPath="$PROJECT_DIR$/test-results/.last-run.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/routers/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/routers/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test-results/.last-run.json" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/web/src/components/Evaluation/EvalDrillDown.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/components/Evaluation/EvalDrillDown.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/web/src/components/RAG/IndexingSubtab.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/components/RAG/IndexingSubtab.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/web/src/modules/tooltips.js" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/modules/tooltips.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web/src/stores/useConfigStore.ts" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/stores/useConfigStore.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -113,7 +107,7 @@
       <option name="presentableId" value="Default" />
       <updated>1764820245918</updated>
       <workItem from="1764820247767" duration="653000" />
-      <workItem from="1764820913189" duration="63403000" />
+      <workItem from="1764820913189" duration="68990000" />
     </task>
     <task id="LOCAL-00001" summary="indexing subtab refactor">
       <option name="closed" value="true" />

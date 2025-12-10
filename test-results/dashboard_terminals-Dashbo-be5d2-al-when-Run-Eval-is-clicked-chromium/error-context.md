@@ -1,0 +1,272 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - heading "AGRO Another Good RAG Option" [level=1] [ref=e4]:
+      - generic [ref=e5]: AGRO
+      - generic [ref=e6]: Another Good RAG Option
+    - generic [ref=e7]:
+      - button "Learn" [ref=e8] [cursor=pointer]:
+        - img [ref=e9]
+        - generic [ref=e12]: Learn
+      - searchbox "Search settings (Ctrl+K)" [ref=e13]
+      - combobox "Theme Mode" [ref=e14]:
+        - option "Auto" [selected]
+        - option "Dark"
+        - option "Light"
+      - button "Health" [ref=e15] [cursor=pointer]
+      - generic [ref=e16]: OK @ 4:18:48 PM
+  - generic [ref=e17]:
+    - generic [ref=e19]:
+      - generic [ref=e20]:
+        - link "🚀 Get Started" [ref=e21] [cursor=pointer]:
+          - /url: /web/start
+        - link "📊 Dashboard" [ref=e22] [cursor=pointer]:
+          - /url: /web/dashboard
+        - link "💬 Chat" [ref=e23] [cursor=pointer]:
+          - /url: /web/chat
+        - link "📝 VS Code" [ref=e24] [cursor=pointer]:
+          - /url: /web/vscode
+        - link "📈 Grafana" [ref=e25] [cursor=pointer]:
+          - /url: /web/grafana
+        - link "🧠 RAG" [ref=e26] [cursor=pointer]:
+          - /url: /web/rag
+        - link "🔬 Eval Analysis" [ref=e27] [cursor=pointer]:
+          - /url: /web/eval
+        - link "💾 Profiles" [ref=e28] [cursor=pointer]:
+          - /url: /web/profiles
+        - link "🔧 Infrastructure" [ref=e29] [cursor=pointer]:
+          - /url: /web/infrastructure
+        - link "⚙️ Admin" [ref=e30] [cursor=pointer]:
+          - /url: /web/admin
+      - generic [ref=e32]:
+        - generic [ref=e33]:
+          - button "System Status" [ref=e34] [cursor=pointer]
+          - button "Monitoring" [ref=e35] [cursor=pointer]
+          - button "Storage" [ref=e36] [cursor=pointer]
+          - button "Help" [ref=e37] [cursor=pointer]
+          - button "Glossary" [ref=e38] [cursor=pointer]
+        - generic [ref=e40]:
+          - generic [ref=e42]:
+            - generic [ref=e43]:
+              - heading "System Status" [level=3] [ref=e44]: System Status
+              - generic [ref=e46]:
+                - generic [ref=e47]:
+                  - generic [ref=e48]: Health
+                  - generic [ref=e49]: —
+                - generic [ref=e50]:
+                  - generic [ref=e51]: Repo
+                  - generic [ref=e52]: —
+                - generic [ref=e53]:
+                  - generic [ref=e54]: Branch
+                  - generic [ref=e55]: —
+                - generic [ref=e56]:
+                  - generic [ref=e57]: Cards
+                  - generic [ref=e58]: —
+                - generic [ref=e59]:
+                  - generic [ref=e60]: MCP Servers
+                  - generic [ref=e62]: —
+                - generic [ref=e63]:
+                  - generic [ref=e64]: Docker
+                  - generic [ref=e65]: —
+                - generic [ref=e66]:
+                  - generic [ref=e67]: Git Hooks
+                  - generic [ref=e68]: —
+                - generic [ref=e69]:
+                  - generic [ref=e70]: Dev Stack
+                  - generic [ref=e72]:
+                    - generic [ref=e73]:
+                      - generic [ref=e74]: Frontend
+                      - generic [ref=e75]: stopped
+                    - generic [ref=e76]:
+                      - generic [ref=e77]: Backend
+                      - generic [ref=e78]: running :8012
+                  - generic [ref=e79]:
+                    - button "↻ Frontend" [ref=e80] [cursor=pointer]
+                    - button "↻ Backend" [ref=e81] [cursor=pointer]
+                    - button "↻ Full Stack" [ref=e82] [cursor=pointer]
+                    - button "🗑 Clear Cache" [ref=e83] [cursor=pointer]
+              - button "Refreshing..." [disabled] [ref=e84]
+            - generic [ref=e85]:
+              - generic [ref=e86]:
+                - heading "Quick Actions" [level=3] [ref=e87]:
+                  - img [ref=e88]
+                  - text: Quick Actions
+                - generic [ref=e90]:
+                  - button "⭐ Generate Keywords" [ref=e91] [cursor=pointer]:
+                    - generic [ref=e92]: ⭐
+                    - generic [ref=e93]: Generate Keywords
+                  - 'button "📁 Repo: agro" [ref=e94] [cursor=pointer]':
+                    - generic [ref=e95]: 📁
+                    - generic [ref=e96]: "Repo: agro"
+                  - button "🔄 Run Indexer" [ref=e97] [cursor=pointer]:
+                    - generic [ref=e98]: 🔄
+                    - generic [ref=e99]: Run Indexer
+                  - button "⚙️ Reload Config" [ref=e100] [cursor=pointer]:
+                    - generic [ref=e101]: ⚙️
+                    - generic [ref=e102]: Reload Config
+                  - button "🧪 Run Eval" [active] [ref=e103] [cursor=pointer]:
+                    - generic [ref=e104]: 🧪
+                    - generic [ref=e105]: Run Eval
+                  - button "🔄 Refresh Status" [ref=e106] [cursor=pointer]:
+                    - generic [ref=e107]: 🔄
+                    - generic [ref=e108]: Refresh Status
+                - generic [ref=e109]:
+                  - generic [ref=e110]: Select an evaluation preset to run instantly.
+                  - generic [ref=e111]: Loading evaluation presets…
+                  - generic [ref=e112]:
+                    - button "Baseline Eval (current config) Run evaluation using the active agro_config settings." [ref=e113] [cursor=pointer]:
+                      - generic [ref=e114]: Baseline Eval (current config)
+                      - generic [ref=e115]: Run evaluation using the active agro_config settings.
+                    - button "Multi‑Query Eval (stress test) Enable multi-query rewrites with a higher final_k for recall tuning." [ref=e116] [cursor=pointer]:
+                      - generic [ref=e117]: Multi‑Query Eval (stress test)
+                      - generic [ref=e118]: Enable multi-query rewrites with a higher final_k for recall tuning.
+                - generic [ref=e119]: Ready
+                - generic [ref=e121]:
+                  - generic [ref=e122]:
+                    - generic [ref=e128]: Dashboard Operations
+                    - generic [ref=e129]:
+                      - button "📜 Auto" [ref=e130] [cursor=pointer]
+                      - button "🗑️ Clear" [ref=e131] [cursor=pointer]
+                      - button "▼" [ref=e132] [cursor=pointer]
+                  - generic [ref=e135]: Ready for operations...
+              - generic [ref=e137]: Loading index readiness…
+          - generic [ref=e138]:
+            - heading "Top Folders (Last 5 Days)" [level=3] [ref=e139]:
+              - img [ref=e140]
+              - text: Top Folders (Last 5 Days)
+            - generic [ref=e142]: No recent indexing metrics available.
+      - button "Apply All Changes" [disabled] [ref=e144]
+    - generic [ref=e145]:
+      - heading "Settings" [level=3] [ref=e147]
+      - generic [ref=e149]:
+        - generic [ref=e150]:
+          - generic [ref=e151]:
+            - generic [ref=e152]: ●
+            - generic [ref=e153]: Live Cost Calculator
+            - generic [ref=e154]: LIVE
+          - generic [ref=e155]:
+            - generic [ref=e156]:
+              - generic [ref=e157]: INFERENCE PROVIDER
+              - combobox [ref=e158]:
+                - option "Local"
+                - option "anthropic"
+                - option "cohere"
+                - option "deepseek"
+                - option "google"
+                - option "jina"
+                - option "mistral"
+                - option "openai" [selected]
+                - option "voyage"
+                - option "xai"
+            - generic [ref=e159]:
+              - generic [ref=e160]: INFERENCE MODEL
+              - combobox [ref=e161]:
+                - option "gpt-4.1" [selected]
+                - option "gpt-4.1-mini"
+                - option "gpt-4.1-nano"
+                - option "gpt-4o"
+                - option "gpt-4o-mini"
+                - option "gpt-5"
+                - option "gpt-5-mini"
+                - option "gpt-5-nano"
+                - option "gpt-5.1"
+                - option "gpt-5.1-mini"
+                - option "gpt-5.1-nano"
+                - option "o3"
+                - option "o3-mini"
+                - option "o4-mini"
+            - generic [ref=e162]:
+              - generic [ref=e163]:
+                - generic [ref=e164]: EMBEDDINGS PROVIDER
+                - combobox [ref=e165]:
+                  - option "Local"
+                  - option "anthropic"
+                  - option "cohere"
+                  - option "deepseek"
+                  - option "google"
+                  - option "jina"
+                  - option "mistral"
+                  - option "openai" [selected]
+                  - option "voyage"
+                  - option "xai"
+              - generic [ref=e166]:
+                - generic [ref=e167]: EMBEDDING MODEL
+                - combobox [ref=e168]:
+                  - option "text-embedding-3-large" [selected]
+                  - option "text-embedding-3-small"
+            - generic [ref=e169]:
+              - generic [ref=e170]:
+                - generic [ref=e171]: RERANKER
+                - combobox [ref=e172]:
+                  - option "Local"
+                  - option "anthropic"
+                  - option "cohere" [selected]
+                  - option "deepseek"
+                  - option "google"
+                  - option "jina"
+                  - option "mistral"
+                  - option "openai"
+                  - option "voyage"
+                  - option "xai"
+              - generic [ref=e173]:
+                - generic [ref=e174]: RERANK MODEL
+                - combobox [ref=e175]:
+                  - option "rerank-3.5" [selected]
+                  - option "rerank-english-v3.0"
+                  - option "rerank-multilingual-v3.0"
+            - generic [ref=e176]:
+              - generic [ref=e177]:
+                - generic [ref=e178]: TOKENS IN
+                - spinbutton [ref=e179]: "5000"
+              - generic [ref=e180]:
+                - generic [ref=e181]: TOKENS OUT
+                - spinbutton [ref=e182]: "800"
+            - generic [ref=e183]:
+              - generic [ref=e184]:
+                - generic [ref=e185]: EMBEDS
+                - spinbutton [ref=e186]: "4"
+              - generic [ref=e187]:
+                - generic [ref=e188]: RERANKS
+                - spinbutton [ref=e189]: "3"
+            - generic [ref=e190]:
+              - generic [ref=e191]: REQUESTS / DAY
+              - spinbutton [ref=e192]: "100"
+            - button "CALCULATE COST" [ref=e193] [cursor=pointer]
+            - button "ADD MODEL" [ref=e194] [cursor=pointer]
+            - generic [ref=e195]:
+              - generic [ref=e196]:
+                - generic [ref=e197]: DAILY
+                - generic [ref=e198]: "--"
+              - generic [ref=e199]:
+                - generic [ref=e200]: MONTHLY
+                - generic [ref=e201]: "--"
+        - generic [ref=e202]:
+          - generic [ref=e203]:
+            - generic [ref=e204]: ●
+            - generic [ref=e205]: Profiles
+          - generic [ref=e206]:
+            - generic [ref=e207]:
+              - generic [ref=e208]: SAVE CURRENT AS
+              - textbox "my-config" [ref=e209]
+            - button "SAVE PROFILE" [ref=e210] [cursor=pointer]
+            - generic [ref=e211]:
+              - generic [ref=e212]: SAVED PROFILES
+              - generic [ref=e213]:
+                - generic [ref=e214] [cursor=pointer]: defaults
+                - generic [ref=e215] [cursor=pointer]: min_local
+                - generic [ref=e216] [cursor=pointer]: onboard-wizard-test-project
+                - generic [ref=e217] [cursor=pointer]: pw-test
+        - generic [ref=e218]:
+          - generic [ref=e219]:
+            - generic [ref=e220]: ●
+            - generic [ref=e221]: Secrets Ingest
+          - generic [ref=e222]:
+            - text: Drop any .env / .ini / .md
+            - text: or click to upload
+          - generic [ref=e223] [cursor=pointer]:
+            - checkbox "Persist to defaults.json" [checked] [ref=e224]
+            - generic [ref=e225]: Persist to defaults.json
+        - button "Apply Changes" [ref=e227] [cursor=pointer]
+```

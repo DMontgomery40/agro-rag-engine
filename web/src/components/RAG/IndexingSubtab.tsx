@@ -149,7 +149,17 @@ export function IndexingSubtab() {
   // BM25
   const bm25Tokenizer = String(get('BM25_TOKENIZER', 'stemmer'));
   const bm25StemmerLang = String(get('BM25_STEMMER_LANG', 'english'));
-  const bm25StopwordsLang = String(get('BM25_STOPWORDS_LANG', 'english'));
+  const bm25StopwordsLang = String(get('BM25_STOPWORDS_LANG', 'en'));
+
+  // Resolved tokenizer description (computed from Zustand config values, no API call)
+  const resolvedTokenizerDesc = useMemo(() => {
+    if (bm25Tokenizer === 'stemmer') {
+      return `Stemmer (${bm25StemmerLang}) with ${bm25StopwordsLang} stopwords`;
+    } else if (bm25Tokenizer === 'whitespace') {
+      return 'Whitespace tokenizer (preserves code identifiers)';
+    }
+    return `${bm25Tokenizer} tokenizer`;
+  }, [bm25Tokenizer, bm25StemmerLang, bm25StopwordsLang]);
 
   // Enrichment / Run Options
   const skipDense = Number(get('SKIP_DENSE', 0));
@@ -161,7 +171,42 @@ export function IndexingSubtab() {
 
   const qdrantContainer = containers.find(c => c.name?.toLowerCase().includes('qdrant'));
   const isQdrantReady = qdrantContainer?.status?.toLowerCase().includes('running') ?? false;
-  const canIndex = isQdrantReady && !isIndexing && !!activeRepo;
+
+  /**
+   * canIndex: Determines if the Index Now button should be enabled.
+   *
+   * MODE-AWARE LOGIC:
+   * - BM25-only (SKIP_DENSE=1): Only requires repo selected and not currently indexing.
+   *   Qdrant is NOT needed because BM25 uses local filesystem storage, not a vector DB.
+   * - Hybrid (SKIP_DENSE=0): Additionally requires Qdrant running for vector storage.
+   *
+   * This allows users who explicitly choose BM25-only mode to index without
+   * needing to spin up Qdrant infrastructure.
+   */
+  const canIndex = skipDense === 1
+    ? !isIndexing && !!activeRepo                    // BM25-only: no Qdrant needed
+    : isQdrantReady && !isIndexing && !!activeRepo;  // Hybrid: Qdrant required
+
+  /**
+   * VALIDATION GATE FLAGS (derived from compatibilityWarnings computed in useEffect)
+   *
+   * MODE-AWARE ERROR LOGIC:
+   * - In Hybrid mode (SKIP_DENSE=0): Qdrant down is handled by canIndex, not here.
+   *   Embedding dimension mismatch is handled by <EmbeddingMismatchWarning>.
+   * - In BM25-only mode (SKIP_DENSE=1): No embedding-related errors apply.
+   *   hasValidationErrors should only catch actual BM25 config errors (rare).
+   *
+   * WARNING TYPES (non-blocking, informational):
+   * - SKIP_DENSE enabled (legitimate user choice, but user should be aware)
+   * - Small/large chunk sizes affecting retrieval quality
+   * - Stemmer vs whitespace tokenizer considerations
+   *
+   * NOTE: hasValidationErrors is currently UNUSED because there are no actual
+   * error-level issues in compatibilityWarnings after fixing SKIP_DENSE to warning.
+   * Kept for future use if we add actual blocking errors (e.g., invalid BM25 config).
+   */
+  const hasValidationErrors = compatibilityWarnings.some(w => w.type === 'error');
+  const hasValidationWarnings = compatibilityWarnings.some(w => w.type === 'warning');
 
   // Current model based on provider
   const currentModel = useMemo(() => {
@@ -323,12 +368,13 @@ export function IndexingSubtab() {
       });
     }
 
-    // Skip dense warning
+    // Skip dense warning - BM25-only is a valid user choice, NOT an error
+    // User explicitly chose to skip embeddings; this should be a warning, not a blocker
     if (skipDense === 1) {
       warnings.push({
-        type: 'error',
-        message: 'Dense vectors disabled - semantic search unavailable',
-        recommendation: 'Enable dense vectors for best retrieval quality'
+        type: 'warning',
+        message: 'BM25-only mode - semantic search unavailable',
+        recommendation: 'Enable dense vectors for hybrid retrieval (recommended for most use cases)'
       });
     }
 
@@ -678,7 +724,11 @@ const loadVocabPreview = useCallback(async () => {
         gap: '16px',
         marginBottom: '24px'
       }}>
-        {COMPONENT_CARDS.map(comp => (
+        {COMPONENT_CARDS.map(comp => {
+          // SKIP_DENSE visual de-emphasis: dim embedding card when skipDense is enabled
+          // Card remains clickable so users can still view/modify settings
+          const isEmbeddingInactive = comp.id === 'embedding' && skipDense === 1;
+          return (
           <button
             key={comp.id}
             onClick={() => setSelectedComponent(comp.id)}
@@ -695,7 +745,8 @@ const loadVocabPreview = useCallback(async () => {
               textAlign: 'left',
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
               position: 'relative',
-              overflow: 'hidden'
+              overflow: 'hidden',
+              opacity: isEmbeddingInactive ? 0.5 : 1
             }}
           >
             {selectedComponent === comp.id && (
@@ -727,7 +778,8 @@ const loadVocabPreview = useCallback(async () => {
               {comp.description}
             </div>
           </button>
-        ))}
+          );
+        })}
       </div>
 
       {/* Dynamic Config Panel */}
@@ -741,6 +793,34 @@ const loadVocabPreview = useCallback(async () => {
         {/* EMBEDDING PANEL */}
         {selectedComponent === 'embedding' && (
           <div>
+            {/* SKIP_DENSE banner - outside dimmed content */}
+            {skipDense === 1 && (
+              <div style={{
+                background: 'rgba(var(--warning-rgb, 255, 170, 0), 0.15)',
+                border: '1px solid var(--warning, #ffaa00)',
+                borderRadius: '8px',
+                padding: '12px 16px',
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                color: 'var(--warning, #ffaa00)'
+              }}>
+                <span style={{ fontSize: '18px' }}>⚠️</span>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: '13px' }}>Semantic Search Disabled</div>
+                  <div style={{ fontSize: '11px', opacity: 0.9 }}>
+                    SKIP_DENSE is enabled. Only BM25 keyword matching will be used.
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* Dimmed content wrapper */}
+            <div style={{
+              opacity: skipDense === 1 ? 0.5 : 1,
+              pointerEvents: skipDense === 1 ? 'none' : 'auto',
+              transition: 'opacity 0.2s ease'
+            }}>
             <h4 style={{
               fontSize: '14px',
               fontWeight: 600,
@@ -893,6 +973,7 @@ const loadVocabPreview = useCallback(async () => {
                 )}
               </div>
             )}
+            </div>{/* close dimmed content wrapper */}
           </div>
         )}
 
@@ -1185,7 +1266,7 @@ const loadVocabPreview = useCallback(async () => {
                   type="text"
                   value={bm25StopwordsLang}
                   onChange={(e) => set('BM25_STOPWORDS_LANG', e.target.value)}
-                  placeholder="english"
+                  placeholder="en"
                   style={{
                     width: '100%',
                     padding: '10px 12px',
@@ -1197,6 +1278,19 @@ const loadVocabPreview = useCallback(async () => {
                   }}
                 />
               </div>
+            </div>
+
+            {/* Resolved tokenizer display */}
+            <div style={{
+              marginTop: '12px',
+              fontSize: '12px',
+              color: 'var(--fg-muted)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              <strong>Resolved:</strong> {resolvedTokenizerDesc}
+              <TooltipIcon name="BM25_TOKENIZER_RESOLVED" />
             </div>
 
             <div style={{

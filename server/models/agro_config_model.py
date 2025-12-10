@@ -14,8 +14,6 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 
 class RetrievalConfig(BaseModel):
-
-
     """Configuration for retrieval and search parameters."""
 
     rrf_k_div: int = Field(
@@ -2240,46 +2238,127 @@ AGRO_CONFIG_KEYS = {
 }
 
 
-# Keys that affect RAG retrieval accuracy - shown in EvalAnalysis
-# Filtered from AGRO_CONFIG_KEYS to exclude UI/infrastructure settings
-RAG_EVAL_CONFIG_KEYS = {
-    # Retrieval params (27 keys) - CORE RAG behavior
-    'RRF_K_DIV', 'LANGGRAPH_FINAL_K', 'MAX_QUERY_REWRITES', 'FALLBACK_CONFIDENCE',
-    'FINAL_K', 'EVAL_FINAL_K', 'CONF_TOP1', 'CONF_AVG5', 'CONF_ANY', 'EVAL_MULTI',
-    'QUERY_EXPANSION_ENABLED', 'BM25_WEIGHT', 'BM25_K1', 'BM25_B', 'VECTOR_WEIGHT',
-    'CARD_SEARCH_ENABLED', 'MULTI_QUERY_M', 'USE_SEMANTIC_SYNONYMS',
-    'TOPK_DENSE', 'TOPK_SPARSE', 'HYDRATION_MODE', 'HYDRATION_MAX_CHARS',
-    # BM25 tokenizer settings - CRITICAL for search quality
+# RAG-relevant config keys for eval tracking
+# Only keys that affect retrieval accuracy - NOT post-retrieval prompts, hydration, or eval paths
+RAG_EVAL_CONFIG_KEYS: set[str] = {
+    # BM25 Search
     'BM25_TOKENIZER', 'BM25_STEMMER_LANG', 'BM25_STOPWORDS_LANG',
-
-    # Scoring params (5 keys) - affect result ranking
-    'CARD_BONUS', 'FILENAME_BOOST_EXACT', 'FILENAME_BOOST_PARTIAL', 'VENDOR_MODE', 'PATH_BOOSTS',
-
-    # Layer bonus params (6 keys)
+    'BM25_K1', 'BM25_B', 'BM25_WEIGHT',
+    # Embedding
+    'EMBEDDING_TYPE', 'EMBEDDING_MODEL', 'EMBEDDING_DIM',
+    'EMBEDDING_MODEL_LOCAL', 'EMBEDDING_BATCH_SIZE', 'VOYAGE_MODEL',
+    # Retrieval
+    'RRF_K_DIV', 'LANGGRAPH_FINAL_K', 'FINAL_K', 'EVAL_FINAL_K',
+    'TOPK_DENSE', 'TOPK_SPARSE', 'VECTOR_WEIGHT',
+    'CONF_TOP1', 'CONF_AVG5', 'CONF_ANY', 'FALLBACK_CONFIDENCE',
+    'CARD_SEARCH_ENABLED', 'MULTI_QUERY_M', 'EVAL_MULTI',
+    # Query Expansion (prompts that modify query BEFORE search)
+    'QUERY_EXPANSION_ENABLED', 'MAX_QUERY_REWRITES', 'USE_SEMANTIC_SYNONYMS',
+    'PROMPT_QUERY_EXPANSION', 'PROMPT_QUERY_REWRITE', 'PROMPT_SEMANTIC_CARDS',
+    # Reranking
+    'RERANKER_MODE', 'RERANKER_CLOUD_PROVIDER', 'RERANKER_CLOUD_MODEL',
+    'RERANKER_LOCAL_MODEL', 'AGRO_RERANKER_ALPHA', 'AGRO_RERANKER_TOPN',
+    'AGRO_RERANKER_BATCH', 'AGRO_RERANKER_MAXLEN', 'RERANK_INPUT_SNIPPET_CHARS',
+    # Chunking
+    'CHUNK_SIZE', 'CHUNK_OVERLAP', 'AST_OVERLAP_LINES', 'MAX_INDEXABLE_FILE_SIZE',
+    'MAX_CHUNK_TOKENS', 'MIN_CHUNK_CHARS', 'GREEDY_FALLBACK_TARGET',
+    'CHUNKING_STRATEGY', 'PRESERVE_IMPORTS',
+    # Scoring
+    'CARD_BONUS', 'FILENAME_BOOST_EXACT', 'FILENAME_BOOST_PARTIAL',
+    'VENDOR_MODE', 'PATH_BOOSTS',
+    # Layer Bonuses
     'LAYER_BONUS_GUI', 'LAYER_BONUS_RETRIEVAL', 'LAYER_BONUS_INDEXER',
     'VENDOR_PENALTY', 'FRESHNESS_BONUS', 'LAYER_INTENT_MATRIX',
-
-    # Embedding params (6 keys) - model selection affects accuracy
-    'EMBEDDING_TYPE', 'EMBEDDING_MODEL', 'EMBEDDING_DIM', 'VOYAGE_MODEL',
-    'EMBEDDING_MODEL_LOCAL', 'EMBEDDING_BATCH_SIZE',
-
-    # Chunking params (9 keys) - affects how code is split for retrieval
-    'CHUNK_SIZE', 'CHUNK_OVERLAP', 'AST_OVERLAP_LINES', 'MAX_INDEXABLE_FILE_SIZE',
-    'MAX_CHUNK_TOKENS', 'MIN_CHUNK_CHARS', 'GREEDY_FALLBACK_TARGET', 'CHUNKING_STRATEGY', 'PRESERVE_IMPORTS',
-
-    # Reranking params (9 keys) - directly affects result quality
-    'RERANKER_MODE', 'RERANKER_CLOUD_PROVIDER', 'RERANKER_CLOUD_MODEL', 'RERANKER_LOCAL_MODEL',
-    'AGRO_RERANKER_ALPHA', 'AGRO_RERANKER_TOPN', 'AGRO_RERANKER_BATCH',
-    'AGRO_RERANKER_MAXLEN', 'RERANK_INPUT_SNIPPET_CHARS',
-
-    # Keywords params (3 keys) - affects keyword boosting
+    # Keywords
     'KEYWORDS_BOOST', 'KEYWORDS_MAX_PER_REPO', 'KEYWORDS_MIN_FREQ',
-
-    # Eval params (3 keys)
-    'GOLDEN_PATH', 'BASELINE_PATH', 'EVAL_MULTI_M',
-
-    # System prompts (7 keys) - LLM behavior
-    'PROMPT_MAIN_RAG_CHAT', 'PROMPT_QUERY_EXPANSION', 'PROMPT_QUERY_REWRITE',
-    'PROMPT_SEMANTIC_CARDS', 'PROMPT_LIGHTWEIGHT_CARDS', 'PROMPT_CODE_ENRICHMENT',
-    'PROMPT_EVAL_ANALYSIS',
+    # NOTE: Excluded (don't affect retrieval):
+    # - PROMPT_MAIN_RAG_CHAT, PROMPT_CODE_ENRICHMENT, PROMPT_LIGHTWEIGHT_CARDS, PROMPT_EVAL_ANALYSIS (post-retrieval)
+    # - HYDRATION_MODE, HYDRATION_MAX_CHARS (post-retrieval)
+    # - GOLDEN_PATH, BASELINE_PATH, EVAL_MULTI_M (eval metadata)
 }
+
+
+def get_eval_key_categories() -> dict[str, str]:
+    """Return mapping of config keys to their category names.
+
+    Categories are derived from the existing Pydantic model structure and
+    the documented groupings in RAG_EVAL_CONFIG_KEYS.
+    """
+    # Define categories based on the existing comments in RAG_EVAL_CONFIG_KEYS
+    # Each key maps to its display category name
+    _EVAL_KEY_CATEGORY_MAP: dict[str, str] = {
+        # BM25 Search
+        'BM25_TOKENIZER': 'BM25 Search',
+        'BM25_STEMMER_LANG': 'BM25 Search',
+        'BM25_STOPWORDS_LANG': 'BM25 Search',
+        'BM25_K1': 'BM25 Search',
+        'BM25_B': 'BM25 Search',
+        'BM25_WEIGHT': 'BM25 Search',
+        # Embedding
+        'EMBEDDING_TYPE': 'Embedding',
+        'EMBEDDING_MODEL': 'Embedding',
+        'EMBEDDING_DIM': 'Embedding',
+        'EMBEDDING_MODEL_LOCAL': 'Embedding',
+        'EMBEDDING_BATCH_SIZE': 'Embedding',
+        'VOYAGE_MODEL': 'Embedding',
+        # Retrieval
+        'RRF_K_DIV': 'Retrieval',
+        'LANGGRAPH_FINAL_K': 'Retrieval',
+        'FINAL_K': 'Retrieval',
+        'EVAL_FINAL_K': 'Retrieval',
+        'TOPK_DENSE': 'Retrieval',
+        'TOPK_SPARSE': 'Retrieval',
+        'VECTOR_WEIGHT': 'Retrieval',
+        'CONF_TOP1': 'Retrieval',
+        'CONF_AVG5': 'Retrieval',
+        'CONF_ANY': 'Retrieval',
+        'FALLBACK_CONFIDENCE': 'Retrieval',
+        'CARD_SEARCH_ENABLED': 'Retrieval',
+        'MULTI_QUERY_M': 'Retrieval',
+        'EVAL_MULTI': 'Retrieval',
+        # Query Expansion
+        'QUERY_EXPANSION_ENABLED': 'Query Expansion',
+        'MAX_QUERY_REWRITES': 'Query Expansion',
+        'USE_SEMANTIC_SYNONYMS': 'Query Expansion',
+        'PROMPT_QUERY_EXPANSION': 'Query Expansion',
+        'PROMPT_QUERY_REWRITE': 'Query Expansion',
+        'PROMPT_SEMANTIC_CARDS': 'Query Expansion',
+        # Reranking
+        'RERANKER_MODE': 'Reranking',
+        'RERANKER_CLOUD_PROVIDER': 'Reranking',
+        'RERANKER_CLOUD_MODEL': 'Reranking',
+        'RERANKER_LOCAL_MODEL': 'Reranking',
+        'AGRO_RERANKER_ALPHA': 'Reranking',
+        'AGRO_RERANKER_TOPN': 'Reranking',
+        'AGRO_RERANKER_BATCH': 'Reranking',
+        'AGRO_RERANKER_MAXLEN': 'Reranking',
+        'RERANK_INPUT_SNIPPET_CHARS': 'Reranking',
+        # Chunking
+        'CHUNK_SIZE': 'Chunking',
+        'CHUNK_OVERLAP': 'Chunking',
+        'AST_OVERLAP_LINES': 'Chunking',
+        'MAX_INDEXABLE_FILE_SIZE': 'Chunking',
+        'MAX_CHUNK_TOKENS': 'Chunking',
+        'MIN_CHUNK_CHARS': 'Chunking',
+        'GREEDY_FALLBACK_TARGET': 'Chunking',
+        'CHUNKING_STRATEGY': 'Chunking',
+        'PRESERVE_IMPORTS': 'Chunking',
+        # Scoring
+        'CARD_BONUS': 'Scoring',
+        'FILENAME_BOOST_EXACT': 'Scoring',
+        'FILENAME_BOOST_PARTIAL': 'Scoring',
+        'VENDOR_MODE': 'Scoring',
+        'PATH_BOOSTS': 'Scoring',
+        # Layer Bonuses
+        'LAYER_BONUS_GUI': 'Layer Bonuses',
+        'LAYER_BONUS_RETRIEVAL': 'Layer Bonuses',
+        'LAYER_BONUS_INDEXER': 'Layer Bonuses',
+        'VENDOR_PENALTY': 'Layer Bonuses',
+        'FRESHNESS_BONUS': 'Layer Bonuses',
+        'LAYER_INTENT_MATRIX': 'Layer Bonuses',
+        # Keywords
+        'KEYWORDS_BOOST': 'Keywords',
+        'KEYWORDS_MAX_PER_REPO': 'Keywords',
+        'KEYWORDS_MIN_FREQ': 'Keywords',
+    }
+    return _EVAL_KEY_CATEGORY_MAP

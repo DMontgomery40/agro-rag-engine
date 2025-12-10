@@ -206,7 +206,7 @@ def get_repo_indexing_config(name: str) -> Dict[str, Any]:
         'chunking_strategy': registry.get_str('CHUNKING_STRATEGY', 'ast'),
         'bm25_tokenizer': registry.get_str('BM25_TOKENIZER', 'stemmer'),
         'bm25_stemmer_lang': registry.get_str('BM25_STEMMER_LANG', 'english'),
-        'bm25_stopwords_lang': registry.get_str('BM25_STOPWORDS_LANG', 'english'),
+        'bm25_stopwords_lang': registry.get_str('BM25_STOPWORDS_LANG', 'en'),
         'indexing_batch_size': registry.get_int('INDEXING_BATCH_SIZE', 100),
         'indexing_workers': registry.get_int('INDEXING_WORKERS', 4),
     }
