@@ -1,0 +1,2417 @@
+<!DOCTYPE html><html lang="en" class="no-js"><head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://dmontgomery40.github.io/agro-rag-engine/latest/operations/troubleshooting/">
+      
+      
+        <link rel="prev" href="../monitoring/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>Troubleshooting Guide - AGRO Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.618322db.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  <link href="../../assets/stylesheets/glightbox.min.css" rel="stylesheet"><script src="../../assets/javascripts/glightbox.min.js"></script><style id="glightbox-style">
+            html.glightbox-open { overflow: initial; height: 100%; }
+            .gslide-title { margin-top: 0px; user-select: text; }
+            .gslide-desc { color: #666; user-select: text; }
+            .gslide-image img { background: white; }
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color); }
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color); }
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color); }
+        </style></head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="cyan">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#troubleshooting-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AGRO Docs" class="md-header__button md-logo" aria-label="AGRO Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AGRO Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Troubleshooting Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="cyan" aria-label="Switch to light mode" type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="cyan" aria-label="Switch to dark mode" type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/DMontgomery40/agro-rag-engine" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/quickstart/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../features/rag/" class="md-tabs__link">
+          
+  
+  
+  Features
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../configuration/models/" class="md-tabs__link">
+          
+  
+  
+  Configuration
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api/endpoints/" class="md-tabs__link">
+          
+  
+  
+  API
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../monitoring/" class="md-tabs__link">
+          
+  
+  
+  Operations
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AGRO Docs" class="md-nav__button md-logo" aria-label="AGRO Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+
+    </a>
+    AGRO Docs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/DMontgomery40/agro-rag-engine" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2">
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/first-steps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    First Steps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3">
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Features
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Features
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/rag/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hybrid Search
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/mcp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/cli-chat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Chat
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/learning-reranker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning Reranker
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/evaluation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4">
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configuration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/profiles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Profiles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5">
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/endpoints/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Endpoints
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/openapi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenAPI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monitoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-configuration-environment-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Configuration &amp; Environment Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Configuration &amp; Environment Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-my-env-changes-arent-taking-effect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 My .env changes aren’t taking effect
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-agro_configjson-validation-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 agro_config.json validation errors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-environment-vs-config-precedence-confusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 Environment vs config precedence confusion
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-indexing-problems" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Indexing Problems
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Indexing Problems">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-indexing-never-starts-or-hangs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Indexing never starts or hangs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-indexing-failed-in-the-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 “Indexing failed: …” in the UI
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-rag-search-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. RAG / Search Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. RAG / Search Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-empty-or-obviously-wrong-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Empty or obviously wrong results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-langgraph-errors-or-missing-graph-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 LangGraph errors or missing graph behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-editor-devtools-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Editor &amp; DevTools Integration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Editor &amp; DevTools Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-editor-panel-not-showing-up-in-the-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Editor panel not showing up in the UI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-editor-server-not-reachable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Editor server not reachable
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-traces-evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Traces &amp; Evaluation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Traces &amp; Evaluation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-no-traces-found-in-the-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 “No traces found” in the UI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-latest-trace-endpoint-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 “latest trace” endpoint fails
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-file-writes-docker-volume-quirks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. File Writes &amp; Docker Volume Quirks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. File Writes &amp; Docker Volume Quirks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-device-or-resource-busy-when-saving-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 “Device or resource busy” when saving config
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-secrets-not-persisting-or-showing-up-blank" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Secrets not persisting or showing up blank
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-when-all-else-fails-let-agro-explain-itself" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. When All Else Fails: Let AGRO Explain Itself
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-quick-triage-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Quick Triage Checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-configuration-environment-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Configuration &amp; Environment Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Configuration &amp; Environment Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-my-env-changes-arent-taking-effect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 My .env changes aren’t taking effect
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-agro_configjson-validation-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 agro_config.json validation errors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-environment-vs-config-precedence-confusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 Environment vs config precedence confusion
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-indexing-problems" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Indexing Problems
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Indexing Problems">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-indexing-never-starts-or-hangs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Indexing never starts or hangs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-indexing-failed-in-the-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 “Indexing failed: …” in the UI
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-rag-search-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. RAG / Search Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. RAG / Search Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-empty-or-obviously-wrong-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Empty or obviously wrong results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-langgraph-errors-or-missing-graph-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 LangGraph errors or missing graph behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-editor-devtools-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Editor &amp; DevTools Integration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Editor &amp; DevTools Integration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-editor-panel-not-showing-up-in-the-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Editor panel not showing up in the UI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-editor-server-not-reachable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Editor server not reachable
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-traces-evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Traces &amp; Evaluation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Traces &amp; Evaluation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-no-traces-found-in-the-ui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 “No traces found” in the UI
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-latest-trace-endpoint-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 “latest trace” endpoint fails
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-file-writes-docker-volume-quirks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. File Writes &amp; Docker Volume Quirks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. File Writes &amp; Docker Volume Quirks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-device-or-resource-busy-when-saving-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 “Device or resource busy” when saving config
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-secrets-not-persisting-or-showing-up-blank" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Secrets not persisting or showing up blank
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-when-all-else-fails-let-agro-explain-itself" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. When All Else Fails: Let AGRO Explain Itself
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-quick-triage-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Quick Triage Checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="troubleshooting-guide">Troubleshooting Guide<a class="headerlink" href="#troubleshooting-guide" title="Permanent link">¶</a></h1>
+<p>This page collects the most common problems I’ve seen while running AGRO and how to debug them quickly.</p>
+<p>Use this as a “first pass” before diving into the code or filing an issue. When in doubt, remember that almost everything in AGRO is just:</p>
+<ul>
+<li>a FastAPI app</li>
+<li>a Pydantic‑validated config registry</li>
+<li>a set of small service modules under <code>server/services</code></li>
+</ul>
+<p>If you know which layer is misbehaving, you can usually fix it in a few minutes.</p>
+<h2 id="1-configuration-environment-issues">1. Configuration &amp; Environment Issues<a class="headerlink" href="#1-configuration-environment-issues" title="Permanent link">¶</a></h2>
+<p>AGRO’s behavior is driven by two main surfaces:</p>
+<ul>
+<li><code>.env</code> – infrastructure, secrets, and hard overrides</li>
+<li><code>agro_config.json</code> – tunable RAG behavior, models, retrieval knobs</li>
+</ul>
+<p>Under the hood, everything flows through the <strong>configuration registry</strong> in <code>server/services/config_registry.py</code>.</p>
+<pre class="mermaid"><code>flowchart TD
+  A[.env file] --&gt;|highest precedence| R[ConfigRegistry]
+  B[agro_config.json] --&gt;|validated via Pydantic| R
+  C[Pydantic defaults] --&gt;|fallback| R
+  R --&gt; S[Services
+  (rag, indexing, editor,
+  keywords, etc.)]</code></pre>
+<p>If something “mysteriously” ignores your settings, the registry is the first place to look.</p>
+<h3 id="11-my-env-changes-arent-taking-effect">1.1 My <code>.env</code> changes aren’t taking effect<a class="headerlink" href="#11-my-env-changes-arent-taking-effect" title="Permanent link">¶</a></h3>
+<p>AGRO loads <code>.env</code> <strong>once</strong>, at import time, via <code>python-dotenv</code>:</p>
+<div class="highlight"><table class="highlighttable"><tbody><tr><th colspan="2" class="filename"><span class="filename">server/services/config_registry.py</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-1">1</a></span>
+<span class="normal"><a href="#__codelineno-0-2">2</a></span>
+<span class="normal"><a href="#__codelineno-0-3">3</a></span>
+<span class="normal"><a href="#__codelineno-0-4">4</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">dotenv</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_dotenv</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3"></a><span class="c1"># Load .env FIRST before any os.environ access</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4"></a><span class="n">load_dotenv</span><span class="p">(</span><span class="n">override</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div></td></tr></tbody></table></div>
+<p>Common failure modes:</p>
+<ul>
+<li>You edited the wrong <code>.env</code> (e.g. host vs container)</li>
+<li>You changed <code>.env</code> but didn’t restart the server</li>
+<li>You’re setting a key that AGRO doesn’t actually read</li>
+</ul>
+<p>Steps to debug:</p>
+<ol>
+<li><strong>Confirm which <code>.env</code> is being used</strong></li>
+</ol>
+<p>In Docker, the <code>.env</code> that matters is usually next to <code>docker-compose.yml</code>. On bare metal, it’s whatever is in the current working directory when you start <code>uvicorn</code>/<code>server.app</code>.</p>
+<ol>
+<li><strong>Check the effective value via the config registry</strong></li>
+</ol>
+<p>Use the HTTP config API or the UI’s Admin → Settings view to inspect the value. Internally, everything goes through <code>get_config_registry()</code>:</p>
+<div class="highlight"><table class="highlighttable"><tbody><tr><th colspan="2" class="filename"><span class="filename">server/services/config_registry.py</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-1-1">1</a></span>
+<span class="normal"><a href="#__codelineno-1-2">2</a></span>
+<span class="normal"><a href="#__codelineno-1-3">3</a></span>
+<span class="normal"><a href="#__codelineno-1-4">4</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">server.services.config_registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_config_registry</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3"></a><span class="n">registry</span> <span class="o">=</span> <span class="n">get_config_registry</span><span class="p">()</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4"></a><span class="nb">print</span><span class="p">(</span><span class="n">registry</span><span class="o">.</span><span class="n">get_str</span><span class="p">(</span><span class="s2">"REPO"</span><span class="p">))</span>
+</code></pre></div></td></tr></tbody></table></div>
+<ol>
+<li><strong>Restart the backend</strong></li>
+</ol>
+<p>The registry is process‑local. If you change <code>.env</code>, you must restart the FastAPI process (and the indexer container if you’re running Docker).</p>
+<h3 id="12-agro_configjson-validation-errors">1.2 <code>agro_config.json</code> validation errors<a class="headerlink" href="#12-agro_configjson-validation-errors" title="Permanent link">¶</a></h3>
+<p><code>agro_config.json</code> is validated by Pydantic models in <code>server/models/agro_config_model.py</code>. If the file is malformed or contains unknown keys, the registry will log a <code>ValidationError</code> and fall back to defaults.</p>
+<p>Symptoms:</p>
+<ul>
+<li>UI loads, but your changes to <code>agro_config.json</code> don’t seem to apply</li>
+<li>Logs show something like <code>pydantic.ValidationError</code> when starting the server</li>
+</ul>
+<p>How to debug:</p>
+<ol>
+<li><strong>Check the logs</strong></li>
+</ol>
+<p>Look for messages from the <code>agro.config</code> logger:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>agro.config ERROR Failed to load agro_config.json: 1 validation error for AgroConfigRoot
+</code></pre></div>
+<ol>
+<li><strong>Validate the file manually</strong></li>
+</ol>
+<p>Run a quick check in a Python shell:</p>
+<div class="highlight"><table class="highlighttable"><tbody><tr><th colspan="2" class="filename"><span class="filename">validate_config.py</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-3-1">1</a></span>
+<span class="normal"><a href="#__codelineno-3-2">2</a></span>
+<span class="normal"><a href="#__codelineno-3-3">3</a></span>
+<span class="normal"><a href="#__codelineno-3-4">4</a></span>
+<span class="normal"><a href="#__codelineno-3-5">5</a></span>
+<span class="normal"><a href="#__codelineno-3-6">6</a></span>
+<span class="normal"><a href="#__codelineno-3-7">7</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">server.models.agro_config_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">AgroConfigRoot</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4"></a>
+<a id="__codelineno-3-5" name="__codelineno-3-5"></a><span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">"agro_config.json"</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6"></a><span class="n">cfg</span> <span class="o">=</span> <span class="n">AgroConfigRoot</span><span class="p">(</span><span class="o">**</span><span class="n">data</span><span class="p">)</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7"></a><span class="nb">print</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">model_dump</span><span class="p">())</span>
+</code></pre></div></td></tr></tbody></table></div>
+<p>If this raises, fix the offending field and retry.</p>
+<ol>
+<li><strong>Use only known keys</strong></li>
+</ol>
+<p>The allowed keys are defined in <code>AGRO_CONFIG_KEYS</code>. Unknown keys are ignored by the registry layer that merges config for the web UI (<code>server/services/config_store.py</code>). If you typo a key, it simply won’t show up.</p>
+<h3 id="13-environment-vs-config-precedence-confusion">1.3 Environment vs config precedence confusion<a class="headerlink" href="#13-environment-vs-config-precedence-confusion" title="Permanent link">¶</a></h3>
+<p>The registry enforces a clear precedence:</p>
+<ol>
+<li><code>.env</code> (highest)</li>
+<li><code>agro_config.json</code></li>
+<li>Pydantic defaults</li>
+</ol>
+<p>There are also <strong>legacy aliases</strong> and a small set of <strong>infrastructure keys</strong> that must be overridable via environment variables.</p>
+<p>Example: <code>MQ_REWRITES</code> is aliased to <code>MAX_QUERY_REWRITES</code>:</p>
+<div class="highlight"><table class="highlighttable"><tbody><tr><th colspan="2" class="filename"><span class="filename">server/services/config_registry.py</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-4-1">1</a></span>
+<span class="normal"><a href="#__codelineno-4-2">2</a></span>
+<span class="normal"><a href="#__codelineno-4-3">3</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1"></a><span class="hll"><span class="n">LEGACY_KEY_ALIASES</span> <span class="o">=</span> <span class="p">{</span>
+</span><a id="__codelineno-4-2" name="__codelineno-4-2"></a><span class="hll">    <span class="s1">'MQ_REWRITES'</span><span class="p">:</span> <span class="s1">'MAX_QUERY_REWRITES'</span><span class="p">,</span>
+</span><a id="__codelineno-4-3" name="__codelineno-4-3"></a><span class="hll"><span class="p">}</span>
+</span></code></pre></div></td></tr></tbody></table></div>
+<p>If you set <code>MQ_REWRITES</code> in <code>.env</code> and <code>MAX_QUERY_REWRITES</code> in <code>agro_config.json</code>, the <code>.env</code> value wins.</p>
+<p>To see where a value came from, use the registry’s source tracking (exposed via the config API / UI). If you’re debugging in code, log both the value and its source.</p>
+<h2 id="2-indexing-problems">2. Indexing Problems<a class="headerlink" href="#2-indexing-problems" title="Permanent link">¶</a></h2>
+<p>Indexing is orchestrated by <code>server/services/indexing.py</code>. It shells out to the indexer using the same Python interpreter and passes a small environment block.</p>
+<div class="highlight"><table class="highlighttable"><tbody><tr><th colspan="2" class="filename"><span class="filename">server/services/indexing.py</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-5-1"> 1</a></span>
+<span class="normal"><a href="#__codelineno-5-2"> 2</a></span>
+<span class="normal"><a href="#__codelineno-5-3"> 3</a></span>
+<span class="normal"><a href="#__codelineno-5-4"> 4</a></span>
+<span class="normal"><a href="#__codelineno-5-5"> 5</a></span>
+<span class="normal"><a href="#__codelineno-5-6"> 6</a></span>
+<span class="normal"><a href="#__codelineno-5-7"> 7</a></span>
+<span class="normal"><a href="#__codelineno-5-8"> 8</a></span>
+<span class="normal"><a href="#__codelineno-5-9"> 9</a></span>
+<span class="normal"><a href="#__codelineno-5-10">10</a></span>
+<span class="normal"><a href="#__codelineno-5-11">11</a></span>
+<span class="normal"><a href="#__codelineno-5-12">12</a></span>
+<span class="normal"><a href="#__codelineno-5-13">13</a></span>
+<span class="normal"><a href="#__codelineno-5-14">14</a></span>
+<span class="normal"><a href="#__codelineno-5-15">15</a></span>
+<span class="normal"><a href="#__codelineno-5-16">16</a></span>
+<span class="normal"><a href="#__codelineno-5-17">17</a></span>
+<span class="normal"><a href="#__codelineno-5-18">18</a></span>
+<span class="normal"><a href="#__codelineno-5-19">19</a></span>
+<span class="normal"><a href="#__codelineno-5-20">20</a></span>
+<span class="normal"><a href="#__codelineno-5-21">21</a></span>
+<span class="normal"><a href="#__codelineno-5-22">22</a></span>
+<span class="normal"><a href="#__codelineno-5-23">23</a></span>
+<span class="normal"><a href="#__codelineno-5-24">24</a></span>
+<span class="normal"><a href="#__codelineno-5-25">25</a></span>
+<span class="normal"><a href="#__codelineno-5-26">26</a></span>
+<span class="normal"><a href="#__codelineno-5-27">27</a></span>
+<span class="normal"><a href="#__codelineno-5-28">28</a></span>
+<span class="normal"><a href="#__codelineno-5-29">29</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">common.paths</span><span class="w"> </span><span class="kn">import</span> <span class="n">repo_root</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">server.index_stats</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_index_stats</span> <span class="k">as</span> <span class="n">_get_index_stats</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">server.services.config_registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_config_registry</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4"></a>
+<a id="__codelineno-5-5" name="__codelineno-5-5"></a><span class="n">_config_registry</span> <span class="o">=</span> <span class="n">get_config_registry</span><span class="p">()</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6"></a>
+<a id="__codelineno-5-7" name="__codelineno-5-7"></a><span class="n">_INDEX_STATUS</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8"></a><span class="n">_INDEX_METADATA</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9"></a>
+<a id="__codelineno-5-10" name="__codelineno-5-10"></a>
+<a id="__codelineno-5-11" name="__codelineno-5-11"></a><span class="k">def</span><span class="w"> </span><span class="nf">start</span><span class="p">(</span><span class="n">payload</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12"></a>    <span class="k">global</span> <span class="n">_INDEX_STATUS</span><span class="p">,</span> <span class="n">_INDEX_METADATA</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13"></a>    <span class="n">payload</span> <span class="o">=</span> <span class="n">payload</span> <span class="ow">or</span> <span class="p">{}</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14"></a>    <span class="n">_INDEX_STATUS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"Indexing started..."</span><span class="p">]</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15"></a>    <span class="n">_INDEX_METADATA</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16"></a>
+<a id="__codelineno-5-17" name="__codelineno-5-17"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">run_index</span><span class="p">():</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18"></a><span class="hll">        <span class="k">global</span> <span class="n">_INDEX_STATUS</span><span class="p">,</span> <span class="n">_INDEX_METADATA</span>
+</span><a id="__codelineno-5-19" name="__codelineno-5-19"></a><span class="hll">        <span class="k">try</span><span class="p">:</span>
+</span><a id="__codelineno-5-20" name="__codelineno-5-20"></a><span class="hll">            <span class="n">repo</span> <span class="o">=</span> <span class="n">_config_registry</span><span class="o">.</span><span class="n">get_str</span><span class="p">(</span><span class="s2">"REPO"</span><span class="p">,</span> <span class="s2">"agro"</span><span class="p">)</span>
+</span><a id="__codelineno-5-21" name="__codelineno-5-21"></a><span class="hll">            <span class="n">_INDEX_STATUS</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Indexing repository: </span><span class="si">{</span><span class="n">repo</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><a id="__codelineno-5-22" name="__codelineno-5-22"></a><span class="hll">            <span class="n">root</span> <span class="o">=</span> <span class="n">repo_root</span><span class="p">()</span>
+</span><a id="__codelineno-5-23" name="__codelineno-5-23"></a><span class="hll">            <span class="n">env</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">,</span> <span class="s2">"REPO"</span><span class="p">:</span> <span class="n">repo</span><span class="p">,</span> <span class="s2">"REPO_ROOT"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">root</span><span class="p">),</span> <span class="s2">"PYTHONPATH"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">root</span><span class="p">)}</span>
+</span><a id="__codelineno-5-24" name="__codelineno-5-24"></a><span class="hll">            <span class="k">if</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"enrich"</span><span class="p">):</span>
+</span><a id="__codelineno-5-25" name="__codelineno-5-25"></a><span class="hll">                <span class="n">env</span><span class="p">[</span><span class="s2">"ENRICH_CODE_CHUNKS"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"true"</span>
+</span><a id="__codelineno-5-26" name="__codelineno-5-26"></a><span class="hll">                <span class="n">_INDEX_STATUS</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"Enriching chunks with summaries..."</span><span class="p">)</span>
+</span><a id="__codelineno-5-27" name="__codelineno-5-27"></a><span class="hll">            <span class="c1"># ... spawn subprocess here ...</span>
+</span><a id="__codelineno-5-28" name="__codelineno-5-28"></a><span class="hll">        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+</span><a id="__codelineno-5-29" name="__codelineno-5-29"></a><span class="hll">            <span class="n">_INDEX_STATUS</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Indexing failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span></code></pre></div></td></tr></tbody></table></div>
+<p>The web UI polls <code>_INDEX_STATUS</code> and <code>_INDEX_METADATA</code> to show progress.</p>
+<h3 id="21-indexing-never-starts-or-hangs">2.1 Indexing never starts or hangs<a class="headerlink" href="#21-indexing-never-starts-or-hangs" title="Permanent link">¶</a></h3>
+<p>Symptoms:</p>
+<ul>
+<li>Clicking “Index” in the UI shows “Indexing started…” but nothing else</li>
+<li>No new Qdrant collections or index files appear under <code>data/</code></li>
+</ul>
+<p>Checklist:</p>
+<ol>
+<li><strong>Check the configured repo</strong></li>
+</ol>
+<p>The indexer uses <code>REPO</code> from the config registry:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">repo</span> <span class="o">=</span> <span class="n">_config_registry</span><span class="o">.</span><span class="n">get_str</span><span class="p">(</span><span class="s2">"REPO"</span><span class="p">,</span> <span class="s2">"agro"</span><span class="p">)</span>
+</code></pre></div>
+<p>Make sure:</p>
+<ul>
+<li><code>REPO</code> points to a valid profile / repo name</li>
+<li>
+<p><code>REPO_ROOT</code> (in the environment) matches the actual checkout path</p>
+</li>
+<li>
+<p><strong>Inspect indexer logs</strong></p>
+</li>
+</ul>
+<p>The indexer runs as a separate process. If you’re using Docker, check the <code>indexer</code> container logs. On bare metal, look for logs under <code>data/out/&lt;repo&gt;/logs</code> or wherever you configured logging.</p>
+<ol>
+<li><strong>Verify Python path</strong></li>
+</ol>
+<p>The indexer process is started with <code>PYTHONPATH</code> set to <code>repo_root()</code>. If you’ve moved the code or are running from a different working directory, imports inside the indexer may fail.</p>
+<h3 id="22-indexing-failed-in-the-ui">2.2 “Indexing failed: …” in the UI<a class="headerlink" href="#22-indexing-failed-in-the-ui" title="Permanent link">¶</a></h3>
+<p>If <code>_INDEX_STATUS</code> contains a line like <code>Indexing failed: &lt;error&gt;</code>, the exception was caught in <code>run_index()</code>.</p>
+<p>Steps:</p>
+<ol>
+<li><strong>Open browser dev tools → Network</strong> and inspect the <code>/api/index/status</code> response to see the full <code>_INDEX_STATUS</code> list.</li>
+<li><strong>Reproduce from the CLI</strong> using the same environment:</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nv">REPO</span><span class="o">=</span>my-repo<span class="w"> </span><span class="nv">REPO_ROOT</span><span class="o">=</span>/path/to/root<span class="w"> </span><span class="nv">PYTHONPATH</span><span class="o">=</span>/path/to/root<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>python<span class="w"> </span>cli/agro.py<span class="w"> </span>index<span class="w"> </span>--repo<span class="w"> </span>my-repo
+</code></pre></div>
+<p>This often gives a more complete traceback.</p>
+<h2 id="3-rag-search-issues">3. RAG / Search Issues<a class="headerlink" href="#3-rag-search-issues" title="Permanent link">¶</a></h2>
+<p>The HTTP search and chat endpoints ultimately call <code>server/services/rag.py</code>.</p>
+<div class="highlight"><table class="highlighttable"><tbody><tr><th colspan="2" class="filename"><span class="filename">server/services/rag.py</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-8-1"> 1</a></span>
+<span class="normal"><a href="#__codelineno-8-2"> 2</a></span>
+<span class="normal"><a href="#__codelineno-8-3"> 3</a></span>
+<span class="normal"><a href="#__codelineno-8-4"> 4</a></span>
+<span class="normal"><a href="#__codelineno-8-5"> 5</a></span>
+<span class="normal"><a href="#__codelineno-8-6"> 6</a></span>
+<span class="normal"><a href="#__codelineno-8-7"> 7</a></span>
+<span class="normal"><a href="#__codelineno-8-8"> 8</a></span>
+<span class="normal"><a href="#__codelineno-8-9"> 9</a></span>
+<span class="normal"><a href="#__codelineno-8-10">10</a></span>
+<span class="normal"><a href="#__codelineno-8-11">11</a></span>
+<span class="normal"><a href="#__codelineno-8-12">12</a></span>
+<span class="normal"><a href="#__codelineno-8-13">13</a></span>
+<span class="normal"><a href="#__codelineno-8-14">14</a></span>
+<span class="normal"><a href="#__codelineno-8-15">15</a></span>
+<span class="normal"><a href="#__codelineno-8-16">16</a></span>
+<span class="normal"><a href="#__codelineno-8-17">17</a></span>
+<span class="normal"><a href="#__codelineno-8-18">18</a></span>
+<span class="normal"><a href="#__codelineno-8-19">19</a></span>
+<span class="normal"><a href="#__codelineno-8-20">20</a></span>
+<span class="normal"><a href="#__codelineno-8-21">21</a></span>
+<span class="normal"><a href="#__codelineno-8-22">22</a></span>
+<span class="normal"><a href="#__codelineno-8-23">23</a></span>
+<span class="normal"><a href="#__codelineno-8-24">24</a></span>
+<span class="normal"><a href="#__codelineno-8-25">25</a></span>
+<span class="normal"><a href="#__codelineno-8-26">26</a></span>
+<span class="normal"><a href="#__codelineno-8-27">27</a></span>
+<span class="normal"><a href="#__codelineno-8-28">28</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">retrieval.hybrid_search</span><span class="w"> </span><span class="kn">import</span> <span class="n">search_routed_multi</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">server.services.config_registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_config_registry</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3"></a>
+<a id="__codelineno-8-4" name="__codelineno-8-4"></a><span class="n">_config_registry</span> <span class="o">=</span> <span class="n">get_config_registry</span><span class="p">()</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5"></a>
+<a id="__codelineno-8-6" name="__codelineno-8-6"></a><span class="n">_graph</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7"></a><span class="n">CFG</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"configurable"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"thread_id"</span><span class="p">:</span> <span class="s2">"http"</span><span class="p">}}</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8"></a>
+<a id="__codelineno-8-9" name="__codelineno-8-9"></a>
+<a id="__codelineno-8-10" name="__codelineno-8-10"></a><span class="k">def</span><span class="w"> </span><span class="nf">_get_graph</span><span class="p">():</span>
+<a id="__codelineno-8-11" name="__codelineno-8-11"></a>    <span class="k">global</span> <span class="n">_graph</span>
+<a id="__codelineno-8-12" name="__codelineno-8-12"></a>    <span class="k">if</span> <span class="n">_graph</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-8-13" name="__codelineno-8-13"></a>        <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-8-14" name="__codelineno-8-14"></a>            <span class="kn">from</span><span class="w"> </span><span class="nn">server.langgraph_app</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_graph</span>
+<a id="__codelineno-8-15" name="__codelineno-8-15"></a>            <span class="n">_graph</span> <span class="o">=</span> <span class="n">build_graph</span><span class="p">()</span>
+<a id="__codelineno-8-16" name="__codelineno-8-16"></a>        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<a id="__codelineno-8-17" name="__codelineno-8-17"></a>            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"build_graph failed: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+<a id="__codelineno-8-18" name="__codelineno-8-18"></a>            <span class="n">_graph</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-8-19" name="__codelineno-8-19"></a>    <span class="k">return</span> <span class="n">_graph</span>
+<a id="__codelineno-8-20" name="__codelineno-8-20"></a>
+<a id="__codelineno-8-21" name="__codelineno-8-21"></a><span class="hll">
+</span><a id="__codelineno-8-22" name="__codelineno-8-22"></a><span class="hll"><span class="k">def</span><span class="w"> </span><span class="nf">do_search</span><span class="p">(</span><span class="n">q</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">repo</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">top_k</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">request</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Request</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+</span><a id="__codelineno-8-23" name="__codelineno-8-23"></a><span class="hll">    <span class="k">if</span> <span class="n">top_k</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><a id="__codelineno-8-24" name="__codelineno-8-24"></a><span class="hll">        <span class="k">try</span><span class="p">:</span>
+</span><a id="__codelineno-8-25" name="__codelineno-8-25"></a><span class="hll">            <span class="n">top_k</span> <span class="o">=</span> <span class="n">_config_registry</span><span class="o">.</span><span class="n">get_int</span><span class="p">(</span><span class="s1">'FINAL_K'</span><span class="p">,</span> <span class="n">_config_registry</span><span class="o">.</span><span class="n">get_int</span><span class="p">(</span><span class="s1">'LANGGRAPH_FINAL_K'</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+</span><a id="__codelineno-8-26" name="__codelineno-8-26"></a><span class="hll">        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+</span><a id="__codelineno-8-27" name="__codelineno-8-27"></a><span class="hll">            <span class="n">top_k</span> <span class="o">=</span> <span class="mi">10</span>
+</span><a id="__codelineno-8-28" name="__codelineno-8-28"></a><span class="hll">    <span class="c1"># ... call search_routed_multi(...) ...</span>
+</span></code></pre></div></td></tr></tbody></table></div>
+<h3 id="31-empty-or-obviously-wrong-results">3.1 Empty or obviously wrong results<a class="headerlink" href="#31-empty-or-obviously-wrong-results" title="Permanent link">¶</a></h3>
+<p>Before blaming embeddings or rerankers, check the <strong>simple stuff</strong>:</p>
+<ol>
+<li><strong>BM25 only sanity check</strong></li>
+</ol>
+<p>For small repos, BM25 alone is often better than a misconfigured dense stack. In the UI, set the retrieval mode to “BM25 only” (or disable dense search in <code>agro_config.json</code>) and retry.</p>
+<ol>
+<li><strong>Verify <code>FINAL_K</code> / <code>LANGGRAPH_FINAL_K</code></strong></li>
+</ol>
+<p>If <code>FINAL_K</code> is set too low, you may be seeing only a tiny slice of the candidate set. The code falls back to 10 if both keys are missing or invalid.</p>
+<ol>
+<li><strong>Check discriminative keywords</strong></li>
+</ol>
+<p>AGRO supports discriminative / semantic keywords via <code>server/services/keywords.py</code>. If you’ve cranked <code>KEYWORDS_BOOST</code> or set <code>KEYWORDS_MAX_PER_REPO</code> to something extreme, BM25 scoring can get skewed.</p>
+<p>The module caches config at import time:</p>
+<div class="highlight"><table class="highlighttable"><tbody><tr><th colspan="2" class="filename"><span class="filename">server/services/keywords.py</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-9-1">1</a></span>
+<span class="normal"><a href="#__codelineno-9-2">2</a></span>
+<span class="normal"><a href="#__codelineno-9-3">3</a></span>
+<span class="normal"><a href="#__codelineno-9-4">4</a></span>
+<span class="normal"><a href="#__codelineno-9-5">5</a></span>
+<span class="normal"><a href="#__codelineno-9-6">6</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1"></a><span class="n">_config_registry</span> <span class="o">=</span> <span class="n">get_config_registry</span><span class="p">()</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2"></a><span class="n">_KEYWORDS_MAX_PER_REPO</span> <span class="o">=</span> <span class="n">_config_registry</span><span class="o">.</span><span class="n">get_int</span><span class="p">(</span><span class="s1">'KEYWORDS_MAX_PER_REPO'</span><span class="p">,</span> <span class="mi">50</span><span class="p">)</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3"></a><span class="n">_KEYWORDS_MIN_FREQ</span> <span class="o">=</span> <span class="n">_config_registry</span><span class="o">.</span><span class="n">get_int</span><span class="p">(</span><span class="s1">'KEYWORDS_MIN_FREQ'</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4"></a><span class="n">_KEYWORDS_BOOST</span> <span class="o">=</span> <span class="n">_config_registry</span><span class="o">.</span><span class="n">get_float</span><span class="p">(</span><span class="s1">'KEYWORDS_BOOST'</span><span class="p">,</span> <span class="mf">1.3</span><span class="p">)</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5"></a><span class="n">_KEYWORDS_AUTO_GENERATE</span> <span class="o">=</span> <span class="n">_config_registry</span><span class="o">.</span><span class="n">get_int</span><span class="p">(</span><span class="s1">'KEYWORDS_AUTO_GENERATE'</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6"></a><span class="n">_KEYWORDS_REFRESH_HOURS</span> <span class="o">=</span> <span class="n">_config_registry</span><span class="o">.</span><span class="n">get_int</span><span class="p">(</span><span class="s1">'KEYWORDS_REFRESH_HOURS'</span><span class="p">,</span> <span class="mi">24</span><span class="p">)</span>
+</code></pre></div></td></tr></tbody></table></div>
+<p>If you change these at runtime, call <code>reload_config()</code> in that module or restart the server.</p>
+<h3 id="32-langgraph-errors-or-missing-graph-behavior">3.2 LangGraph errors or missing graph behavior<a class="headerlink" href="#32-langgraph-errors-or-missing-graph-behavior" title="Permanent link">¶</a></h3>
+<p>AGRO can optionally run a LangGraph‑based orchestration layer (<code>server.langgraph_app</code>). If <code>build_graph()</code> fails, the RAG service logs a warning and continues without a graph:</p>
+<div class="highlight"><table class="highlighttable"><tbody><tr><th colspan="2" class="filename"><span class="filename">server/services/rag.py</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-10-1"> 1</a></span>
+<span class="normal"><a href="#__codelineno-10-2"> 2</a></span>
+<span class="normal"><a href="#__codelineno-10-3"> 3</a></span>
+<span class="normal"><a href="#__codelineno-10-4"> 4</a></span>
+<span class="normal"><a href="#__codelineno-10-5"> 5</a></span>
+<span class="normal"><a href="#__codelineno-10-6"> 6</a></span>
+<span class="normal"><a href="#__codelineno-10-7"> 7</a></span>
+<span class="normal"><a href="#__codelineno-10-8"> 8</a></span>
+<span class="normal"><a href="#__codelineno-10-9"> 9</a></span>
+<span class="normal"><a href="#__codelineno-10-10">10</a></span>
+<span class="normal"><a href="#__codelineno-10-11">11</a></span>
+<span class="normal"><a href="#__codelineno-10-12">12</a></span>
+<span class="normal"><a href="#__codelineno-10-13">13</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1"></a><span class="n">_graph</span> <span class="o">=</span> <span class="kc">None</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3"></a>
+<a id="__codelineno-10-4" name="__codelineno-10-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">_get_graph</span><span class="p">():</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5"></a>    <span class="k">global</span> <span class="n">_graph</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6"></a>    <span class="k">if</span> <span class="n">_graph</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7"></a>        <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8"></a>            <span class="kn">from</span><span class="w"> </span><span class="nn">server.langgraph_app</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_graph</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9"></a>            <span class="n">_graph</span> <span class="o">=</span> <span class="n">build_graph</span><span class="p">()</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10"></a>        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<a id="__codelineno-10-11" name="__codelineno-10-11"></a><span class="hll">            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"build_graph failed: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+</span><a id="__codelineno-10-12" name="__codelineno-10-12"></a><span class="hll">            <span class="n">_graph</span> <span class="o">=</span> <span class="kc">None</span>
+</span><a id="__codelineno-10-13" name="__codelineno-10-13"></a><span class="hll">    <span class="k">return</span> <span class="n">_graph</span>
+</span></code></pre></div></td></tr></tbody></table></div>
+<p>If you expect graph‑driven behavior (multi‑step tools, custom nodes) but don’t see it:</p>
+<ol>
+<li><strong>Check logs for <code>build_graph failed</code></strong></li>
+<li><strong>Import <code>server.langgraph_app</code> in a REPL</strong> and call <code>build_graph()</code> manually to see the traceback.</li>
+<li>If you’re iterating on the graph code, remember that <code>_graph</code> is cached at module level; restart the server after changes.</li>
+</ol>
+<h2 id="4-editor-devtools-integration">4. Editor &amp; DevTools Integration<a class="headerlink" href="#4-editor-devtools-integration" title="Permanent link">¶</a></h2>
+<p>AGRO ships with an embedded “editor” / devtools panel, controlled by <code>server/services/editor.py</code>.</p>
+<div class="highlight"><table class="highlighttable"><tbody><tr><th colspan="2" class="filename"><span class="filename">server/services/editor.py</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-11-1"> 1</a></span>
+<span class="normal"><a href="#__codelineno-11-2"> 2</a></span>
+<span class="normal"><a href="#__codelineno-11-3"> 3</a></span>
+<span class="normal"><a href="#__codelineno-11-4"> 4</a></span>
+<span class="normal"><a href="#__codelineno-11-5"> 5</a></span>
+<span class="normal"><a href="#__codelineno-11-6"> 6</a></span>
+<span class="normal"><a href="#__codelineno-11-7"> 7</a></span>
+<span class="normal"><a href="#__codelineno-11-8"> 8</a></span>
+<span class="normal"><a href="#__codelineno-11-9"> 9</a></span>
+<span class="normal"><a href="#__codelineno-11-10">10</a></span>
+<span class="normal"><a href="#__codelineno-11-11">11</a></span>
+<span class="normal"><a href="#__codelineno-11-12">12</a></span>
+<span class="normal"><a href="#__codelineno-11-13">13</a></span>
+<span class="normal"><a href="#__codelineno-11-14">14</a></span>
+<span class="normal"><a href="#__codelineno-11-15">15</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">server.services.config_registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_config_registry</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2"></a>
+<a id="__codelineno-11-3" name="__codelineno-11-3"></a>
+<a id="__codelineno-11-4" name="__codelineno-11-4"></a><span class="k">def</span><span class="w"> </span><span class="nf">read_settings</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5"></a><span class="w">    </span><span class="sd">"""Read editor settings, preferring registry (agro_config.json/.env) with legacy file fallback."""</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6"></a>    <span class="n">registry</span> <span class="o">=</span> <span class="n">get_config_registry</span><span class="p">()</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7"></a>    <span class="n">settings</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-11-8" name="__codelineno-11-8"></a>        <span class="s2">"port"</span><span class="p">:</span> <span class="n">registry</span><span class="o">.</span><span class="n">get_int</span><span class="p">(</span><span class="s2">"EDITOR_PORT"</span><span class="p">,</span> <span class="mi">4440</span><span class="p">),</span>
+<a id="__codelineno-11-9" name="__codelineno-11-9"></a>        <span class="s2">"enabled"</span><span class="p">:</span> <span class="n">registry</span><span class="o">.</span><span class="n">get_bool</span><span class="p">(</span><span class="s2">"EDITOR_ENABLED"</span><span class="p">,</span> <span class="kc">True</span><span class="p">),</span>
+<a id="__codelineno-11-10" name="__codelineno-11-10"></a>        <span class="s2">"embed_enabled"</span><span class="p">:</span> <span class="n">registry</span><span class="o">.</span><span class="n">get_bool</span><span class="p">(</span><span class="s2">"EDITOR_EMBED_ENABLED"</span><span class="p">,</span> <span class="kc">True</span><span class="p">),</span>
+<a id="__codelineno-11-11" name="__codelineno-11-11"></a>        <span class="s2">"bind"</span><span class="p">:</span> <span class="n">registry</span><span class="o">.</span><span class="n">get_str</span><span class="p">(</span><span class="s2">"EDITOR_BIND"</span><span class="p">,</span> <span class="s2">"local"</span><span class="p">),</span>  <span class="c1"># 'local' or 'public'</span>
+<a id="__codelineno-11-12" name="__codelineno-11-12"></a>        <span class="c1"># ... more keys ...</span>
+<a id="__codelineno-11-13" name="__codelineno-11-13"></a>    <span class="p">}</span>
+<a id="__codelineno-11-14" name="__codelineno-11-14"></a>    <span class="c1"># legacy file fallback under server/out/editor/settings.json</span>
+<a id="__codelineno-11-15" name="__codelineno-11-15"></a><span class="hll">    <span class="k">return</span> <span class="n">settings</span>
+</span></code></pre></div></td></tr></tbody></table></div>
+<h3 id="41-editor-panel-not-showing-up-in-the-ui">4.1 Editor panel not showing up in the UI<a class="headerlink" href="#41-editor-panel-not-showing-up-in-the-ui" title="Permanent link">¶</a></h3>
+<p>The web UI checks <code>read_settings()</code> to decide whether to show the embedded editor.</p>
+<ul>
+<li>Ensure <code>EDITOR_ENABLED=true</code> in <code>.env</code> or <code>agro_config.json</code></li>
+<li>If you’ve previously written <code>server/out/editor/settings.json</code>, those values may override defaults; delete the file to reset to registry‑only behavior</li>
+</ul>
+<h3 id="42-editor-server-not-reachable">4.2 Editor server not reachable<a class="headerlink" href="#42-editor-server-not-reachable" title="Permanent link">¶</a></h3>
+<p>If the embedded editor runs as a separate process (e.g. a code‑server container), the UI needs to know where to find it:</p>
+<ul>
+<li><code>EDITOR_PORT</code> – port the editor listens on</li>
+<li><code>EDITOR_BIND</code> – <code>local</code> vs <code>public</code> (affects how URLs are constructed)</li>
+</ul>
+<p>Check the DevTools network tab for failing requests to <code>/editor/...</code> and cross‑check with <code>read_settings()</code>.</p>
+<h2 id="5-traces-evaluation">5. Traces &amp; Evaluation<a class="headerlink" href="#5-traces-evaluation" title="Permanent link">¶</a></h2>
+<p>AGRO writes traces for RAG runs and evaluation under <code>out/&lt;repo&gt;/traces</code>. The service layer for listing and fetching traces lives in <code>server/services/traces.py</code>.</p>
+<div class="highlight"><table class="highlighttable"><tbody><tr><th colspan="2" class="filename"><span class="filename">server/services/traces.py</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-12-1"> 1</a></span>
+<span class="normal"><a href="#__codelineno-12-2"> 2</a></span>
+<span class="normal"><a href="#__codelineno-12-3"> 3</a></span>
+<span class="normal"><a href="#__codelineno-12-4"> 4</a></span>
+<span class="normal"><a href="#__codelineno-12-5"> 5</a></span>
+<span class="normal"><a href="#__codelineno-12-6"> 6</a></span>
+<span class="normal"><a href="#__codelineno-12-7"> 7</a></span>
+<span class="normal"><a href="#__codelineno-12-8"> 8</a></span>
+<span class="normal"><a href="#__codelineno-12-9"> 9</a></span>
+<span class="normal"><a href="#__codelineno-12-10">10</a></span>
+<span class="normal"><a href="#__codelineno-12-11">11</a></span>
+<span class="normal"><a href="#__codelineno-12-12">12</a></span>
+<span class="normal"><a href="#__codelineno-12-13">13</a></span>
+<span class="normal"><a href="#__codelineno-12-14">14</a></span>
+<span class="normal"><a href="#__codelineno-12-15">15</a></span>
+<span class="normal"><a href="#__codelineno-12-16">16</a></span>
+<span class="normal"><a href="#__codelineno-12-17">17</a></span>
+<span class="normal"><a href="#__codelineno-12-18">18</a></span>
+<span class="normal"><a href="#__codelineno-12-19">19</a></span>
+<span class="normal"><a href="#__codelineno-12-20">20</a></span>
+<span class="normal"><a href="#__codelineno-12-21">21</a></span>
+<span class="normal"><a href="#__codelineno-12-22">22</a></span>
+<span class="normal"><a href="#__codelineno-12-23">23</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">common.config_loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">out_dir</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">server.tracing</span><span class="w"> </span><span class="kn">import</span> <span class="n">latest_trace_path</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3"></a>
+<a id="__codelineno-12-4" name="__codelineno-12-4"></a>
+<a id="__codelineno-12-5" name="__codelineno-12-5"></a><span class="k">def</span><span class="w"> </span><span class="nf">list_traces</span><span class="p">(</span><span class="n">repo</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6"></a>    <span class="n">r</span> <span class="o">=</span> <span class="p">(</span><span class="n">repo</span> <span class="ow">or</span> <span class="nb">__import__</span><span class="p">(</span><span class="s1">'os'</span><span class="p">)</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s1">'REPO'</span><span class="p">,</span> <span class="s1">'agro'</span><span class="p">))</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7"></a><span class="hll">    <span class="n">base</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">out_dir</span><span class="p">(</span><span class="n">r</span><span class="p">))</span> <span class="o">/</span> <span class="s1">'traces'</span>
+</span><a id="__codelineno-12-8" name="__codelineno-12-8"></a><span class="hll">    <span class="n">files</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+</span><a id="__codelineno-12-9" name="__codelineno-12-9"></a><span class="hll">    <span class="k">try</span><span class="p">:</span>
+</span><a id="__codelineno-12-10" name="__codelineno-12-10"></a><span class="hll">        <span class="k">if</span> <span class="n">base</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+</span><a id="__codelineno-12-11" name="__codelineno-12-11"></a><span class="hll">            <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span>
+</span><a id="__codelineno-12-12" name="__codelineno-12-12"></a><span class="hll">                <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">base</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s1">'*.json'</span><span class="p">)</span> <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">is_file</span><span class="p">()],</span>
+</span><a id="__codelineno-12-13" name="__codelineno-12-13"></a><span class="hll">                <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_mtime</span><span class="p">,</span>
+</span><a id="__codelineno-12-14" name="__codelineno-12-14"></a><span class="hll">                <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><a id="__codelineno-12-15" name="__codelineno-12-15"></a><span class="hll">            <span class="p">)[:</span><span class="mi">50</span><span class="p">]:</span>
+</span><a id="__codelineno-12-16" name="__codelineno-12-16"></a><span class="hll">                <span class="n">files</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+</span><a id="__codelineno-12-17" name="__codelineno-12-17"></a><span class="hll">                    <span class="s1">'path'</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="p">),</span>
+</span><a id="__codelineno-12-18" name="__codelineno-12-18"></a><span class="hll">                    <span class="s1">'name'</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+</span><a id="__codelineno-12-19" name="__codelineno-12-19"></a><span class="hll">                    <span class="s1">'mtime'</span><span class="p">:</span> <span class="nb">__import__</span><span class="p">(</span><span class="s1">'datetime'</span><span class="p">)</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">fromtimestamp</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_mtime</span><span class="p">)</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+</span><a id="__codelineno-12-20" name="__codelineno-12-20"></a><span class="hll">                <span class="p">})</span>
+</span><a id="__codelineno-12-21" name="__codelineno-12-21"></a><span class="hll">    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+</span><a id="__codelineno-12-22" name="__codelineno-12-22"></a><span class="hll">        <span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s2">"Failed to list traces: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+</span><a id="__codelineno-12-23" name="__codelineno-12-23"></a><span class="hll">    <span class="k">return</span> <span class="p">{</span><span class="s1">'repo'</span><span class="p">:</span> <span class="n">r</span><span class="p">,</span> <span class="s1">'files'</span><span class="p">:</span> <span class="n">files</span><span class="p">}</span>
+</span></code></pre></div></td></tr></tbody></table></div>
+<h3 id="51-no-traces-found-in-the-ui">5.1 “No traces found” in the UI<a class="headerlink" href="#51-no-traces-found-in-the-ui" title="Permanent link">¶</a></h3>
+<p>If the Evaluation / Tracing tabs show no traces:</p>
+<ol>
+<li><strong>Check the repo name</strong></li>
+</ol>
+<p><code>list_traces()</code> uses the <code>repo</code> query param or falls back to <code>REPO</code> from the environment. If your UI is pointing at <code>repo=agro</code> but you indexed <code>my-repo</code>, you’ll see an empty list.</p>
+<ol>
+<li><strong>Inspect the filesystem</strong></li>
+</ol>
+<p>Look under <code>out/&lt;repo&gt;/traces</code> (or whatever <code>out_dir(repo)</code> resolves to). If there are no <code>.json</code> files, tracing may be disabled or the RAG pipeline never wrote any traces.</p>
+<ol>
+<li><strong>Check for exceptions in <code>list_traces</code></strong></li>
+</ol>
+<p>Any filesystem errors are logged via <code>logger.exception</code>. If you’re running inside a container, make sure the <code>out/</code> directory is writable and mounted correctly.</p>
+<h3 id="52-latest-trace-endpoint-fails">5.2 “latest trace” endpoint fails<a class="headerlink" href="#52-latest-trace-endpoint-fails" title="Permanent link">¶</a></h3>
+<p><code>latest_trace(repo)</code> wraps <code>server.tracing.latest_trace_path</code> and returns a small JSON payload. If <code>latest_trace_path</code> raises, the service logs and returns an empty result.</p>
+<p>If the UI shows an error when loading the latest trace:</p>
+<ul>
+<li>Check logs for <code>latest_trace_path failed</code></li>
+<li>Verify that at least one trace file exists under <code>out/&lt;repo&gt;/traces</code></li>
+<li>Confirm that trace filenames follow the expected pattern (the helper usually looks for the newest <code>*.json</code>)</li>
+</ul>
+<h2 id="6-file-writes-docker-volume-quirks">6. File Writes &amp; Docker Volume Quirks<a class="headerlink" href="#6-file-writes-docker-volume-quirks" title="Permanent link">¶</a></h2>
+<p>When AGRO writes config or settings files from the API / UI, it uses an <strong>atomic write helper</strong> with a Docker‑specific fallback in <code>server/services/config_store.py</code>.</p>
+<div class="highlight"><table class="highlighttable"><tbody><tr><th colspan="2" class="filename"><span class="filename">server/services/config_store.py</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-13-1"> 1</a></span>
+<span class="normal"><a href="#__codelineno-13-2"> 2</a></span>
+<span class="normal"><a href="#__codelineno-13-3"> 3</a></span>
+<span class="normal"><a href="#__codelineno-13-4"> 4</a></span>
+<span class="normal"><a href="#__codelineno-13-5"> 5</a></span>
+<span class="normal"><a href="#__codelineno-13-6"> 6</a></span>
+<span class="normal"><a href="#__codelineno-13-7"> 7</a></span>
+<span class="normal"><a href="#__codelineno-13-8"> 8</a></span>
+<span class="normal"><a href="#__codelineno-13-9"> 9</a></span>
+<span class="normal"><a href="#__codelineno-13-10">10</a></span>
+<span class="normal"><a href="#__codelineno-13-11">11</a></span>
+<span class="normal"><a href="#__codelineno-13-12">12</a></span>
+<span class="normal"><a href="#__codelineno-13-13">13</a></span>
+<span class="normal"><a href="#__codelineno-13-14">14</a></span>
+<span class="normal"><a href="#__codelineno-13-15">15</a></span>
+<span class="normal"><a href="#__codelineno-13-16">16</a></span>
+<span class="normal"><a href="#__codelineno-13-17">17</a></span>
+<span class="normal"><a href="#__codelineno-13-18">18</a></span>
+<span class="normal"><a href="#__codelineno-13-19">19</a></span>
+<span class="normal"><a href="#__codelineno-13-20">20</a></span>
+<span class="normal"><a href="#__codelineno-13-21">21</a></span>
+<span class="normal"><a href="#__codelineno-13-22">22</a></span>
+<span class="normal"><a href="#__codelineno-13-23">23</a></span>
+<span class="normal"><a href="#__codelineno-13-24">24</a></span>
+<span class="normal"><a href="#__codelineno-13-25">25</a></span>
+<span class="normal"><a href="#__codelineno-13-26">26</a></span>
+<span class="normal"><a href="#__codelineno-13-27">27</a></span>
+<span class="normal"><a href="#__codelineno-13-28">28</a></span>
+<span class="normal"><a href="#__codelineno-13-29">29</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1"></a><span class="n">SECRET_FIELDS</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2"></a>    <span class="s1">'OPENAI_API_KEY'</span><span class="p">,</span> <span class="s1">'ANTHROPIC_API_KEY'</span><span class="p">,</span> <span class="s1">'GOOGLE_API_KEY'</span><span class="p">,</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3"></a>    <span class="c1"># ... many more ...</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4"></a><span class="p">}</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5"></a>
+<a id="__codelineno-13-6" name="__codelineno-13-6"></a>
+<a id="__codelineno-13-7" name="__codelineno-13-7"></a><span class="k">def</span><span class="w"> </span><span class="nf">_atomic_write_text</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">content</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">max_retries</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-13-8" name="__codelineno-13-8"></a><span class="w">    </span><span class="sd">"""Atomically write text to a file with fallback for Docker volume mounts.</span>
+<a id="__codelineno-13-9" name="__codelineno-13-9"></a>
+<a id="__codelineno-13-10" name="__codelineno-13-10"></a><span class="sd">    Docker Desktop on macOS can fail with 'Device or resource busy' on os.replace()</span>
+<a id="__codelineno-13-11" name="__codelineno-13-11"></a><span class="sd">    when the file is being watched. We try atomic first, then fall back to direct write.</span>
+<a id="__codelineno-13-12" name="__codelineno-13-12"></a><span class="sd">    """</span>
+<a id="__codelineno-13-13" name="__codelineno-13-13"></a>    <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<a id="__codelineno-13-14" name="__codelineno-13-14"></a>
+<a id="__codelineno-13-15" name="__codelineno-13-15"></a><span class="hll">    <span class="n">path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><a id="__codelineno-13-16" name="__codelineno-13-16"></a><span class="hll">    <span class="n">tmp</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">tempfile</span><span class="o">.</span><span class="n">gettempdir</span><span class="p">())</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">".</span><span class="si">{</span><span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">.tmp"</span>
+</span><a id="__codelineno-13-17" name="__codelineno-13-17"></a><span class="hll">
+</span><a id="__codelineno-13-18" name="__codelineno-13-18"></a><span class="hll">    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_retries</span><span class="p">):</span>
+</span><a id="__codelineno-13-19" name="__codelineno-13-19"></a><span class="hll">        <span class="k">try</span><span class="p">:</span>
+</span><a id="__codelineno-13-20" name="__codelineno-13-20"></a><span class="hll">            <span class="n">tmp</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
+</span><a id="__codelineno-13-21" name="__codelineno-13-21"></a><span class="hll">            <span class="n">os</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">tmp</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+</span><a id="__codelineno-13-22" name="__codelineno-13-22"></a><span class="hll">            <span class="k">return</span>
+</span><a id="__codelineno-13-23" name="__codelineno-13-23"></a><span class="hll">        <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+</span><a id="__codelineno-13-24" name="__codelineno-13-24"></a><span class="hll">            <span class="k">if</span> <span class="s2">"Device or resource busy"</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="ow">and</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">max_retries</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+</span><a id="__codelineno-13-25" name="__codelineno-13-25"></a><span class="hll">                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span> <span class="o">*</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+</span><a id="__codelineno-13-26" name="__codelineno-13-26"></a><span class="hll">                <span class="k">continue</span>
+</span><a id="__codelineno-13-27" name="__codelineno-13-27"></a><span class="hll">            <span class="c1"># Fallback: direct write (non‑atomic)</span>
+</span><a id="__codelineno-13-28" name="__codelineno-13-28"></a><span class="hll">            <span class="n">path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
+</span><a id="__codelineno-13-29" name="__codelineno-13-29"></a><span class="hll">            <span class="k">return</span>
+</span></code></pre></div></td></tr></tbody></table></div>
+<h3 id="61-device-or-resource-busy-when-saving-config">6.1 “Device or resource busy” when saving config<a class="headerlink" href="#61-device-or-resource-busy-when-saving-config" title="Permanent link">¶</a></h3>
+<p>On Docker Desktop for macOS, <code>os.replace()</code> on a bind‑mounted file can intermittently fail with <code>EBUSY</code> if something is watching the file.</p>
+<p>AGRO already retries and falls back to a non‑atomic write, but if you still see errors:</p>
+<ul>
+<li>Ensure the mount point is not being aggressively watched by external tools</li>
+<li>Consider moving <code>data/</code> and <code>out/</code> to a Docker volume instead of a host bind mount</li>
+</ul>
+<h3 id="62-secrets-not-persisting-or-showing-up-blank">6.2 Secrets not persisting or showing up blank<a class="headerlink" href="#62-secrets-not-persisting-or-showing-up-blank" title="Permanent link">¶</a></h3>
+<p>Secrets (API keys, tokens) are treated specially:</p>
+<ul>
+<li>The set of secret field names is in <code>SECRET_FIELDS</code></li>
+<li>When reading config for the UI, these values are <strong>redacted</strong></li>
+<li>When writing, the API will avoid echoing them back</li>
+</ul>
+<p>If you save a secret in the UI and then re‑open the page, seeing an empty field is expected. To verify persistence:</p>
+<ul>
+<li>Inspect the underlying config file on disk (e.g. <code>agro_config.json</code> or the profile JSON under <code>web/public/profiles</code>)</li>
+<li>Or call the config API directly and check the raw JSON (outside the UI’s redaction logic)</li>
+</ul>
+<h2 id="7-when-all-else-fails-let-agro-explain-itself">7. When All Else Fails: Let AGRO Explain Itself<a class="headerlink" href="#7-when-all-else-fails-let-agro-explain-itself" title="Permanent link">¶</a></h2>
+<p>Two meta‑features are worth remembering when debugging:</p>
+<ol>
+<li><strong>Config registry is indexed into AGRO’s own RAG</strong></li>
+</ol>
+<p>You can go to the Chat tab and ask things like:</p>
+<blockquote>
+<p>“How does <code>KEYWORDS_AUTO_GENERATE</code> work?”</p>
+</blockquote>
+<p>or</p>
+<blockquote>
+<p>“Where is <code>FINAL_K</code> used in the retrieval pipeline?”</p>
+</blockquote>
+<p>The system will pull from <code>server/services</code>, <code>retrieval/</code>, and the Pydantic models to answer.</p>
+<ol>
+<li><strong>Every knob has documentation attached</strong></li>
+</ol>
+<p>The web UI surfaces tooltips for each parameter, often with links to the relevant arXiv papers or provider docs. If a setting behaves differently than you expect, hover it first; if that’s not enough, search for the key name in the repo.</p>
+<h2 id="8-quick-triage-checklist">8. Quick Triage Checklist<a class="headerlink" href="#8-quick-triage-checklist" title="Permanent link">¶</a></h2>
+<p>Use this as a fast path before deeper debugging:</p>
+<div class="grid cards">
+<ul>
+<li><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 1 4 4 4 4 0 0 1-4 4 4 4 0 0 1-4-4 4 4 0 0 1 4-4m0 2a2 2 0 0 0-2 2 2 2 0 0 0 2 2 2 2 0 0 0 2-2 2 2 0 0 0-2-2m-2 12c-.25 0-.46-.18-.5-.42l-.37-2.65c-.63-.25-1.17-.59-1.69-.99l-2.49 1.01c-.22.08-.49 0-.61-.22l-2-3.46a.493.493 0 0 1 .12-.64l2.11-1.66L4.5 12l.07-1-2.11-1.63a.493.493 0 0 1-.12-.64l2-3.46c.12-.22.39-.31.61-.22l2.49 1c.52-.39 1.06-.73 1.69-.98l.37-2.65c.04-.24.25-.42.5-.42h4c.25 0 .46.18.5.42l.37 2.65c.63.25 1.17.59 1.69.98l2.49-1c.22-.09.49 0 .61.22l2 3.46c.13.22.07.49-.12.64L19.43 11l.07 1-.07 1 2.11 1.63c.19.15.25.42.12.64l-2 3.46c-.12.22-.39.31-.61.22l-2.49-1c-.52.39-1.06.73-1.69.98l-.37 2.65c-.04.24-.25.42-.5.42zm1.25-18-.37 2.61c-1.2.25-2.26.89-3.03 1.78L5.44 7.35l-.75 1.3L6.8 10.2a5.55 5.55 0 0 0 0 3.6l-2.12 1.56.75 1.3 2.43-1.04c.77.88 1.82 1.52 3.01 1.76l.37 2.62h1.52l.37-2.61c1.19-.25 2.24-.89 3.01-1.77l2.43 1.04.75-1.3-2.12-1.55c.4-1.17.4-2.44 0-3.61l2.11-1.55-.75-1.3-2.41 1.04a5.42 5.42 0 0 0-3.03-1.77L12.75 4z"></path></svg></span> <strong>Config not applying</strong>  </li>
+<li>Confirm <code>.env</code> location and restart backend  </li>
+<li>Validate <code>agro_config.json</code> with <code>AgroConfigRoot</code>  </li>
+<li>
+<p>Check registry values via Admin → Settings</p>
+</li>
+<li>
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18.68 12.32a4.49 4.49 0 0 0-6.36.01 4.49 4.49 0 0 0 0 6.36 4.51 4.51 0 0 0 5.57.63L21 22.39 22.39 21l-3.09-3.11c1.13-1.77.87-4.09-.62-5.57m-1.41 4.95c-.98.98-2.56.97-3.54 0-.97-.98-.97-2.56.01-3.54.97-.97 2.55-.97 3.53 0 .97.98.97 2.56 0 3.54M10.9 20.1a6.5 6.5 0 0 1-1.48-2.32C6.27 17.25 4 15.76 4 14v3c0 2.21 3.58 4 8 4-.4-.26-.77-.56-1.1-.9M4 9v3c0 1.68 2.07 3.12 5 3.7v-.2c0-.93.2-1.85.58-2.69C6.34 12.3 4 10.79 4 9m8-6C7.58 3 4 4.79 4 7c0 2 3 3.68 6.85 4h.05c1.2-1.26 2.86-2 4.6-2 .91 0 1.81.19 2.64.56A3.22 3.22 0 0 0 20 7c0-2.21-3.58-4-8-4"></path></svg></span> <strong>Indexing issues</strong>  </p>
+</li>
+<li>Verify <code>REPO</code> / <code>REPO_ROOT</code>  </li>
+<li>Run <code>cli/agro.py index</code> manually  </li>
+<li>
+<p>Inspect indexer logs / <code>data/</code> contents</p>
+</li>
+<li>
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg></span> <strong>Bad search results</strong>  </p>
+</li>
+<li>Try BM25‑only  </li>
+<li>Check <code>FINAL_K</code> and keyword boosts  </li>
+<li>
+<p>Look for LangGraph warnings</p>
+</li>
+<li>
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h7c-.41-.25-.8-.56-1.14-.9-.33-.33-.61-.7-.86-1.1H6V4h7v5h5v1.18c.71.16 1.39.43 2 .82V8zm6.31 16.9c1.33-2.11.69-4.9-1.4-6.22-2.11-1.33-4.91-.68-6.22 1.4-1.34 2.11-.69 4.89 1.4 6.22 1.46.93 3.32.93 4.79.02L22 23.39 23.39 22zm-3.81.1a2.5 2.5 0 0 1-2.5-2.5 2.5 2.5 0 0 1 2.5-2.5 2.5 2.5 0 0 1 2.5 2.5 2.5 2.5 0 0 1-2.5 2.5"></path></svg></span> <strong>Missing traces / evals</strong>  </p>
+</li>
+<li>Confirm <code>out/&lt;repo&gt;/traces</code> exists  </li>
+<li>Check <code>repo</code> param vs <code>REPO</code> env  </li>
+<li>Look for exceptions in <code>server/services/traces.py</code></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tabs", "navigation.top", "navigation.sections", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+        <script src="https://unpkg.com/mermaid@11.4.1/dist/mermaid.min.js"></script>
+      
+        <script src="../../assets/js/mermaid-init.js"></script>
+      
+    
+  
+<script id="init-glightbox">const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});
+document$.subscribe(()=>{ lightbox.reload(); });
+</script></body></html>

@@ -1,0 +1,1894 @@
+<!DOCTYPE html><html lang="en" class="no-js"><head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://dmontgomery40.github.io/agro-rag-engine/latest/api/openapi/">
+      
+      
+        <link rel="prev" href="../endpoints/">
+      
+      
+        <link rel="next" href="../../operations/monitoring/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>OpenAPI - AGRO Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.618322db.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  <link href="../../assets/stylesheets/glightbox.min.css" rel="stylesheet"><script src="../../assets/javascripts/glightbox.min.js"></script><style id="glightbox-style">
+            html.glightbox-open { overflow: initial; height: 100%; }
+            .gslide-title { margin-top: 0px; user-select: text; }
+            .gslide-desc { color: #666; user-select: text; }
+            .gslide-image img { background: white; }
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color); }
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color); }
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color); }
+        </style></head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="cyan">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#api-documentation-openapi-spec" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="AGRO Docs" class="md-header__button md-logo" aria-label="AGRO Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AGRO Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              OpenAPI
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="cyan" aria-label="Switch to light mode" type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="cyan" aria-label="Switch to dark mode" type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/DMontgomery40/agro-rag-engine" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/quickstart/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../features/rag/" class="md-tabs__link">
+          
+  
+  
+  Features
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../configuration/models/" class="md-tabs__link">
+          
+  
+  
+  Configuration
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../endpoints/" class="md-tabs__link">
+          
+  
+  
+  API
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../operations/monitoring/" class="md-tabs__link">
+          
+  
+  
+  Operations
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="AGRO Docs" class="md-nav__button md-logo" aria-label="AGRO Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+
+    </a>
+    AGRO Docs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/DMontgomery40/agro-rag-engine" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2">
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/first-steps/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    First Steps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3">
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Features
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Features
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/rag/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hybrid Search
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/mcp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/cli-chat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Chat
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/learning-reranker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Learning Reranker
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/evaluation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4">
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configuration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/profiles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Profiles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../endpoints/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Endpoints
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenAPI
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenAPI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#where-to-find-the-docs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where to find the docs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-configuration-reaches-the-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How configuration reaches the API
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-retrieval-endpoints-and-final_k" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: retrieval endpoints and FINAL_K
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-indexing-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: indexing control
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configaware-admin-editor-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Config‑aware admin &amp; editor endpoints
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Config‑aware admin &amp; editor endpoints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#editor-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Editor settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#secrets-and-the-openapi-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Secrets and the OpenAPI schema
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-mcp-servers-use-the-openapi-spec" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How MCP servers use the OpenAPI spec
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extending-the-api-safely" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extending the API safely
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#openapi-and-environmentdriven-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpenAPI and environment‑driven behavior
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6">
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monitoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#where-to-find-the-docs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where to find the docs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-configuration-reaches-the-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How configuration reaches the API
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-retrieval-endpoints-and-final_k" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: retrieval endpoints and FINAL_K
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-indexing-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: indexing control
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configaware-admin-editor-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Config‑aware admin &amp; editor endpoints
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Config‑aware admin &amp; editor endpoints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#editor-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Editor settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#secrets-and-the-openapi-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Secrets and the OpenAPI schema
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-mcp-servers-use-the-openapi-spec" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How MCP servers use the OpenAPI spec
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extending-the-api-safely" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extending the API safely
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#openapi-and-environmentdriven-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpenAPI and environment‑driven behavior
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="api-documentation-openapi-spec">API Documentation &amp; OpenAPI Spec<a class="headerlink" href="#api-documentation-openapi-spec" title="Permanent link">¶</a></h1>
+<p>AGRO exposes a full OpenAPI 3 schema through the FastAPI app defined in <code>server.asgi:create_app</code>. The legacy <code>server/app.py</code> entry point just wires that up for older setups.</p>
+<p>This page explains:</p>
+<ul>
+<li>Where the OpenAPI spec comes from</li>
+<li>How configuration flows into the API layer</li>
+<li>How the web UI and MCP servers use it</li>
+<li>How to extend the API without fighting the config system</li>
+</ul>
+<h2 id="where-to-find-the-docs">Where to find the docs<a class="headerlink" href="#where-to-find-the-docs" title="Permanent link">¶</a></h2>
+<p>When the AGRO server is running, you get three useful HTTP surfaces:</p>
+<div class="grid cards">
+<ul>
+<li>
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M7 7H5a2 2 0 0 0-2 2v8h2v-4h2v4h2V9a2 2 0 0 0-2-2m0 4H5V9h2m7-2h-4v10h2v-4h2a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2m0 4h-2V9h2m6 0v6h1v2h-4v-2h1V9h-1V7h4v2Z"></path></svg></span>
+  <strong>OpenAPI JSON</strong><br>
+<code>GET /openapi.json</code><br>
+  Machine‑readable schema for all endpoints, models, and error responses.</p>
+</li>
+<li>
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m19 2-5 4.5v11l5-4.5zM6.5 5C4.55 5 2.45 5.4 1 6.5v14.66c0 .25.25.5.5.5.1 0 .15-.07.25-.07 1.35-.65 3.3-1.09 4.75-1.09 1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.31 4.75 1.06.1.05.15.03.25.03.25 0 .5-.25.5-.5V6.5c-.6-.45-1.25-.75-2-1V19c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V6.5C10.55 5.4 8.45 5 6.5 5"></path></svg></span>
+  <strong>Swagger UI</strong><br>
+<code>GET /docs</code><br>
+  FastAPI’s interactive docs. Good for poking individual endpoints.</p>
+</li>
+<li>
+<p><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.56 18H3.44C2.65 18 2 17.37 2 16.59V7.41C2 6.63 2.65 6 3.44 6h17.12c.79 0 1.44.63 1.44 1.41v9.18c0 .78-.65 1.41-1.44 1.41M6.81 15.19v-3.66l1.92 2.35 1.92-2.35v3.66h1.93V8.81h-1.93l-1.92 2.35-1.92-2.35H4.89v6.38zM19.69 12h-1.92V8.81h-1.92V12h-1.93l2.89 3.28z"></path></svg></span>
+  <strong>ReDoc</strong><br>
+<code>GET /redoc</code><br>
+  Alternative, more compact view of the same OpenAPI schema.</p>
+</li>
+</ul>
+</div>
+<p>All three are backed by the same FastAPI app and the same Pydantic models.</p>
+<h2 id="how-configuration-reaches-the-api">How configuration reaches the API<a class="headerlink" href="#how-configuration-reaches-the-api" title="Permanent link">¶</a></h2>
+<p>AGRO does not hard‑code behavior in the HTTP layer. Almost everything flows through the central configuration registry in <code>server/services/config_registry.py</code>.</p>
+<p>The registry merges three sources with a clear precedence:</p>
+<ol>
+<li><code>.env</code> file – infrastructure and secrets (highest precedence)</li>
+<li><code>agro_config.json</code> – tunable RAG parameters, model config</li>
+<li>Pydantic defaults – safe fallbacks</li>
+</ol>
+<div class="admonition note">
+<p class="admonition-title">Config precedence in practice</p>
+<p>If you set <code>FINAL_K</code> in both <code>agro_config.json</code> and <code>.env</code>, the <code>.env</code> value wins. The API layer never talks to <code>os.environ</code> directly; it always goes through the registry.</p>
+</div>
+<p>The API services you hit from OpenAPI are thin wrappers around this registry:</p>
+<ul>
+<li><code>server/services/rag.py</code> – search &amp; answer endpoints</li>
+<li><code>server/services/indexing.py</code> – indexing control &amp; status</li>
+<li><code>server/services/keywords.py</code> – discriminative keyword generation &amp; tuning</li>
+<li><code>server/services/editor.py</code> – embedded editor / devtools settings</li>
+<li><code>server/services/traces.py</code> – trace listing and retrieval</li>
+<li><code>server/services/config_store.py</code> – reading/writing <code>agro_config.json</code> and secrets</li>
+</ul>
+<p>Each of these modules pulls configuration via <code>get_config_registry()</code> and exposes a small, typed surface to FastAPI.</p>
+<h2 id="example-retrieval-endpoints-and-final_k">Example: retrieval endpoints and <code>FINAL_K</code><a class="headerlink" href="#example-retrieval-endpoints-and-final_k" title="Permanent link">¶</a></h2>
+<p>The retrieval endpoints are wired through <code>server/services/rag.py</code>. The OpenAPI schema for these endpoints is generated from the FastAPI route definitions and the Pydantic models they use.</p>
+<p>A concrete example is how <code>top_k</code> is resolved when you don’t pass it explicitly:</p>
+<div class="highlight"><table class="highlighttable"><tbody><tr><th colspan="2" class="filename"><span class="filename">server/services/rag.py</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-1"> 1</a></span>
+<span class="normal"><a href="#__codelineno-0-2"> 2</a></span>
+<span class="normal"><a href="#__codelineno-0-3"> 3</a></span>
+<span class="normal"><a href="#__codelineno-0-4"> 4</a></span>
+<span class="normal"><a href="#__codelineno-0-5"> 5</a></span>
+<span class="normal"><a href="#__codelineno-0-6"> 6</a></span>
+<span class="normal"><a href="#__codelineno-0-7"> 7</a></span>
+<span class="normal"><a href="#__codelineno-0-8"> 8</a></span>
+<span class="normal"><a href="#__codelineno-0-9"> 9</a></span>
+<span class="normal"><a href="#__codelineno-0-10">10</a></span>
+<span class="normal"><a href="#__codelineno-0-11">11</a></span>
+<span class="normal"><a href="#__codelineno-0-12">12</a></span>
+<span class="normal"><a href="#__codelineno-0-13">13</a></span>
+<span class="normal"><a href="#__codelineno-0-14">14</a></span>
+<span class="normal"><a href="#__codelineno-0-15">15</a></span>
+<span class="normal"><a href="#__codelineno-0-16">16</a></span>
+<span class="normal"><a href="#__codelineno-0-17">17</a></span>
+<span class="normal"><a href="#__codelineno-0-18">18</a></span>
+<span class="normal"><a href="#__codelineno-0-19">19</a></span>
+<span class="normal"><a href="#__codelineno-0-20">20</a></span>
+<span class="normal"><a href="#__codelineno-0-21">21</a></span>
+<span class="normal"><a href="#__codelineno-0-22">22</a></span>
+<span class="normal"><a href="#__codelineno-0-23">23</a></span>
+<span class="normal"><a href="#__codelineno-0-24">24</a></span>
+<span class="normal"><a href="#__codelineno-0-25">25</a></span>
+<span class="normal"><a href="#__codelineno-0-26">26</a></span>
+<span class="normal"><a href="#__codelineno-0-27">27</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4"></a>
+<a id="__codelineno-0-5" name="__codelineno-0-5"></a><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">Request</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6"></a><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">JSONResponse</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7"></a>
+<a id="__codelineno-0-8" name="__codelineno-0-8"></a><span class="kn">from</span><span class="w"> </span><span class="nn">retrieval.hybrid_search</span><span class="w"> </span><span class="kn">import</span> <span class="n">search_routed_multi</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9"></a><span class="kn">from</span><span class="w"> </span><span class="nn">server.metrics</span><span class="w"> </span><span class="kn">import</span> <span class="n">stage</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10"></a><span class="kn">from</span><span class="w"> </span><span class="nn">server.telemetry</span><span class="w"> </span><span class="kn">import</span> <span class="n">log_query_event</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11"></a><span class="kn">from</span><span class="w"> </span><span class="nn">server.services.config_registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_config_registry</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12"></a><span class="kn">import</span><span class="w"> </span><span class="nn">uuid</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13"></a>
+<a id="__codelineno-0-14" name="__codelineno-0-14"></a><span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">"agro.api"</span><span class="p">)</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15"></a>
+<a id="__codelineno-0-16" name="__codelineno-0-16"></a><span class="c1"># Module-level config registry</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17"></a><span class="n">_config_registry</span> <span class="o">=</span> <span class="n">get_config_registry</span><span class="p">()</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18"></a><span class="hll">
+</span><a id="__codelineno-0-19" name="__codelineno-0-19"></a><span class="hll">
+</span><a id="__codelineno-0-20" name="__codelineno-0-20"></a><span class="hll"><span class="k">def</span><span class="w"> </span><span class="nf">do_search</span><span class="p">(</span><span class="n">q</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">repo</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">top_k</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">request</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Request</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+</span><a id="__codelineno-0-21" name="__codelineno-0-21"></a><span class="hll">    <span class="k">if</span> <span class="n">top_k</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><a id="__codelineno-0-22" name="__codelineno-0-22"></a><span class="hll">        <span class="k">try</span><span class="p">:</span>
+</span><a id="__codelineno-0-23" name="__codelineno-0-23"></a><span class="hll">            <span class="c1"># Try FINAL_K first, fall back to LANGGRAPH_FINAL_K</span>
+</span><a id="__codelineno-0-24" name="__codelineno-0-24"></a><span class="hll">            <span class="n">top_k</span> <span class="o">=</span> <span class="n">_config_registry</span><span class="o">.</span><span class="n">get_int</span><span class="p">(</span><span class="s1">'FINAL_K'</span><span class="p">,</span> <span class="n">_config_registry</span><span class="o">.</span><span class="n">get_int</span><span class="p">(</span><span class="s1">'LANGGRAPH_FINAL_K'</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+</span><a id="__codelineno-0-25" name="__codelineno-0-25"></a>        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+<a id="__codelineno-0-26" name="__codelineno-0-26"></a>            <span class="n">top_k</span> <span class="o">=</span> <span class="mi">10</span>
+<a id="__codelineno-0-27" name="__codelineno-0-27"></a>    <span class="o">...</span>
+</code></pre></div></td></tr></tbody></table></div>
+<p>From the OpenAPI side you just see <code>top_k: int | None</code>. The actual default is resolved at runtime from the config registry, not baked into the schema.</p>
+<p>This is intentional:</p>
+<ul>
+<li>The OpenAPI spec stays stable</li>
+<li>You can change retrieval behavior via <code>.env</code> / <code>agro_config.json</code> without regenerating anything</li>
+<li>Tools that call the API (including MCP clients) don’t need to know about the internal knobs</li>
+</ul>
+<h2 id="example-indexing-control">Example: indexing control<a class="headerlink" href="#example-indexing-control" title="Permanent link">¶</a></h2>
+<p>Indexing is exposed as a small set of endpoints that ultimately call <code>server/services/indexing.py:start</code> and friends.</p>
+<div class="highlight"><table class="highlighttable"><tbody><tr><th colspan="2" class="filename"><span class="filename">server/services/indexing.py</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-1-1"> 1</a></span>
+<span class="normal"><a href="#__codelineno-1-2"> 2</a></span>
+<span class="normal"><a href="#__codelineno-1-3"> 3</a></span>
+<span class="normal"><a href="#__codelineno-1-4"> 4</a></span>
+<span class="normal"><a href="#__codelineno-1-5"> 5</a></span>
+<span class="normal"><a href="#__codelineno-1-6"> 6</a></span>
+<span class="normal"><a href="#__codelineno-1-7"> 7</a></span>
+<span class="normal"><a href="#__codelineno-1-8"> 8</a></span>
+<span class="normal"><a href="#__codelineno-1-9"> 9</a></span>
+<span class="normal"><a href="#__codelineno-1-10">10</a></span>
+<span class="normal"><a href="#__codelineno-1-11">11</a></span>
+<span class="normal"><a href="#__codelineno-1-12">12</a></span>
+<span class="normal"><a href="#__codelineno-1-13">13</a></span>
+<span class="normal"><a href="#__codelineno-1-14">14</a></span>
+<span class="normal"><a href="#__codelineno-1-15">15</a></span>
+<span class="normal"><a href="#__codelineno-1-16">16</a></span>
+<span class="normal"><a href="#__codelineno-1-17">17</a></span>
+<span class="normal"><a href="#__codelineno-1-18">18</a></span>
+<span class="normal"><a href="#__codelineno-1-19">19</a></span>
+<span class="normal"><a href="#__codelineno-1-20">20</a></span>
+<span class="normal"><a href="#__codelineno-1-21">21</a></span>
+<span class="normal"><a href="#__codelineno-1-22">22</a></span>
+<span class="normal"><a href="#__codelineno-1-23">23</a></span>
+<span class="normal"><a href="#__codelineno-1-24">24</a></span>
+<span class="normal"><a href="#__codelineno-1-25">25</a></span>
+<span class="normal"><a href="#__codelineno-1-26">26</a></span>
+<span class="normal"><a href="#__codelineno-1-27">27</a></span>
+<span class="normal"><a href="#__codelineno-1-28">28</a></span>
+<span class="normal"><a href="#__codelineno-1-29">29</a></span>
+<span class="normal"><a href="#__codelineno-1-30">30</a></span>
+<span class="normal"><a href="#__codelineno-1-31">31</a></span>
+<span class="normal"><a href="#__codelineno-1-32">32</a></span>
+<span class="normal"><a href="#__codelineno-1-33">33</a></span>
+<span class="normal"><a href="#__codelineno-1-34">34</a></span>
+<span class="normal"><a href="#__codelineno-1-35">35</a></span>
+<span class="normal"><a href="#__codelineno-1-36">36</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3"></a><span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4"></a><span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5"></a><span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6"></a><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7"></a>
+<a id="__codelineno-1-8" name="__codelineno-1-8"></a><span class="kn">from</span><span class="w"> </span><span class="nn">common.paths</span><span class="w"> </span><span class="kn">import</span> <span class="n">repo_root</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9"></a><span class="kn">from</span><span class="w"> </span><span class="nn">server.index_stats</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_index_stats</span> <span class="k">as</span> <span class="n">_get_index_stats</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10"></a><span class="kn">from</span><span class="w"> </span><span class="nn">server.services.config_registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_config_registry</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11"></a>
+<a id="__codelineno-1-12" name="__codelineno-1-12"></a><span class="c1"># Module-level config registry</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13"></a><span class="n">_config_registry</span> <span class="o">=</span> <span class="n">get_config_registry</span><span class="p">()</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14"></a>
+<a id="__codelineno-1-15" name="__codelineno-1-15"></a><span class="n">_INDEX_STATUS</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16"></a><span class="n">_INDEX_METADATA</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17"></a>
+<a id="__codelineno-1-18" name="__codelineno-1-18"></a><span class="hll">
+</span><a id="__codelineno-1-19" name="__codelineno-1-19"></a><span class="hll"><span class="k">def</span><span class="w"> </span><span class="nf">start</span><span class="p">(</span><span class="n">payload</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+</span><a id="__codelineno-1-20" name="__codelineno-1-20"></a><span class="hll">    <span class="k">global</span> <span class="n">_INDEX_STATUS</span><span class="p">,</span> <span class="n">_INDEX_METADATA</span>
+</span><a id="__codelineno-1-21" name="__codelineno-1-21"></a><span class="hll">    <span class="n">payload</span> <span class="o">=</span> <span class="n">payload</span> <span class="ow">or</span> <span class="p">{}</span>
+</span><a id="__codelineno-1-22" name="__codelineno-1-22"></a><span class="hll">    <span class="n">_INDEX_STATUS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"Indexing started..."</span><span class="p">]</span>
+</span><a id="__codelineno-1-23" name="__codelineno-1-23"></a><span class="hll">    <span class="n">_INDEX_METADATA</span> <span class="o">=</span> <span class="p">{}</span>
+</span><a id="__codelineno-1-24" name="__codelineno-1-24"></a><span class="hll">
+</span><a id="__codelineno-1-25" name="__codelineno-1-25"></a><span class="hll">    <span class="k">def</span><span class="w"> </span><span class="nf">run_index</span><span class="p">():</span>
+</span><a id="__codelineno-1-26" name="__codelineno-1-26"></a><span class="hll">        <span class="k">global</span> <span class="n">_INDEX_STATUS</span><span class="p">,</span> <span class="n">_INDEX_METADATA</span>
+</span><a id="__codelineno-1-27" name="__codelineno-1-27"></a><span class="hll">        <span class="k">try</span><span class="p">:</span>
+</span><a id="__codelineno-1-28" name="__codelineno-1-28"></a><span class="hll">            <span class="n">repo</span> <span class="o">=</span> <span class="n">_config_registry</span><span class="o">.</span><span class="n">get_str</span><span class="p">(</span><span class="s2">"REPO"</span><span class="p">,</span> <span class="s2">"agro"</span><span class="p">)</span>
+</span><a id="__codelineno-1-29" name="__codelineno-1-29"></a><span class="hll">            <span class="n">_INDEX_STATUS</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Indexing repository: </span><span class="si">{</span><span class="n">repo</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><a id="__codelineno-1-30" name="__codelineno-1-30"></a><span class="hll">            <span class="c1"># Ensure the indexer resolves repo paths correctly and uses the same interpreter</span>
+</span><a id="__codelineno-1-31" name="__codelineno-1-31"></a><span class="hll">            <span class="n">root</span> <span class="o">=</span> <span class="n">repo_root</span><span class="p">()</span>
+</span><a id="__codelineno-1-32" name="__codelineno-1-32"></a><span class="hll">            <span class="n">env</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">,</span> <span class="s2">"REPO"</span><span class="p">:</span> <span class="n">repo</span><span class="p">,</span> <span class="s2">"REPO_ROOT"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">root</span><span class="p">),</span> <span class="s2">"PYTHONPATH"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">root</span><span class="p">)}</span>
+</span><a id="__codelineno-1-33" name="__codelineno-1-33"></a><span class="hll">            <span class="k">if</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"enrich"</span><span class="p">):</span>
+</span><a id="__codelineno-1-34" name="__codelineno-1-34"></a>                <span class="n">env</span><span class="p">[</span><span class="s2">"ENRICH_CODE_CHUNKS"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"true"</span>
+<a id="__codelineno-1-35" name="__codelineno-1-35"></a>                <span class="n">_INDEX_STATUS</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"Enriching chunks with su..."</span><span class="p">)</span>
+<a id="__codelineno-1-36" name="__codelineno-1-36"></a>            <span class="o">...</span>
+</code></pre></div></td></tr></tbody></table></div>
+<p>The OpenAPI schema for the indexing endpoint only needs to describe <code>payload</code> (e.g. <code>{ "enrich": true }</code>). Everything else – which repo to index, how to resolve paths, whether to enrich chunks – is driven by the config registry and environment.</p>
+<h2 id="configaware-admin-editor-endpoints">Config‑aware admin &amp; editor endpoints<a class="headerlink" href="#configaware-admin-editor-endpoints" title="Permanent link">¶</a></h2>
+<p>Several admin‑style endpoints exist purely to support the web UI and devtools. They’re still part of the same OpenAPI schema, but they’re worth calling out because they lean heavily on the registry.</p>
+<h3 id="editor-settings">Editor settings<a class="headerlink" href="#editor-settings" title="Permanent link">¶</a></h3>
+<p><code>server/services/editor.py</code> exposes a small JSON surface that the web UI uses to configure the embedded editor / devtools panel:</p>
+<div class="highlight"><table class="highlighttable"><tbody><tr><th colspan="2" class="filename"><span class="filename">server/services/editor.py</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-2-1"> 1</a></span>
+<span class="normal"><a href="#__codelineno-2-2"> 2</a></span>
+<span class="normal"><a href="#__codelineno-2-3"> 3</a></span>
+<span class="normal"><a href="#__codelineno-2-4"> 4</a></span>
+<span class="normal"><a href="#__codelineno-2-5"> 5</a></span>
+<span class="normal"><a href="#__codelineno-2-6"> 6</a></span>
+<span class="normal"><a href="#__codelineno-2-7"> 7</a></span>
+<span class="normal"><a href="#__codelineno-2-8"> 8</a></span>
+<span class="normal"><a href="#__codelineno-2-9"> 9</a></span>
+<span class="normal"><a href="#__codelineno-2-10">10</a></span>
+<span class="normal"><a href="#__codelineno-2-11">11</a></span>
+<span class="normal"><a href="#__codelineno-2-12">12</a></span>
+<span class="normal"><a href="#__codelineno-2-13">13</a></span>
+<span class="normal"><a href="#__codelineno-2-14">14</a></span>
+<span class="normal"><a href="#__codelineno-2-15">15</a></span>
+<span class="normal"><a href="#__codelineno-2-16">16</a></span>
+<span class="normal"><a href="#__codelineno-2-17">17</a></span>
+<span class="normal"><a href="#__codelineno-2-18">18</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">server.services.config_registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_config_registry</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">server.models.agro_config_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">AGRO_CONFIG_KEYS</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4"></a><span class="o">...</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5"></a>
+<a id="__codelineno-2-6" name="__codelineno-2-6"></a><span class="k">def</span><span class="w"> </span><span class="nf">read_settings</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7"></a><span class="w">    </span><span class="sd">"""Read editor settings, preferring registry (agro_config.json/.env) with legacy file fallback."""</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8"></a>    <span class="n">registry</span> <span class="o">=</span> <span class="n">get_config_registry</span><span class="p">()</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9"></a>    <span class="n">settings</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10"></a>        <span class="s2">"port"</span><span class="p">:</span> <span class="n">registry</span><span class="o">.</span><span class="n">get_int</span><span class="p">(</span><span class="s2">"EDITOR_PORT"</span><span class="p">,</span> <span class="mi">4440</span><span class="p">),</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11"></a>        <span class="s2">"enabled"</span><span class="p">:</span> <span class="n">registry</span><span class="o">.</span><span class="n">get_bool</span><span class="p">(</span><span class="s2">"EDITOR_ENABLED"</span><span class="p">,</span> <span class="kc">True</span><span class="p">),</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12"></a>        <span class="s2">"embed_enabled"</span><span class="p">:</span> <span class="n">registry</span><span class="o">.</span><span class="n">get_bool</span><span class="p">(</span><span class="s2">"EDITOR_EMBED_ENABLED"</span><span class="p">,</span> <span class="kc">True</span><span class="p">),</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13"></a>        <span class="s2">"bind"</span><span class="p">:</span> <span class="n">registry</span><span class="o">.</span><span class="n">get_str</span><span class="p">(</span><span class="s2">"EDITOR_BIND"</span><span class="p">,</span> <span class="s2">"local"</span><span class="p">),</span>  <span class="c1"># 'local' or 'public'</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14"></a>        <span class="s2">"image"</span><span class="p">:</span> <span class="n">registry</span><span class="o">.</span><span class="n">get_str</span><span class="p">(</span><span class="s2">"EDI..."</span><span class="p">),</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15"></a>        <span class="o">...</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16"></a><span class="hll">    <span class="p">}</span>
+</span><a id="__codelineno-2-17" name="__codelineno-2-17"></a><span class="hll">    <span class="o">...</span>
+</span><a id="__codelineno-2-18" name="__codelineno-2-18"></a><span class="hll">    <span class="k">return</span> <span class="n">settings</span>
+</span></code></pre></div></td></tr></tbody></table></div>
+<p>The OpenAPI schema just says “this endpoint returns a JSON object with these fields.” The actual values – and whether the editor is even enabled – come from <code>.env</code> / <code>agro_config.json</code>.</p>
+<p>This is the pattern across the admin endpoints:</p>
+<ul>
+<li><strong>Config store</strong> (<code>server/services/config_store.py</code>) – reads/writes <code>agro_config.json</code>, hides <code>SECRET_FIELDS</code> from responses, and validates against <code>AGRO_CONFIG_KEYS</code>.</li>
+<li><strong>Keywords</strong> (<code>server/services/keywords.py</code>) – exposes keyword stats and regeneration, but all the tuning knobs (<code>KEYWORDS_MAX_PER_REPO</code>, <code>KEYWORDS_BOOST</code>, etc.) are cached from the registry.</li>
+<li><strong>Traces</strong> (<code>server/services/traces.py</code>) – lists and fetches trace files under <code>out/&lt;repo&gt;/traces</code>, with <code>repo</code> defaulting to <code>REPO</code> from the environment.</li>
+</ul>
+<h2 id="secrets-and-the-openapi-schema">Secrets and the OpenAPI schema<a class="headerlink" href="#secrets-and-the-openapi-schema" title="Permanent link">¶</a></h2>
+<p><code>server/services/config_store.py</code> is the main place where secrets and OpenAPI meet.</p>
+<div class="highlight"><table class="highlighttable"><tbody><tr><th colspan="2" class="filename"><span class="filename">server/services/config_store.py</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-3-1"> 1</a></span>
+<span class="normal"><a href="#__codelineno-3-2"> 2</a></span>
+<span class="normal"><a href="#__codelineno-3-3"> 3</a></span>
+<span class="normal"><a href="#__codelineno-3-4"> 4</a></span>
+<span class="normal"><a href="#__codelineno-3-5"> 5</a></span>
+<span class="normal"><a href="#__codelineno-3-6"> 6</a></span>
+<span class="normal"><a href="#__codelineno-3-7"> 7</a></span>
+<span class="normal"><a href="#__codelineno-3-8"> 8</a></span>
+<span class="normal"><a href="#__codelineno-3-9"> 9</a></span>
+<span class="normal"><a href="#__codelineno-3-10">10</a></span>
+<span class="normal"><a href="#__codelineno-3-11">11</a></span>
+<span class="normal"><a href="#__codelineno-3-12">12</a></span>
+<span class="normal"><a href="#__codelineno-3-13">13</a></span>
+<span class="normal"><a href="#__codelineno-3-14">14</a></span>
+<span class="normal"><a href="#__codelineno-3-15">15</a></span>
+<span class="normal"><a href="#__codelineno-3-16">16</a></span>
+<span class="normal"><a href="#__codelineno-3-17">17</a></span>
+<span class="normal"><a href="#__codelineno-3-18">18</a></span>
+<span class="normal"><a href="#__codelineno-3-19">19</a></span>
+<span class="normal"><a href="#__codelineno-3-20">20</a></span>
+<span class="normal"><a href="#__codelineno-3-21">21</a></span>
+<span class="normal"><a href="#__codelineno-3-22">22</a></span>
+<span class="normal"><a href="#__codelineno-3-23">23</a></span>
+<span class="normal"><a href="#__codelineno-3-24">24</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3"></a><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4"></a><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6"></a><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">ValidationError</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8"></a>
+<a id="__codelineno-3-9" name="__codelineno-3-9"></a><span class="kn">from</span><span class="w"> </span><span class="nn">common.config_loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">_load_repos_raw</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10"></a><span class="kn">from</span><span class="w"> </span><span class="nn">common.paths</span><span class="w"> </span><span class="kn">import</span> <span class="n">repo_root</span><span class="p">,</span> <span class="n">gui_dir</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11"></a><span class="kn">from</span><span class="w"> </span><span class="nn">server.services.config_registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_config_registry</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12"></a><span class="hll"><span class="kn">from</span><span class="w"> </span><span class="nn">server.models.agro_config_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">AGRO_CONFIG_KEYS</span>
+</span><a id="__codelineno-3-13" name="__codelineno-3-13"></a><span class="hll">
+</span><a id="__codelineno-3-14" name="__codelineno-3-14"></a><span class="hll"><span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">"agro.api"</span><span class="p">)</span>
+</span><a id="__codelineno-3-15" name="__codelineno-3-15"></a><span class="hll">
+</span><a id="__codelineno-3-16" name="__codelineno-3-16"></a><span class="hll">
+</span><a id="__codelineno-3-17" name="__codelineno-3-17"></a><span class="hll"><span class="n">SECRET_FIELDS</span> <span class="o">=</span> <span class="p">{</span>
+</span><a id="__codelineno-3-18" name="__codelineno-3-18"></a><span class="hll">    <span class="s1">'OPENAI_API_KEY'</span><span class="p">,</span> <span class="s1">'ANTHROPIC_API_KEY'</span><span class="p">,</span> <span class="s1">'GOOGLE_API_KEY'</span><span class="p">,</span>
+</span><a id="__codelineno-3-19" name="__codelineno-3-19"></a><span class="hll">    <span class="s1">'COHERE_API_KEY'</span><span class="p">,</span> <span class="s1">'VOYAGE_API_KEY'</span><span class="p">,</span> <span class="s1">'LANGSMITH_API_KEY'</span><span class="p">,</span>
+</span><a id="__codelineno-3-20" name="__codelineno-3-20"></a><span class="hll">    <span class="s1">'LANGCHAIN_API_KEY'</span><span class="p">,</span> <span class="s1">'LANGTRACE_API_KEY'</span><span class="p">,</span> <span class="s1">'NETLIFY_API_KEY'</span><span class="p">,</span>
+</span><a id="__codelineno-3-21" name="__codelineno-3-21"></a><span class="hll">    <span class="s1">'OAUTH_TOKEN'</span><span class="p">,</span> <span class="s1">'GRAFANA_API_KEY'</span><span class="p">,</span> <span class="s1">'GRAFANA_AUTH_TOKEN'</span><span class="p">,</span>
+</span><a id="__codelineno-3-22" name="__codelineno-3-22"></a><span class="hll">    <span class="s1">'MCP_API_KEY'</span><span class="p">,</span> <span class="s1">'JINA_API_KEY'</span><span class="p">,</span> <span class="s1">'DEEPSEEK_API_KEY'</span><span class="p">,</span> <span class="s1">'MISTRAL_API_KEY'</span><span class="p">,</span>
+</span><a id="__codelineno-3-23" name="__codelineno-3-23"></a><span class="hll">    <span class="s1">'XAI_API_KEY'</span><span class="p">,</span> <span class="s1">'GROQ_API_KEY'</span><span class="p">,</span> <span class="s1">'FIREWORKS_API_KEY'</span>
+</span><a id="__codelineno-3-24" name="__codelineno-3-24"></a><span class="p">}</span>
+</code></pre></div></td></tr></tbody></table></div>
+<p>The OpenAPI schema for the config endpoints is generated from Pydantic models that <em>exclude</em> these fields from responses. You can still set them via the API (or <code>.env</code>), but you won’t see them echoed back in plain text.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Don’t rely on the OpenAPI schema as a “list of all secrets.” New providers and keys are added over time. The authoritative list is <code>SECRET_FIELDS</code> in <code>config_store.py</code> and the <code>.env</code> template in <code>getting-started/environment-example.md</code>.</p>
+</div>
+<h2 id="how-mcp-servers-use-the-openapi-spec">How MCP servers use the OpenAPI spec<a class="headerlink" href="#how-mcp-servers-use-the-openapi-spec" title="Permanent link">¶</a></h2>
+<p>AGRO’s MCP integration (see <code>features/mcp.md</code>) doesn’t talk to FastAPI directly, but it does rely on the same Pydantic models and service layer that generate the OpenAPI schema.</p>
+<p>The flow looks like this:</p>
+<pre class="mermaid"><code>sequenceDiagram
+  participant MCP as MCP Client (Claude Code / Codex)
+  participant Server as AGRO MCP Server
+  participant HTTP as AGRO HTTP API
+  participant RAG as Retrieval Services
+
+  MCP-&gt;&gt;Server: tool call (e.g. search_code)
+  Server-&gt;&gt;HTTP: HTTP request (JSON body)
+  HTTP-&gt;&gt;RAG: call service layer (rag.py, indexing.py, ...)
+  RAG--&gt;&gt;HTTP: structured result (Pydantic models)
+  HTTP--&gt;&gt;Server: JSON response
+  Server--&gt;&gt;MCP: tool result</code></pre>
+<p>Because everything is typed once (Pydantic models → FastAPI → OpenAPI), you get:</p>
+<ul>
+<li>A single source of truth for request/response shapes</li>
+<li>The same validation and defaults whether you call via HTTP, the web UI, or MCP</li>
+<li>Less drift between “what the docs say” and “what the MCP tools actually accept”</li>
+</ul>
+<p>You don’t need to regenerate or hand‑edit the OpenAPI spec to make MCP work; you just add or adjust Pydantic models and service functions.</p>
+<h2 id="extending-the-api-safely">Extending the API safely<a class="headerlink" href="#extending-the-api-safely" title="Permanent link">¶</a></h2>
+<p>If you want to add a new endpoint or tweak an existing one, the safest path is:</p>
+<ol>
+<li><strong>Add or modify a Pydantic model</strong> under <code>server/models/</code> (or extend <code>AgroConfigRoot</code> if it’s a config surface).</li>
+<li><strong>Add a small service function</strong> under <code>server/services/</code> that:</li>
+<li>Pulls configuration via <code>get_config_registry()</code></li>
+<li>Does the work</li>
+<li>Returns plain dicts / Pydantic models</li>
+<li><strong>Wire it into FastAPI</strong> in the ASGI app (or the relevant router).</li>
+</ol>
+<p>FastAPI will:</p>
+<ul>
+<li>Infer the OpenAPI schema from your function signature and models</li>
+<li>Expose it at <code>/openapi.json</code>, <code>/docs</code>, <code>/redoc</code></li>
+<li>Keep the web UI and MCP servers in sync automatically</li>
+</ul>
+<details class="tip">
+<summary>Use AGRO to document AGRO</summary>
+<p>The AGRO repo is indexed into its own RAG engine. If you’re not sure how a particular endpoint is wired, open the Chat tab in the web UI and ask something like:</p>
+<blockquote>
+<p>“Show me where the indexing HTTP endpoints are defined and how they call <code>server/services/indexing.py</code>.”</p>
+</blockquote>
+<p>You’ll get code‑level answers with links into the repo, which is usually faster than grepping through handlers by hand.</p>
+</details>
+<h2 id="openapi-and-environmentdriven-behavior">OpenAPI and environment‑driven behavior<a class="headerlink" href="#openapi-and-environmentdriven-behavior" title="Permanent link">¶</a></h2>
+<p>One last point: the OpenAPI schema is intentionally <strong>static</strong>. It describes shapes, not behavior.</p>
+<p>Behavior is driven by:</p>
+<ul>
+<li><code>.env</code> (infrastructure, secrets, repo selection)</li>
+<li><code>agro_config.json</code> (models, retrieval knobs, evaluation settings)</li>
+<li>The configuration registry’s precedence rules</li>
+</ul>
+<p>This means:</p>
+<ul>
+<li>You can run the same OpenAPI schema against very different backends (local models vs cloud, different repos, different retrieval strategies).</li>
+<li>Small codebases can stick to simple BM25‑only configs without touching the API.</li>
+<li>When you <em>do</em> turn on more advanced features (learning reranker, enrichment, MCP tools), the HTTP surface doesn’t change shape – only what happens behind it.</li>
+</ul>
+<p>If you need to see exactly what the current server thinks the API looks like, <code>GET /openapi.json</code> is the ground truth.</p>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"></path></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tabs", "navigation.top", "navigation.sections", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+        <script src="https://unpkg.com/mermaid@11.4.1/dist/mermaid.min.js"></script>
+      
+        <script src="../../assets/js/mermaid-init.js"></script>
+      
+    
+  
+<script id="init-glightbox">const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});
+document$.subscribe(()=>{ lightbox.reload(); });
+</script></body></html>
