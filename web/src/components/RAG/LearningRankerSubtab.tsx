@@ -18,6 +18,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useConfigField, useNotification } from '@/hooks';
 
 /**
  * Reranker status object returned from backend
@@ -73,28 +74,30 @@ interface EvalMetrics {
  * ---/agentspec
  */
 export function LearningRankerSubtab() {
+  // Notification hook for toast messages (replaces alert())
+  const { success, error: notifyError, info } = useNotification();
 
-  // Configuration state - all inputs wired to /api/config
-  const [rerankerEnabled, setRerankerEnabled] = useState<string>('0');
-  const [modelPath, setModelPath] = useState<string>('models/cross-encoder-agro');
-  const [availableModels, setAvailableModels] = useState<string[]>([]);
-  const [logPath, setLogPath] = useState<string>('data/logs/queries.jsonl');
-  const [tripletsPath, setTripletsPath] = useState<string>('data/training/triplets.jsonl');
-  const [mineMode, setMineMode] = useState<string>('append');
-  const [mineReset, setMineReset] = useState<string>('0');
-  const [blendAlpha, setBlendAlpha] = useState<number>(0.7);
-  const [maxSeqLength, setMaxSeqLength] = useState<number>(512);
-  const [batchSize, setBatchSize] = useState<number>(16);
-  const [rerankerTopN, setRerankerTopN] = useState<number>(50);
-  const [voyageRerankerModel, setVoyageRerankerModel] = useState<string>('rerank-2');
-  const [reloadOnChange, setReloadOnChange] = useState<string>('0');
-  const [trainEpochs, setTrainEpochs] = useState<number>(2);
-  const [trainBatchSize, setTrainBatchSize] = useState<number>(16);
-  const [trainMaxLength, setTrainMaxLength] = useState<number>(512);
-  const [trainLearningRate, setTrainLearningRate] = useState<number>(0.00002);
-  const [warmupRatio, setWarmupRatio] = useState<number>(0.1);
-  const [tripletsMinCount, setTripletsMinCount] = useState<number>(100);
-  const [tripletsMineMode, setTripletsMineMode] = useState<string>('replace');
+  // Configuration state - all inputs wired to agro_config.json via useConfigField
+  const [rerankerEnabled, setRerankerEnabled] = useConfigField<string>('AGRO_RERANKER_ENABLED', '0');
+  const [modelPath, setModelPath] = useConfigField<string>('AGRO_RERANKER_MODEL_PATH', 'models/cross-encoder-agro');
+  const [availableModels, setAvailableModels] = useState<string[]>([]); // UI state only - model list
+  const [logPath, setLogPath] = useConfigField<string>('AGRO_LOG_PATH', 'data/logs/queries.jsonl');
+  const [tripletsPath, setTripletsPath] = useConfigField<string>('AGRO_TRIPLETS_PATH', 'data/training/triplets.jsonl');
+  const [mineMode, setMineMode] = useConfigField<string>('AGRO_RERANKER_MINE_MODE', 'append');
+  const [mineReset, setMineReset] = useConfigField<string>('AGRO_RERANKER_MINE_RESET', '0');
+  const [blendAlpha, setBlendAlpha] = useConfigField<number>('AGRO_RERANKER_ALPHA', 0.7);
+  const [maxSeqLength, setMaxSeqLength] = useConfigField<number>('AGRO_RERANKER_MAXLEN', 512);
+  const [batchSize, setBatchSize] = useConfigField<number>('AGRO_RERANKER_BATCH', 16);
+  const [rerankerTopN, setRerankerTopN] = useConfigField<number>('AGRO_RERANKER_TOPN', 50);
+  const [voyageRerankerModel, setVoyageRerankerModel] = useConfigField<string>('VOYAGE_RERANK_MODEL', 'rerank-2');
+  const [reloadOnChange, setReloadOnChange] = useConfigField<string>('AGRO_RERANKER_RELOAD_ON_CHANGE', '0');
+  const [trainEpochs, setTrainEpochs] = useConfigField<number>('RERANKER_TRAIN_EPOCHS', 2);
+  const [trainBatchSize, setTrainBatchSize] = useConfigField<number>('RERANKER_TRAIN_BATCH', 16);
+  const [trainMaxLength, setTrainMaxLength] = useConfigField<number>('RERANKER_TRAIN_MAX_LENGTH', 512);
+  const [trainLearningRate, setTrainLearningRate] = useConfigField<number>('RERANKER_TRAIN_LR', 0.00002);
+  const [warmupRatio, setWarmupRatio] = useConfigField<number>('RERANKER_WARMUP_RATIO', 0.1);
+  const [tripletsMinCount, setTripletsMinCount] = useConfigField<number>('TRIPLETS_MIN_COUNT', 100);
+  const [tripletsMineMode, setTripletsMineMode] = useConfigField<string>('TRIPLETS_MINE_MODE', 'replace');
 
   // Status and display state
   const [rerankerInfo, setRerankerInfo] = useState<RerankerInfo | null>(null);
@@ -113,88 +116,25 @@ export function LearningRankerSubtab() {
   const [costAvg, setCostAvg] = useState<number>(0);
   const [noHitQueries, setNoHitQueries] = useState<any[]>([]);
   const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  // Config loading is handled by useConfigField - no longer needed
 
-  // Load configuration and status on mount
+  // Load status and data on mount (config is handled by useConfigField)
   useEffect(() => {
-    loadConfig();
+    loadAvailableModels();
     loadStatus();
     loadCounts();
     loadCosts();
     loadNoHits();
 
-    // Poll status every 2 seconds when tasks are running
-    /**
-     * ---agentspec
-     * what: |
-     *   Sets up 2-second polling interval to call loadStatus(). Cleans up interval on unmount via returned cleanup function.
-     *
-     * why: |
-     *   useEffect dependency array ensures interval runs once; cleanup prevents memory leaks.
-     *
-     * guardrails:
-     *   - DO NOT hardcode 2000ms; make configurable for test/prod environments
-     *   - NOTE: Cleanup function must clear interval before component unmounts
-     * ---/agentspec
-     */
+    // Poll status every 5 seconds during reranker training
     const interval = setInterval(() => {
       loadStatus();
-    }, 5000); // poll every 5 seconds during reranker training
+    }, 5000);
 
     return () => clearInterval(interval);
   }, []);
 
-  /**
-   * Load configuration from /api/config
-   */
-  /**
-   * ---agentspec
-   * what: |
-   *   Fetches config from /api/config endpoint. Extracts env vars (AGRO_RERANKER_ENABLED, AGRO_RERANKER_MODEL_PATH, AGRO_LOG_PATH) and sets state with defaults.
-   *
-   * why: |
-   *   Centralizes config loading at app init; decouples env setup from component logic.
-   *
-   * guardrails:
-   *   - DO NOT assume /api/config always succeeds; add error handler
-   *   - NOTE: Defaults silently if env vars missing; log warnings for debugging
-   * ---/agentspec
-   */
-  const loadConfig = async () => {
-    try {
-      const response = await fetch('/api/config');
-      const data = await response.json();
-      const env = data.env || {};
-
-      setRerankerEnabled(env.AGRO_RERANKER_ENABLED || '0');
-      setModelPath(env.AGRO_RERANKER_MODEL_PATH || 'models/cross-encoder-agro');
-      setLogPath(env.AGRO_LOG_PATH || 'data/logs/queries.jsonl');
-      setTripletsPath(env.AGRO_TRIPLETS_PATH || 'data/training/triplets.jsonl');
-      setMineMode(env.AGRO_RERANKER_MINE_MODE || 'append');
-      setMineReset(env.AGRO_RERANKER_MINE_RESET || '0');
-      setBlendAlpha(parseFloat(env.AGRO_RERANKER_ALPHA || '0.7'));
-      setMaxSeqLength(parseInt(env.AGRO_RERANKER_MAXLEN || '512', 10));
-      setBatchSize(parseInt(env.AGRO_RERANKER_BATCH || '16', 10));
-      setRerankerTopN(parseInt(env.AGRO_RERANKER_TOPN || '50', 10));
-      setVoyageRerankerModel(env.VOYAGE_RERANK_MODEL || 'rerank-2');
-      setReloadOnChange(env.AGRO_RERANKER_RELOAD_ON_CHANGE || '0');
-      setTrainEpochs(parseInt(env.RERANKER_TRAIN_EPOCHS || '2', 10));
-      setTrainBatchSize(parseInt(env.RERANKER_TRAIN_BATCH || '16', 10));
-      setTrainMaxLength(parseInt(env.RERANKER_TRAIN_MAX_LENGTH || '512', 10));
-      setTrainLearningRate(parseFloat(env.RERANKER_TRAIN_LR || '0.00002'));
-      setWarmupRatio(parseFloat(env.RERANKER_WARMUP_RATIO || '0.1'));
-      setTripletsMinCount(parseInt(env.TRIPLETS_MIN_COUNT || '100', 10));
-      setTripletsMineMode(env.TRIPLETS_MINE_MODE || 'replace');
-
-      // Load available models from filesystem
-      loadAvailableModels();
-
-      setLoading(false);
-    } catch (error) {
-      console.error('Failed to load config:', error);
-      setLoading(false);
-    }
-  };
+  // loadConfig function REMOVED - useConfigField handles config loading automatically
 
   /**
    * Load available reranker models from models directory
@@ -380,599 +320,8 @@ export function LearningRankerSubtab() {
     });
   };
 
-  /**
-   * Update config value in backend
-   */
-  /**
-   * ---agentspec
-   * what: |
-   *   POSTs config key-value pair to /api/config endpoint. Returns response status; caller must handle errors.
-   *
-   * why: |
-   *   Centralizes config updates via API rather than direct env mutation.
-   *
-   * guardrails:
-   *   - DO NOT assume response.ok means success; API may return 200 with error payload
-   *   - NOTE: No retry logic; transient failures will propagate to caller
-   *   - ASK USER: Should failed updates trigger rollback or alert?
-   * ---/agentspec
-   */
-  const updateConfig = async (key: string, value: any) => {
-    try {
-      const response = await fetch('/api/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ env: { [key]: value } })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to update ${key}`);
-      }
-
-      await loadConfig();
-    } catch (error) {
-      console.error(`Error updating ${key}:`, error);
-      alert(`Failed to update ${key}`);
-    }
-  };
-
-  // Handler functions for all inputs
-  /**
-   * ---agentspec
-   * what: |
-   *   Handles select dropdown changes for reranker toggle and model path. Updates local state and persists to config via updateConfig().
-   *
-   * why: |
-   *   Centralizes UI event handling with immediate state sync and config persistence.
-   *
-   * guardrails:
-   *   - DO NOT assume updateConfig() succeeds; add error handling
-   *   - NOTE: setModelPath() defined but handleModelPathChange() incomplete
-   * ---/agentspec
-   */
-  const handleRerankerEnabledChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    setRerankerEnabled(value);
-    updateConfig('AGRO_RERANKER_ENABLED', value);
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Handles dropdown selection for reranker model path; updates local state and config. Handles text input for log path; updates local state only.
-   *
-   * why: |
-   *   Separates model config (persisted) from log path (UI-only) to match their different lifecycles.
-   *
-   * guardrails:
-   *   - DO NOT persist log path to config; it's UI state only
-   *   - NOTE: Model path change triggers updateConfig immediately; log path does not
-   * ---/agentspec
-   */
-  const handleModelPathChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    setModelPath(value);
-    updateConfig('AGRO_RERANKER_MODEL_PATH', value);
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Handles input field changes and blur events for log path and triplets path config. Updates state on change, persists to config on blur.
-   *
-   * why: |
-   *   Separates UI state updates (immediate) from config persistence (on blur) to avoid excessive writes.
-   *
-   * guardrails:
-   *   - DO NOT persist on every keystroke; only on blur
-   *   - NOTE: Assumes updateConfig is idempotent
-   * ---/agentspec
-   */
-  const handleLogPathChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setLogPath(e.target.value);
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Handles file path input changes and blur events for log and triplets paths. Updates config on blur.
-   *
-   * why: |
-   *   Separates input capture (onChange) from persistence (onBlur) to avoid excessive config writes.
-   *
-   * guardrails:
-   *   - DO NOT validate paths here; defer to config layer
-   *   - NOTE: Triplets blur handler missing; incomplete implementation
-   * ---/agentspec
-   */
-  const handleLogPathBlur = () => {
-    updateConfig('AGRO_LOG_PATH', logPath);
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Handles triplets file path input and mine mode selection. Updates config on blur; syncs state to parent via updateConfig().
-   *
-   * why: |
-   *   Separates input handling from validation; defers config writes to blur event for performance.
-   *
-   * guardrails:
-   *   - DO NOT validate path format here; defer to updateConfig()
-   *   - NOTE: Mine mode handler incomplete; requires implementation
-   * ---/agentspec
-   */
-  const handleTripletsPathChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setTripletsPath(e.target.value);
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Handles config updates for triplets file path and reranker mine mode. Blur event saves path; select change updates mode immediately.
-   *
-   * why: |
-   *   Separates UI event handlers from config state to keep form logic modular and testable.
-   *
-   * guardrails:
-   *   - DO NOT validate paths here; defer to updateConfig layer
-   *   - NOTE: Mine mode change fires immediately; triplets path waits for blur
-   * ---/agentspec
-   */
-  const handleTripletsPathBlur = () => {
-    updateConfig('AGRO_TRIPLETS_PATH', tripletsPath);
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Handles dropdown changes for mine mode and mine reset config. Updates local state and persists to config via updateConfig().
-   *
-   * why: |
-   *   Separates UI event handling from config persistence for testability and reusability.
-   *
-   * guardrails:
-   *   - DO NOT assume updateConfig() succeeds; add error handling
-   *   - NOTE: State and config may diverge if updateConfig() fails silently
-   * ---/agentspec
-   */
-  const handleMineModeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    setMineMode(value);
-    updateConfig('AGRO_RERANKER_MINE_MODE', value);
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Handles UI select/input changes for mine reset strategy and blend alpha parameters. Updates local state and persists to config via updateConfig().
-   *
-   * why: |
-   *   Separates event handling from config persistence for testability and reusability across form controls.
-   *
-   * guardrails:
-   *   - DO NOT persist blend alpha immediately; requires explicit save action
-   *   - NOTE: mine reset persists on change; blend alpha does not (inconsistent UX)
-   * ---/agentspec
-   */
-  const handleMineResetChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    setMineReset(value);
-    updateConfig('AGRO_RERANKER_MINE_RESET', value);
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Handles blend alpha slider input and blur events. Updates AGRO_RERANKER_ALPHA config on blur.
-   *
-   * why: |
-   *   Separates input parsing from config persistence to avoid excessive updates.
-   *
-   * guardrails:
-   *   - DO NOT update config on every keystroke; defer to blur event
-   *   - NOTE: parseFloat() may return NaN; add validation before config write
-   * ---/agentspec
-   */
-  const handleBlendAlphaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setBlendAlpha(parseFloat(e.target.value));
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Updates AGRO_RERANKER_ALPHA config on blur; parses max sequence length from input onChange. Outputs: config mutation + local state update.
-   *
-   * why: |
-   *   Separates input parsing (onChange) from config persistence (onBlur) to avoid redundant updates.
-   *
-   * guardrails:
-   *   - DO NOT parse without radix 10; parseInt defaults to octal for "0" prefix
-   *   - NOTE: handleMaxSeqLengthBlur incomplete; add updateConfig call
-   * ---/agentspec
-   */
-  const handleBlendAlphaBlur = () => {
-    updateConfig('AGRO_RERANKER_ALPHA', blendAlpha);
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Handles UI input changes for maxSeqLength and batchSize. Updates local state on change, persists to config on blur.
-   *
-   * why: |
-   *   Separates immediate UI responsiveness (onChange) from config persistence (onBlur) to avoid excessive writes.
-   *
-   * guardrails:
-   *   - DO NOT persist on every keystroke; use onBlur to batch updates
-   *   - NOTE: parseInt(value, 10) required; missing radix causes octal parsing bugs
-   * ---/agentspec
-   */
-  const handleMaxSeqLengthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setMaxSeqLength(parseInt(e.target.value, 10));
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Updates reranker config on blur; syncs batch size state on input change. Inputs: form events. Outputs: config updates + state mutations.
-   *
-   * why: |
-   *   Separates input handling (onChange) from persistence (onBlur) to avoid excessive writes.
-   *
-   * guardrails:
-   *   - DO NOT parse batch size without radix 10; prevents octal misinterpretation
-   *   - NOTE: Config update happens only on blur, not on every keystroke
-   * ---/agentspec
-   */
-  const handleMaxSeqLengthBlur = () => {
-    updateConfig('AGRO_RERANKER_MAXLEN', maxSeqLength);
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Handles batch size input changes and config updates. Parses input value to int, syncs to config on blur.
-   *
-   * why: |
-   *   Separates input parsing from config persistence; blur event prevents excessive updates.
-   *
-   * guardrails:
-   *   - DO NOT update config on every keystroke; use blur to batch writes
-   *   - NOTE: parseInt(value, 10) required; missing radix causes octal parsing bugs
-   * ---/agentspec
-   */
-  const handleBatchSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setBatchSize(parseInt(e.target.value, 10));
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Updates reranker config on blur events. Parses input value to int, syncs to state on change, persists to config on blur.
-   *
-   * why: |
-   *   Separates UI state updates (onChange) from config persistence (onBlur) to avoid excessive writes.
-   *
-   * guardrails:
-   *   - DO NOT persist on every keystroke; batch writes on blur only
-   *   - NOTE: parseInt(e.target.value, 10) assumes valid numeric input; add validation for NaN
-   * ---/agentspec
-   */
-  const handleBatchSizeBlur = () => {
-    updateConfig('AGRO_RERANKER_BATCH', batchSize);
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Handles reranker configuration updates. onChange parses input to int; onBlur persists to config via updateConfig('AGRO_RERANKER_TOPN', value).
-   *
-   * why: |
-   *   Separates input parsing from persistence to avoid premature saves on every keystroke.
-   *
-   * guardrails:
-   *   - DO NOT save on every onChange; defer to onBlur
-   *   - NOTE: parseInt(value, 10) required; missing radix causes bugs in some browsers
-   * ---/agentspec
-   */
-  const handleRerankerTopNChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setRerankerTopN(parseInt(e.target.value, 10));
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Updates reranker config on blur; syncs rerankerTopN to AGRO_RERANKER_TOPN. Handles Voyage reranker model input changes and persists on blur.
-   *
-   * why: |
-   *   Separates input capture (onChange) from persistence (onBlur) to avoid excessive config writes.
-   *
-   * guardrails:
-   *   - DO NOT persist on every keystroke; batch updates on blur only
-   *   - NOTE: Assumes updateConfig() handles validation; no local type-checking
-   * ---/agentspec
-   */
-  const handleRerankerTopNBlur = () => {
-    updateConfig('AGRO_RERANKER_TOPN', rerankerTopN);
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Handles Voyage reranker model input changes and config persistence. Updates local state on change, syncs to config on blur.
-   *
-   * why: |
-   *   Separates UI state updates (immediate feedback) from config writes (debounced via blur) to avoid excessive updates.
-   *
-   * guardrails:
-   *   - DO NOT write to config on every keystroke; use blur event
-   *   - NOTE: Assumes updateConfig('VOYAGE_RERANK_MODEL', value) is idempotent
-   * ---/agentspec
-   */
-  const handleVoyageRerankerModelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setVoyageRerankerModel(e.target.value);
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Handles config updates for Voyage reranker model and reload-on-change behavior. Blur event triggers model save; select change updates reload strategy.
-   *
-   * why: |
-   *   Separates UI event handlers from config persistence logic for testability.
-   *
-   * guardrails:
-   *   - DO NOT assume blur fires on every model change; only on field exit
-   *   - NOTE: updateConfig must handle both string model names and enum values
-   * ---/agentspec
-   */
-  const handleVoyageRerankerModelBlur = () => {
-    updateConfig('VOYAGE_RERANK_MODEL', voyageRerankerModel);
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Handles UI select/input changes for reranker config. Updates local state and persists AGRO_RERANKER_RELOAD_ON_CHANGE to config; trainEpochs updates state only.
-   *
-   * why: |
-   *   Separates config persistence (reload behavior) from transient UI state (epochs) to match storage requirements.
-   *
-   * guardrails:
-   *   - DO NOT persist trainEpochs without explicit updateConfig call; currently state-only
-   *   - NOTE: parseInt(e.target.value, 10) assumes valid numeric input; add validation if user-editable
-   * ---/agentspec
-   */
-  const handleReloadOnChangeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    setReloadOnChange(value);
-    updateConfig('AGRO_RERANKER_RELOAD_ON_CHANGE', value);
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Handles input changes for training hyperparameters (epochs, batch size). Parses numeric values and syncs to config on blur.
-   *
-   * why: |
-   *   Separates input parsing from config persistence; blur event prevents excessive updates during typing.
-   *
-   * guardrails:
-   *   - DO NOT update config on every keystroke; use blur to batch updates
-   *   - NOTE: parseInt(value, 10) required; omitting radix causes octal parsing bugs
-   * ---/agentspec
-   */
-  const handleTrainEpochsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setTrainEpochs(parseInt(e.target.value, 10));
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Updates reranker config on blur; syncs trainEpochs to RERANKER_TRAIN_EPOCHS. Parses trainBatchSize input to int on change, persists on blur.
-   *
-   * why: |
-   *   Deferred updates (blur) reduce config churn; int parsing ensures type safety for numeric hyperparams.
-   *
-   * guardrails:
-   *   - DO NOT update config on every keystroke; blur prevents thrashing
-   *   - NOTE: trainBatchSizeBlur handler incomplete; add updateConfig call
-   * ---/agentspec
-   */
-  const handleTrainEpochsBlur = () => {
-    updateConfig('RERANKER_TRAIN_EPOCHS', trainEpochs);
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Handles batch size and max length input changes for reranker training config. Updates state on change, persists to config on blur.
-   *
-   * why: |
-   *   Separates input handling (onChange) from persistence (onBlur) to avoid excessive config writes.
-   *
-   * guardrails:
-   *   - DO NOT call updateConfig on every keystroke; use onBlur
-   *   - NOTE: parseInt(value, 10) required; omitting radix causes octal parsing bugs
-   * ---/agentspec
-   */
-  const handleTrainBatchSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setTrainBatchSize(parseInt(e.target.value, 10));
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Updates reranker training config on blur events. Parses input values, syncs local state to parent config via updateConfig().
-   *
-   * why: |
-   *   Deferred updates on blur prevent excessive re-renders during typing; batch size and max length are training hyperparameters requiring validation.
-   *
-   * guardrails:
-   *   - DO NOT update config on every keystroke; blur batching reduces noise
-   *   - NOTE: parseInt(base 10) required; validate range before updateConfig call
-   *   - ASK USER: Add error handling for invalid numeric input
-   * ---/agentspec
-   */
-  const handleTrainBatchSizeBlur = () => {
-    updateConfig('RERANKER_TRAIN_BATCH', trainBatchSize);
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Handles UI input changes for reranker training hyperparameters (max_length, learning_rate). Updates local state on change, persists to config on blur.
-   *
-   * why: |
-   *   Separates immediate UI responsiveness (onChange) from config persistence (onBlur) to avoid excessive writes.
-   *
-   * guardrails:
-   *   - DO NOT persist on every keystroke; onBlur batches updates
-   *   - NOTE: parseInt(base 10) required; validate input range before updateConfig call
-   * ---/agentspec
-   */
-  const handleTrainMaxLengthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setTrainMaxLength(parseInt(e.target.value, 10));
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Updates reranker training config on blur events. Parses float input for learning rate; commits trainMaxLength to config store on blur.
-   *
-   * why: |
-   *   Deferred updates (blur vs change) reduce config thrashing; parseFloat ensures numeric type safety.
-   *
-   * guardrails:
-   *   - DO NOT update config on every keystroke; blur batches changes
-   *   - NOTE: parseFloat silently coerces invalid input to NaN; add validation before commit
-   * ---/agentspec
-   */
-  const handleTrainMaxLengthBlur = () => {
-    updateConfig('RERANKER_TRAIN_MAX_LENGTH', trainMaxLength);
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Handles learning rate and warmup ratio input changes in training config UI. Parses float values, updates local state on change, syncs to config on blur.
-   *
-   * why: |
-   *   Separates immediate UI responsiveness (onChange) from config persistence (onBlur) to avoid excessive writes.
-   *
-   * guardrails:
-   *   - DO NOT validate range here; validation belongs in config layer
-   *   - NOTE: parseFloat() silently coerces invalid input; add error boundary if needed
-   * ---/agentspec
-   */
-  const handleTrainLearningRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setTrainLearningRate(parseFloat(e.target.value));
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Handles blur events for training hyperparameters (learning rate, warmup ratio). Updates config on blur; syncs local state on change.
-   *
-   * why: |
-   *   Deferred config updates on blur reduce re-renders; local state tracks user input before commit.
-   *
-   * guardrails:
-   *   - DO NOT update config on every keystroke; batch on blur only
-   *   - NOTE: parseFloat() may return NaN; add validation before config write
-   * ---/agentspec
-   */
-  const handleTrainLearningRateBlur = () => {
-    updateConfig('RERANKER_TRAIN_LR', trainLearningRate);
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Handles warmup ratio and triplets min count input changes. Updates local state on change, syncs to config on blur.
-   *
-   * why: |
-   *   Separates immediate UI feedback (onChange) from config persistence (onBlur) to avoid excessive updates.
-   *
-   * guardrails:
-   *   - DO NOT validate range here; validate in updateConfig or schema layer
-   *   - NOTE: parseFloat may return NaN; add fallback or validation
-   * ---/agentspec
-   */
-  const handleWarmupRatioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setWarmupRatio(parseFloat(e.target.value));
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Handles blur event for RERANKER_WARMUP_RATIO config update. Parses triplets min count from input onChange, persists on blur.
-   *
-   * why: |
-   *   Separates parse logic (onChange) from persistence (onBlur) to avoid redundant updates during typing.
-   *
-   * guardrails:
-   *   - DO NOT update config on every keystroke; batch on blur only
-   *   - NOTE: parseInt(e.target.value, 10) assumes valid numeric input; add validation
-   * ---/agentspec
-   */
-  const handleWarmupRatioBlur = () => {
-    updateConfig('RERANKER_WARMUP_RATIO', warmupRatio);
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Handles triplet constraint input changes and blur events. Parses input value to int, updates local state, syncs to config on blur.
-   *
-   * why: |
-   *   Separates input parsing from config persistence; blur event prevents excessive updates.
-   *
-   * guardrails:
-   *   - DO NOT update config on every keystroke; defer to blur
-   *   - NOTE: parseInt(value, 10) required; missing radix causes bugs in some browsers
-   * ---/agentspec
-   */
-  const handleTripletsMinCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setTripletsMinCount(parseInt(e.target.value, 10));
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Handles blur event on triplets min count input and dropdown change on triplets mine mode. Updates config via updateConfig() callback.
-   *
-   * why: |
-   *   Separates input handlers from state management; updateConfig() centralizes config persistence.
-   *
-   * guardrails:
-   *   - DO NOT validate input values here; assume updateConfig() handles validation
-   *   - NOTE: setTripletsMineMode() called before updateConfig(); ensure idempotent
-   * ---/agentspec
-   */
-  const handleTripletsMinCountBlur = () => {
-    updateConfig('TRIPLETS_MIN_COUNT', tripletsMinCount);
-  };
-
-  /**
-   * ---agentspec
-   * what: |
-   *   Handles triplets mining mode selection via dropdown. Updates local state and persists to config on change.
-   *
-   * why: |
-   *   Separates UI event handling from config persistence for testability and state consistency.
-   *
-   * guardrails:
-   *   - DO NOT assume updateConfig succeeds; add error handling
-   *   - NOTE: value is string; validate against allowed modes before persist
-   * ---/agentspec
-   */
-  const handleTripletsMineModChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    setTripletsMineMode(value);
-    updateConfig('TRIPLETS_MINE_MODE', value);
-  };
+  // Config handler functions REMOVED - useConfigField auto-debounces and saves on change
+  // Only action handlers (API calls) remain below
 
   // Action handlers
   /**
@@ -1002,11 +351,13 @@ export function LearningRankerSubtab() {
       });
       const data = await response.json();
       if (!data.ok) {
-        alert(`Mining failed: ${data.error}`);
+        notifyError(`Mining failed: ${data.error}`);
+      } else {
+        success('Mining completed successfully');
       }
     } catch (error) {
       console.error('Mining error:', error);
-      alert('Mining failed');
+      notifyError('Mining failed');
     }
   };
 
@@ -1040,11 +391,13 @@ export function LearningRankerSubtab() {
       });
       const data = await response.json();
       if (!data.ok) {
-        alert(`Training failed: ${data.error}`);
+        notifyError(`Training failed: ${data.error}`);
+      } else {
+        success('Training started successfully');
       }
     } catch (error) {
       console.error('Training error:', error);
-      alert('Training failed');
+      notifyError('Training failed');
     }
   };
 
@@ -1071,11 +424,13 @@ export function LearningRankerSubtab() {
       });
       const data = await response.json();
       if (!data.ok) {
-        alert(`Evaluation failed: ${data.error}`);
+        notifyError(`Evaluation failed: ${data.error}`);
+      } else {
+        success('Evaluation completed');
       }
     } catch (error) {
       console.error('Evaluation error:', error);
-      alert('Evaluation failed');
+      notifyError('Evaluation failed');
     }
   };
 
@@ -1171,12 +526,13 @@ export function LearningRankerSubtab() {
       const response = await fetch('/api/reranker/baseline/save', { method: 'POST' });
       const data = await response.json();
       if (data.ok) {
-        alert('Baseline saved successfully');
+        success('Baseline saved successfully');
       } else {
-        alert(`Failed to save baseline: ${data.error}`);
+        notifyError(`Failed to save baseline: ${data.error}`);
       }
     } catch (error) {
       console.error('Failed to save baseline:', error);
+      notifyError('Failed to save baseline');
     }
   };
 
@@ -1201,13 +557,14 @@ export function LearningRankerSubtab() {
       const response = await fetch('/api/reranker/baseline/compare');
       const data = await response.json();
       if (data.ok) {
-        const msg = `Baseline Comparison:\n\nBaseline MRR: ${data.baseline.mrr}\nCurrent MRR: ${data.current.mrr}\nDelta: ${data.delta.mrr > 0 ? '+' : ''}${data.delta.mrr}\n\nBaseline Hit@1: ${data.baseline.hit1}\nCurrent Hit@1: ${data.current.hit1}\nDelta: ${data.delta.hit1 > 0 ? '+' : ''}${data.delta.hit1}`;
-        alert(msg);
+        const deltaSign = data.delta.mrr > 0 ? '+' : '';
+        info(`Baseline Comparison: Current MRR ${data.current.mrr} vs Baseline ${data.baseline.mrr} (${deltaSign}${data.delta.mrr})`);
       } else {
-        alert(`Comparison failed: ${data.error}`);
+        notifyError(`Comparison failed: ${data.error}`);
       }
     } catch (error) {
       console.error('Failed to compare baseline:', error);
+      notifyError('Failed to compare baseline');
     }
   };
 
@@ -1233,12 +590,13 @@ export function LearningRankerSubtab() {
       const response = await fetch('/api/reranker/rollback', { method: 'POST' });
       const data = await response.json();
       if (data.ok) {
-        alert('Model rolled back successfully');
+        success('Model rolled back successfully');
       } else {
-        alert(`Rollback failed: ${data.error}`);
+        notifyError(`Rollback failed: ${data.error}`);
       }
     } catch (error) {
       console.error('Rollback failed:', error);
+      notifyError('Rollback failed');
     }
   };
 
@@ -1265,11 +623,13 @@ export function LearningRankerSubtab() {
       const data = await response.json();
       if (data.ok) {
         setCronStatus(`Nightly job scheduled for ${data.time}`);
+        success(`Cron job scheduled for ${data.time}`);
       } else {
-        alert(`Failed to setup cron: ${data.error}`);
+        notifyError(`Failed to setup cron: ${data.error}`);
       }
     } catch (error) {
       console.error('Failed to setup cron:', error);
+      notifyError('Failed to setup cron job');
     }
   };
 
@@ -1293,11 +653,13 @@ export function LearningRankerSubtab() {
       const data = await response.json();
       if (data.ok) {
         setCronStatus('Nightly job removed');
+        success('Cron job removed');
       } else {
-        alert(`Failed to remove cron: ${data.error}`);
+        notifyError(`Failed to remove cron: ${data.error}`);
       }
     } catch (error) {
       console.error('Failed to remove cron:', error);
+      notifyError('Failed to remove cron job');
     }
   };
 
@@ -1345,12 +707,10 @@ export function LearningRankerSubtab() {
    * ---/agentspec
    */
   const handleViewCostDetails = () => {
-    alert(`Cost breakdown:\nLast 24h: $${cost24h.toFixed(4)}\nAvg per query: $${costAvg.toFixed(6)}`);
+    info(`Cost: $${cost24h.toFixed(4)}/24h • $${costAvg.toFixed(6)}/query avg`);
   };
 
-  if (loading) {
-    return <div style={{ padding: '24px' }}>Loading...</div>;
-  }
+  // Loading check removed - useConfigField handles loading state internally
 
   return (
     <>
@@ -1566,7 +926,7 @@ export function LearningRankerSubtab() {
             <select
               name="AGRO_RERANKER_ENABLED"
               value={rerankerEnabled}
-              onChange={handleRerankerEnabledChange}
+              onChange={e => setRerankerEnabled(e.target.value)}
             >
               <option value="0">OFF</option>
               <option value="1">ON</option>
@@ -1580,7 +940,7 @@ export function LearningRankerSubtab() {
             <select
               name="AGRO_RERANKER_MODEL_PATH"
               value={modelPath}
-              onChange={handleModelPathChange}
+              onChange={e => setModelPath(e.target.value)}
             >
               {availableModels.map(model => (
                 <option key={model} value={model}>{model}</option>
@@ -1597,8 +957,7 @@ export function LearningRankerSubtab() {
               name="AGRO_LOG_PATH"
               placeholder="data/logs/queries.jsonl"
               value={logPath}
-              onChange={handleLogPathChange}
-              onBlur={handleLogPathBlur}
+              onChange={e => setLogPath(e.target.value)}
             />
           </div>
         </div>
@@ -1613,8 +972,7 @@ export function LearningRankerSubtab() {
               name="AGRO_TRIPLETS_PATH"
               placeholder="data/training/triplets.jsonl"
               value={tripletsPath}
-              onChange={handleTripletsPathChange}
-              onBlur={handleTripletsPathBlur}
+              onChange={e => setTripletsPath(e.target.value)}
             />
           </div>
           <div className="input-group">
@@ -1625,7 +983,7 @@ export function LearningRankerSubtab() {
             <select
               name="AGRO_RERANKER_MINE_MODE"
               value={mineMode}
-              onChange={handleMineModeChange}
+              onChange={e => setMineMode(e.target.value)}
             >
               <option value="append">append</option>
               <option value="replace">replace</option>
@@ -1639,7 +997,7 @@ export function LearningRankerSubtab() {
             <select
               name="AGRO_RERANKER_MINE_RESET"
               value={mineReset}
-              onChange={handleMineResetChange}
+              onChange={e => setMineReset(e.target.value)}
             >
               <option value="0">No</option>
               <option value="1">Yes</option>
@@ -1694,8 +1052,7 @@ export function LearningRankerSubtab() {
               min="0.0"
               max="1.0"
               step="0.05"
-              onChange={handleBlendAlphaChange}
-              onBlur={handleBlendAlphaBlur}
+              onChange={e => setBlendAlpha(parseFloat(e.target.value))}
             />
           </div>
           <div className="input-group">
@@ -1710,8 +1067,7 @@ export function LearningRankerSubtab() {
               min="128"
               max="1024"
               step="64"
-              onChange={handleMaxSeqLengthChange}
-              onBlur={handleMaxSeqLengthBlur}
+              onChange={e => setMaxSeqLength(parseInt(e.target.value, 10))}
             />
           </div>
           <div className="input-group">
@@ -1726,8 +1082,7 @@ export function LearningRankerSubtab() {
               min="1"
               max="64"
               step="4"
-              onChange={handleBatchSizeChange}
-              onBlur={handleBatchSizeBlur}
+              onChange={e => setBatchSize(parseInt(e.target.value, 10))}
             />
           </div>
         </div>
@@ -1745,8 +1100,7 @@ export function LearningRankerSubtab() {
               min="10"
               max="200"
               step="5"
-              onChange={handleRerankerTopNChange}
-              onBlur={handleRerankerTopNBlur}
+              onChange={e => setRerankerTopN(parseInt(e.target.value, 10))}
             />
           </div>
           <div className="input-group">
@@ -1758,8 +1112,7 @@ export function LearningRankerSubtab() {
               type="text"
               name="VOYAGE_RERANK_MODEL"
               value={voyageRerankerModel}
-              onChange={handleVoyageRerankerModelChange}
-              onBlur={handleVoyageRerankerModelBlur}
+              onChange={e => setVoyageRerankerModel(e.target.value)}
             />
           </div>
           <div className="input-group">
@@ -1770,7 +1123,7 @@ export function LearningRankerSubtab() {
             <select
               name="AGRO_RERANKER_RELOAD_ON_CHANGE"
               value={reloadOnChange}
-              onChange={handleReloadOnChangeChange}
+              onChange={e => setReloadOnChange(e.target.value)}
             >
               <option value="0">Disabled</option>
               <option value="1">Enabled</option>
@@ -1790,8 +1143,7 @@ export function LearningRankerSubtab() {
               value={trainEpochs}
               min="1"
               max="10"
-              onChange={handleTrainEpochsChange}
-              onBlur={handleTrainEpochsBlur}
+              onChange={e => setTrainEpochs(parseInt(e.target.value, 10))}
             />
           </div>
           <div className="input-group">
@@ -1806,8 +1158,7 @@ export function LearningRankerSubtab() {
               min="1"
               max="64"
               step="4"
-              onChange={handleTrainBatchSizeChange}
-              onBlur={handleTrainBatchSizeBlur}
+              onChange={e => setTrainBatchSize(parseInt(e.target.value, 10))}
             />
           </div>
           <div className="input-group">
@@ -1822,8 +1173,7 @@ export function LearningRankerSubtab() {
               min="128"
               max="1024"
               step="64"
-              onChange={handleTrainMaxLengthChange}
-              onBlur={handleTrainMaxLengthBlur}
+              onChange={e => setTrainMaxLength(parseInt(e.target.value, 10))}
             />
           </div>
         </div>
@@ -1841,8 +1191,7 @@ export function LearningRankerSubtab() {
               min="0.000001"
               max="0.001"
               step="0.000001"
-              onChange={handleTrainLearningRateChange}
-              onBlur={handleTrainLearningRateBlur}
+              onChange={e => setTrainLearningRate(parseFloat(e.target.value))}
             />
           </div>
           <div className="input-group">
@@ -1857,8 +1206,7 @@ export function LearningRankerSubtab() {
               min="0.0"
               max="0.5"
               step="0.05"
-              onChange={handleWarmupRatioChange}
-              onBlur={handleWarmupRatioBlur}
+              onChange={e => setWarmupRatio(parseFloat(e.target.value))}
             />
           </div>
         </div>
@@ -1876,8 +1224,7 @@ export function LearningRankerSubtab() {
               min="10"
               max="10000"
               step="10"
-              onChange={handleTripletsMinCountChange}
-              onBlur={handleTripletsMinCountBlur}
+              onChange={e => setTripletsMinCount(parseInt(e.target.value, 10))}
             />
           </div>
           <div className="input-group">
@@ -1888,7 +1235,7 @@ export function LearningRankerSubtab() {
             <select
               name="TRIPLETS_MINE_MODE"
               value={tripletsMineMode}
-              onChange={handleTripletsMineModChange}
+              onChange={e => setTripletsMineMode(e.target.value)}
             >
               <option value="replace">Replace</option>
               <option value="append">Append</option>
