@@ -13,9 +13,9 @@ type CardsBuilderPanelProps = {
   onChangeExcludeKeywords: (value: string) => void;
   cardsMax: number;
   onChangeCardsMax: (value: number) => void;
-  enrichEnabled: boolean;
-  onChangeEnrich: (value: boolean) => void;
-  onUpdateConfig: (key: string, value: any) => Promise<void>;
+  enrichEnabled: boolean | string;
+  onChangeEnrich: (value: boolean | string) => void;
+  onUpdateConfig?: (key: string, value: any) => Promise<void>;
   onError: (message: string) => void;
 };
 
@@ -82,13 +82,19 @@ export function CardsBuilderPanel({
   const statsLabel = useMemo(() => {
     const done = progressData.done ?? 0;
     const total = progressData.total ?? 0;
-    return `${done} / ${total} (${progressPct.toFixed(1)}%)`;
+    if (done > 0 || total > 0) {
+      return `${done} / ${total} (${progressPct.toFixed(1)}%)`;
+    }
+    return `${progressPct.toFixed(1)}%`;
   }, [progressData.done, progressData.total, progressPct]);
 
-  const throughputLabel = progressData.throughput ?? '--';
+  const throughputLabel = progressData.throughput ?? '';
   const etaLabel =
-    typeof progressData.eta_s === 'number' ? `ETA: ${progressData.eta_s}s` : 'ETA: --';
+    typeof progressData.eta_s === 'number' && progressData.eta_s > 0
+      ? `ETA: ${Math.ceil(progressData.eta_s)}s`
+      : '';
   const tipLabel = progressData.tip ? `💡 ${progressData.tip}` : '';
+  const progressModels = progressData.models ?? modelsInfo;
 
   const cleanupStreams = useCallback(() => {
     if (eventSource) {
@@ -377,7 +383,7 @@ export function CardsBuilderPanel({
             placeholder="e.g., node_modules, vendor, dist"
             value={excludeDirs}
             onChange={(e) => onChangeExcludeDirs(e.target.value)}
-            onBlur={() => onUpdateConfig('CARDS_EXCLUDE_DIRS', excludeDirs)}
+            onBlur={() => onUpdateConfig?.('CARDS_EXCLUDE_DIRS', excludeDirs)}
             style={{ width: '100%' }}
           />
           <p className="small" style={{ color: 'var(--fg-muted)' }}>
@@ -401,7 +407,7 @@ export function CardsBuilderPanel({
             placeholder="e.g., .test.js, .spec.ts, .min.js"
             value={excludePatterns}
             onChange={(e) => onChangeExcludePatterns(e.target.value)}
-            onBlur={() => onUpdateConfig('CARDS_EXCLUDE_PATTERNS', excludePatterns)}
+            onBlur={() => onUpdateConfig?.('CARDS_EXCLUDE_PATTERNS', excludePatterns)}
             style={{ width: '100%' }}
           />
           <p className="small" style={{ color: 'var(--fg-muted)' }}>
@@ -425,7 +431,7 @@ export function CardsBuilderPanel({
             placeholder="e.g., deprecated, legacy, TODO"
             value={excludeKeywords}
             onChange={(e) => onChangeExcludeKeywords(e.target.value)}
-            onBlur={() => onUpdateConfig('CARDS_EXCLUDE_KEYWORDS', excludeKeywords)}
+            onBlur={() => onUpdateConfig?.('CARDS_EXCLUDE_KEYWORDS', excludeKeywords)}
             style={{ width: '100%' }}
           />
           <p className="small" style={{ color: 'var(--fg-muted)' }}>
@@ -447,7 +453,7 @@ export function CardsBuilderPanel({
               const val = Math.max(10, Number(e.target.value));
               onChangeCardsMax(val);
             }}
-            onBlur={() => onUpdateConfig('CARDS_MAX', cardsMax)}
+            onBlur={() => onUpdateConfig?.('CARDS_MAX', cardsMax)}
             min="10"
             step="10"
             style={{ maxWidth: '160px' }}
@@ -462,8 +468,8 @@ export function CardsBuilderPanel({
               type="checkbox"
               id="cards-enrich-gui"
               name="CARDS_ENRICH"
-              checked={enrichEnabled}
-              onChange={(e) => onChangeEnrich(e.target.checked)}
+              checked={enrichEnabled === true || enrichEnabled === '1'}
+              onChange={(e) => onChangeEnrich(e.target.checked ? '1' : '0')}
             />{' '}
             Enrich with AI
           </label>
@@ -540,19 +546,16 @@ export function CardsBuilderPanel({
 
           {/* Progress Details */}
           <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', fontSize: '12px', color: 'var(--fg-muted)' }}>
-            <span>{progressPct}%</span>
-            {progressDone > 0 && progressTotal > 0 && (
-              <span>{progressDone} / {progressTotal}</span>
-            )}
+            <span>{statsLabel}</span>
             {progressStage && <span>Stage: {progressStage}</span>}
-            {throughput && <span>{throughput}</span>}
-            {etaSeconds > 0 && <span>ETA: {Math.ceil(etaSeconds)}s</span>}
+            {throughputLabel && <span>{throughputLabel}</span>}
+            {etaLabel && <span>{etaLabel}</span>}
           </div>
 
           {/* Tip if available */}
-          {progressTip && (
+          {tipLabel && (
             <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--fg-muted)', fontStyle: 'italic' }}>
-              💡 {progressTip}
+              {tipLabel}
             </div>
           )}
 
@@ -580,7 +583,7 @@ export function CardsBuilderPanel({
                 fontSize: '10px',
                 fontWeight: 500,
                 borderRadius: '4px',
-                ...getStageStyle(stage, progressStage || ''),
+                ...highlightClass(stage),
               }}
             >
               {stage.toUpperCase()}
@@ -591,5 +594,4 @@ export function CardsBuilderPanel({
     </>
   );
 }
-
 

@@ -5,18 +5,52 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="06981a01-68f6-4278-af0e-6fdee9153f5c" name="Changes" comment="indexing subtab refactor">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.github/workflows/deploy-docs.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/deploy-docs.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.github/workflows/docs-ai.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/docs-ai.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/AGENTS.md" beforeDir="false" afterPath="$PROJECT_DIR$/AGENTS.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CLAUDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/CLAUDE.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/agro_config.json" beforeDir="false" afterPath="$PROJECT_DIR$/agro_config.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common/config_loader.py" beforeDir="false" afterPath="$PROJECT_DIR$/common/config_loader.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/eval/eval_loop.py" beforeDir="false" afterPath="$PROJECT_DIR$/eval/eval_loop.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/eval/eval_rag.py" beforeDir="false" afterPath="$PROJECT_DIR$/eval/eval_rag.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/eval/eval_rag_instrumented.py" beforeDir="false" afterPath="$PROJECT_DIR$/eval/eval_rag_instrumented.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/indexer/index_repo.py" beforeDir="false" afterPath="$PROJECT_DIR$/indexer/index_repo.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs.yml" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/api/endpoints.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/api/endpoints.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/api/openapi.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/api/openapi.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/configuration/models.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/configuration/models.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/configuration/profiles.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/configuration/profiles.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/configuration/settings.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/configuration/settings.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/features/cli-chat.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/features/cli-chat.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/features/evaluation.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/features/evaluation.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/features/learning-reranker.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/features/learning-reranker.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/features/mcp.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/features/mcp.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/features/rag.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/features/rag.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/getting-started/first-steps.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/getting-started/first-steps.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/getting-started/installation.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/getting-started/installation.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/getting-started/quickstart.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/getting-started/quickstart.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/index.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/index.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/operations/monitoring.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/operations/monitoring.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/operations/troubleshooting.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/operations/troubleshooting.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/models/cross-encoder-agro/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/models/cross-encoder-agro/README.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/models/cross-encoder-agro/model.safetensors" beforeDir="false" afterPath="$PROJECT_DIR$/models/cross-encoder-agro/model.safetensors" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/reranker/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/reranker/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/retrieval/ast_chunker.py" beforeDir="false" afterPath="$PROJECT_DIR$/retrieval/ast_chunker.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/retrieval/hybrid_search.py" beforeDir="false" afterPath="$PROJECT_DIR$/retrieval/hybrid_search.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/retrieval/hybrid_search_v2.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/retrieval/rerank.py" beforeDir="false" afterPath="$PROJECT_DIR$/retrieval/rerank.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/retrieval/synonym_expander.py" beforeDir="false" afterPath="$PROJECT_DIR$/retrieval/synonym_expander.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/docs_ai/docs_autopilot_enhanced.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/docs_ai/docs_autopilot_enhanced.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/docs_ai/generate_docs_from_diff.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/docs_ai/generate_docs_from_diff.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/learning_reranker.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/learning_reranker.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/server/models/agro_config_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/models/agro_config_model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/server/routers/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/routers/config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test-results/.last-run.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/routers/eval.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/routers/eval.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/routers/indexing.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/routers/indexing.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web/src/AGENTS.md" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/AGENTS.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/web/src/components/Evaluation/EvalDrillDown.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/components/Evaluation/EvalDrillDown.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/components/RAG/IndexingSubtab.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/components/RAG/IndexingSubtab.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web/src/components/RAG/EvaluateSubtab.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/components/RAG/EvaluateSubtab.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web/src/components/RAG/RerankerConfigSubtab.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/components/RAG/RerankerConfigSubtab.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web/src/components/RAG/RetrievalSubtab.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/components/RAG/RetrievalSubtab.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/web/src/modules/tooltips.js" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/modules/tooltips.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/web/src/stores/useConfigStore.ts" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/stores/useConfigStore.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -107,7 +141,7 @@
       <option name="presentableId" value="Default" />
       <updated>1764820245918</updated>
       <workItem from="1764820247767" duration="653000" />
-      <workItem from="1764820913189" duration="68990000" />
+      <workItem from="1764820913189" duration="69592000" />
     </task>
     <task id="LOCAL-00001" summary="indexing subtab refactor">
       <option name="closed" value="true" />

@@ -11,6 +11,7 @@ import { useRepoStore } from '@/stores/useRepoStore';
 import { CardsViewer } from './CardsViewer';
 import { CardsBuilderPanel } from './CardsBuilderPanel';
 import { LiveTerminal } from '@/components/ui/LiveTerminal';
+import { PromptLink } from '@/components/ui/PromptLink';
 
 type CardItem = {
   file_path: string;
@@ -529,6 +530,12 @@ export function DataQualitySubtab() {
             <p className="small" style={{ color: 'var(--fg-muted)' }}>
               Use LLM for rich semantic cards
             </p>
+            {/* Quick links to edit card-related system prompts */}
+            <div className="related-prompts" style={{ marginTop: '10px' }}>
+              <span className="related-prompts-label">Edit:</span>
+              <PromptLink promptKey="semantic_cards">Semantic Cards</PromptLink>
+              <PromptLink promptKey="code_enrichment">Code Enrichment</PromptLink>
+            </div>
           </div>
         </div>
 

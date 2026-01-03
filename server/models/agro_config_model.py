@@ -37,6 +37,13 @@ class RetrievalConfig(BaseModel):
         description="Maximum number of query rewrites for multi-query expansion"
     )
 
+    langgraph_max_query_rewrites: int = Field(
+        default=2,
+        ge=1,
+        le=10,
+        description="Maximum number of query rewrites for LangGraph pipeline"
+    )
+
     fallback_confidence: float = Field(
         default=0.55,
         ge=0.0,
@@ -140,6 +147,11 @@ class RetrievalConfig(BaseModel):
         ge=0,
         le=1,
         description="Enable semantic synonym expansion"
+    )
+
+    agro_synonyms_path: str = Field(
+        default="",
+        description="Custom path to semantic_synonyms.json (default: data/semantic_synonyms.json)"
     )
 
     topk_dense: int = Field(
@@ -567,7 +579,14 @@ class RerankingConfig(BaseModel):
         default=50,
         ge=10,
         le=200,
-        description="Number of candidates to rerank"
+        description="Number of candidates to rerank (local/learning mode)"
+    )
+
+    reranker_cloud_top_n: int = Field(
+        default=50,
+        ge=1,
+        le=200,
+        description="Number of candidates to rerank (cloud mode)"
     )
 
     agro_reranker_batch: int = Field(
@@ -1557,6 +1576,7 @@ class AgroConfigRoot(BaseModel):
             'RRF_K_DIV': self.retrieval.rrf_k_div,
             'LANGGRAPH_FINAL_K': self.retrieval.langgraph_final_k,
             'MAX_QUERY_REWRITES': self.retrieval.max_query_rewrites,
+            'LANGGRAPH_MAX_QUERY_REWRITES': self.retrieval.langgraph_max_query_rewrites,
             'MQ_REWRITES': self.retrieval.max_query_rewrites,  # Legacy alias
             'FALLBACK_CONFIDENCE': self.retrieval.fallback_confidence,
             'FINAL_K': self.retrieval.final_k,
@@ -1573,6 +1593,7 @@ class AgroConfigRoot(BaseModel):
             'CARD_SEARCH_ENABLED': self.retrieval.card_search_enabled,
             'MULTI_QUERY_M': self.retrieval.multi_query_m,
             'USE_SEMANTIC_SYNONYMS': self.retrieval.use_semantic_synonyms,
+            'AGRO_SYNONYMS_PATH': self.retrieval.agro_synonyms_path,
             'TOPK_DENSE': self.retrieval.topk_dense,
             'TOPK_SPARSE': self.retrieval.topk_sparse,
             # REMOVED: DISABLE_RERANK - use RERANKER_MODE='none' instead
@@ -1627,13 +1648,14 @@ class AgroConfigRoot(BaseModel):
             'OUT_DIR_BASE': self.indexing.out_dir_base,
             'RAG_OUT_BASE': self.indexing.rag_out_base,
             'REPOS_FILE': self.indexing.repos_file,
-    # Reranking params (13) - unified with RERANKER_MODE
+    # Reranking params (14) - unified with RERANKER_MODE
             'RERANKER_MODE': self.reranking.reranker_mode,
             'RERANKER_CLOUD_PROVIDER': self.reranking.reranker_cloud_provider,
             'RERANKER_CLOUD_MODEL': self.reranking.reranker_cloud_model,
             'RERANKER_LOCAL_MODEL': self.reranking.reranker_local_model,
             'AGRO_RERANKER_ALPHA': self.reranking.agro_reranker_alpha,
             'AGRO_RERANKER_TOPN': self.reranking.agro_reranker_topn,
+            'RERANKER_CLOUD_TOP_N': self.reranking.reranker_cloud_top_n,
             'AGRO_RERANKER_BATCH': self.reranking.agro_reranker_batch,
             'AGRO_RERANKER_MAXLEN': self.reranking.agro_reranker_maxlen,
             'AGRO_RERANKER_RELOAD_ON_CHANGE': self.reranking.agro_reranker_reload_on_change,
@@ -1785,6 +1807,10 @@ class AgroConfigRoot(BaseModel):
                 rrf_k_div=data.get('RRF_K_DIV', 60),
                 langgraph_final_k=data.get('LANGGRAPH_FINAL_K', 20),
                 max_query_rewrites=data.get('MAX_QUERY_REWRITES', data.get('MQ_REWRITES', 2)),
+                langgraph_max_query_rewrites=data.get(
+                    'LANGGRAPH_MAX_QUERY_REWRITES',
+                    data.get('MAX_QUERY_REWRITES', data.get('MQ_REWRITES', 2))
+                ),
                 fallback_confidence=data.get('FALLBACK_CONFIDENCE', 0.55),
                 final_k=data.get('FINAL_K', 10),
                 eval_final_k=data.get('EVAL_FINAL_K', 5),
@@ -1800,6 +1826,7 @@ class AgroConfigRoot(BaseModel):
                 card_search_enabled=data.get('CARD_SEARCH_ENABLED', 1),
                 multi_query_m=data.get('MULTI_QUERY_M', 4),
                 use_semantic_synonyms=data.get('USE_SEMANTIC_SYNONYMS', 1),
+                agro_synonyms_path=data.get('AGRO_SYNONYMS_PATH', ''),
                 topk_dense=data.get('TOPK_DENSE', 75),
                 topk_sparse=data.get('TOPK_SPARSE', 75),
                 hydration_mode=data.get('HYDRATION_MODE', 'lazy'),
@@ -1870,6 +1897,7 @@ class AgroConfigRoot(BaseModel):
                 reranker_local_model=data.get('RERANKER_LOCAL_MODEL') or data.get('RERANKER_MODEL') or 'cross-encoder/ms-marco-MiniLM-L-12-v2',
                 agro_reranker_alpha=data.get('AGRO_RERANKER_ALPHA', 0.7),
                 agro_reranker_topn=data.get('AGRO_RERANKER_TOPN', 50),
+                reranker_cloud_top_n=data.get('RERANKER_CLOUD_TOP_N', 50),
                 agro_reranker_batch=data.get('AGRO_RERANKER_BATCH', 16),
                 agro_reranker_maxlen=data.get('AGRO_RERANKER_MAXLEN', 512),
                 agro_reranker_reload_on_change=data.get('AGRO_RERANKER_RELOAD_ON_CHANGE', 0),
@@ -2024,6 +2052,7 @@ AGRO_CONFIG_KEYS = {
     # Retrieval params (22 - including MQ_REWRITES alias)
     'RRF_K_DIV',
     'LANGGRAPH_FINAL_K',
+    'LANGGRAPH_MAX_QUERY_REWRITES',
     'MAX_QUERY_REWRITES',
     'MQ_REWRITES',  # Legacy alias for MAX_QUERY_REWRITES
     'FALLBACK_CONFIDENCE',
@@ -2041,6 +2070,7 @@ AGRO_CONFIG_KEYS = {
     'CARD_SEARCH_ENABLED',
     'MULTI_QUERY_M',
     'USE_SEMANTIC_SYNONYMS',
+    'AGRO_SYNONYMS_PATH',
     'TOPK_DENSE',
     'TOPK_SPARSE',
     'HYDRATION_MODE',
@@ -2097,13 +2127,14 @@ AGRO_CONFIG_KEYS = {
     'OUT_DIR_BASE',
     'RAG_OUT_BASE',
     'REPOS_FILE',
-    # Reranking params (13) - unified with RERANKER_MODE
+    # Reranking params (14) - unified with RERANKER_MODE
     'RERANKER_MODE',
     'RERANKER_CLOUD_PROVIDER',
     'RERANKER_CLOUD_MODEL',
     'RERANKER_LOCAL_MODEL',
     'AGRO_RERANKER_ALPHA',
     'AGRO_RERANKER_TOPN',
+    'RERANKER_CLOUD_TOP_N',
     'AGRO_RERANKER_BATCH',
     'AGRO_RERANKER_MAXLEN',
     'AGRO_RERANKER_RELOAD_ON_CHANGE',
@@ -2253,7 +2284,7 @@ RAG_EVAL_CONFIG_KEYS: set[str] = {
     'CONF_TOP1', 'CONF_AVG5', 'CONF_ANY', 'FALLBACK_CONFIDENCE',
     'CARD_SEARCH_ENABLED', 'MULTI_QUERY_M', 'EVAL_MULTI',
     # Query Expansion (prompts that modify query BEFORE search)
-    'QUERY_EXPANSION_ENABLED', 'MAX_QUERY_REWRITES', 'USE_SEMANTIC_SYNONYMS',
+    'QUERY_EXPANSION_ENABLED', 'LANGGRAPH_MAX_QUERY_REWRITES', 'MAX_QUERY_REWRITES', 'USE_SEMANTIC_SYNONYMS',
     'PROMPT_QUERY_EXPANSION', 'PROMPT_QUERY_REWRITE', 'PROMPT_SEMANTIC_CARDS',
     # Reranking
     'RERANKER_MODE', 'RERANKER_CLOUD_PROVIDER', 'RERANKER_CLOUD_MODEL',
@@ -2318,8 +2349,10 @@ def get_eval_key_categories() -> dict[str, str]:
         'EVAL_MULTI': 'Retrieval',
         # Query Expansion
         'QUERY_EXPANSION_ENABLED': 'Query Expansion',
+        'LANGGRAPH_MAX_QUERY_REWRITES': 'Query Expansion',
         'MAX_QUERY_REWRITES': 'Query Expansion',
         'USE_SEMANTIC_SYNONYMS': 'Query Expansion',
+        'AGRO_SYNONYMS_PATH': 'Query Expansion',
         'PROMPT_QUERY_EXPANSION': 'Query Expansion',
         'PROMPT_QUERY_REWRITE': 'Query Expansion',
         'PROMPT_SEMANTIC_CARDS': 'Query Expansion',
@@ -2330,6 +2363,7 @@ def get_eval_key_categories() -> dict[str, str]:
         'RERANKER_LOCAL_MODEL': 'Reranking',
         'AGRO_RERANKER_ALPHA': 'Reranking',
         'AGRO_RERANKER_TOPN': 'Reranking',
+        'RERANKER_CLOUD_TOP_N': 'Reranking',
         'AGRO_RERANKER_BATCH': 'Reranking',
         'AGRO_RERANKER_MAXLEN': 'Reranking',
         'RERANK_INPUT_SNIPPET_CHARS': 'Reranking',

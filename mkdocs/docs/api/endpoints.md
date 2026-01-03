@@ -1,625 +1,451 @@
+---
+Title: HTTP API
+---
+
 # HTTP API
 
 AGRO exposes a small HTTP API for search, RAG answers, chat, configuration, and indexing. Everything is FastAPI under the hood, so you get OpenAPI docs at `/docs` if you’re running the server.
 
-This page focuses on the public endpoints you’re most likely to use directly or from tools like :material-code-tags-check: Claude Code / MCP.
+This page focuses on the *behavior* of the endpoints and how they interact with the service layer, especially configuration and indexing.
 
----
+!!! note
+    The OpenAPI schema is generated from `server.asgi:create_app`. For a full, always‑up‑to‑date view of request/response models, hit `/openapi.json` or see [API Documentation & OpenAPI Spec](openapi.md).
 
-## Overview
 
-### High‑level endpoints
+## Configuration & Settings Endpoints
 
-| Area          | Method | Path                         | Description                                   |
-|---------------|--------|------------------------------|-----------------------------------------------|
-| Retrieval     | GET    | `/search`                    | Retrieval‑only search (legacy, no `/api`)     |
-| Retrieval     | GET    | `/api/search`                | Retrieval‑only search (preferred)             |
-| RAG Answer    | GET    | `/answer`                    | RAG answer (deprecated, non‑streaming)        |
-| Chat / RAG    | POST   | `/api/chat`                  | Unified chat + RAG, optional streaming        |
-| MCP bridge    | GET    | `/api/mcp/rag_search`        | RAG search optimized for MCP tools            |
-| Chat config   | GET    | `/api/chat/config`           | Load saved chat configuration                 |
-| Chat config   | POST   | `/api/chat/config`           | Save chat configuration                       |
-| Chat templates| POST   | `/api/chat/templates`        | Append prompt templates                       |
-| Config schema | GET    | `/api/config-schema`         | JSON schema of config (for UI / tooling)      |
-| Env reload    | POST   | `/api/env/reload`            | Reload env + propagate into modules           |
-| Env save      | POST   | `/api/env/save`              | Save env vars (raw)                           |
-| Config get    | GET    | `/api/config`                | Get current config                            |
-| Config set    | POST   | `/api/config`                | Set config + auto‑reload on critical changes  |
-| models        | GET    | `/api/models`                | Get stored model price info                   |
-| models        | POST   | `/api/models/upsert`         | Upsert a price entry                          |
-| Integrations  | POST   | `/api/integrations/save`     | Save integrations (LangSmith, Grafana, etc.)  |
-| MCP key       | POST   | `/api/config/mcp_key`        | Save MCP API key                              |
-| Runtime mode  | GET    | `/api/config/runtime_mode`   | Get runtime mode                              |
-| Runtime mode  | PATCH  | `/api/config/runtime_mode`   | Update runtime mode                           |
-| Indexing      | POST   | `/api/index/start`           | Kick off indexing job                         |
-| Indexing      | GET    | `/api/index/stats`           | High‑level index stats                        |
-| Indexing      | POST   | `/api/index/run`             | Run (re)index for a repo                      |
-| Indexing      | GET    | `/api/index/status`          | Current indexing status                       |
+AGRO has a central configuration registry that merges three sources with clear precedence:
 
----
+1. `.env` file – secrets and infrastructure overrides
+2. `agro_config.json` – tunable RAG parameters, model config, UI behavior
+3. Pydantic defaults – safe fallbacks baked into the code
 
-## Legacy app entrypoint
+The HTTP API exposes this through a small set of endpoints that talk to the `server/services/config_registry.py` and `server/services/config_store.py` service layer.
 
-The legacy entrypoint exists primarily for old scripts:
-
-```python linenums="1" hl_lines="1 7"
-from server.asgi import create_app
-...
-app = create_app()
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8012)
+```mermaid
+flowchart LR
+  A[HTTP client] -->|GET /api/config| B@{ shape: card, label: "ConfigStore" }
+  B --> C@{ shape: card, label: "ConfigRegistry" }
+  C --> D[.env]
+  C --> E[agro_config.json]
+  C --> F[Pydantic defaults]
 ```
 
-!!! note "Legacy entrypoint"
-    `server/app.py` is **deprecated**. New deployments should import `create_app` from `server.asgi` or just run via your preferred ASGI runner.
+### GET `/api/config`
 
----
+Return the *effective* configuration that the backend is currently using.
 
-## Retrieval‑only search
+- Reads via `server/services/config_store.get_config()`
+- Ultimately backed by `ConfigRegistry` (`get_config_registry()`)
+- Values are already merged according to precedence rules
 
-Two endpoints expose pure retrieval (no generation):
+Response (simplified):
 
-- `GET /search` – legacy
-- `GET /api/search` – preferred, same behavior, consistent `/api` prefix
+```json
+{
+  "config": {
+    "REPO": "agro",
+    "FINAL_K": 12,
+    "EDITOR_ENABLED": true,
+    "OPENAI_API_KEY": "***",
+    "ANTHROPIC_API_KEY": "***"
+  },
+  "source": {
+    "REPO": "env",
+    "FINAL_K": "agro_config.json",
+    "EDITOR_ENABLED": "default"
+  }
+}
+```
 
-Both call the same internal `rag_svc.do_search`.
+!!! note "Secrets are masked"
+    `config_store.py` maintains a `SECRET_FIELDS` set (e.g. `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `MCP_API_KEY`, etc.). These are always redacted in API responses so you can safely inspect config from the UI or CLI.
 
-### `GET /api/search`
 
-**Query parameters**
+### POST `/api/config`
 
-| Name   | Type   | Required | Description                                                                 |
-|--------|--------|----------|-----------------------------------------------------------------------------|
-| `q`    | string | yes      | Search query / natural language question                                   |
-| `repo` | string | no       | Repository identifier. If omitted, uses the configured default `REPO`.     |
-| `top_k`| int    | no       | Number of results to return (1–200, default `10`).                         |
+Update tunable configuration on disk.
 
-The `repo` mapping is handled by AGRO’s config; for multi‑repo setups, this is how you choose which index to hit.
+- Writes to `agro_config.json` via `config_store.save_config()`
+- Uses an atomic write helper (`_atomic_write_text`) to avoid partial writes, with a Docker‑aware fallback for macOS volume mounts
+- Validates against the Pydantic `AgroConfigRoot` model before committing
 
-??? example "Basic retrieval example"
-    ```bash
-    curl -X GET "http://localhost:8012/api/search" \
-      --get \
-      --data-urlencode "q=How do we build the Qdrant index?" \
-      --data-urlencode "repo=agro" \
-      --data-urlencode "top_k=5"
+Request body (partial example):
+
+```json
+{
+  "FINAL_K": 15,
+  "KEYWORDS_MAX_PER_REPO": 80,
+  "EDITOR_ENABLED": false
+}
+```
+
+Response:
+
+```json
+{
+  "ok": true,
+  "config": { "FINAL_K": 15, "KEYWORDS_MAX_PER_REPO": 80, "EDITOR_ENABLED": false }
+}
+```
+
+!!! warning
+    Environment variables still win. If you set `FINAL_K` in `.env`, changing it via this endpoint won’t have any effect until you remove or change the env var.
+
+
+### GET `/api/editor/settings`
+
+Expose the current settings for the built‑in code editor / viewer.
+
+Backed by `server/services/editor.read_settings()`:
+
+- Prefers the config registry (`.env` / `agro_config.json`)
+- Falls back to a legacy `out/editor/settings.json` file if present
+
+Typical response:
+
+```json
+{
+  "port": 4440,
+  "enabled": true,
+  "embed_enabled": true,
+  "bind": "local",
+  "image": "codercom/code-server:latest"
+}
+```
+
+These map directly to keys like `EDITOR_PORT`, `EDITOR_ENABLED`, `EDITOR_EMBED_ENABLED`, `EDITOR_BIND`, etc. in the registry.
+
+
+## Indexing Endpoints
+
+Indexing is orchestrated by `server/services/indexing.py`. The HTTP endpoints are thin wrappers around this service.
+
+At a high level:
+
+- Indexing runs in a background thread spawned by the API handler
+- Status and metadata are kept in module‑level globals (`_INDEX_STATUS`, `_INDEX_METADATA`)
+- The indexer process is launched with a carefully constructed environment so it sees the same repo root and Python environment as the server
+
+```mermaid
+sequenceDiagram
+  participant C as Client
+  participant API as FastAPI
+  participant IDX as indexing.py
+  participant PROC as Indexer subprocess
+
+  C->>API: POST /api/index/start { "enrich": true }
+  API->>IDX: start(payload)
+  IDX->>PROC: spawn python -m indexer
+  PROC-->>IDX: logs, stats
+  C->>API: GET /api/index/status
+  API->>IDX: get_index_status()
+  IDX-->>API: ["Indexing started...", ...]
+  API-->>C: JSON status
+```
+
+### POST `/api/index/start`
+
+Kick off an indexing run for the current repository.
+
+The service implementation (`indexing.start`) does:
+
+```py title="server/services/indexing.py" linenums="1" hl_lines="15-28"
+from server.services.config_registry import get_config_registry
+from common.paths import repo_root
+
+_config_registry = get_config_registry()
+
+_INDEX_STATUS: List[str] = []
+_INDEX_METADATA: Dict[str, Any] = {}
+
+
+def start(payload: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    global _INDEX_STATUS, _INDEX_METADATA
+    payload = payload or {}
+    _INDEX_STATUS = ["Indexing started..."]
+    _INDEX_METADATA = {}
+
+    def run_index():
+        global _INDEX_STATUS, _INDEX_METADATA
+        try:
+            repo = _config_registry.get_str("REPO", "agro")
+            _INDEX_STATUS.append(f"Indexing repository: {repo}")
+            root = repo_root()
+            env = {**os.environ,
+                   "REPO": repo,
+                   "REPO_ROOT": str(root),
+                   "PYTHONPATH": str(root)}
+            if payload.get("enrich"):
+                env["ENRICH_CODE_CHUNKS"] = "true"
+                _INDEX_STATUS.append("Enriching chunks with summaries...")
+            # ... spawn subprocess, update _INDEX_STATUS/_INDEX_METADATA
+        except Exception as e:
+            _INDEX_STATUS.append(f"Indexing failed: {e}")
+
+    threading.Thread(target=run_index, daemon=True).start()
+    return {"ok": True}
+```
+
+Key behaviors:
+
+- `REPO` is read from the config registry (`REPO` key, default `"agro"`)
+- `REPO_ROOT` and `PYTHONPATH` are set so the indexer can resolve imports and paths correctly
+- If the request payload includes `{ "enrich": true }`, the environment variable `ENRICH_CODE_CHUNKS=true` is set and a status line is added
+
+Request examples:
+
+=== "Basic index"
+    ```http
+    POST /api/index/start HTTP/1.1
+    Content-Type: application/json
+
+    {}
     ```
 
-**Response**
+=== "Index with enrichment"
+    ```http
+    POST /api/index/start HTTP/1.1
+    Content-Type: application/json
 
-`rag_svc.do_search` returns a JSON object. The exact shape depends on your configuration, but typically you’ll get something like:
+    { "enrich": true }
+    ```
 
-```json linenums="1"
+Response:
+
+```json
+{ "ok": true }
+```
+
+The actual progress is retrieved via the status endpoint.
+
+
+### GET `/api/index/status`
+
+Return the current indexing status and any metadata the indexer has produced.
+
+Backed by simple accessors in `indexing.py` (not shown here):
+
+```json
 {
-  "query": "How do we build the Qdrant index?",
+  "status": [
+    "Indexing started...",
+    "Indexing repository: agro",
+    "Enriching chunks with summaries...",
+    "Wrote 12345 vectors to Qdrant"
+  ],
+  "metadata": {
+    "repo": "agro",
+    "started_at": "2025-12-10T09:31:41Z",
+    "finished_at": null
+  }
+}
+```
+
+!!! note
+    Status is kept in memory only. If you restart the server mid‑index, the status list is lost and you’ll need to re‑start indexing.
+
+
+## Keywords & Retrieval Tuning Endpoints
+
+AGRO maintains a small set of *discriminative keywords* per repo to help BM25 and hybrid retrieval. These are generated and refreshed by `server/services/keywords.py`.
+
+The HTTP endpoints that expose keyword configuration and stats are thin wrappers around this module.
+
+### How keyword config is loaded
+
+On import, `keywords.py` reads from the config registry once and caches the values:
+
+```py title="server/services/keywords.py" linenums="1" hl_lines="8-16"
+from server.services.config_registry import get_config_registry
+
+_config_registry = get_config_registry()
+_KEYWORDS_MAX_PER_REPO = _config_registry.get_int('KEYWORDS_MAX_PER_REPO', 50)
+_KEYWORDS_MIN_FREQ = _config_registry.get_int('KEYWORDS_MIN_FREQ', 3)
+_KEYWORDS_BOOST = _config_registry.get_float('KEYWORDS_BOOST', 1.3)
+_KEYWORDS_AUTO_GENERATE = _config_registry.get_int('KEYWORDS_AUTO_GENERATE', 1)
+_KEYWORDS_REFRESH_HOURS = _config_registry.get_int('KEYWORDS_REFRESH_HOURS', 24)
+
+
+def reload_config():
+    """Reload cached config values from registry."""
+    global _KEYWORDS_MAX_PER_REPO, _KEYWORDS_MIN_FREQ, _KEYWORDS_BOOST
+    global _KEYWORDS_AUTO_GENERATE, _KEYWORDS_REFRESH_HOURS
+    _KEYWORDS_MAX_PER_REPO = _config_registry.get_int('KEYWORDS_MAX_PER_REPO', 50)
+    _KEYWORDS_MIN_FREQ = _config_registry.get_int('KEYWORDS_MIN_FREQ', 3)
+    _KEYWORDS_BOOST = _config_registry.get_float('KEYWORDS_BOOST', 1.3)
+    _KEYWORDS_AUTO_GENERATE = _config_registry.get_int('KEYWORDS_AUTO_GENERATE', 1)
+    _KEYWORDS_REFRESH_HOURS = _config_registry.get_int('KEYWORDS_REFRESH_HOURS', 24)
+```
+
+If you change these values via `/api/config`, you can either restart the server or call the dedicated reload endpoint (if exposed) which just calls `reload_config()`.
+
+Typical keyword‑related endpoints:
+
+- `GET /api/keywords` – list current discriminative keywords for a repo
+- `POST /api/keywords/rebuild` – force regeneration, ignoring the refresh window
+
+Responses are backed by JSON files under `data/discriminative_keywords.json` and per‑repo keyword caches under `data/`.
+
+
+## RAG & Search Endpoints
+
+The main RAG/search endpoints delegate into `server/services/rag.py`, which in turn calls the hybrid retrieval stack and (optionally) a LangGraph‑based orchestration graph.
+
+### GET `/api/search`
+
+Perform a retrieval‑only search over the indexed codebase.
+
+Query parameters:
+
+- `q` (string, required) – the query text
+- `repo` (string, optional) – repo name; defaults to `REPO` from config
+- `top_k` (int, optional) – override number of final results
+
+`rag.do_search` resolves `top_k` like this:
+
+```py title="server/services/rag.py" linenums="1" hl_lines="20-30"
+_config_registry = get_config_registry()
+
+
+def do_search(q: str, repo: Optional[str], top_k: Optional[int], request: Optional[Request] = None) -> Dict[str, Any]:
+    if top_k is None:
+        try:
+            # Try FINAL_K first, fall back to LANGGRAPH_FINAL_K
+            top_k = _config_registry.get_int('FINAL_K', _config_registry.get_int('LANGGRAPH_FINAL_K', 10))
+        except Exception:
+            top_k = 10
+
+    # ... call retrieval.hybrid_search.search_routed_multi
+```
+
+So you can control the default fan‑out via either `FINAL_K` or `LANGGRAPH_FINAL_K` in config.
+
+Response (simplified):
+
+```json
+{
+  "query": "how does config precedence work?",
   "repo": "agro",
-  "top_k": 5,
+  "top_k": 10,
   "results": [
     {
-      "file_path": "retrieval/index_qdrant.py",
-      "start_line": 10,
+      "score": 0.91,
+      "path": "server/services/config_registry.py",
+      "start_line": 1,
       "end_line": 80,
-      "score": 0.92,
-      "language": "python",
-      "snippet": "...",
-      "repo": "agro",
-      "metadata": {
-        "chunk_id": "index_qdrant.py:10-80"
-      }
+      "snippet": "Configuration Registry for AGRO RAG Engine..."
     }
-  ],
-  "trace": {
-    "search_backends": ["bm25", "dense"],
-    "reranker": "colbert-v2",
-    "latency_ms": 123
-  }
+  ]
 }
 ```
 
-!!! tip "When to use retrieval‑only"
-    For tools like editors or MCP clients that want to **own the prompting and generation**, use `/api/search` (or `/api/mcp/rag_search`, see below) and feed the snippets into your own model.
 
-### `GET /search` (legacy)
+### POST `/api/rag`
 
-Same semantics as `/api/search`, just older path and slightly different docs:
+Full RAG answer endpoint (exact path/name may differ slightly; check `/docs`).
 
-```bash
-curl -X GET "http://localhost:8012/search" \
-  --get \
-  --data-urlencode "q=Where is the config registry implemented?" \
-  --data-urlencode "repo=agro"
+- Uses the same retrieval path as `/api/search`
+- Then calls the configured LLM to synthesize an answer
+- May route through a LangGraph graph if `server/langgraph_app.build_graph()` is available
+
+The graph is lazily built on first use:
+
+```py title="server/services/rag.py" linenums="32" hl_lines="1-12"
+_graph = None
+CFG = {"configurable": {"thread_id": "http"}}
+
+
+def _get_graph():
+    global _graph
+    if _graph is None:
+        try:
+            from server.langgraph_app import build_graph
+            _graph = build_graph()
+        except Exception as e:
+            logger.warning("build_graph failed: %s", e)
+            _graph = None
+    return _graph
 ```
 
-Prefer `/api/search` for new integrations.
+If the graph fails to build (or doesn’t exist), AGRO falls back to a simpler RAG path instead of crashing the endpoint.
 
----
 
-## RAG answers (legacy `/answer`)
+## Tracing & Analytics Endpoints
 
-### `GET /answer` (deprecated)
+AGRO can persist traces of RAG runs and evaluation runs under `out/<repo>/traces`. The API exposes a small surface to list and fetch these.
 
-This is the old “ask a question, get an answer” endpoint. It still works, but it’s missing most of the newer features:
+### GET `/api/traces`
 
-> - No event ID for feedback correlation  
-> - No detailed trace info  
-> - No provider metadata  
-> - **No streaming**  
+List recent trace files for a repo.
 
-**Query parameters**
+Backed by `server/services/traces.list_traces`:
 
-| Name   | Type   | Required | Description                                         |
-|--------|--------|----------|-----------------------------------------------------|
-| `q`    | string | yes      | Question / natural language query                   |
-| `repo` | string | no       | Repository identifier (defaults to configured REPO) |
+```py title="server/services/traces.py" linenums="1" hl_lines="7-20"
+from common.config_loader import out_dir
+from server.tracing import latest_trace_path
 
-```bash
-curl -X GET "http://localhost:8012/answer" \
-  --get \
-  --data-urlencode "q=How do I trigger env reloads programmatically?" \
-  --data-urlencode "repo=agro"
+
+def list_traces(repo: Optional[str]) -> Dict[str, Any]:
+    r = (repo or __import__('os').getenv('REPO', 'agro')).strip()
+    base = Path(out_dir(r)) / 'traces'
+    files: List[Dict[str, Any]] = []
+    try:
+        if base.exists():
+            for p in sorted(
+                [x for x in base.glob('*.json') if x.is_file()],
+                key=lambda x: x.stat().st_mtime,
+                reverse=True,
+            )[:50]:
+                files.append({
+                    'path': str(p),
+                    'name': p.name,
+                    'mtime': __import__('datetime').datetime.fromtimestamp(p.stat().st_mtime).isoformat(),
+                })
+    except Exception as e:
+        logger.exception("Failed to list traces: %s", e)
+    return {'repo': r, 'files': files}
 ```
 
-**Response**
+Response:
 
-`rag_svc.do_answer` returns a RAG answer with citations. The exact shape is defined by `SearchResponse` / `ChatResponse`, but looks roughly like:
-
-```json linenums="1"
+```json
 {
-  "question": "How do I trigger env reloads programmatically?",
-  "answer": "Use the /api/env/reload endpoint, which reloads the config registry ...",
-  "citations": [
-    {
-      "file_path": "server/routers/config.py",
-      "start_line": 18,
-      "end_line": 69,
-      "repo": "agro"
-    }
-  ],
-  "meta": {
-    "model": "gpt-4o-mini",
-    "repo": "agro"
-  }
-}
-```
-
-!!! warning "Use `/api/chat` instead"
-    For anything new, use `POST /api/chat`. You get streaming, trace, event IDs, and better control over models and temperature.
-
----
-
-## Unified chat & RAG: `POST /api/chat`
-
-This is the main endpoint for “ask AGRO a question about this codebase” and for more general chat if you configure it that way.
-
-It accepts:
-
-- A structured `ChatRequest` (JSON object)
-- Or a legacy “loose dict” payload (also JSON), to keep older UIs working
-
-Internally it manually parses the raw body so either format works.
-
-### Request body (ChatRequest)
-
-Key fields (there are more in the Pydantic model, but these are the important ones):
-
-| Field              | Type    | Required | Default | Description                                                                                                      |
-|--------------------|---------|----------|---------|------------------------------------------------------------------------------------------------------------------|
-| `question`         | string  | yes      | —       | User question                                                                                                    |
-| `repo`             | string  | no       | env `REPO` | Repository to search                                                                                           |
-| `model`            | string  | no       | config  | Override generation model (any local or cloud model you have configured)                                        |
-| `temperature`      | float   | no       | `0.0`   | Generation temperature                                                                                           |
-| `max_tokens`       | int     | no       | `2048`  | Max tokens for the response                                                                                      |
-| `final_k`          | int     | no       | `10`    | Number of top documents used in the final prompt                                                                 |
-| `stream`           | bool    | no       | `false` | If `true`, returns an SSE stream instead of a single JSON response                                              |
-| `include_reasoning`| bool    | no       | `false` | When streaming, include “thinking” chunks (model reasoning) if the model supports it                             |
-| `fast_mode`        | bool    | no       | `false` | If `true`, skip expensive reranking steps (useful for quick iterative queries on small repos)                   |
-
-!!! note "Models are not a fixed list"
-    `model` is just a string. As long as you’ve wired it up in AGRO’s config (local or cloud), you can use it here; everything flows through Pydantic and shows up automatically.
-
-### Non‑streaming usage
-
-=== "curl"
-
-    ```bash
-    curl -X POST "http://localhost:8012/api/chat" \
-      -H "Content-Type: application/json" \
-      -d '{
-        "question": "Walk me through how env reload works in AGRO.",
-        "repo": "agro",
-        "temperature": 0.1,
-        "max_tokens": 1024,
-        "final_k": 8,
-        "fast_mode": false
-      }'
-    ```
-
-=== "Minimal payload"
-
-    ```bash
-    curl -X POST "http://localhost:8012/api/chat" \
-      -H "Content-Type: application/json" \
-      -d '{
-        "question": "Where is the hybrid search implemented?"
-      }'
-    ```
-
-**Response (non‑streaming)**
-
-`rag_svc.do_chat` returns a `ChatResponse` JSON with (roughly):
-
-```json linenums="1"
-{
-  "question": "Walk me through how env reload works in AGRO.",
-  "answer": "The /api/env/reload endpoint calls cfg.env_reload() and then reloads a set of modules ...",
-  "citations": [
-    {
-      "file_path": "server/routers/config.py",
-      "start_line": 20,
-      "end_line": 72,
-      "repo": "agro"
-    },
-    {
-      "file_path": "server/services/config_store.py",
-      "start_line": 1,
-      "end_line": 120,
-      "repo": "agro"
-    }
-  ],
-  "trace": {
-    "event_id": "abc123",
-    "retrieval": {
-      "top_k": 12,
-      "final_k": 8,
-      "backends": ["bm25", "dense"],
-      "reranker": "learning-reranker"
-    },
-    "generation": {
-      "model": "gpt-4o-mini",
-      "temperature": 0.1,
-      "max_tokens": 1024
-    }
-  },
-  "meta": {
-    "provider": "openai",
-    "runtime_mode": "development",
-    "repo": "agro"
-  }
-}
-```
-
-### Streaming usage (SSE)
-
-If you set `"stream": true`, the endpoint returns a `text/event-stream` `StreamingResponse`. Internally it calls `rag_svc.do_chat_stream`.
-
-Headers:
-
-```http
-Cache-Control: no-cache
-Connection: keep-alive
-X-Accel-Buffering: no
-Content-Type: text/event-stream
-```
-
-The stream includes chunks of different types: `thinking`, `content`, `citations`, `trace`, `meta`, `done`.
-
-=== "curl (raw SSE)"
-
-    ```bash
-    curl -N -X POST "http://localhost:8012/api/chat" \
-      -H "Content-Type: application/json" \
-      -d '{
-        "question": "Explain how the MCP RAG search bridge works.",
-        "repo": "agro",
-        "stream": true,
-        "include_reasoning": true
-      }'
-    ```
-
-=== "Example SSE events"
-
-    ```text linenums="1"
-    event: thinking
-    data: {"delta": "Checking how MCPServerClass is resolved..."}
-
-    event: content
-    data: {"delta": "AGRO exposes /api/mcp/rag_search, which calls MCPServer.handle_rag_search when available..."}
-
-    event: citations
-    data: {"citations":[{"file_path":"server/routers/search.py","start_line":70,"end_line":115}]}
-
-    event: trace
-    data: {"event_id":"abc123","retrieval":{"top_k":10,"final_k":10}}
-
-    event: meta
-    data: {"model":"gpt-4o-mini","repo":"agro"}
-
-    event: done
-    data: {}
-    ```
-
-!!! tip "When to enable streaming"
-    Use streaming when you’re building an interactive UI or editor integration and want **partial responses** and optional **reasoning traces**. For simple scripts, non‑streaming JSON is usually easier.
-
----
-
-## MCP‑optimized RAG search: `GET /api/mcp/rag_search`
-
-This is a small HTTP wrapper around the internal MCP server’s `rag_search` tool, designed to match what tools like Claude Code expect.
-
-It does two things:
-
-1. If `MCPServer` is available, it delegates to `MCPServer.handle_rag_search`.
-2. If not (or if `force_local=true`), it falls back to calling the local hybrid retrieval (`search_routed_multi`).
-
-**Query parameters**
-
-| Name         | Type   | Required | Default              | Description                                                                                 |
-|--------------|--------|----------|----------------------|---------------------------------------------------------------------------------------------|
-| `q`          | string | yes      | —                    | Question / search query                                                                     |
-| `repo`       | string | no       | env `REPO` or `agro` | Repository override                                                                         |
-| `top_k`      | int    | no       | `10`                 | Number of results to return                                                                 |
-| `force_local`| bool   | no       | `false`              | If `true`, bypasses MCP server and calls local retrieval directly                           |
-
-=== "curl"
-
-    ```bash
-    curl -X GET "http://localhost:8012/api/mcp/rag_search" \
-      --get \
-      --data-urlencode "q=Show me where hybrid_search is implemented" \
-      --data-urlencode "repo=agro" \
-      --data-urlencode "top_k=5"
-    ```
-
-**Response (local fallback shape)**
-
-When falling back to local retrieval, the router normalizes the response to:
-
-```json linenums="1"
-{
-  "results": [
-    {
-      "file_path": "retrieval/hybrid_search.py",
-      "start_line": 1,
-      "end_line": 200,
-      "language": "python",
-      "rerank_score": 0.97,
-      "repo": "agro"
-    }
-  ],
   "repo": "agro",
-  "count": 1
-}
-```
-
-When using `MCPServer.handle_rag_search`, the shape is whatever the MCP tool returns (AGRO’s own MCP server matches this shape by default).
-
-!!! tip "Why this matters for MCP tools"
-    Instead of sending the **entire repository** as context to a model, MCP clients can call this endpoint (or the MCP tool directly) and only send the **small set of relevant chunks** to the model. Less context, better focus.
-
----
-
-## Chat configuration & templates
-
-These endpoints store small bits of UI state on disk under `repo_root()/out/`.
-
-### `GET /api/chat/config`
-
-Returns persisted chat configuration, or `{}` if nothing saved. The UI merges this with its own default config.
-
-```bash
-curl -X GET "http://localhost:8012/api/chat/config"
-```
-
-Response example:
-
-```json linenums="1"
-{
-  "default_model": "gpt-4o-mini",
-  "temperature": 0.1,
-  "max_tokens": 2048
-}
-```
-
-### `POST /api/chat/config`
-
-Persists arbitrary key/value pairs to `out/chat_config.json`. The server doesn’t validate the shape; the UI is responsible for that.
-
-```bash
-curl -X POST "http://localhost:8012/api/chat/config" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "default_model": "gpt-4o-mini",
-    "temperature": 0.2
-  }'
-```
-
-Response:
-
-```json
-{"ok": true}
-```
-
-!!! warning "Payload must be JSON‑serializable"
-    The server checks `json.dumps(payload)` and will return `400` if it fails.
-
-### `POST /api/chat/templates`
-
-Append a named prompt template to `out/chat_templates.json`.
-
-**Payload**
-
-| Field    | Type   | Required | Description           |
-|----------|--------|----------|-----------------------|
-| `name`   | string | yes      | Template name         |
-| `prompt` | string | yes      | Template text/prompt  |
-
-```bash
-curl -X POST "http://localhost:8012/api/chat/templates" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Deep code review",
-    "prompt": "You are a meticulous code reviewer. For the following changes..."
-  }'
-```
-
-Response:
-
-```json
-{"ok": true}
-```
-
-Internally each entry gets a `created_at` timestamp added.
-
----
-
-## Config schema: `GET /api/config-schema`
-
-Returns the full configuration schema used by AGRO’s config UI. This is generated from Pydantic models and includes fields, types, defaults, and descriptions.
-
-```bash
-curl -X GET "http://localhost:8012/api/config-schema"
-```
-
-Response (truncated):
-
-```json linenums="1"
-{
-  "env": {
-    "REPO": {
-      "type": "string",
-      "default": "agro",
-      "description": "Default repository to query"
-    },
-    "GEN_MODEL": {
-      "type": "string",
-      "default": "gpt-4o-mini",
-      "description": "Default generation model"
+  "files": [
+    {
+      "path": "out/agro/traces/trace_2025-12-10T09-31-41.json",
+      "name": "trace_2025-12-10T09-31-41.json",
+      "mtime": "2025-12-10T09:31:41.123456"
     }
-  },
-  "integrations": {
-    "langsmith": { "...": "..." }
-  }
+  ]
 }
 ```
 
-This is what powers the UI’s tooltips and docs links; you can also consume it directly if you’re building your own front‑end.
 
----
+### GET `/api/traces/latest`
 
-## Environment reload: `POST /api/env/reload`
+Return the latest trace file for a repo.
 
-Reloads environment and propagates config changes into all modules that cache configuration values.
+Backed by `traces.latest_trace`, which uses `server.tracing.latest_trace_path(repo)` and returns either the JSON contents or a small error payload if something goes wrong.
 
-Internally this:
 
-1. Calls `cfg.env_reload()` to reload the config registry.
-2. Dynamically imports a list of modules (e.g. `retrieval.hybrid_search`, `server.env_model`, `server.metrics`, …).
-3. Calls `reload_config()` on each module that exposes it.
-4. Returns a summary of what was reloaded and any warnings.
+## How this ties into the Web UI
 
-```bash
-curl -X POST "http://localhost:8012/api/env/reload"
-```
+Most of the React components under `web/src/components` talk to these endpoints:
 
-Example response:
+- `Dashboard/*` – uses `/api/index/*`, `/api/config`, `/api/traces/*` to show system status, storage, indexing costs, and recent traces
+- `DevTools/*` – hits the RAG and evaluation endpoints, plus config endpoints for reranker and integrations
+- `Editor/*` – reads `/api/editor/settings` and related config to embed or launch the editor
 
-```json linenums="1"
-{
-  "status": "ok",
-  "reloaded_modules": [
-    "hybrid_search",
-    "rerank",
-    "langgraph_app",
-    "env_model",
-    "tracing",
-    "metrics",
-    "keywords",
-    "cards_builder",
-    "learning_reranker",
-    "metadata"
-  ],
-  "reload_warnings": []
-}
-```
+The important bit: the HTTP API is intentionally thin. Almost all of the real behavior lives in the service layer (`server/services/*.py`) and the config registry. If you want to change how something works, you usually:
 
-!!! tip "Use this after manual `.env` edits"
-    If you edit `.env` or other config files outside the UI, hit `/api/env/reload` so AGRO picks up the changes immediately.
+1. Update the service module (e.g. `indexing.py`, `keywords.py`, `rag.py`)
+2. Optionally add new config keys to `AgroConfigRoot` and `AGRO_CONFIG_KEYS`
+3. Let the existing endpoints keep working with the new behavior
 
----
+Because AGRO is indexed on itself, you can also open the Chat tab and ask things like:
 
-## Config APIs: `/api/config` and friends
+> “Where does `/api/index/start` get its repo name from?”
 
-These endpoints talk to the central config store (`server.services.config_store`).
-
-### `GET /api/config`
-
-Returns the current configuration (env + integrations + models, etc.).
-
-**Query parameters**
-
-| Name     | Type | Default | Description                                                           |
-|----------|------|---------|-----------------------------------------------------------------------|
-| `unmask` | bool | `false` | If `true`, include unmasked secrets. Typically keep this `false`.     |
-
-```bash
-curl -X GET "http://localhost:8012/api/config?unmask=false"
-```
-
-Response example (truncated):
-
-```json linenums="1"
-{
-  "status": "ok",
-  "env": {
-    "REPO": "agro",
-    "GEN_MODEL": "gpt-4o-mini",
-    "EMBEDDING_TYPE": "qdrant",
-    "EMBEDDING_MODEL": "text-embedding-3-small"
-  },
-  "integrations": {
-    "langsmith": { "enabled": false }
-  }
-}
-```
-
-### `POST /api/config`
-
-Sets configuration and **auto‑reloads** if critical settings changed.
-
-Critical keys that trigger auto‑reload:
-
-- `REPO`
-- `RERANKER_BACKEND`
-- `GEN_MODEL`
-- `EMBEDDING_TYPE`
-- `EMBEDDING_MODEL`
-
-Payload is passed straight into `cfg.set_config(payload)`; the typical shape is:
-
-```json linenums="1"
-{
-  "env": {
-    "REPO": "agro",
-    "GEN_MODEL": "gpt-4o-mini",
-    "EMBEDDING_TYPE": "qdrant",
-    "EMBEDDING_MODEL": "text-embedding-3-small"
-  },
-  "integrations": {
-    "langsmith": { "enabled": true, "api_key": "..." }
-  }
-}
-```
-
-=== "curl"
-
-    ```bash
-    curl -X POST "http://localhost:8012/api/config" \
-      -H "Content-Type: application/json" \
-      -d '{
-        "env": {
-          "REPO": "agro",
-          "GEN_MODEL": "gpt-4o-mini",
-          "EM
+and it will walk you through the same code paths described above.

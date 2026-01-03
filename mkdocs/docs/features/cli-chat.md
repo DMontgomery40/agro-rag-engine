@@ -1,365 +1,229 @@
-# CLI Chat Interface
-
-The CLI chat is the fastest way to talk to your indexed codebase from a terminal. It supports multiple repos, per‑thread history, model switching, and feedback, with an HTTP API fallback to a local LangGraph graph.
-
+---
+Title: CLI Chat Interface
 ---
 
-## Starting the CLI chat
+# CLI Chat Interface
 
-=== "From shell (`agro` installed)"
+The CLI chat is the fastest way to talk to your indexed codebase from a terminal. It’s a thin wrapper over the same HTTP API the web UI uses, wired into the same configuration registry and profiles.
 
-```bash
-# Default repo and config from config registry
-$ agro chat
+You can:
 
-# Explicit repo
-$ agro chat --repo my-project
+- Chat with any indexed repo
+- Switch models and profiles
+- Inspect traces and evaluation runs
+- Drive indexing and maintenance tasks from scripts
 
-# Override the generation model
-$ agro chat --repo my-project --model gpt-4o
+All without opening a browser.
 
-# Let AGRO pick repo from config profile
-$ agro config apply-profile my-profile
-$ agro chat
-```
 
-=== "Direct Python entry point"
+## Entry points
+
+The main entry point is:
 
 ```bash
-# Make sure server is running on the expected port first
-export REPO=agro          # default repo name
-export THREAD_ID=my-run   # optional, defaults to 'cli-chat'
-export PORT=8012          # must match AGRO server port
-
 python -m cli.chat_cli
 ```
 
-!!! note "Environment and config sources"
-    - `agro chat` reads defaults from the **config registry** (e.g. `REPO`, `THREAD_ID`) rather than env vars directly.
-    - `cli.chat_cli` also loads a project‑level `.env` (if `python-dotenv` is installed) and then uses the config registry.
-    - If you’re not sure what repo you’re talking to, just look at the prompt header or run `/help` from inside the chat.
-
----
-
-## Basic workflow
-
-Once started, you’ll see something like:
-
-```text
-# 🤖 RAG CLI Chat
-
-Connected to: agro
-Thread ID: cli-chat
-API: http://127.0.0.1:8012
-
-Type your question or use `/help` for commands.
-```
-
-Then the main loop:
-
-1. Type a question or a command.
-2. AGRO sends it to the HTTP API at `/api/chat` (if reachable).
-3. If the API is down, it lazily initializes a **local LangGraph** and runs the query there.
-4. The answer appears inside a Rich panel, with:
-   - The **answer** (Markdown formatted).
-   - A **confidence score**.
-   - Top **source snippets** (file path, line range, rerank score).
-5. If the API handled the query, you’ll be prompted to rate the answer (1–5).
-
----
-
-## Commands and shortcuts
-
-Commands start with `/` and are handled before anything is sent to the server.
-
-### Command reference
-
-| Command                      | Description                                                                                          |
-|------------------------------|------------------------------------------------------------------------------------------------------|
-| `/repo <name>`              | Switch to another indexed repository (must exist in `repos.json`).                                  |
-| `/model <name>`             | Override the generation model (e.g. `gpt-4o`, `claude-3-5-sonnet`).                                  |
-| `/save`                     | Save conversation checkpoint (currently just logs success; LangGraph uses Redis checkpoints).       |
-| `/clear`                    | Clear conversation history by creating a new thread ID.                                              |
-| `/help`                     | Show in‑CLI help (Markdown) with commands and interaction notes.                                    |
-| `/exit`, `/quit`           | Cleanly exit the chat loop.                                                                          |
-
-??? example "Command examples"
-    ```text
-    agro > /repo my-service
-    ✓ Switched to repo: my-service
-
-    my-service > /model gpt-4o
-    ✓ Switched model to: gpt-4o
-
-    my-service > /clear
-    ✓ Cleared history (new thread: cli-chat-1733052481)
-
-    my-service > /exit
-    Goodbye!
-    ```
-
-!!! warning "Valid repositories only"
-    `/repo` validates against `list_repos()` (which reads your `repos.json`).  
-    If you get:
-
-    ```text
-    ✗ Invalid repo. Allowed: ['agro', 'my-service', ...]
-    ```
-
-    then the repo you typed isn’t configured for indexing yet.
-
----
-
-## Conversation memory & threads
-
-AGRO treats each CLI session as a **thread** identified by `thread_id`.
-
-### How thread IDs work
-
-- Default thread ID (via config registry): `cli-chat`
-- When you run `agro chat`, AGRO passes that thread ID down to the chat API.
-- The server uses this to:
-  - Attach messages to the right **LangGraph conversation**.
-  - Store state in **Redis checkpoints** (if configured).
-
-When the HTTP API is unavailable, `ChatCLI` falls back to a **local LangGraph instance**:
-
-```python
-state = {
-    "question": question,
-    "documents": [],
-    "generation": "",
-    "iteration": 0,
-    "confidence": 0.0,
-    "repo": self.repo
-}
-result = self.graph.invoke(state, self._get_config())
-```
-
-The same `thread_id` is passed in `configurable.thread_id`, so memory still behaves per‑thread even in fallback mode.
-
-!!! note "Local graph vs API server"
-    - **API mode** (normal):
-        - `/api/chat` handles retrieval + generation.
-        - Returns `event_id` for feedback.
-        - Uses the main AGRO server config and any remote models you’ve defined.
-    - **Local graph fallback**:
-        - Initialized lazily via `build_graph()`.
-        - Uses Redis checkpoints for memory (if configured).
-        - No `event_id` (so no feedback submission).
-        - Currently ignores the `/model` override.
-
-### Clearing history
-
-`/clear` doesn’t wipe Redis; it **creates a new thread**:
-
-```python
-self.thread_id = f"cli-chat-{int(time.time())}"
-```
-
-So old context is still there and can be resumed if you reuse the same `THREAD_ID` value in a future session, but your current CLI chat will start fresh.
-
-!!! tip "Practical thread patterns"
-    - **One thread per task**: e.g. `THREAD_ID=bug-1234` when debugging a specific issue.
-    - **Daily threads**: `THREAD_ID=cli-2025-03-01` so history is naturally bounded.
-    - **Ephemeral scratch**: just use `/clear` whenever the context feels polluted.
-
----
-
-## Model selection
-
-You can override the generation model at runtime without restarting:
-
-```text
-agro > /model gpt-4o
-✓ Switched model to: gpt-4o
-
-agro > /model claude-3-5-sonnet
-✓ Switched model to: claude-3-5-sonnet
-```
-
-Under the hood:
-
-- The model name is stored in `self.model`.
-- For **API calls**, it’s sent as `payload['model'] = self.model`.
-- The server decides how to route that to your configured providers (OpenAI, Anthropic, local, etc.).
-- For the **local graph fallback**, the model override is currently **not applied**:
-
-```python
-# Note: Local graph doesn't support 'model' override easily unless passed in state/config hacks
-# We'll ignore self.model for local fallback for now
-```
-
-!!! warning "Model override only applies in API mode"
-    If you see:
-
-    ```text
-    API unreachable (...). Falling back to local graph...
-    ```
-
-    then `/model` changes will not affect that query. The local graph will use whatever default model is configured in the graph itself.
-
----
-
-## Feedback and answer quality
-
-When the API is reachable, each answer comes with an `event_id` and you’ll see:
-
-```text
-Rate (1-5) or Enter to skip:
-```
-
-If you type `1`–`5`:
-
-- AGRO sends a POST to `/api/feedback`:
-
-  ```python
-  payload = {"event_id": event_id, "signal": f"star{rating}"}
-  ```
-
-- Optional text notes can be attached (the CLI code supports a `note`, though the interactive prompt only asks for a rating).
-
-If the answer came from the **local graph fallback**, there is **no `event_id`**, and you’ll see:
-
-```text
-No event ID available for feedback (local run?)
-```
-
-!!! tip "When to rate answers"
-    Feedback is most useful when:
-    - The answer is **clearly wrong** but seemed confident.
-    - The answer is **great** and used the right sources.
-    - You’re iterating on retrieval/reranking and want a quick way to mark good/bad responses.
-
----
-
-## Reading answers and sources
-
-Every answer is wrapped in a Rich panel with a confidence score:
-
-```text
-┌ Answer (confidence: 0.78) ┐
-│ (Markdown answer here)    │
-└───────────────────────────┘
-```
-
-Then AGRO prints top citations:
-
-```text
-Top sources:
-  1. src/service/user.py:120-160 (score: 0.842)
-  2. src/db/models.py:45-80     (score: 0.791)
-  3. README.md:1-30             (score: 0.732)
-```
-
-Where:
-
-- `file_path` is relative to the repo root.
-- `start_line` / `end_line` define the snippet.
-- `rerank_score` is the post‑reranker relevance score.
-
-!!! tip "Jumping to sources in your editor"
-    Combine this with your editor’s “open file at line” feature:
-
-    - **vim / neovim**: `vim +120 src/service/user.py`
-    - **VS Code**: `code -g src/service/user.py:120`
-    - **Helix**: `hx src/service/user.py:120`
-
----
-
-## Tips for effective use
-
-### 1. Start simple, then refine
-
-- Begin with a **plain English question**:
-  ```text
-  agro > How does the user authentication flow work?
-  ```
-- If the answer is vague:
-  - Narrow the scope:
-    ```text
-    agro > Focus on the FastAPI auth endpoints only.
-    ```
-  - Ask for file references explicitly:
-    ```text
-    agro > List the key files involved and their responsibilities.
-    ```
-
-### 2. Use the repo switch for multi‑project work
-
-If you have multiple codebases indexed:
-
-```text
-agro > /repo payments-service
-payments-service > How do we handle idempotency for charge requests?
-
-payments-service > /repo web-frontend
-web-frontend > Where is the checkout form validation implemented?
-```
-
-This keeps each conversation tied to the right context and retrieval index.
-
-### 3. Reset context when it gets “muddy”
-
-If the model starts over‑anchoring on previous questions:
-
-```text
-agro > /clear
-✓ Cleared history (new thread: cli-chat-1733052481)
-
-agro > Explain how the background job scheduler works, ignoring previous topics.
-```
-
-### 4. Be explicit about what you want
-
-The more specific your intent, the better the answer:
-
-- “Show me the **exact function** that sends password reset emails.”
-- “Compare the **current implementation** of X with the **previous one** (before commit abc123).”
-- “Summarize this module in **3 bullet points** suitable for a README.”
-
-### 5. Use models that fit your task
-
-- For **careful refactors or API design questions**, pick your strongest model:
-  ```text
-  agro > /model claude-3-5-sonnet
-  ```
-- For **quick navigational questions** (where retrieval matters more than generation), a cheaper/faster model is usually fine.
-
-### 6. Know when you’re in fallback mode
-
-If you see:
-
-```text
-API unreachable (...). Falling back to local graph...
-✓ Graph initialized locally (Redis checkpoints)
-```
-
-Then:
-
-- Model overrides won’t apply.
-- Feedback won’t be recorded.
-- You’re still talking to the same repo, but through the local LangGraph.
-
-If you **expected** to be using the HTTP API, check:
-
-- Is the AGRO server running?
-- Does `PORT` in your `.env` / config match the CLI’s `PORT`?
-
----
-
-## Rich help via `agro help`
-
-For a quick reminder of CLI chat usage:
+or, if you installed AGRO as a package and exposed the console script:
 
 ```bash
-$ agro help chat
+agro chat
 ```
 
-This shows:
+Under the hood this is just `cli/chat_cli.py` plus the `cli/commands/chat.py` command wiring.
 
-- A description of the chat command.
-- Usage syntax.
-- Copy‑pasteable examples.
 
-The `agro help` system is meant to be the “docs you have in your terminal,” so you don’t have to leave your shell to remember an option or see a minimal example.
+## How it talks to the server
+
+The CLI is not a separate RAG engine. It is a client for the running AGRO HTTP server:
+
+- It reads connection details (host, port, TLS, auth) from the **configuration registry** (`server/services/config_registry.py`).
+- It uses the same `.env` / `agro_config.json` precedence as everything else.
+- It sends JSON over HTTP to the `/chat` and `/search` endpoints defined in the FastAPI app.
+
+!!! note "Server must be running"
+    The CLI does not start the backend for you. Make sure the AGRO server is up (via Docker or `python -m server.app`) before using `agro chat`.
+
+
+## Basic usage
+
+The simplest way to start a chat against the default repo:
+
+```bash
+agro chat
+```
+
+You’ll drop into an interactive REPL:
+
+```text
+Repo: agro  |  Model: anthropic/claude-3.5-sonnet  |  Profile: default
+Type "/help" for commands, Ctrl+C to exit.
+
+> how does indexing work?
+...
+```
+
+Key points:
+
+- **Default repo** comes from `REPO` in `.env` or `agro_config.json`.
+- **Default model** comes from the model configuration (see `configuration/models.md`).
+- **Default profile** is resolved via the profile system (`configuration/profiles.md`).
+
+
+## Command-line flags
+
+The CLI exposes a few core flags for scripting and quick overrides.
+
+```bash
+agro chat \
+  --repo my-service \
+  --model openai/gpt-4o-mini \
+  --profile prod \
+  --system-prompt "You are a strict code reviewer."
+```
+
+Typical flags:
+
+| Flag              | Description                                                                 |
+| :---------------- | :-------------------------------------------------------------------------- |
+| `--repo NAME`     | Override the target repository (maps to `REPO` and profile repo settings). |
+| `--model ID`      | Override the chat model for this session only.                              |
+| `--profile NAME`  | Load a specific profile from `web/public/profiles`.                         |
+| `--system-prompt` | Inline override of the system prompt for this session.                      |
+| `--once`          | Run a single question and exit (good for scripts/CI).                       |
+
+The exact set of flags is defined in `cli/commands/chat.py`; this documentation stays high‑level on purpose.
+
+
+## In-REPL commands
+
+Inside the chat REPL, lines starting with `/` are treated as **commands**, not questions. These are parsed locally and never sent to the model.
+
+Common commands:
+
+| Command                  | Effect                                                                 |
+| :----------------------- | :--------------------------------------------------------------------- |
+| `/help`                  | Show available commands and a short description.                       |
+| `/model`                 | Show the current model and available configured models.                |
+| `/model <id>`            | Switch to a different configured model for subsequent turns.           |
+| `/repo`                  | Show the current repo.                                                 |
+| `/repo <name>`           | Switch to a different indexed repo (if the server has it indexed).     |
+| `/profile`               | Show the active profile.                                               |
+| `/profile <name>`        | Switch to another profile on disk.                                     |
+| `/trace`                 | Show the path or summary of the latest trace for the last answer.      |
+| `/eval`                  | Attach the last answer to an evaluation run (see `features/evaluation`). |
+| `/config`                | Print the resolved configuration for this session (read-only view).    |
+| `/quit` or `/exit`       | Exit the REPL.                                                         |
+
+The implementation for these lives in `cli/chat_cli.py` and reuses the same HTTP endpoints as the web UI for traces and evaluation.
+
+
+## Single-shot mode (for scripts & CI)
+
+For automation you usually don’t want an interactive REPL. Use `--once` (or the equivalent flag in your version) to send a single question and print the answer to stdout:
+
+```bash
+agro chat --repo my-service --model openai/gpt-4o-mini --once "summarize the error handling in payments.py"
+```
+
+This is intentionally simple:
+
+- No REPL, no prompts, just a single request/response.
+- Exit code is non-zero if the HTTP request fails or the server returns an error.
+- Output is plain text by default so you can pipe it into other tools.
+
+
+## How configuration flows into the CLI
+
+The CLI does **not** invent its own config format. It reads from the same registry as the server:
+
+1. `.env` is loaded first (`dotenv.load_dotenv(override=True)` in `config_registry.py`).
+2. `agro_config.json` is parsed into `AgroConfigRoot` (Pydantic model).
+3. Pydantic defaults fill in anything missing.
+
+The CLI then:
+
+- Uses `get_config_registry()` from `server/services/config_registry.py` to resolve values.
+- Respects the same precedence rules (env > agro_config.json > defaults).
+- Uses the same key names (`REPO`, `DEFAULT_CHAT_MODEL`, etc.).
+
+This means:
+
+- If the web UI is using a model, the CLI will see the same default.
+- If you change `REPO` in `.env`, both server and CLI will default to that repo.
+
+
+## Profiles and the CLI
+
+Profiles are just JSON files under `GUI_DIR/profiles` (see `configuration/profiles.md`). The CLI can:
+
+- **List** profiles (via `/profile` or a dedicated flag).
+- **Activate** a profile for the current session.
+
+When you pick a profile, the CLI:
+
+- Loads the profile JSON.
+- Applies its overrides on top of the base registry (without mutating files).
+- Uses that merged view for all subsequent HTTP calls.
+
+This is useful when you want:
+
+- A “local-dev” profile with a small local model and aggressive caching.
+- A “prod” profile that points at cloud models and stricter safety settings.
+
+
+## Traces from the CLI
+
+The CLI can surface the same traces you see in the web UI:
+
+- After a query, the server may write a trace JSON file under `out/<repo>/traces`.
+- `server/services/traces.py` exposes `/traces/latest` and `/traces/list` endpoints.
+- The CLI can call those endpoints and print:
+  - The path to the latest trace file.
+  - A short summary (model, latency, number of chunks, etc.).
+
+Example:
+
+```bash
+> why is indexing slow on this repo?
+...
+> /trace
+latest trace: out/agro/traces/trace_2025-12-10T09-31-41Z.json
+```
+
+You can then open that JSON in your editor or feed it back into AGRO’s own chat (AGRO is indexed on itself) to debug the pipeline.
+
+
+## Evaluation hooks
+
+The CLI is wired into the evaluation system (`features/evaluation.md`):
+
+- You can mark a question/answer pair as a **golden** example from the REPL.
+- You can attach feedback (good/bad/partial) to the last answer.
+- Under the hood this writes to the same `data/evaluation_dataset.json` / `data/golden.json` files the evaluation runner uses.
+
+This is intentionally low-friction: if you’re already in a terminal reading an answer, you shouldn’t have to switch to the browser just to say “this answer was wrong, please learn from it.”
+
+
+## When to use the CLI vs the web UI
+
+Use the CLI when:
+
+- You live in a terminal and want quick answers without context switching.
+- You’re scripting AGRO (CI checks, nightly reports, regression tests).
+- You want to integrate AGRO with other CLI tools (grep, jq, fzf, etc.).
+
+Use the web UI when:
+
+- You want to inspect traces visually.
+- You’re tuning retrieval parameters and want live charts.
+- You’re editing profiles, system prompts, or model configs.
+
+Both surfaces talk to the same backend and share the same configuration registry, so you can freely switch between them.
+
+
+## Rough edges & notes
+
+- The CLI assumes the server is reachable; it doesn’t try to start Docker or the Python app for you.
+- Error messages are intentionally plain (HTTP status + short description). If something looks off, check the server logs and `operations/troubleshooting.md`.
+- The set of `/` commands may evolve; run `/help` in your version to see the authoritative list.

@@ -1,7 +1,7 @@
 ---
-title: AGRO - Another Good RAG Option
-hide:
-  - toc
+ title: AGRO - Another Good RAG Option
+ hide:
+   - toc
 ---
 
 <style>
@@ -12,517 +12,387 @@ hide:
   ![AGRO Banner](assets/agro-banner.svg){ width="100%" }
 </figure>
 
-<p align="center" style="font-size: 1.4em; margin-top: -1em;">
-<strong>A local‑first RAG engine workspace for codebases.</strong>
-</p>
+<div class="grid cards" markdown>
 
-AGRO is built to answer one question well:
+-   :material-console-network: **Local‑first RAG engine**  
+    Index your own codebases, run everything locally by default, and only talk to cloud models when you explicitly configure them.
 
-> *“Given this codebase, what’s the smallest, cheapest, most reliable RAG stack that will help me understand and change it?”*
+-   :material-tune-variant: **Configurable, not hard‑coded**  
+    Models, retrieval behavior, evaluation, and tooling are all driven by Pydantic config and JSON files – not buried in the code.
 
-Everything else (MCP servers, GUI, TUI, evals, Grafana, etc.) exists to support that.
+-   :material-book-information-variant: **Self‑documenting UI**  
+    Every knob in the web UI has a tooltip, links to papers or docs, and is searchable. AGRO is indexed on itself, so you can just ask it how things work.
 
----
+-   :material-code-json: **MCP + LSP tooling**  
+    Exposes the RAG engine over Model Context Protocol for tools like Claude Code / Codex, and ships a language‑server‑style editor backend for working with indexed repos.
 
-## What AGRO is
-
-??? info ":material-laptop: Local‑first"
-    **Qdrant + Redis + JSONL chunks on disk.** Works with local models (Ollama, vLLM, etc.) or any API model you point it at.
-    
-    - No cloud dependency required
-    - Full control over your data
-    - [:octicons-arrow-right-24: Setup guide](./getting-started/installation.md)
-
-??? info ":material-magnify-scan: Hybrid search over code"
-    **BM25 + dense embeddings + cross‑encoder rerankers.** Repo isolation, citations, and configurable routing between indexes.
-    
-    - Sparse + dense + rerank pipeline
-    - Per-repo collection isolation
-    - [:octicons-arrow-right-24: Retrieval pipeline](./features/rag.md)
-
-??? info ":material-brain: Self‑learning reranker"
-    **Transformer model that trains on your feedback and click data.** Full loop: `mine triplets → train → evaluate → promote`
-    
-    - Hot-reload trained models
-    - Continuous improvement from usage
-    - [:octicons-arrow-right-24: Learning reranker](./features/learning-reranker.md)
-
-??? info ":material-connection: MCP servers for AI agents"
-    **Python and Node MCP implementations.** HTTP, SSE, stdio, WebSocket transports. Per‑transport model + backend config.
-    
-    - Claude Code / Codex ready
-    - Multiple transport options
-    - [:octicons-arrow-right-24: MCP integration](./features/mcp.md)
-
-??? info ":material-view-dashboard: Rich GUI + CLI"
-    **Onboarding wizard, VSCode-in-GUI, profiles, evals, cost estimates.** TUI / CLI chat for quick local experiments.
-    
-    - Full-featured web interface
-    - Terminal-first workflow support
-    - [:octicons-arrow-right-24: Configuration](./configuration/settings.md)
-
-??? info ":material-chart-line: Embedded Grafana dashboards"
-    **Qdrant / Redis / RAG metrics with alerts.** See when indexing or retrieval is going sideways before your users do.
-    
-    - Pre-configured dashboards
-    - Alerting on anomalies
-    - [:octicons-arrow-right-24: Monitoring](./operations/monitoring.md)
-
-!!! success "Self-documenting"
-    AGRO is **MIT-licensed**, modular, and indexed on itself. Open the chat tab and ask *"how do I extend hybrid_search to add X?"* — it will answer using its own source code.
+</div>
 
 ---
 
-## Why another RAG engine?
+## What AGRO actually is
 
-!!! failure "The problem with generic RAG stacks"
+AGRO is a local‑first RAG engine aimed at codebases. It’s built around a few ideas:
 
-    | | Problem |
-    |---|---|
-    | :material-close-circle:{ style="color: #ef5350" } | Centered on **unstructured text**, not code |
-    | :material-close-circle:{ style="color: #ef5350" } | Tuned for "one big knowledge base," not **many repos with strict isolation** |
-    | :material-close-circle:{ style="color: #ef5350" } | **Opaque** about what knobs do and why |
-    | :material-close-circle:{ style="color: #ef5350" } | **Evals are an afterthought** — or missing entirely. Good luck knowing if your changes helped or hurt. |
+- Retrieval and ranking should be **transparent and debuggable**.
+- Configuration should be **centralized and type‑checked**, not scattered across env vars and magic constants.
+- The system should be able to **explain itself** – you shouldn’t need a second LLM just to understand what a parameter does.
 
-AGRO is opinionated in a few ways:
-
-=== ":material-code-tags: Codebases are first‑class"
-
-    - **Language‑aware chunking** via AST chunker
-    - Per‑repo indexes, routing, and **strict isolation**
-    - "Local hydration" — read real files near retrieved chunks
-
-    ```python title="Example: AST-aware chunking"
-    # AGRO understands code structure, not just text
-    chunk = {
-        "file_path": "server/app.py",
-        "language": "python",
-        "start_line": 42,
-        "end_line": 78,
-        "type": "function",  # Not just "512 tokens"
-    }
-    ```
-
-=== ":material-tooltip-text: Explainability is built‑in"
-
-    - Every parameter in the GUI has a **detailed tooltip**
-    - Tooltips link to official docs, papers, and internal docs
-    - All of those are **searchable inside AGRO itself**
-
-    !!! tip "Tooltips everywhere"
-        Hover any setting in the GUI. You'll get an explanation, valid ranges, and often a link to the paper or code that explains *why* that knob exists.
-
-=== ":material-tune-vertical: You don't have to use all the knobs"
-
-    - Small repos often perform best with **plain BM25**
-    - Semantic bells and whistles are there when you hit scaling limits
-    - **Profiles** let you keep a "simple" and a "fancy" setup side‑by‑side
-
-    | Profile | Use case | Complexity |
-    |---------|----------|------------|
-    | `bm25-fast` | Small repos, quick lookups | :material-signal-cellular-1: Low |
-    | `hybrid-balanced` | Medium repos, mixed code + docs | :material-signal-cellular-2: Medium |
-    | `full-stack` | Large monorepos, semantic queries | :material-signal-cellular-3: High |
-
-=== ":material-clipboard-check: Evals that actually work"
-
-    - **Golden questions** in a simple JSON file — no PhD required
-    - One-click eval runs from the GUI or CLI
-    - **Regression tracking** so you know if that config change helped or hurt
-
-    !!! example "Dead simple eval format"
-        ```json
-        [
-          {
-            "q": "Where is hybrid_search implemented?",
-            "expect_paths": ["retrieval/hybrid_search.py"]
-          }
-        ]
-        ```
-        
-        Add questions when retrieval fails. Run evals. See if your changes fix it. That's it.
-
----
-
-## High‑level architecture
+At a high level, the stack looks like this:
 
 ```mermaid
 flowchart LR
-    subgraph Clients
-        A[CLI Chat<br/>local] 
-        B[CLI Chat<br/>streaming]
-        C[AI Agents<br/>Claude Code / Codex]
-        D[Web GUI]
-    end
+  subgraph User
+    UI[Web UI]
+    CLI[CLI]
+    MCP[Claude Code / Codex]
+  end
 
-    subgraph Transports
-        A --> S1[MCP stdio]
-        C --> S1
-        C --> S2[MCP HTTP]
-        B --> S3[HTTP SSE]
-        D --> S3
-    end
+  subgraph Server
+    API[FastAPI HTTP API]
+    CFG[Config Registry\n(.env + agro_config.json)]
+    RAG[Retrieval & RAG Pipeline]
+    IDX[Indexing Worker]
+    EVAL[Evaluation & Traces]
+  end
 
-    subgraph Server["FastAPI + LangGraph"]
-        S1 --> L[langgraph_app<br/>iterative RAG]
-        S2 --> L
-        S3 --> L
-        L --> H[hybrid_search<br/>BM25+dense+rerank]
-    end
+  subgraph Storage
+    Q[Qdrant: dense + metadata]
+    FS[(Filesystem: chunks, evals, traces)]
+  end
 
-    subgraph Indexes
-        H --> Q[Qdrant<br/>vectors]
-        H --> R[BM25S<br/>sparse]
-        H --> J[Local JSONL<br/>chunks/cards]
-    end
+  User --> UI --> API
+  User --> CLI --> API
+  MCP --> API
 
-    subgraph Indexer
-        X[index_repo.py<br/>chunk + embed + upsert]
-        X --> Q
-        X --> R
-        X --> J
-    end
+  API --> RAG
+  API --> IDX
+  API --> EVAL
 
-    X -. uses .-> Cfg[Config + Profiles]
-    L -. uses .-> Cfg
+  RAG --> Q
+  IDX --> Q
+  IDX --> FS
+  EVAL --> FS
 
-    style Server fill:#1e293b,stroke:#94a3b8,color:#e5e7eb
-    style Indexes fill:#020617,stroke:#64748b,color:#e5e7eb
-    style Indexer fill:#111827,stroke:#6b7280,color:#e5e7eb
+  CFG --> API
+  CFG --> RAG
+  CFG --> IDX
 ```
 
----
-
-## Core capabilities
-
-### Hybrid search and retrieval
-
-AGRO’s retrieval pipeline is centered around `retrieval/hybrid_search.py` and `server/langgraph_app.py`.
-
-- :material-text-search: **Sparse search (BM25S)**  
-  - Great for small codebases  
-  - No embeddings required  
-  - Often the right default for “search my repo” workflows
-
-- :material-vector-link: **Dense search (Qdrant)**  
-  - Pluggable embeddings (local, OpenAI, Voyage, Gemini, etc.)  
-  - Configurable vector sizes and precision (int4 → float32)  
-  - Repo‑scoped collections
-
-- :material-layers: **Hybrid search**  
-  - Combine BM25, dense, and rerankers  
-  - Repo routing and per‑profile weighting  
-  - “Local hydration” to pull in nearby code context from disk
-
-- :material-magnify: **Multi‑query expansion**  
-  - Generate multiple reformulations of the question  
-  - Fan‑out retrieval, then dedupe + rerank  
-  - Configurable per profile (`MQ_REWRITES`, `multiquery`)
-
-!!! note "You don’t need to over‑optimize"
-    For a single backend repo or small monolith, **BM25‑only** is usually enough.  
-    The hybrid / dense stack shines when:
-    
-    - you have multiple repos
-    - code + docs are mixed
-    - you’re running agents that ask fuzzy or underspecified questions
+Everything hangs off a small FastAPI app (`server.asgi:create_app`) and a central configuration registry. The rest of the system – indexer, evaluation loop, MCP server, editor backend – are just clients of that API and config layer.
 
 ---
 
-### Self‑learning reranker
+## Configuration model: one registry, three sources
 
-The “learning reranker” is a transformer model that lives **inside** AGRO and is trained on your own usage data.
+AGRO’s configuration is intentionally opinionated:
 
-Pipeline:
+- **`.env`** – infrastructure and secrets (API keys, ports, Docker overrides).  
+- **`agro_config.json`** – tunable RAG behavior, model definitions, retrieval knobs.  
+- **Pydantic defaults** – safe fallbacks when you haven’t set anything.
 
-```text
-click / feedback logs
-    ↓
-mine triplets (query, positive, negative)
-    ↓
-train cross-encoder
-    ↓
-evaluate against baseline
-    ↓
-promote if better
-    ↓
-serve in hybrid_search
+The core of this is the **configuration registry** in `server/services/config_registry.py`:
+
+```py title="server/services/config_registry.py" linenums="1" hl_lines="9-20 39-44"
+"""Configuration Registry for AGRO RAG Engine.
+
+Precedence (highest to lowest):
+1. .env file (secrets and infrastructure overrides)
+2. agro_config.json (tunable RAG parameters)
+3. Pydantic defaults (fallback values)
+"""
+
+from dotenv import load_dotenv
+from pydantic import ValidationError
+
+# Load .env FIRST before any os.environ access
+load_dotenv(override=True)
+
+from server.models.agro_config_model import AgroConfigRoot, AGRO_CONFIG_KEYS
+
+class ConfigRegistry:
+    def get_int(self, key: str, default: int | None = None) -> int: ...
+    def get_float(self, key: str, default: float | None = None) -> float: ...
+    def get_bool(self, key: str, default: bool | None = None) -> bool: ...
+    def get_str(self, key: str, default: str | None = None) -> str: ...
+
+_registry: ConfigRegistry | None = None
+
+def get_config_registry() -> ConfigRegistry:
+    global _registry
+    if _registry is None:
+        _registry = ConfigRegistry()
+    return _registry
 ```
 
-Key pieces:
+Every backend service imports `get_config_registry()` and never touches `os.getenv` directly. That gives you:
 
-- `reranker/learning_reranker.py` — training + eval loop
-- `models/` — JSON configs for reranker models
-- `checkpoints/` — trained model weights
-- `gui/js/reranker.js` and web UI — control panel for training/evals
+- **Thread‑safe reloads** – the registry owns the lock and can re‑read `.env` and `agro_config.json` without races.
+- **Type‑safe accessors** – `get_int`, `get_float`, `get_bool`, `get_str` all validate and coerce values.
+- **Source tracking** – the registry knows whether a value came from `.env`, `agro_config.json`, or a Pydantic default.
 
-!!! tip "Why this is useful"
-    Most RAG setups just swap in a generic reranker from HF or Cohere.  
-    AGRO lets you **bootstrap from that**, then specialize on your own codebase and query patterns without leaving the tool.
+The web UI surfaces this as a single **Configuration** tab. When you hover a parameter, you see:
 
----
+- A plain‑English explanation of what it does.
+- Links to relevant docs or arXiv papers where it makes sense.
+- Where the current value came from (env vs config vs default).
 
-### MCP servers for local and cloud agents
+You can also ask AGRO itself:
 
-AGRO ships with both Python and Node MCP servers:
+> “What does `FINAL_K` do and how does it interact with `LANGGRAPH_FINAL_K`?”
 
-- :material-console: **stdio MCP** — for agents that run locally (Claude Code, Codex, etc.)
-- :material-web: **HTTP MCP** — for remote agents or custom tooling
-- :material-swap-horizontal: **Multiple transports** — HTTP, SSE, stdio, WebSocket
-
-You can configure **per‑transport**:
-
-- which model to use (local vs cloud)
-- which retrieval profile to use
-- how strict repo routing should be
-
-This is what makes it possible to:
-
-- keep Claude Code / Codex “on a short leash”  
-- give them high‑quality, pre‑filtered results  
-- offload most “search the repo” work to AGRO instead of the LLM
-
-!!! note "No hard promises about token savings"
-    The docs talk about reduced token usage with tools like Claude Code / Codex, but there are **no fixed numbers** here on purpose.  
-    Once you wire MCP correctly and point agents at AGRO, the improvement is usually obvious in practice.
+The chat backend is indexed on this repository, so it can answer by pointing at `server/services/rag.py` and the config model.
 
 ---
 
-### Profiles: different stacks for different jobs
+## Service layer: how the pieces fit together
 
-Profiles let you configure **end‑to‑end RAG behavior** per task.
+AGRO’s Python backend is split into small service modules under `server/services/`. They all share the same config registry and are designed to be easy to read and modify.
 
-=== "Docs-search (fast, local-first)"
+### Configuration store & secrets
 
-    ```yaml linenums="1"
-    gen_model: gpt-4o-mini
-    embedding: BGE-small-en-v1.5        # local
-    vectors: 384-d 
-    precision: int4
-    rerank_model: BAAI/bge-reranker-v2-m3
-    retrieval: BM25                     # Sparse-only
-    local_hydration: 2%
-    multiquery: 2
-    top_k: 3
-    ```
+`server/services/config_store.py` is the thin API layer that the web UI talks to when you edit settings.
 
-=== "Plan_Refactor (full-stack, high quality)"
+Key points:
 
-    ```yaml linenums="1"
-    gen_model: gpt-5-high-latest
-    embedding: text-embedding-3-large
-    vectors: 3072-d
-    precision: float32
-    rerank_model: cohere/rerank-3.5
-    retrieval: BM25+Redis+Qdrant
-    multiquery: 10 
-    top_k: 20
-    max_semantic_cards: 50
-    conf_top1: 0.80  # Confidence gating
-    conf_avg5: 0.52
-    ```
+- **Secrets are treated differently** – there’s a `SECRET_FIELDS` set of keys like `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, etc. The API will:
+  - Mask them in responses to the UI.
+  - Write them to `.env` (or equivalent) via an atomic write helper.
+- **Atomic writes with Docker quirks in mind** – `_atomic_write_text` tries `os.replace` into a temp file first, then falls back to a direct write for Docker Desktop on macOS where volume mounts can be “busy”.
+- **Validation through Pydantic** – any change to `agro_config.json` is round‑tripped through `AgroConfigRoot`, so invalid configs fail fast with a clear error.
 
-You can:
+This is the layer that keeps “clicking around in the UI” and “editing JSON on disk” in sync.
 
-- bind profiles to **MCP transports**
-- switch profiles in the GUI or via API
-- run evals per profile and compare regressions
+### Editor service
 
----
+`server/services/editor.py` backs the **DevTools → Editor** tab in the UI and the embedded code editor.
 
-### Evals, regression tracking, and cost estimation
+It:
 
-AGRO ships with:
+- Reads editor‑related settings from the config registry (`EDITOR_PORT`, `EDITOR_ENABLED`, `EDITOR_BIND`, etc.).
+- Persists a small `settings.json` and `status.json` under `server/out/editor/` for the frontend to poll.
+- Falls back to legacy files if you’re upgrading from an older version.
 
-- :material-clipboard-check: **Eval harness**  
-  - Golden questions in `data/golden.json`  
-  - `eval/eval_loop.py`, `eval/eval_rag.py`, `eval/tune_params.py`  
-  - Regression tracking over time
+The interesting bit is that editor behavior is just more config – you can drive it entirely from `.env` / `agro_config.json` if you don’t want to touch the UI.
 
-- :material-currency-usd: **Cost + storage estimation**  
-  - Estimate the impact of a profile (tokens, storage, etc.) *before* running it  
-  - Helps answer: “If I crank multiquery and top_k, what happens to cost and latency?”
+### Indexing service
 
-- :material-monitor-dashboard: **Embedded Grafana**  
-  - Dashboards for Qdrant, Redis, and RAG metrics  
-  - Alerts when indexing or retrieval misbehave
+`server/services/indexing.py` is the entry point for (re)indexing a repo from the HTTP API and UI.
 
-!!! warning "Eval quality depends on your data"
-    The eval system is only as good as the questions and labels you provide.  
-    The built‑in examples are a starting point, not a benchmark.
+```py title="server/services/indexing.py" linenums="1" hl_lines="15-33 36-44"
+from common.paths import repo_root
+from server.index_stats import get_index_stats as _get_index_stats
+from server.services.config_registry import get_config_registry
 
----
+_config_registry = get_config_registry()
 
-### GUI, TUI, and traceability
+_INDEX_STATUS: list[str] = []
+_INDEX_METADATA: dict[str, Any] = {}
 
-You can interact with AGRO in multiple ways:
 
-| Interface      | Use case                                      |
-|----------------|-----------------------------------------------|
-| :material-web: **Web GUI** | Onboarding, profiles, evals, Grafana, embedded VSCode |
-| :material-console: **CLI chat** | Quick local experimentation with `/answer`       |
-| :material-api: **HTTP API** | Integrations, custom tools, scripting             |
-| :material-cog-transfer: **MCP** | Claude Code / Codex / other MCP-aware agents     |
+def start(payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    global _INDEX_STATUS, _INDEX_METADATA
+    payload = payload or {}
+    _INDEX_STATUS = ["Indexing started..."]
+    _INDEX_METADATA = {}
 
-Key backend pieces:
+    def run_index():
+        global _INDEX_STATUS, _INDEX_METADATA
+        try:
+            repo = _config_registry.get_str("REPO", "agro")
+            _INDEX_STATUS.append(f"Indexing repository: {repo}")
 
-- `server/asgi.py` — ASGI entrypoint  
-- `server/routers/` — FastAPI routers (`search`, `chat`, `eval`, `indexing`, `profiles`, `config`, …)  
-- `server/tracing.py` — LangSmith + OpenAI Agents SDK integration
+            root = repo_root()
+            env = {
+                **os.environ,
+                "REPO": repo,
+                "REPO_ROOT": str(root),
+                "PYTHONPATH": str(root),
+            }
+            if payload.get("enrich"):
+                env["ENRICH_CODE_CHUNKS"] = "true"
+                _INDEX_STATUS.append("Enriching chunks with summaries and symbols...")
 
-!!! note "Legacy entry point"
-    `server/app.py` still exists as a **legacy entry point**.  
-    The real application factory lives in `server/asgi.py`. Use that for new deployments.
+            # spawn indexer subprocess with same interpreter
+            ...
+        except Exception as e:
+            _INDEX_STATUS.append(f"Indexing failed: {e}")
 
----
-
-## Quick start
-
-AGRO runs best via the included Docker + Makefile setup.
-
-```bash linenums="1"
-git clone https://github.com/DMontgomery40/agro.git
-cd agro
-
-# Dev stack: Qdrant/Redis, API, MCPs, GUI, etc.
-make dev
-
-# Initial CLI walkthrough to set repos, etc.
-cd scripts
-./.setup.sh
-
-# GUI: http://127.0.0.1:8012/
+    threading.Thread(target=run_index, daemon=True).start()
+    return {"status": _INDEX_STATUS}
 ```
 
-!!! tip "Docker service vs. container names"
-    The API runs as the Compose **service** `api` but the container is named `agro-api`.  
-    Use the service name with `docker compose` and the container name with `docker`:
+A few design choices here:
 
-    | Task                         | Command                                                                 |
-    |------------------------------|-------------------------------------------------------------------------|
-    | Build / start via Compose    | `docker compose -f docker-compose.services.yml up -d api`              |
-    | Follow logs via Compose      | `docker compose -f docker-compose.services.yml logs -f api`            |
-    | Exec inside the container    | `docker exec -it agro-api bash`                                        |
-    | Tail runtime logs directly   | `docker logs -f agro-api`                                              |
+- **Same interpreter, explicit `PYTHONPATH`** – the indexer subprocess runs under the same Python that started the server, with `REPO_ROOT` and `PYTHONPATH` set so imports behave the same.
+- **Config‑driven behavior** – `REPO`, enrichment flags, and other knobs all come from the registry.
+- **In‑memory status** – `_INDEX_STATUS` and `_INDEX_METADATA` are simple module‑level globals. The UI polls them to render the “Live Terminal” and “Indexing Status” panels.
+
+If you want to change how indexing works, you edit the indexer script and this service – there’s no hidden scheduler.
+
+### Keyword extraction service
+
+`server/services/keywords.py` manages discriminative / semantic keywords that can be mixed into BM25 and hybrid search.
+
+It:
+
+- Reads a handful of tuning parameters at import time:
+  - `KEYWORDS_MAX_PER_REPO`
+  - `KEYWORDS_MIN_FREQ`
+  - `KEYWORDS_BOOST`
+  - `KEYWORDS_AUTO_GENERATE`
+  - `KEYWORDS_REFRESH_HOURS`
+- Caches them in module‑level variables for fast access.
+- Exposes `reload_config()` so you can hot‑reload those values from the registry without restarting the server.
+
+This is one of the places where the “lots of knobs, but you don’t have to touch them” philosophy shows up. For small repos, you can leave this alone or even disable auto‑generation and just rely on BM25.
+
+### RAG service
+
+`server/services/rag.py` is the HTTP entry point for search and RAG answers.
+
+It wires together:
+
+- The **hybrid retrieval** layer (`retrieval.hybrid_search.search_routed_multi`).
+- Optional **LangGraph** orchestration (`server.langgraph_app.build_graph`), if you’ve enabled it.
+- Telemetry hooks (`server.metrics`, `server.telemetry`).
+- Config‑driven defaults for things like `FINAL_K`.
+
+```py title="server/services/rag.py" linenums="1" hl_lines="23-37 40-49"
+from retrieval.hybrid_search import search_routed_multi
+from server.services.config_registry import get_config_registry
+
+_config_registry = get_config_registry()
+
+
+def do_search(q: str, repo: str | None, top_k: int | None, request: Request | None = None) -> dict[str, Any]:
+    if top_k is None:
+        try:
+            # Try FINAL_K first, fall back to LANGGRAPH_FINAL_K
+            top_k = _config_registry.get_int(
+                "FINAL_K",
+                _config_registry.get_int("LANGGRAPH_FINAL_K", 10),
+            )
+        except Exception:
+            top_k = 10
+
+    repo = (repo or _config_registry.get_str("REPO", "agro")).strip()
+
+    results = search_routed_multi(
+        query=q,
+        repo=repo,
+        top_k=top_k,
+        # other routing / filter params also come from config
+    )
+
+    # Optionally run through LangGraph if configured
+    graph = _get_graph()
+    if graph is not None:
+        ...
+
+    return {"results": results, "top_k": top_k, "repo": repo}
+```
+
+The important part is that **retrieval behavior is still just configuration**:
+
+- You can change `FINAL_K`, BM25 weights, dense model names, reranker settings, etc. in `agro_config.json` or via the UI.
+- The RAG service doesn’t know about specific providers – it just calls into the retrieval stack, which is itself configured via Pydantic models.
+
+### Traces service
+
+`server/services/traces.py` is a small helper around the evaluation / tracing subsystem.
+
+It:
+
+- Lists recent trace files under `out/<repo>/traces/*.json`.
+- Returns the latest trace path via `server.tracing.latest_trace_path`.
+- Handles errors defensively and logs them instead of failing the whole API.
+
+The UI uses this to power the **Analytics → Tracing** and **Evaluation → Trace Viewer** panels.
 
 ---
 
-## Minimal from-scratch setup (manual path)
+## Web UI: how the services surface to you
 
-If you don’t want `make dev` and prefer to see each step, the short version is:
+The React frontend under `web/src/components` is organized around the same concepts as the backend services:
 
-1. Start infrastructure (Qdrant + Redis)
-2. Create Python venv and install `requirements-rag.txt` + `requirements.txt`
-3. Configure `.env` (or use the GUI later)
-4. Configure exclusions (`data/exclude_globs.txt`)
-5. Index a repo via `indexer/index_repo.py`
-6. Call `/answer` or open the GUI
+- **Admin** (`AdminSubtabs.tsx`, `GeneralSubtab.tsx`, `SecretsSubtab.tsx`, …)  
+  - Talks to `config_store` and the config registry.
+  - Lets you edit `agro_config.json` fields, manage profiles, and set secrets.
 
-??? collapsible "Show step-by-step shell example"
-    ```bash linenums="1"
-    # 1. Infra
-    mkdir -p /path/to/agro/{infra,data/qdrant,data/redis}
-    cd /path/to/agro
+- **Dashboard** (`DashboardSubtabs.tsx`, `IndexDisplayPanels.tsx`, `SystemStatus.tsx`, …)  
+  - Polls indexing status, Qdrant stats, and system health.
+  - Surfaces storage breakdown, indexing costs, and live logs.
 
-    # (Optional) use provided infra/docker-compose.yml instead of writing your own
-    cd infra
-    docker compose up -d
-    cd ..
+- **Chat** (`ChatInterface.tsx`, `ChatSettings.tsx`)  
+  - Calls the RAG service for answers.
+  - Exposes per‑thread model selection and retrieval settings.
 
-    # 2. Python environment
-    python3 -m venv .venv
-    . .venv/bin/activate
-    pip install -r requirements-rag.txt
-    pip install -r requirements.txt
+- **DevTools** (`Editor.tsx`, `Reranker.tsx`, `Testing.tsx`)  
+  - Wraps the editor service, reranker training endpoints, and evaluation APIs.
 
-    # 3. .env (or use GUI)
-    cat > .env << 'EOF'
-    QDRANT_URL=http://127.0.0.1:6333
-    REDIS_URL=redis://127.0.0.1:6379/0
-    REPO=agro
-    MQ_REWRITES=4
-    OLLAMA_URL=http://127.0.0.1:11434/api
-    GEN_MODEL=qwen3-coder:30b
-    EMBEDDING_TYPE=openai
-    EOF
+- **Infrastructure / MCP** (`InfrastructureSubtabs.tsx`, `MCPSubtab.tsx`)  
+  - Configures the MCP server so tools like Claude Code can talk directly to AGRO.
 
-    # 4. Exclusions
-    echo "**/.venv/**" >> data/exclude_globs.txt
-
-    # 5. Index
-    REPO=agro python indexer/index_repo.py
-
-    # 6. Run API (dev)
-    uvicorn server.asgi:create_app --factory --host 0.0.0.0 --port 8012
-    ```
+Most of the UI components are thin shells over the HTTP API. If you want to script something, you can usually just copy the network call the UI is making.
 
 ---
 
-## Where things live
+## MCP integration (high‑level)
 
-| Area                   | Purpose                                           | Path / File                             |
-|------------------------|---------------------------------------------------|-----------------------------------------|
-| Backend server         | FastAPI + LangGraph + routers                    | `server/`                               |
-| Retrieval              | Hybrid search, embeddings, AST chunking          | `retrieval/`                            |
-| Indexing               | Repo indexing, card building, stats              | `indexer/`                              |
-| Reranker               | Config + learning reranker training              | `reranker/`                             |
-| Web frontend           | React/Vite GUI                                   | `web/`                                  |
-| Legacy GUI             | Older JS dashboard                               | `gui/`                                  |
-| CLI                    | Terminal tools and chat                          | `cli/`                                  |
-| Eval system            | Evals, parameter tuning, inspection              | `eval/`                                 |
-| Infra                  | Docker Compose, infra YAMLs                      | `infra/`                                |
-| Data                   | Exclude globs, golden questions, etc.           | `data/`                                 |
-| MCP (Python)           | stdio + HTTP servers                             | `server/mcp/`                           |
-| MCP (Node)             | Node MCP server                                  | `node_mcp/`                             |
-| Config plumbing        | Pydantic models, config registry/store           | `server/models/`, `server/services/`    |
+AGRO exposes its RAG engine over the **Model Context Protocol (MCP)** so that external tools can:
+
+- Ask questions about your codebase.
+- Fetch files or symbols by reference.
+- Run searches without you copy‑pasting context.
+
+The MCP server is configured like everything else:
+
+- API keys and ports live in `.env`.
+- Behavior (which repos, which tools are exposed) lives in `agro_config.json`.
+
+The benefit is not “magic token savings” – it’s that tools like Claude Code can treat AGRO as a first‑class context provider instead of you trying to jam your entire repo into a single prompt.
+
+For details, see: `features/mcp.md`.
 
 ---
 
-## AGRO explains itself
+## You don’t have to use every knob
 
-AGRO is **indexed on itself**:
+AGRO ships with a lot of features:
 
-- The docs, source files, and config models are part of the RAG corpus
-- The GUI tooltips are long on purpose — they’re meant to be as good as an external explainer
-- The chat interface can answer:
-  - “What does `max_semantic_cards` do?”
-  - “How do I add a new embedding model?”
-  - “Where is the MCP HTTP server implemented?”
+- Hybrid retrieval (BM25 + dense + reranker).
+- Self‑learning cross‑encoder reranker.
+- Evaluation harness with golden datasets and regression tracking.
+- MCP server, editor backend, monitoring stack.
 
-!!! tip "Look for tooltips"
-    In the web UI, every non‑obvious setting has a tooltip.  
-    Many tooltips link directly to:
-    
-    - relevant code files
-    - doc pages
-    - external references (papers, API docs)
+You don’t need all of that to get value:
+
+- For a small repo, **BM25 only** often works well. You can disable dense embeddings and reranking entirely.
+- You can run **without Prometheus / Grafana** if you just want a local tool.
+- You can ignore MCP and just use the web UI or CLI.
+
+The point of the extra machinery is to be there when you need it – not to force you into a particular stack.
 
 ---
 
 ## Next steps
 
-Use these as your starting points:
+<div class="grid cards" markdown>
 
-- :material-book-open-page-variant: **Onboarding & setup**  
-  - [Setup & Infrastructure](./setup.md){ .md-button }  
-  - [Onboarding Wizard Walkthrough](./onboarding.md){ .md-button }
+-   :material-rocket-launch: **Get it running**  
+    Read the [Quickstart](getting-started/quickstart.md) and [Installation](getting-started/installation.md) guides.
 
-- :material-magnify-scan: **Retrieval & indexing**  
-  - [Hybrid Search & Retrieval](./retrieval.md){ .md-button }  
-  - [Indexing Code Repos](./indexing.md){ .md-button }
+-   :material-file-code: **Set up your environment**  
+    See [Environment configuration](getting-started/environment.md) and the [example `.env`](getting-started/environment-example.md) derived from how the services actually read config.
 
-- :material-cog-transfer: **MCP / Agent integration**  
-  - [MCP Quickstart (Claude / Codex)](./QUICKSTART_MCP.md){ .md-button }  
+-   :material-database-search: **Understand retrieval**  
+    Dive into [Retrieval Pipeline](features/rag.md) and [Self‑learning reranker](features/learning-reranker.md).
 
-- :material-brain: **Learning reranker**  
-  - [Learning Reranker Guide](./LEARNING_RERANKER.md){ .md-button }
+-   :material-clipboard-text-clock: **Add evaluation**  
+    Use [Evaluation & Regression Testing](features/evaluation.md) to keep changes honest.
 
-- :material-chart-line: **Evals, cost, and metrics**  
-  - [Performance & Cost](./PERFORMANCE_AND_COST.md){ .md-button }  
-  - [Grafana & Telemetry](./grafana.md){ .md-button }
+-   :material-code-braces: **Ask AGRO about itself**  
+    Once indexed, open the Chat tab and ask things like “Where is `ConfigRegistry` defined?” or “How do I add a new model provider?”.
 
-- :material-cog-outline: **Configuration & models**  
-  - [Settings UI & API](./API_GUI.md){ .md-button }  
-  - [Model Recommendations](./MODEL_RECOMMENDATIONS.md){ .md-button }
-
-If you’re unsure where to start, clone the repo, run `make dev`, open the GUI, and walk through the onboarding wizard. From there, you can decide how deep you want to go into the knobs and levers.
+</div>

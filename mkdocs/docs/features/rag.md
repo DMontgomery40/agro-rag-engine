@@ -1,551 +1,477 @@
+---
+Title: Retrieval Pipeline
+---
+
 # Retrieval Pipeline
 
-AGRO’s retrieval stack is intentionally layered:
+AGRO’s retrieval stack is intentionally layered and heavily configurable, but you don’t have to use every knob from day one. This page walks through what actually happens when you hit “Ask” in the UI or call the `/rag` endpoint, and how the different services and config surfaces tie together.
 
-1. :material-format-list-bulleted-type: **BM25 sparse search** over tokenized code chunks  
-2. :material-vector-line: **Dense vector search** in Qdrant  
-3. :material-function-variant: **Reciprocal Rank Fusion (RRF)** to merge sparse+dense  
-4. :material-graph-line-variant: **Cross‑encoder reranking** to clean up the final list  
-5. :material-tune: **Domain‑aware scoring bonuses** (paths, layers, keywords, filenames)
-
-The goal is “simple, working search” first, with enough hooks to tune behavior when you need it.
-
----
-
-## High‑level flow
+At a high level:
 
 ```mermaid
-flowchart TD
-    Q[User query] --> P["Preprocess query<br/>- stopword removal for BM25"]
-    Q --> VS["Vector embedding<br/>OpenAI / Voyage / local ST"]
-    P --> BM25["BM25 search<br/>bm25s index"]
-    VS --> QDRANT["Qdrant dense search<br/>collection: code_chunks_REPO"]
-
-    BM25 --> RRF["Reciprocal Rank Fusion<br/>(BM25 + dense)"]
-    QDRANT --> RRF
-
-    RRF --> RERANK["Cross-encoder reranking<br/>local HF or cloud (Cohere/Voyage)"]
-    RERANK --> BONUS["Scoring bonuses<br/>layer/path/keywords/filename"]
-    BONUS --> OUT[Ranked chunks]
-
-    OUT --> LG["LangGraph RAG graph<br/>retrieve_node()"]
-    LG --> GEN["Generation node<br/>LLM answer with citations"]
+flowchart LR
+  Q[User query] --> RQ[Request handler<br/>server/services/rag.py]
+  RQ --> CFG[Config registry<br/>.env + agro_config.json]
+  RQ --> HYB[Hybrid search<br/>retrieval/hybrid_search.py]
+  HYB -->|BM25| SP[BM25 index]
+  HYB -->|Dense| VE[Vector index (Qdrant)]
+  HYB --> KW[Discriminative keywords<br/>server/services/keywords.py]
+  HYB --> RR[Cross-encoder reranker]
+  RR --> RES[Ranked chunks]
+  RES --> LG[LangGraph app (optional)<br/>server/langgraph_app.py]
+  LG --> ANS[Final answer]
 ```
 
----
-
-## Components
-
-### Query preprocessing
-
-Location: `retrieval/hybrid_search.py`
-
-```python linenums="1" hl_lines="15-22"
-QUERY_STOPWORDS = {
-    'where', 'what', 'how', 'when', 'which', 'who', 'why', 'is', 'are',
-    'the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'of', 'with',
-    'does', 'do', 'can', 'could', 'would', 'should', 'please', 'help',
-}
+The rest of this page is “how it actually works in code,” not just a diagram.
 
 
-def preprocess_query(query: str) -> str:
-    """Remove stopwords from query for better BM25 matching."""
-    words = query.lower().split()
-    filtered = [w for w in words if w not in QUERY_STOPWORDS and len(w) > 1]
-    return ' '.join(filtered) if filtered else query
-```
+## 1. Entry points: HTTP and CLI
 
-BM25 is very literal. Question words like “how”, “where”, “please” just add noise.  
-For dense search, we keep the original query; only the BM25 leg uses `preprocess_query`.
+Most retrieval flows end up in `server/services/rag.py`.
 
-!!! note
-    If you rely heavily on natural‑language questions, this preprocessing is usually a win.  
-    If you want *exact* phrase matching (e.g. log lines), you can disable or customize this set.
+- HTTP: `/rag`, `/search`, `/chat` routes call into `do_search` / `search_routed_multi`.
+- CLI: `cli/chat_cli.py` and `cli/commands/chat.py` talk to the same HTTP API.
 
----
+```py title="server/services/rag.py" linenums="1" hl_lines="23-40 60-76"
+import logging
+import os
+from typing import Any, Dict, List, Optional
 
-## Sparse retrieval: BM25
+from fastapi import Request
+from fastapi.responses import JSONResponse
 
-Location: `retrieval/hybrid_search.py::bm25_search`
+from retrieval.hybrid_search import search_routed_multi
+from server.metrics import stage
+from server.telemetry import log_query_event
+from server.services.config_registry import get_config_registry
+import uuid
 
-```python linenums="1" hl_lines="17-43"
-def bm25_search(query: str, repo: str, k: int = 50) -> List[tuple]:
-    """BM25 sparse search. Returns [(chunk_id, score), ...]"""
-    idx_dir = os.path.join(out_dir(repo), 'bm25_index')
-    
-    # Load BM25 index
-    try:
-        retriever = bm25s.BM25.load(idx_dir)
-    except Exception as e:
-        print(f"[bm25] Failed to load index: {e}")
-        return []
-    
-    # Load tokenizer with vocab
-    stemmer = Stemmer('english')
-    tokenizer = Tokenizer(stemmer=stemmer, stopwords='en')
-    try:
-        tokenizer.load_vocab(idx_dir)
-    except:
+logger = logging.getLogger("agro.api")
+
+# Module-level config registry
+_config_registry = get_config_registry()
+
+_graph = None
+CFG = {"configurable": {"thread_id": "http"}}
+
+
+def _get_graph():
+    global _graph
+    if _graph is None:
+        try:
+            from server.langgraph_app import build_graph
+            _graph = build_graph()
+        except Exception as e:
+            logger.warning("build_graph failed: %s", e)
+            _graph = None
+    return _graph
+
+
+def do_search(q: str, repo: Optional[str], top_k: Optional[int], request: Optional[Request] = None) -> Dict[str, Any]:
+    if top_k is None:
+        try:
+            # Try FINAL_K first, fall back to LANGGRAPH_FINAL_K
+            top_k = _config_registry.get_int('FINAL_K', _config_registry.get_int('LANGGRAPH_FINAL_K', 10))
+        except Exception:
+            top_k = 10
+
+    repo = (repo or os.getenv('REPO', 'agro')).strip()
+
+    with stage("search"):
+        results = search_routed_multi(
+            query=q,
+            repo=repo,
+            final_k=top_k,
+        )
+
+    # Optional LangGraph orchestration
+    graph = _get_graph()
+    if graph is not None:
+        # ... build graph input, run, merge with results ...
         pass
-    
-    # Preprocess and tokenize query
-    processed = preprocess_query(query)
-    tokens = tokenizer.tokenize([processed])
-    
-    # Retrieve
-    try:
-        indices, scores = retriever.retrieve(tokens, k=k)
-        indices = indices[0].tolist() if hasattr(indices[0], 'tolist') else list(indices[0])
-        scores = scores[0].tolist() if hasattr(scores[0], 'tolist') else list(scores[0])
-    except Exception as e:
-        print(f"[bm25] Retrieve failed: {e}")
-        return []
-    
-    # Load ID mapping
-    id_map = {}
-    map_path = os.path.join(idx_dir, 'bm25_map.json')
-    try:
-        with open(map_path, 'r') as f:
-            id_map = json.load(f)
-    except:
-        pass
-    
-    # Map indices to chunk IDs
-    results = []
-    for idx, score in zip(indices, scores):
-        chunk_id = id_map.get(str(idx))
-        if chunk_id and score > 0:
-            results.append((chunk_id, float(score)))
-    
-    return results
+
+    log_query_event(q, repo, results)
+    return {"repo": repo, "results": results}
 ```
 
 Key points:
 
-- Uses [`bm25s`](https://github.com/xhluca/bm25s) + a persisted index under `out_dir(repo)/bm25_index`
-- Tokenization is stemmed English with a stored vocabulary per index
-- Returns a `(chunk_id, score)` list, where `chunk_id` is later resolved via `chunks.jsonl`
-
-!!! tip
-    For **small or medium codebases** (single repo, <~50k LOC), BM25 alone is often enough.  
-    It’s fast, deterministic, and handles symbol names and file paths very well.
-
----
-
-## Dense retrieval: Qdrant vectors
-
-Location: `retrieval/hybrid_search.py::vector_search`, `get_embedding`
-
-```python linenums="1" hl_lines="1-26 44-62"
-def get_embedding(text: str) -> List[float]:
-    """Get embedding for query text using config-specified model."""
-    if EMBEDDING_TYPE == 'local':
-        from sentence_transformers import SentenceTransformer
-        # Cache model - use config value
-        if not hasattr(get_embedding, '_model') or get_embedding._model_name != EMBEDDING_MODEL_LOCAL:
-            get_embedding._model = SentenceTransformer(EMBEDDING_MODEL_LOCAL)
-            get_embedding._model_name = EMBEDDING_MODEL_LOCAL
-        return get_embedding._model.encode([text], normalize_embeddings=True)[0].tolist()
-    
-    elif EMBEDDING_TYPE == 'voyage':
-        import voyageai
-        if not hasattr(get_embedding, '_client'):
-            get_embedding._client = voyageai.Client(api_key=os.getenv('VOYAGE_API_KEY'))
-        r = get_embedding._client.embed([text], model=VOYAGE_MODEL, input_type='query', output_dimension=512)
-        return r.embeddings[0]
-    
-    else:  # openai (default)
-        from openai import OpenAI
-        if not hasattr(get_embedding, '_client'):
-            get_embedding._client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-        r = get_embedding._client.embeddings.create(input=text, model=EMBEDDING_MODEL)
-        return r.data[0].embedding
+- `do_search` is the single place where `FINAL_K` / `LANGGRAPH_FINAL_K` are resolved from config.
+- The actual retrieval work is delegated to `retrieval.hybrid_search.search_routed_multi`.
+- LangGraph is *optional*: if `build_graph()` fails, AGRO falls back to “plain” hybrid search.
 
 
-def vector_search(query: str, repo: str, k: int = 50) -> List[tuple]:
-    """Qdrant vector search. Returns [(chunk_id, score), ...]"""
-    try:
-        embedding = get_embedding(query)
-    except Exception as e:
-        print(f"[vector] Embedding failed: {e}")
-        return []
-    
-    try:
-        qc = QdrantClient(url=QDRANT_URL)
-        coll = _cfg.get_str('COLLECTION_NAME', f'code_chunks_{repo}')
-        
-        response = qc.query_points(
-            collection_name=coll,
-            query=embedding,
-            using='dense',
-            limit=k,
-            with_payload=['id', 'file_path', 'start_line', 'end_line', 'language']
-        )
-        
-        results = []
-        points = getattr(response, 'points', response)
-        for p in points:
-            chunk_id = p.payload.get('id')
-            score = getattr(p, 'score', 0.0)
-            if chunk_id:
-                results.append((chunk_id, float(score)))
-        
-        return results
-    
-    except Exception as e:
-        print(f"[vector] Search failed: {e}")
-        return []
+## 2. Configuration: where retrieval knobs live
+
+Retrieval behavior is driven by the central configuration registry, not scattered `os.getenv` calls.
+
+```py title="server/services/config_registry.py" linenums="1" hl_lines="1-18 40-54"
+"""Configuration Registry for AGRO RAG Engine.
+
+This module provides a centralized, thread-safe configuration management system
+that merges settings from multiple sources with clear precedence rules:
+
+Precedence (highest to lowest):
+1. .env file (secrets and infrastructure overrides)
+2. agro_config.json (tunable RAG parameters)
+3. Pydantic defaults (fallback values)
+
+Key features:
+- Thread-safe load/reload with locking
+- Type-safe accessors (get_int, get_float, get_bool)
+- Pydantic validation for agro_config.json
+- Backward compatibility with os.getenv() patterns
+- Config source tracking (which file each value came from)
+"""
+
+import json
+import logging
+import os
+import threading
+from pathlib import Path
+from typing import Any, Dict, Optional
+
+from dotenv import load_dotenv
+from pydantic import ValidationError
+
+# Load .env FIRST before any os.environ access
+load_dotenv(override=True)
+
+from common.paths import repo_root
+from server.models.agro_config_model import AgroConfigRoot, AGRO_CONFIG_KEYS
+
+logger = logging.getLogger("agro.config")
+
+LEGACY_KEY_ALIASES = {
+    'MQ_REWRITES': 'MAX_QUERY_REWRITES',
+}
+
+# Infrastructure keys that MUST be overridable via environment variables.
+# The ...
 ```
 
-Embedding options (all configurable via `ConfigRegistry` / UI):
+Retrieval-related keys you’ll see referenced from the services layer:
 
-| Config key              | Meaning                                        | Example default                         |
-|-------------------------|-----------------------------------------------|-----------------------------------------|
-| `EMBEDDING_TYPE`        | `"openai"`, `"voyage"`, `"local"`             | `openai`                                |
-| `EMBEDDING_MODEL`       | OpenAI embedding model                        | `text-embedding-3-large`                |
-| `EMBEDDING_MODEL_LOCAL` | SentenceTransformers model id                 | `BAAI/bge-small-en-v1.5`                |
-| `VOYAGE_MODEL`          | Voyage embedding model                        | `voyage-code-3`                         |
-| `QDRANT_URL`            | Vector DB endpoint                            | `http://127.0.0.1:6333`                 |
-| `COLLECTION_NAME`       | Qdrant collection for this repo               | `code_chunks_${REPO}`                   |
+- `FINAL_K` / `LANGGRAPH_FINAL_K` – how many chunks to return after reranking.
+- `KEYWORDS_MAX_PER_REPO`, `KEYWORDS_MIN_FREQ`, `KEYWORDS_BOOST`, `KEYWORDS_AUTO_GENERATE`, `KEYWORDS_REFRESH_HOURS` – discriminative keyword extraction.
+- `EDITOR_*`, `INDEX_*` – control the embedded editor and indexer behavior.
 
-Dense search is good at:
+The registry is used everywhere via `get_config_registry()` and type-safe helpers:
 
-- **Semantic matches**: “How do we validate OAuth tokens?” → finds `AuthMiddleware` even if you never said “OAuth”.
-- **Cross‑file concepts**: similar logic in different services with different names.
-
----
-
-## Hybrid retrieval and RRF
-
-The hybrid search path (in `hybrid_search.py`, truncated in the snippet) does:
-
-1. Run **BM25** and **vector** search in parallel
-2. Fuse results using **Reciprocal Rank Fusion (RRF)**
-3. Optionally feed fused list into the **cross‑encoder** reranker
-
-### Why hybrid?
-
-BM25 and dense search fail in different ways:
-
-- BM25: great for **exact tokens** (`AuthToken`, `get_user_id`), bad at synonyms
-- Dense: good for **concepts**, bad at tiny literal differences (e.g. `path="/v2/users"` vs `"/v1/users"`)
-
-RRF keeps both perspectives and doesn’t require you to hand‑tune score scales.
-
-### RRF: Reciprocal Rank Fusion
-
-The core idea: don’t trust raw scores, trust **rank positions**.
-
-Given several ranked lists, each result gets a fusion score:
-
-```text
-RRF_score(doc) = Σ_over_lists 1 / (k + rank_i(doc))
+```py
+_config_registry = get_config_registry()
+_KEYWORDS_MAX_PER_REPO = _config_registry.get_int('KEYWORDS_MAX_PER_REPO', 50)
+_KEYWORDS_BOOST = _config_registry.get_float('KEYWORDS_BOOST', 1.3)
 ```
 
-Where:
+!!! note "You don’t have to know every key up front"
+    The web UI surfaces these settings with inline tooltips and links to docs / papers. You can start with defaults and only touch the knobs when you have a concrete retrieval failure to fix.
 
-- `rank_i(doc)` is the 1‑based rank of `doc` in list `i` (∞ if not present)
-- `k` is a small constant (e.g. 60) to dampen the effect of deep ranks
+For a deeper dive into the registry itself, see [Configuration](../configuration/settings.md).
 
-Intuition:
 
-- If a chunk is ranked **high by both BM25 and dense**, its RRF score is large.
-- If it’s high in only one list and absent/low in the other, it’s still considered, but lower.
+## 3. Indexing: how code becomes chunks
 
-In AGRO:
+Retrieval only works if the index is sane. Indexing is orchestrated by `server/services/indexing.py` and the standalone indexer (see `README-INDEXER.md`).
 
-- RRF is implemented in `rrf_fusion(results_list, k=60, weights=...)`
-- `results_list` is something like `[bm25_results, vector_results]`
-- You can pass **per‑list weights** to bias towards BM25 or vectors
+```py title="server/services/indexing.py" linenums="1" hl_lines="11-31"
+import asyncio
+import os
+import subprocess
+import sys
+import threading
+from typing import Any, Dict, List
 
-!!! tip
-    RRF is robust against weird score distributions.  
-    You don’t need to normalize BM25 vs cosine similarity – only ranks matter.
+from common.paths import repo_root
+from server.index_stats import get_index_stats as _get_index_stats
+from server.services.config_registry import get_config_registry
 
-### BM25 vs Vector weights
+# Module-level config registry
+_config_registry = get_config_registry()
 
-AGRO also exposes **scalar weights** for the two legs:
+_INDEX_STATUS: List[str] = []
+_INDEX_METADATA: Dict[str, Any] = {}
 
-```python linenums="1" hl_lines="1-2"
-BM25_WEIGHT = _cfg.get_float('BM25_WEIGHT', 0.3)
-VECTOR_WEIGHT = _cfg.get_float('VECTOR_WEIGHT', 0.7)
+
+def start(payload: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    global _INDEX_STATUS, _INDEX_METADATA
+    payload = payload or {}
+    _INDEX_STATUS = ["Indexing started..."]
+    _INDEX_METADATA = {}
+
+    def run_index():
+        global _INDEX_STATUS, _INDEX_METADATA
+        try:
+            repo = _config_registry.get_str("REPO", "agro")
+            _INDEX_STATUS.append(f"Indexing repository: {repo}")
+            # Ensure the indexer resolves repo paths correctly and uses the same interpreter
+            root = repo_root()
+            env = {**os.environ, "REPO": repo, "REPO_ROOT": str(root), "PYTHONPATH": str(root)}
+            if payload.get("enrich"):
+                env["ENRICH_CODE_CHUNKS"] = "true"
+                _INDEX_STATUS.append("Enriching chunks with su...")
+            # ... spawn indexer subprocess ...
+        except Exception as e:
+            _INDEX_STATUS.append(f"Indexing failed: {e}")
+
+    threading.Thread(target=run_index, daemon=True).start()
+    return {"status": _INDEX_STATUS}
 ```
 
-These are used when combining scores (depending on the exact fusion path in `hybrid_search`).  
-Common patterns:
+Important details:
 
-- **Code search / symbol‑heavy repos**: increase `BM25_WEIGHT` (e.g. `0.6`)  
-- **Heavily documented / prose‑heavy repos**: increase `VECTOR_WEIGHT`
+- Indexing runs in a background thread and spawns a separate Python process with the same interpreter and `PYTHONPATH`.
+- `REPO` and `REPO_ROOT` are passed through the environment so the indexer can resolve paths consistently.
+- `ENRICH_CODE_CHUNKS` toggles additional semantic enrichment of chunks (e.g. adding symbol context) without changing the core BM25 / dense indexing logic.
 
----
+The actual chunking, tokenization, and Qdrant collection layout live under `common/` and `retrieval/` and are covered in more detail in the main RAG design doc.
 
-## Cross‑encoder reranking
 
-Location: `retrieval/rerank.py`
+## 4. Discriminative keywords layer
 
-After RRF, we still have ~tens of candidates. The cross‑encoder reranker:
+On top of BM25 and dense vectors, AGRO maintains a small per-repo set of “discriminative keywords” that help with:
 
-1. Looks at the **full query + snippet pair** jointly
-2. Produces a **relevance score** per pair
-3. Sorts and optionally blends this score with the original hybrid score
+- Disambiguating overloaded terms in large monorepos.
+- Boosting domain-specific tokens that BM25 alone tends to underweight.
 
-This is fundamentally different from embeddings:
+This is handled by `server/services/keywords.py`.
 
-- Embeddings: encode query and doc **separately** → fast ANN search
-- Cross‑encoder: encode query + doc **together** → slower but much more precise
+```py title="server/services/keywords.py" linenums="1" hl_lines="7-26 28-38"
+import json
+import os
+import time
+from pathlib import Path
+from typing import Any, Dict, List
 
-### Configuration model
+from common.paths import repo_root
+from server.services.config_registry import get_config_registry
 
-There are two layers of config:
+# Module-level config caching
+_config_registry = get_config_registry()
+_KEYWORDS_MAX_PER_REPO = _config_registry.get_int('KEYWORDS_MAX_PER_REPO', 50)
+_KEYWORDS_MIN_FREQ = _config_registry.get_int('KEYWORDS_MIN_FREQ', 3)
+_KEYWORDS_BOOST = _config_registry.get_float('KEYWORDS_BOOST', 1.3)
+_KEYWORDS_AUTO_GENERATE = _config_registry.get_int('KEYWORDS_AUTO_GENERATE', 1)
+_KEYWORDS_REFRESH_HOURS = _config_registry.get_int('KEYWORDS_REFRESH_HOURS', 24)
 
-1. **Shared loader** (`reranker/config.py::RerankerSettings`) — env‑based
-2. **ConfigRegistry cache** (`retrieval/rerank.py::_load_cached_config`) — UI / API
 
-The shared loader consolidates older env families:
+def reload_config():
+    """Reload cached config values from registry."""
+    global _KEYWORDS_MAX_PER_REPO, _KEYWORDS_MIN_FREQ, _KEYWORDS_BOOST
+    global _KEYWORDS_AUTO_GENERATE, _KEYWORDS_REFRESH_HOURS
+    _KEYWORDS_MAX_PER_REPO = _config_registry.get_int('KEYWORDS_MAX_PER_REPO', 50)
+    _KEYWORDS_MIN_FREQ = _config_registry.get_int('KEYWORDS_MIN_FREQ', 3)
+    _KEYWORDS_BOOST = _config_registry.get_float('KEYWORDS_BOOST', 1.3)
+    _KEYWORDS_AUTO_GENERATE = _config_registry.get_int('KEYWORDS_AUTO_GENERATE', 1)
+    _KEYWORDS_REFRESH_HOURS = _config_registry.get_int('KEYWORDS_REFRESH_HOURS', 24)
 
-```python linenums="1" hl_lines="49-79"
-@dataclass(frozen=True)
-class RerankerSettings:
-    enabled: bool
-    backend: str  # "local" | "cohere" | "none"
-    local_model_dir: Optional[Path]
-    hf_model_id: str
-    alpha: float
-    top_n_local: int
-    top_n_cloud: int
-    batch_size: int
-    max_length: int
-    snippet_chars: int
-    cohere_model: str
-    cohere_api_key_present: bool
-    reload_on_change: bool
-    reload_period_sec: int
-    source_env: Dict[str, str]
-```
 
-The runtime resolver (`_resolve_env_strategy`) merges settings from:
+def _keywords_path(repo: str) -> Path:
+    return repo_root() / 'data' / 'discriminative_keywords.json'
 
-- `RERANKER_MODEL` / `AGRO_RERANKER_MODEL_PATH`
-- `AGRO_RERANKER_*` knobs
-- Backend selectors (`RERANK_BACKEND`, `RERANKER_BACKEND`, `RERANKER_ACTIVE`, `RERANKER_PROVIDER`)
 
-### Backends
-
-`retrieval/rerank.py::_resolve_env_strategy` normalizes backend/provider:
-
-```python linenums="1" hl_lines="1-20 57-82"
-_DISABLED_ALIASES = {'off', 'none', 'disabled'}
-_LOCALISH = {'local', 'hf'}
-
-def _normalize_backend(value: Optional[str]) -> str:
-    ...
-def _normalize_provider(value: Optional[str]) -> str:
-    ...
-def _normalize_active_choice(value: Optional[str]) -> str:
-    ...
-
-def _resolve_env_strategy() -> Dict[str, Any]:
-    """Resolve reranker backend/provider/model choices from cached config."""
-    _load_cached_config()
-    active_raw = _RERANKER_ACTIVE or _RERANKER_BACKEND or _RERANK_BACKEND or 'local'
-    provider_raw = _RERANKER_PROVIDER or _RERANKER_BACKEND or _RERANK_BACKEND
-    backend_raw = _RERANKER_BACKEND or _RERANK_BACKEND
-
-    active = _normalize_active_choice(active_raw)
-    provider_hint = _normalize_provider(provider_raw)
-    backend_hint = _normalize_backend(backend_raw)
-
+def get_keywords(repo: str) -> Dict[str, Any]:
+    # Load from disk, auto-regenerate if stale, etc.
     ...
 ```
 
-Supported modes:
+Why this is useful:
 
-- **Local** (`backend = "local"` / `"hf"`):
-  - Uses `rerankers.Reranker` under the hood
-  - Loads HF or local checkpoint (see `resolve_model_target`)
-- **Cohere** (`backend = "cohere"`):
-  - Uses Cohere’s rerank API
-  - Needs `COHERE_API_KEY`
-- **None** (`backend = "none"` or `AGRO_RERANKER_ENABLED=0`):
-  - Reranking disabled; we keep original ordering with a decaying fallback score
+- For small codebases, plain BM25 is often enough. You can set `KEYWORDS_AUTO_GENERATE=0` and ignore this entire layer.
+- For larger repos, this gives you a cheap, interpretable way to bias retrieval toward “interesting” tokens without retraining the dense model.
 
-Use `get_rerank_config_info()` to see the current snapshot:
-
-```python linenums="1" hl_lines="1-8"
-def get_rerank_config_info() -> Dict[str, Any]:
-    """Expose current rerank configuration snapshot."""
-    cfg = _resolve_env_strategy()
-    ...
-    return {
-        "backend": cfg.get("backend"),
-        "enabled": cfg.get("enabled"),
-        "model": model_name,
-        ...
-        "active": cfg.get("active"),
-        "provider": provider,
-        "cloud_model": cloud_model,
-    }
-```
-
-### How reranking works
-
-Core entrypoint: `rerank_results(query, results, top_k, trace)`
-
-=== "Local / HF"
-
-```python linenums="1" hl_lines="1-10 43-63"
-def get_reranker() -> Optional[Reranker]:
-    global _RERANKER, _RERANKER_MODEL_ID
-
-    settings = _load_settings_if_enabled()
-    if settings:
-        model_name = resolve_model_target(settings)
-        max_length = settings.max_length
-    else:
-        model_name = _RERANKER_MODEL or DEFAULT_MODEL
-        max_length = _AGRO_RERANKER_MAXLEN or 512
-
-    if _RERANKER is not None and _RERANKER_MODEL_ID != model_name:
-        _RERANKER = None
-
-    if _RERANKER is None:
-        if _maybe_init_hf_pipeline(model_name):
-            _RERANKER_MODEL_ID = model_name
-            return None
-        os.environ.setdefault('TRANSFORMERS_TRUST_REMOTE_CODE', '1')
-        _RERANKER = Reranker(model_name, model_type='cross-encoder', trust_remote_code=True, max_length=max_length)
-        _RERANKER_MODEL_ID = model_name
-    return _RERANKER
-```
-
-=== "Cohere (cloud)"
-
-```python linenums="1" hl_lines="40-73"
-if backend == 'cohere':
-    try:
-        import requests as req
-        import time
-        from server.api_tracker import track_api_call, APIProvider
-
-        api_key = os.getenv('COHERE_API_KEY')
-        ...
-        docs = []
-        for r in results:
-            file_ctx = r.get('file_path', '')
-            snip_len = snippet_cohere
-            code_snip = (r.get('code') or r.get('text') or '')[:snip_len]
-            docs.append(f"{file_ctx}\n\n{code_snip}")
-        rerank_top_n = min(len(docs), cohere_top_n)
-
-        start = time.time()
-        ...
-```
-
-!!! note
-    AGRO slices each document to `snippet_chars` before sending to the reranker.  
-    This is configurable via `RERANK_INPUT_SNIPPET_CHARS` (local) and `COHERE_RERANK_TOP_N` (cloud).
-
-### Score normalization and blending
-
-```python linenums="1" hl_lines="1-10 12-18"
-def _sigmoid(x: float) -> float:
-    try:
-        return 1.0 / (1.0 + math.exp(-float(x)))
-    except Exception:
-        return 0.0
-
-def _normalize(score: float, model_name: str) -> float:
-    if any(k in model_name.lower() for k in ['bge-reranker', 'cross-encoder', 'mxbai', 'jina-reranker']):
-        return _sigmoid(score)
-    return float(score)
-```
-
-For typical cross‑encoders (BGE, MS‑MARCO, etc.), logits are passed through a sigmoid to get `[0,1]` scores.  
-These can then be combined with the existing hybrid score using `alpha`:
-
-```text
-final_score = alpha * rerank_score + (1 - alpha) * hybrid_score
-```
-
-(Exact blending happens inside `rerank_results` after the cloud/local branch.)
-
-!!! tip
-    - Increase `AGRO_RERANKER_ALPHA` to **trust the cross‑encoder more**  
-    - Decrease it if you want to preserve more of the BM25/vector ordering
-
----
-
-## Domain‑aware scoring bonuses
-
-After reranking, AGRO applies a set of **multiplicative** bonuses to nudge results that are structurally “more likely” to be what you want.
-
-Location: `retrieval/hybrid_search.py::apply_scoring_bonuses` and helpers.
-
-```python linenums="1" hl_lines="1-22 24-40"
-def apply_scoring_bonuses(docs: List[Dict], query: str, repo: str) -> None:
-    """Apply all MULTIPLICATIVE scoring bonuses to documents.
-    
-    Modifies docs in-place, updating 'rerank_score' for each document.
-    """
-    intent = classify_query(query)
-    
-    for d in docs:
-        fp = d.get('file_path', '')
-        layer = (d.get('layer') or '').lower()
-        code = d.get('code', '')
-        
-        # Start with current score
-        score = float(d.get('rerank_score', 0.0) or d.get('hybrid_score', 0.0) or d.get('bm25_score', 0.0) or 1.0)
-        
-        # Ensure minimum base score for multiplicative math
-        if score <= 0:
-            score = 0.01
-        
-        # Apply all MULTIPLICATIVE bonuses
-        score *= get_layer_bonus(layer, intent)
-        score *= get_path_boost(fp, repo)
-        score *= get_keyword_boost(query, fp, code, repo)
-        score *= get_filename_boost(fp, query)
-        
-        # Store updated score
-        d['rerank_score'] = score
-    
-    # Re-sort by updated scores
-    docs.sort(key=lambda x: x.get('rerank_score', 0.0), reverse=True)
-```
-
-All of these are **multipliers** (>1 = boost, <1 = penalty). They don’t override the main ranking, they tilt it.
-
-### Query intent → layer bonuses
-
-```python linenums="1" hl_lines="1-33"
-def classify_query(query: str) -> str:
-    """Classify query intent to optimize scoring.
-    
-    Returns one of: 'gui', 'retrieval', 'indexer', 'eval', 'infra', or 'server'
-    """
-    ql = (query or '').lower()
-    ...
-    # Default to server (FastAPI, LangGraph, etc.)
-    return 'server'
+The keywords are stored in `data/discriminative_keywords.json` and can be inspected or edited directly if you want full control.
 
 
-def get_layer_bonus(layer: str, intent: str) -> float:
-    """Get MULTIPLICATIVE layer bonus based on query intent.
-    ...
-    DEFAULT_MATRIX = {
-        'gui':       {'gui': 1.2, 'web': 1.2, 'server': 0.9, 'retrieval': 0.8, 'indexer': 0.8},
-        'retrieval': {'retrieval': 1.3, 'server': 1.15, 'common': 1.1, 'web': 0.7, 'gui': 0.6},
-        'indexer':   {'indexer': 1.3, 'retrieval': 1.15, 'common': 1.1, 'web': 0.7, 'gui': 0.6},
-        ...
+## 5. Hybrid search and reranking
+
+The core retrieval logic lives in `retrieval/hybrid_search.py` (not shown here in full). Conceptually it does:
+
+1. Run BM25 over the code chunk index.
+2. Run dense vector search over the same chunks in Qdrant.
+3. Optionally incorporate discriminative keyword scores.
+4. Merge and normalize scores.
+5. Run a cross-encoder reranker over the top N candidates.
+
+The reranker is itself configurable and can be trained on your own feedback (see [Self-learning cross-encoder reranker](learning-reranker.md)).
+
+!!! note "Small repos: you can keep it simple"
+    If you’re indexing a small library or a single service, you can disable dense search and reranking entirely and just use BM25. In practice that often gives better latency and more predictable behavior until you have enough data to justify the extra complexity.
+
+
+## 6. LangGraph orchestration (optional)
+
+If `server/langgraph_app.py` is present and `build_graph()` succeeds, AGRO will:
+
+- Wrap the hybrid search results in a LangGraph workflow.
+- Let you plug in more complex reasoning / tool-calling / multi-step flows.
+- Still fall back to “plain” retrieval if the graph fails to build.
+
+This is intentionally defensive:
+
+- The retrieval stack should keep working even if your experimental graph code is broken.
+- The HTTP API contract (`/rag` returns `{"results": ...}`) doesn’t change.
+
+If you don’t care about LangGraph, you can ignore this entirely and just treat `do_search` as “BM25 + dense + reranker.”
+
+
+## 7. Editor and live context
+
+AGRO ships with an embedded editor / devtools panel that can:
+
+- Show you the current retrieval config for the active repo.
+- Let you tweak settings like `FINAL_K`, reranker weights, and keyword behavior.
+- Persist those changes back to `agro_config.json` via the config store.
+
+The editor service is wired through `server/services/editor.py`:
+
+```py title="server/services/editor.py" linenums="1" hl_lines="15-27"
+import json
+import logging
+from pathlib import Path
+from typing import Any, Dict
+from urllib.request import urlopen
+from urllib.error import URLError
+
+from server.services.config_registry import get_config_registry
+from server.models.agro_config_model import AGRO_CONFIG_KEYS
+
+logger = logging.getLogger("agro.api")
+
+
+def _settings_path() -> Path:
+    settings_dir = Path(__file__).parent.parent / "out" / "editor"
+    settings_dir.mkdir(parents=True, exist_ok=True)
+    return settings_dir / "settings.json"
+
+
+def _status_path() -> Path:
+    status_dir = Path(__file__).parent.parent / "out" / "editor"
+    status_dir.mkdir(parents=True, exist_ok=True)
+    return status_dir / "status.json"
+
+
+def read_settings() -> Dict[str, Any]:
+    """Read editor settings, preferring registry (agro_config.json/.env) with legacy file fallback."""
+    registry = get_config_registry()
+    settings = {
+        "port": registry.get_int("EDITOR_PORT", 4440),
+        "enabled": registry.get_bool("EDITOR_ENABLED", True),
+        "embed_enabled": registry.get_bool("EDITOR_EMBED_ENABLED", True),
+        "bind": registry.get_str("EDITOR_BIND", "local"),  # 'local' or 'public'
+        "image": registry.get_str("EDI...")
     }
     ...
 ```
 
-If you ask “How does hybrid search work?”, chunks labeled as `layer="retrieval"` get a boost, `layer="web"` gets a penalty, etc.
+This is mostly plumbing, but it’s worth knowing that:
 
-!!! note
-    The intent matrix is configurable via `LAYER_INTENT_MATRIX` in `agro_config.json`  
-    and exposed in the Web UI under **RAG → Retrieval → Layer Bonuses**.
+- Editor behavior is just more config in the same registry.
+- The UI reads from `/out/editor/settings.json` and `/out/editor/status.json`, which are generated here.
 
-### Path boosts
+
+## 8. Tracing and evaluation hooks
+
+Retrieval is instrumented for tracing and evaluation so you can debug bad answers.
+
+- `server/services/traces.py` exposes:
+  - `list_traces(repo)` – list recent trace files under `out/<repo>/traces`.
+  - `latest_trace(repo)` – return the most recent trace path.
+- The evaluation pipeline under `features/evaluation.md` can snapshot config and compare different retrieval settings.
+
+```py title="server/services/traces.py" linenums="1" hl_lines="5-24 27-38"
+import json
+import logging
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from common.config_loader import out_dir
+from server.tracing import latest_trace_path
+
+logger = logging.getLogger("agro.api")
+
+
+def list_traces(repo: Optional[str]) -> Dict[str, Any]:
+    r = (repo or __import__('os').getenv('REPO', 'agro')).strip()
+    base = Path(out_dir(r)) / 'traces'
+    files: List[Dict[str, Any]] = []
+    try:
+        if base.exists():
+            for p in sorted([x for x in base.glob('*.json') if x.is_file()], key=lambda x: x.stat().st_mtime, reverse=True)[:50]:
+                files.append({
+                    'path': str(p),
+                    'name': p.name,
+                    'mtime': __import__('datetime').datetime.fromtimestamp(p.stat().st_mtime).isoformat(),
+                })
+    except Exception as e:
+        logger.exception("Failed to list traces: %s", e)
+    return {'repo': r, 'files': files}
+
+
+def latest_trace(repo: Optional[str]) -> Dict[str, Any]:
+    r = (repo or __import__('os').getenv('REPO', 'agro')).strip()
+    try:
+        p = latest_trace_path(r)
+    except Exception as e:
+        logger.exception("latest_trace_path failed: %s", e)
+    ...
+```
+
+The web UI’s **Analytics → Tracing** and **Evaluation** tabs are thin wrappers around these endpoints.
+
+
+## 9. Putting it together: typical retrieval flow
+
+Here’s the full flow for a single `/rag` call, with the pieces from above:
+
+```mermaid
+sequenceDiagram
+  participant User
+  participant WebUI as Web UI / CLI
+  participant API as FastAPI / rag.py
+  participant Hybrid as hybrid_search
+  participant Qdrant
+  participant BM25
+  participant Rerank as Cross-encoder
+
+  User->>WebUI: Ask question
+  WebUI->>API: POST /rag { q, repo, top_k? }
+  API->>API: do_search()
+  API->>CFG: resolve FINAL_K, REPO
+  API->>Hybrid: search_routed_multi(query, repo, final_k)
+  Hybrid->>BM25: sparse search
+  Hybrid->>Qdrant: dense vector search
+  Hybrid->>Hybrid: merge + keyword boosts
+  Hybrid->>Rerank: rerank top N candidates
+  Rerank-->>Hybrid: scored chunks
+  Hybrid-->>API: final_k chunks
+  API->>LangGraph: (optional) run graph
+  API-->>WebUI: answer + contexts
+  WebUI-->>User: rendered answer + citations
+```
+
+
+## 10. When to tune what
+
+You don’t need to memorize every config key. A practical tuning order:
+
+1. **Indexing sanity**
+   - Make sure the right files are included / excluded.
+   - Check chunk sizes and language detection in the indexer logs.
+
+2. **BM25 only**
+   - Disable dense search and reranking.
+   - Fix obvious misses by adjusting tokenization / stopwords.
+
+3. **Enable dense + reranker**
+   - Turn on dense search in `agro_config.json`.
+   - Start with a small reranker `FINAL_K` (e.g. 10–20) to keep latency reasonable.
+
+4. **Discriminative keywords**
+   - Enable `KEYWORDS_AUTO_GENERATE` for large repos.
+   - Inspect `data/discriminative_keywords.json` and adjust thresholds.
+
+5. **LangGraph / advanced orchestration**
+   - Only once retrieval itself is solid.
+
+If you’re not sure what a parameter does, hover it in the UI or ask AGRO itself in the **Chat** tab – the codebase is indexed into its own RAG engine, and the tooltips link back to the relevant docs and papers.

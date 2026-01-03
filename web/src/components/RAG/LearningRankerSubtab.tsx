@@ -19,6 +19,7 @@
 
 import { useState, useEffect } from 'react';
 import { useConfigField, useNotification } from '@/hooks';
+import { PromptLink } from '@/components/ui/PromptLink';
 
 /**
  * Reranker status object returned from backend
@@ -1241,6 +1242,12 @@ export function LearningRankerSubtab() {
               <option value="append">Append</option>
             </select>
           </div>
+        </div>
+
+        {/* Quick links to edit related system prompts */}
+        <div className="related-prompts">
+          <span className="related-prompts-label">Related Prompts:</span>
+          <PromptLink promptKey="eval_analysis">Eval Analysis Prompt</PromptLink>
         </div>
       </div>
 

@@ -51,11 +51,11 @@ from sentence_transformers import CrossEncoder
 model = CrossEncoder("cross_encoder_model_id")
 # Get scores for pairs of texts
 pairs = [
+    ['Where is out_dir imported from?', "import os\nimport json\nimport time\nimport uuid\nfrom pathlib import Path\nfrom typing import Any, Dict, List, Optional\nfrom contextvars import ContextVar\n\nfrom common.config_loader import out_dir\nfrom server.services.config_registry import get_config_registry\n\n# Module-level config caching\n_config_registry = get_config_registry()\n_TRACING_ENABLED = _config_registry.get_int('TRACING_ENABLED', 1)\n_TRACE_SAMPLING_RATE = _config_registry.get_float('TRACE_SAMPLING_RATE', 1.0)\n_LOG_LEVEL = _config_regist"],
+    ['How does the search combine sparse and dense retrieval?', '"""Clean Hybrid Search - v2 Rewrite\n\nSimple, working search that:\n1. BM25 sparse search\n2. Qdrant vector search  \n3. RRF fusion\n4. Cross-encoder reranking\n5. Returns results\n\nNo bells and whistles - just working search.\n"""\n\nimport os\nimport json\nfrom pathlib import Path\nfrom typing import List, Dict, Optional\nfrom collections import defaultdict\n\n# BM25\nimport bm25s\nfrom bm25s.tokenization import Tokenizer\nfrom Stemmer import Stemmer\n\n# Qdrant\nfrom qdrant_client import QdrantClient, models\n\n# Lo'],
+    ['How does the search combine sparse and dense retrieval?', 'bm25_search(query: str, repo: str, k: int = 50) -> List[tuple]:\n    """BM25 sparse search. Returns [(chunk_id, score), ...]"""\n    idx_dir = os.path.join(out_dir(repo), \'bm25_index\')\n    \n    # Load BM25 index\n    try:\n        retriever = bm25s.BM25.load(idx_dir)\n    except Exception as e:\n        print(f"[bm25] Failed to load index: {e}")\n        return []\n    \n    # Load tokenizer with vocab\n    stemmer = Stemmer(\'english\')\n    tokenizer = Tokenizer(stemmer=stemmer, stopwords=\'en\')\n    try:\n  '],
+    ["What's the architecture of the RAG pipeline?", "_maybe_init_hf_pipeline(model_name: str) -> Optional[Any]:\n    global _HF_PIPE\n    if _HF_PIPE is not None:\n        return _HF_PIPE\n    try:\n        if 'jinaai/jina-reranker' in model_name.lower():\n            os.environ.setdefault('TRANSFORMERS_TRUST_REMOTE_CODE', '1')\n            from transformers import pipeline\n            _HF_PIPE = pipeline(\n                task='text-classification',\n                model=model_name,\n                tokenizer=model_name,\n                trust_remote_code="],
     ['Where is SentenceTransformer used?', '_normalize_models(data: Dict[str, Any]) -> Dict[str, Any]:\n    try:\n        cfg = modelsConfig.model_validate(data)\n    except ValidationError as exc:\n        logger.warning("models.json validation failed, using defaults: %s", exc)\n        cfg = modelsConfig.model_validate(_default_models())\n    except Exception as exc:\n        logger.warning("models.json load error, using defaults: %s", exc)\n        cfg = modelsConfig.model_validate(_default_models())\n\n    out: list[Dict[str, Any]] = []\n    for'],
-    ['Where is QdrantClient used?', "import { defineConfig, devices } from '@playwright/test';\n\nexport default defineConfig({\n  testDir: './tests',\n  testMatch: '**/retrieval_subtab_last50_smoke.spec.ts',\n  timeout: 30 * 1000,\n  expect: { timeout: 5000 },\n  fullyParallel: false,\n  forbidOnly: !!process.env.CI,\n  retries: 0,\n  workers: 1,\n  reporter: [['list']],\n  use: {\n    baseURL: 'http://127.0.0.1:5173',\n    trace: 'retain-on-failure',\n    screenshot: 'only-on-failure',\n    video: 'off',\n  },\n  projects: [\n    {\n      name: 'chr"],
-    ['How does the search combine sparse and dense retrieval?', '"""Retrieval package (hybrid search, reranking, chunking, caches).\n\nModules here are the canonical locations. Root-level shims import from here\nto preserve backward compatibility while we reorganize folders.\n"""\n\n'],
-    ['Where is out_dir imported from?', 'import os\nfrom fastapi import APIRouter\nfrom server.services.config_registry import get_config_registry\nfrom .learning_reranker import get_reranker, get_reranker_info\nfrom retrieval.rerank import get_rerank_config_info\n\nrouter = APIRouter()\n_config_registry = get_config_registry()\n\n@router.get("/api/reranker/info")'],
-    ['Where is QdrantClient used?', '#!/usr/bin/env python3\n"""Evaluate reranker performance using MRR and Hit@K metrics.\n\nLoads triplets and computes ranking metrics for the trained model.\n"""\nimport json\nimport argparse\nfrom pathlib import Path\nfrom typing import List, Dict, Any\nfrom sentence_transformers import CrossEncoder\nimport numpy as np\n'],
 ]
 scores = model.predict(pairs)
 print(scores.shape)
@@ -63,13 +63,13 @@ print(scores.shape)
 
 # Or rank different texts based on similarity to a single text
 ranks = model.rank(
-    'Where is SentenceTransformer used?',
+    'Where is out_dir imported from?',
     [
+        "import os\nimport json\nimport time\nimport uuid\nfrom pathlib import Path\nfrom typing import Any, Dict, List, Optional\nfrom contextvars import ContextVar\n\nfrom common.config_loader import out_dir\nfrom server.services.config_registry import get_config_registry\n\n# Module-level config caching\n_config_registry = get_config_registry()\n_TRACING_ENABLED = _config_registry.get_int('TRACING_ENABLED', 1)\n_TRACE_SAMPLING_RATE = _config_registry.get_float('TRACE_SAMPLING_RATE', 1.0)\n_LOG_LEVEL = _config_regist",
+        '"""Clean Hybrid Search - v2 Rewrite\n\nSimple, working search that:\n1. BM25 sparse search\n2. Qdrant vector search  \n3. RRF fusion\n4. Cross-encoder reranking\n5. Returns results\n\nNo bells and whistles - just working search.\n"""\n\nimport os\nimport json\nfrom pathlib import Path\nfrom typing import List, Dict, Optional\nfrom collections import defaultdict\n\n# BM25\nimport bm25s\nfrom bm25s.tokenization import Tokenizer\nfrom Stemmer import Stemmer\n\n# Qdrant\nfrom qdrant_client import QdrantClient, models\n\n# Lo',
+        'bm25_search(query: str, repo: str, k: int = 50) -> List[tuple]:\n    """BM25 sparse search. Returns [(chunk_id, score), ...]"""\n    idx_dir = os.path.join(out_dir(repo), \'bm25_index\')\n    \n    # Load BM25 index\n    try:\n        retriever = bm25s.BM25.load(idx_dir)\n    except Exception as e:\n        print(f"[bm25] Failed to load index: {e}")\n        return []\n    \n    # Load tokenizer with vocab\n    stemmer = Stemmer(\'english\')\n    tokenizer = Tokenizer(stemmer=stemmer, stopwords=\'en\')\n    try:\n  ',
+        "_maybe_init_hf_pipeline(model_name: str) -> Optional[Any]:\n    global _HF_PIPE\n    if _HF_PIPE is not None:\n        return _HF_PIPE\n    try:\n        if 'jinaai/jina-reranker' in model_name.lower():\n            os.environ.setdefault('TRANSFORMERS_TRUST_REMOTE_CODE', '1')\n            from transformers import pipeline\n            _HF_PIPE = pipeline(\n                task='text-classification',\n                model=model_name,\n                tokenizer=model_name,\n                trust_remote_code=",
         '_normalize_models(data: Dict[str, Any]) -> Dict[str, Any]:\n    try:\n        cfg = modelsConfig.model_validate(data)\n    except ValidationError as exc:\n        logger.warning("models.json validation failed, using defaults: %s", exc)\n        cfg = modelsConfig.model_validate(_default_models())\n    except Exception as exc:\n        logger.warning("models.json load error, using defaults: %s", exc)\n        cfg = modelsConfig.model_validate(_default_models())\n\n    out: list[Dict[str, Any]] = []\n    for',
-        "import { defineConfig, devices } from '@playwright/test';\n\nexport default defineConfig({\n  testDir: './tests',\n  testMatch: '**/retrieval_subtab_last50_smoke.spec.ts',\n  timeout: 30 * 1000,\n  expect: { timeout: 5000 },\n  fullyParallel: false,\n  forbidOnly: !!process.env.CI,\n  retries: 0,\n  workers: 1,\n  reporter: [['list']],\n  use: {\n    baseURL: 'http://127.0.0.1:5173',\n    trace: 'retain-on-failure',\n    screenshot: 'only-on-failure',\n    video: 'off',\n  },\n  projects: [\n    {\n      name: 'chr",
-        '"""Retrieval package (hybrid search, reranking, chunking, caches).\n\nModules here are the canonical locations. Root-level shims import from here\nto preserve backward compatibility while we reorganize folders.\n"""\n\n',
-        'import os\nfrom fastapi import APIRouter\nfrom server.services.config_registry import get_config_registry\nfrom .learning_reranker import get_reranker, get_reranker_info\nfrom retrieval.rerank import get_rerank_config_info\n\nrouter = APIRouter()\n_config_registry = get_config_registry()\n\n@router.get("/api/reranker/info")',
-        '#!/usr/bin/env python3\n"""Evaluate reranker performance using MRR and Hit@K metrics.\n\nLoads triplets and computes ranking metrics for the trained model.\n"""\nimport json\nimport argparse\nfrom pathlib import Path\nfrom typing import List, Dict, Any\nfrom sentence_transformers import CrossEncoder\nimport numpy as np\n',
     ]
 )
 # [{'corpus_id': ..., 'score': ...}, {'corpus_id': ..., 'score': ...}, ...]
@@ -120,16 +120,16 @@ You can finetune this model on your own dataset.
 * Size: 100 training samples
 * Columns: <code>sentence_0</code>, <code>sentence_1</code>, and <code>label</code>
 * Approximate statistics based on the first 100 samples:
-  |         | sentence_0                                                                                     | sentence_1                                                                                        | label                                                         |
-  |:--------|:-----------------------------------------------------------------------------------------------|:--------------------------------------------------------------------------------------------------|:--------------------------------------------------------------|
-  | type    | string                                                                                         | string                                                                                            | float                                                         |
-  | details | <ul><li>min: 27 characters</li><li>mean: 38.15 characters</li><li>max: 59 characters</li></ul> | <ul><li>min: 213 characters</li><li>mean: 482.81 characters</li><li>max: 500 characters</li></ul> | <ul><li>min: 0.0</li><li>mean: 0.2</li><li>max: 1.0</li></ul> |
+  |         | sentence_0                                                                                    | sentence_1                                                                                       | label                                                         |
+  |:--------|:----------------------------------------------------------------------------------------------|:-------------------------------------------------------------------------------------------------|:--------------------------------------------------------------|
+  | type    | string                                                                                        | string                                                                                           | float                                                         |
+  | details | <ul><li>min: 27 characters</li><li>mean: 38.3 characters</li><li>max: 59 characters</li></ul> | <ul><li>min: 180 characters</li><li>mean: 476.6 characters</li><li>max: 500 characters</li></ul> | <ul><li>min: 0.0</li><li>mean: 0.2</li><li>max: 1.0</li></ul> |
 * Samples:
-  | sentence_0                                                           | sentence_1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | label            |
-  |:---------------------------------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-----------------|
-  | <code>Where is SentenceTransformer used?</code>                      | <code>_normalize_models(data: Dict[str, Any]) -> Dict[str, Any]:<br>    try:<br>        cfg = modelsConfig.model_validate(data)<br>    except ValidationError as exc:<br>        logger.warning("models.json validation failed, using defaults: %s", exc)<br>        cfg = modelsConfig.model_validate(_default_models())<br>    except Exception as exc:<br>        logger.warning("models.json load error, using defaults: %s", exc)<br>        cfg = modelsConfig.model_validate(_default_models())<br><br>    out: list[Dict[str, Any]] = []<br>    for</code>                            | <code>0.0</code> |
-  | <code>Where is QdrantClient used?</code>                             | <code>import { defineConfig, devices } from '@playwright/test';<br><br>export default defineConfig({<br>  testDir: './tests',<br>  testMatch: '**/retrieval_subtab_last50_smoke.spec.ts',<br>  timeout: 30 * 1000,<br>  expect: { timeout: 5000 },<br>  fullyParallel: false,<br>  forbidOnly: !!process.env.CI,<br>  retries: 0,<br>  workers: 1,<br>  reporter: [['list']],<br>  use: {<br>    baseURL: 'http://127.0.0.1:5173',<br>    trace: 'retain-on-failure',<br>    screenshot: 'only-on-failure',<br>    video: 'off',<br>  },<br>  projects: [<br>    {<br>      name: 'chr</code> | <code>0.0</code> |
-  | <code>How does the search combine sparse and dense retrieval?</code> | <code>"""Retrieval package (hybrid search, reranking, chunking, caches).<br><br>Modules here are the canonical locations. Root-level shims import from here<br>to preserve backward compatibility while we reorganize folders.<br>"""<br><br></code>                                                                                                                                                                                                                                                                                                                                          | <code>0.0</code> |
+  | sentence_0                                                           | sentence_1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | label            |
+  |:---------------------------------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-----------------|
+  | <code>Where is out_dir imported from?</code>                         | <code>import os<br>import json<br>import time<br>import uuid<br>from pathlib import Path<br>from typing import Any, Dict, List, Optional<br>from contextvars import ContextVar<br><br>from common.config_loader import out_dir<br>from server.services.config_registry import get_config_registry<br><br># Module-level config caching<br>_config_registry = get_config_registry()<br>_TRACING_ENABLED = _config_registry.get_int('TRACING_ENABLED', 1)<br>_TRACE_SAMPLING_RATE = _config_registry.get_float('TRACE_SAMPLING_RATE', 1.0)<br>_LOG_LEVEL = _config_regist</code>                                  | <code>0.0</code> |
+  | <code>How does the search combine sparse and dense retrieval?</code> | <code>"""Clean Hybrid Search - v2 Rewrite<br><br>Simple, working search that:<br>1. BM25 sparse search<br>2. Qdrant vector search  <br>3. RRF fusion<br>4. Cross-encoder reranking<br>5. Returns results<br><br>No bells and whistles - just working search.<br>"""<br><br>import os<br>import json<br>from pathlib import Path<br>from typing import List, Dict, Optional<br>from collections import defaultdict<br><br># BM25<br>import bm25s<br>from bm25s.tokenization import Tokenizer<br>from Stemmer import Stemmer<br><br># Qdrant<br>from qdrant_client import QdrantClient, models<br><br># Lo</code> | <code>0.0</code> |
+  | <code>How does the search combine sparse and dense retrieval?</code> | <code>bm25_search(query: str, repo: str, k: int = 50) -> List[tuple]:<br>    """BM25 sparse search. Returns [(chunk_id, score), ...]"""<br>    idx_dir = os.path.join(out_dir(repo), 'bm25_index')<br>    <br>    # Load BM25 index<br>    try:<br>        retriever = bm25s.BM25.load(idx_dir)<br>    except Exception as e:<br>        print(f"[bm25] Failed to load index: {e}")<br>        return []<br>    <br>    # Load tokenizer with vocab<br>    stemmer = Stemmer('english')<br>    tokenizer = Tokenizer(stemmer=stemmer, stopwords='en')<br>    try:<br>  </code>                                  | <code>1.0</code> |
 * Loss: [<code>BinaryCrossEntropyLoss</code>](https://sbert.net/docs/package_reference/cross_encoder/losses.html#binarycrossentropyloss) with these parameters:
   ```json
   {
@@ -186,6 +186,7 @@ You can finetune this model on your own dataset.
 - `seed`: 42
 - `data_seed`: None
 - `jit_mode_eval`: False
+- `use_ipex`: False
 - `bf16`: False
 - `fp16`: False
 - `fp16_opt_level`: O1
@@ -212,16 +213,13 @@ You can finetune this model on your own dataset.
 - `fsdp_config`: {'min_num_params': 0, 'xla': False, 'xla_fsdp_v2': False, 'xla_fsdp_grad_ckpt': False}
 - `fsdp_transformer_layer_cls_to_wrap`: None
 - `accelerator_config`: {'split_batches': False, 'dispatch_batches': None, 'even_batches': True, 'use_seedable_sampler': True, 'non_blocking': False, 'gradient_accumulation_kwargs': None}
-- `parallelism_config`: None
 - `deepspeed`: None
 - `label_smoothing_factor`: 0.0
-- `optim`: adamw_torch_fused
+- `optim`: adamw_torch
 - `optim_args`: None
 - `adafactor`: False
 - `group_by_length`: False
 - `length_column_name`: length
-- `project`: huggingface
-- `trackio_space_id`: trackio
 - `ddp_find_unused_parameters`: None
 - `ddp_bucket_cap_mb`: None
 - `ddp_broadcast_buffers`: False
@@ -233,9 +231,8 @@ You can finetune this model on your own dataset.
 - `resume_from_checkpoint`: None
 - `hub_model_id`: None
 - `hub_strategy`: every_save
-- `hub_private_repo`: None
+- `hub_private_repo`: False
 - `hub_always_push`: False
-- `hub_revision`: None
 - `gradient_checkpointing`: False
 - `gradient_checkpointing_kwargs`: None
 - `include_inputs_for_metrics`: False
@@ -253,16 +250,17 @@ You can finetune this model on your own dataset.
 - `torch_compile`: False
 - `torch_compile_backend`: None
 - `torch_compile_mode`: None
+- `dispatch_batches`: None
+- `split_batches`: None
 - `include_tokens_per_second`: False
-- `include_num_input_tokens_seen`: no
+- `include_num_input_tokens_seen`: False
 - `neftune_noise_alpha`: None
 - `optim_target_modules`: None
 - `batch_eval_metrics`: False
 - `eval_on_start`: False
 - `use_liger_kernel`: False
-- `liger_kernel_config`: None
 - `eval_use_gather_object`: False
-- `average_tokens_across_devices`: True
+- `average_tokens_across_devices`: False
 - `prompts`: None
 - `batch_sampler`: batch_sampler
 - `multi_dataset_batch_sampler`: proportional
@@ -274,11 +272,11 @@ You can finetune this model on your own dataset.
 ### Framework Versions
 - Python: 3.11.7
 - Sentence Transformers: 5.1.1
-- Transformers: 4.57.0
-- PyTorch: 2.8.0
+- Transformers: 4.46.3
+- PyTorch: 2.9.1
 - Accelerate: 1.10.1
 - Datasets: 4.2.0
-- Tokenizers: 0.22.1
+- Tokenizers: 0.20.3
 
 ## Citation
 

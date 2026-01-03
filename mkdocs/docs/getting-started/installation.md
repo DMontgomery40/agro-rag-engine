@@ -1,749 +1,432 @@
+---
+title: Installation & Setup
+---
+
 # Installation & Setup
 
 This page walks through installing AGRO from scratch, what each component does, and common issues you might hit along the way.
 
-AGRO is designed to be *local‑first* but not “everything in one binary”. There’s a small set of services (Qdrant, Redis, optional observability stack), plus a Python app that runs the API, GUI, and MCP servers.
+AGRO is designed to be *local‑first* but not “everything in one binary.” There’s a Python backend, a React/TypeScript web UI, optional monitoring stack, and (if you want it) MCP / LSP‑style integrations.
 
----
+You don’t have to run all of it. For a single‑repo, “just answer questions about this codebase” setup, you can keep things minimal.
 
-## System requirements
 
-AGRO is a RAG engine for **codebases**, not a toy demo. You *can* run it on a laptop, but you should know what you’re signing up for.
+## 1. Prerequisites
 
-### Host OS
+You’ll need:
 
-- Linux (x86_64) – primary target, best tested
-- macOS (Apple Silicon or Intel)
-- Windows via WSL2 (Ubuntu/Debian recommended)
+- Python 3.10+ (CPython)
+- `pip` and `venv` (or your preferred environment manager)
+- Git
+- Node.js 18+ (only if you want to build the web UI yourself)
+- Docker (optional, but recommended if you want monitoring / Qdrant in containers)
 
-!!! note
-    Native Windows without WSL is not a priority. You *might* get it working, but most scripts assume a POSIX shell and Docker / Compose that behave like Linux.
+AGRO is just Python + FastAPI + a React frontend. There’s no custom C++ runtime or opaque binary.
 
-### Python
 
-- **Python 3.10–3.12** recommended
-- Python **3.13** works, but:
-  - `tree_sitter_languages` is conditionally skipped
-  - You’ll fall back to regex-based chunking instead of tree-sitter
-
-AGRO uses `pydantic>=2.11` and modern LangChain/LangGraph, so older Python versions are not supported.
-
-!!! tip
-    If you’re on macOS with both system Python and `brew` Python, use the `brew` one and create a venv explicitly:
-    ```bash
-    /usr/local/bin/python3.12 -m venv .venv
-    ```
-
-### RAM & CPU
-
-This depends entirely on what models you use.
-
-| Use case | Typical setup | RAM guidance | Notes |
-|---------:|---------------|-------------|-------|
-| Basic RAG over small repo | BM25 + small local embedding model or OpenAI embeddings | 8–16 GB | Fine on a laptop; no GPU required |
-| Medium codebase, local 7B model via Ollama | Qdrant + Redis + Ollama 7B model | 16–32 GB | Good balance of speed and quality |
-| Large mono-repo + 30B local model | Qdrant + Redis + Ollama 30B / custom server | 32+ GB | This is where you should expect to tune and monitor resources |
-
-AGRO itself (FastAPI, LangGraph, Qdrant, Redis) is relatively lightweight; the heavy part is whatever models you choose.
-
-### Disk
-
-Very rough guidance:
-
-- Base repo: a few hundred MB for Python deps + Qdrant + Redis metadata
-- Per indexed repo:
-  - **BM25** index: tens to hundreds of MB depending on size
-  - **Vector index**: roughly `num_chunks * vector_dim * 4 bytes` (for `float32`)  
-    plus overhead; quantization (int4) helps a lot.
-
-!!! tip
-    AGRO includes storage estimation in the GUI (see the *Cost / Storage* panels). Use that instead of guessing when you start indexing large repos.
-
-    <figure markdown="span">
-      ![Storage Calculator](../assets/images/storage-calculator.png){ width="100%" }
-      <figcaption>The Storage Calculator Suite helps you estimate RAM/disk usage based on your repo size and model choices.</figcaption>
-    </figure>
-
----
-
-## High-level architecture
-
-AGRO splits responsibilities across a few containers and a Python app.
-
-```mermaid
-flowchart LR
-    subgraph Host
-        subgraph Docker
-            Q[Qdrant<br/>Vectors]
-            R[Redis<br/>Checkpoints + cache]
-            P[Prometheus<br/>Metrics]
-            G[Grafana<br/>Dashboards]
-            L[Loki<br/>Logs]
-            A[Alertmanager<br/>Alerts]
-        end
-
-        subgraph PythonApp["Python App"]
-            API[FastAPI + LangGraph<br/>server/app.py]
-            MCP_STDIO[MCP server stdio<br/>server/mcp/server.py]
-            MCP_HTTP[MCP server HTTP<br/>server/mcp/http.py]
-        end
-    end
-
-    API --> Q
-    API --> R
-    MCP_STDIO --> API
-    MCP_HTTP --> API
-    P --> G
-    L --> G
-    API --> P
-    API --> L
-```
-
-### Core containers
-
-| Service | Role | Why AGRO uses it |
-|--------|------|------------------|
-| **Qdrant** | Vector database | Stores dense embeddings for your code chunks and “cards”. Handles vector search, filtering, and payloads. |
-| **Redis Stack** | Checkpoints, caches, and BM25 index | Used by LangGraph for conversational state, plus some caching. BM25 indices are stored on disk in your repo, but Redis is still used heavily. |
-| **Prometheus** (optional) | Metrics scraping | Collects metrics from the AGRO API process (Prometheus client). |
-| **Alertmanager** (optional) | Alert routing | Fires alerts based on Prometheus rules (e.g., indexing failures, high error rates). |
-| **Loki** (optional) | Log aggregation | Collects logs from Docker and the host. Useful when you’re running long evals or multiple agents. |
-| **Promtail** (optional) | Log shipping | Sends Docker and host logs into Loki. |
-| **Grafana** (optional) | Dashboard UI | Embedded in the AGRO GUI via iframe. Preconfigured dashboards for search quality, evals, and basic health. |
-
-!!! note
-    The `infra/docker-compose.yml` file in the repo is **deprecated** and kept only for reference. The active configuration is the root‑level `docker-compose.services.yml` (used by the `Makefile` and scripts).
-
----
-
-## Quick start
-
-If you just want everything running with defaults:
+## 2. Clone the repository
 
 ```bash
-git clone https://github.com/DMontgomery40/agro.git
-cd agro
-
-# Start infra + API + MCP + GUI
-make dev
-
-# Run onboarding CLI to register repos, etc.
-cd scripts
-bash setup.sh
-# or, from repo root:
-# make setup repo=/abs/path/to/your/repo name=my-repo
-
-# GUI at:
-# http://127.0.0.1:8012/
-```
-
-!!! note
-    `make dev` uses Docker Compose to start Qdrant, Redis, API, MCP servers, and observability stack (Prometheus, Grafana, Loki, etc.), then opens the browser to the GUI. If you don’t want the browser to open (e.g., for CI or Playwright), use `make dev-headless`.
-
----
-
-## Detailed installation
-
-### 1. Clone the repo
-
-```bash
-git clone https://github.com/DMontgomery40/agro.git
+git clone https://github.com/your-org/agro.git
 cd agro
 ```
 
-If you plan to customize AGRO itself, this is where you’ll be working. The system is fully indexed on itself, so once it’s running you can ask AGRO questions about its own code.
+The repo root is what the backend treats as `REPO_ROOT` internally (via `common.paths.repo_root()`), and a lot of paths are computed relative to it.
 
----
 
-### 2. Infrastructure (Docker)
+## 3. Create a virtual environment
 
-AGRO ships with Compose configs to run Qdrant, Redis, and observability services.
-
-#### Recommended: use provided scripts
-
-=== "Start everything (dev)"
-```bash
-make dev
-```
-
-=== "Infra only"
-```bash
-# Start Qdrant + Redis + observability stack without API
-bash scripts/up.sh
-```
-
-=== "Stop everything"
-```bash
-make down
-# or
-bash scripts/down.sh
-```
-
-The `Makefile` maps to:
-
-```makefile
-up:
-	bash scripts/up.sh
-
-down:
-	bash scripts/down.sh
-
-dev:
-	bash scripts/dev_up.sh
-```
-
-You usually don’t need to touch Compose directly unless you’re debugging.
-
-#### Docker services and names
-
-The main API service is:
-
-- **Compose service name**: `api`
-- **Container name**: `agro-api`
-
-Use the **service name** with `docker compose`:
+You can use whatever you like here; I’ll show `venv`:
 
 ```bash
-# Build and start API
-docker compose -f docker-compose.services.yml up -d api
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
-# View logs via Compose
-docker compose -f docker-compose.services.yml logs -f api
+pip install --upgrade pip
 ```
 
-Use the **container name** with `docker`:
+
+## 4. Install Python dependencies
+
+From the repo root:
 
 ```bash
-# Exec into running container
-docker exec -it agro-api bash
-
-# Tail logs directly
-docker logs -f agro-api
-```
-
-!!! tip
-    If something seems off (e.g., GUI not loading), start by checking:
-    ```bash
-    docker compose -f docker-compose.services.yml ps
-    docker compose -f docker-compose.services.yml logs -f api
-    ```
-
----
-
-### 3. Python environment
-
-You only need a Python environment if:
-
-- You want to run the API outside Docker (e.g., local dev, debugging)
-- You’re running CLI tools or evals directly (`python index_repo.py`, `python -m cli.chat_cli`, etc.)
-
-#### Create and activate venv
-
-```bash
-cd /path/to/agro
-
-python3 -m venv .venv
-. .venv/bin/activate
-```
-
-#### Install dependencies
-
-There are two requirements files:
-
-- `requirements-rag.txt` – minimal stack for RAG, indexing, and API
-- `requirements.txt` – superset, includes CLI niceties (`rich`), Docker client, websockets, etc.
-
-=== "Minimal (RAG + API)"
-```bash
-pip install -r requirements-rag.txt
-```
-
-=== "Full dev"
-```bash
-pip install -r requirements-rag.txt
 pip install -r requirements.txt
 ```
 
-You can verify core dependencies:
+This pulls in:
+
+- FastAPI / Uvicorn for the HTTP API
+- Qdrant client for vector search
+- Pydantic for configuration models
+- pygls / lsprotocol / cattrs / attrs / packaging, etc. (used for the editor / LSP‑style pieces and some internal tooling)
+
+You don’t have to think about those libraries directly; they’re just how the server wires things together.
+
+
+## 5. Example environment configuration
+
+AGRO expects two main configuration surfaces:
+
+- `agro_config.json` – tunable RAG behavior, models, retrieval knobs
+- `.env` – secrets and infrastructure overrides
+
+The backend loads `.env` **first**, before any `os.environ` access (`server/services/config_registry.py` calls `load_dotenv(override=True)` at import time). Then it loads and validates `agro_config.json` via Pydantic (`AgroConfigRoot`).
+
+The precedence is:
+
+1. `.env` (highest)
+2. `agro_config.json`
+3. Pydantic defaults (lowest)
+
+!!! note "Where to put `.env`"
+    `.env` is read from the process working directory. In practice, just put it at the repo root next to `agro_config.json` and run the server from there.
+
+There’s a dedicated page with a copy‑pasteable example:
+
+- [Example `.env` file](environment-example.md)
+
+At minimum, you’ll usually want:
 
 ```bash
-python -c "import langgraph, qdrant_client, bm25s, sentence_transformers; print('✓ OK')"
+# What repo to index by default
+REPO=agro
+
+# HTTP server
+HOST=127.0.0.1
+PORT=8012
+
+# Editor / DevTools
+EDITOR_ENABLED=true
+EDITOR_PORT=4440
+
+# One model provider (pick whatever you actually use)
+OPENAI_API_KEY=...
+# or ANTHROPIC_API_KEY=...
 ```
 
-!!! note
-    `torch==2.8.0` and `transformers==4.57.0` are pinned. On some platforms, especially with older GPUs or unusual CUDA toolkits, you may need to adjust these. For CPU-only setups, the default pins are usually fine.
+The backend also has a list of fields it treats as secrets when writing config back out (`server/services/config_store.py` → `SECRET_FIELDS`), so those won’t be echoed in cleartext through the API.
 
----
 
-### 4. Environment configuration
+## 6. Verify `agro_config.json`
 
-The **recommended** way to set most config is via the GUI:
+There’s a checked‑in `agro_config.json` at the repo root. It’s parsed into `AgroConfigRoot` and then exposed through the config registry.
 
-- Open the GUI: `http://127.0.0.1:8012/`
-- Go to **Settings → Misc**
-- Adjust values and click **Apply All Changes**
+You don’t have to understand every field up front. The important part is that it parses and validates.
 
-Under the hood, everything flows through Pydantic models, so once you define a model or setting in one place it propagates everywhere (API, MCP, GUI).
-
-For scripting, CI, or debugging, you can use a `.env` file.
-
-#### Example `.env`
+To sanity‑check it without starting the whole stack:
 
 ```bash
-cd /path/to/agro
-
-cat > .env <<'EOF'
-# Infrastructure
-QDRANT_URL=http://127.0.0.1:6333
-REDIS_URL=redis://127.0.0.1:6379/0
-
-# RAG Configuration
-REPO=agro                     # Default repo for operations
-MQ_REWRITES=4                 # Multi-query expansion count
-
-# Reranker (default: Cohere with local fallback)
-RERANK_BACKEND=cohere         # cohere | hf | local
-COHERE_API_KEY=               # Set this to enable Cohere rerank
-COHERE_RERANK_MODEL=rerank-3.5
-
-# Generation (default: local Qwen 3 via Ollama)
-OLLAMA_URL=http://127.0.0.1:11434/api
-GEN_MODEL=qwen3-coder:30b     # or qwen2.5-coder:7b for lower RAM
-
-# Optional: OpenAI for generation (instead of Ollama)
-# OPENAI_API_KEY=sk-proj-...
-# GEN_MODEL=gpt-4o-mini
-
-# Optional: Embeddings provider
-EMBEDDING_TYPE=openai         # openai | local | voyage | gemini
-OPENAI_API_KEY=
-VOYAGE_API_KEY=
-
-# Optional: Netlify multi-site deploys for MCP tool
-NETLIFY_DOMAINS=site-a.com,site-b.com
-NETLIFY_API_KEY=
-
-# LangChain (optional tracing)
-LANGCHAIN_TRACING_V2=false
-LANGCHAIN_PROJECT=rag-service
-EOF
-
-chmod 600 .env
+python -m server.models.agro_config_model
 ```
 
-!!! tip
-    You don’t have to pick “one true model”. AGRO lets you define **profiles** (e.g. `Docs-search`, `Plan_Refactor`) that pick different gen / embedding / rerank models per task, and even per MCP transport (HTTP vs stdio vs WebSocket). The GUI has a full explanation of each parameter, with tooltips and links to papers.
+(or run any small script that imports `AgroConfigRoot`; Pydantic will throw if something is badly typed).
 
----
+If you want to change models or retrieval defaults, see:
 
-### 5. RAG ignore & filtering
+- [Model configuration](../configuration/models.md)
+- [Profiles](../configuration/profiles.md)
 
-This is one of the most important steps to get good results.
 
-AGRO uses three layers of filtering:
+## 7. Start the backend server
 
-#### 1. Built‑in filtering
+The FastAPI app lives in `server.asgi:create_app`. There’s a small legacy entrypoint in `server/app.py`, but everything goes through the ASGI app.
 
-In `common/filtering.py`, AGRO automatically skips:
-
-- Directories like:
-  - `node_modules/`, `vendor/`, `dist/`, `build/`, `.git/`, etc.
-- Non-code file types:
-  - Only common code extensions are indexed (`.py`, `.js`, `.ts`, `.rb`, `.go`, etc.)
-
-You don’t need to configure this; it’s applied by default during indexing.
-
-#### 2. Project-specific excludes
-
-Edit `data/exclude_globs.txt` to add glob patterns that apply across repos:
+From the repo root, with your virtualenv active:
 
 ```bash
-cd /path/to/agro
-
-# View existing patterns
-cat data/exclude_globs.txt
-
-# Add your own
-echo "**/my-vendor-dir/**"       >> data/exclude_globs.txt
-echo "**/*.generated.ts"         >> data/exclude_globs.txt
-echo "**/migrations/**"          >> data/exclude_globs.txt
+uvicorn server.asgi:create_app \
+  --host ${HOST:-127.0.0.1} \
+  --port ${PORT:-8012} \
+  --reload
 ```
 
-Common patterns (strongly recommended):
+- `--reload` is optional but useful during development.
+- The app will read `.env` on import, then `agro_config.json`, then start serving.
+
+Once it’s up, you should see:
+
+- OpenAPI docs at `http://127.0.0.1:8012/docs`
+- The raw OpenAPI JSON at `http://127.0.0.1:8012/openapi.json`
+
+More details on the HTTP surface:
+
+- [HTTP API](../api/endpoints.md)
+- [OpenAPI schema](../api/openapi.md)
+
+
+## 8. Start the web UI
+
+The React/TypeScript frontend lives under `web/`. The backend serves a small status API and configuration endpoints; the UI talks to those.
+
+From `web/`:
 
 ```bash
-# Virtual environments (CRITICAL)
-**/.venv/**
-**/venv/**
-**/env/**
-**/.virtualenv/**
-**/virtualenv/**
-**/.pyenv/**
-
-# Build artifacts
-**/dist/**
-**/build/**
-**/.next/**
-**/.turbo/**
-**/.svelte-kit/**
-
-# Generated code
-**/*.generated.*
-**/*.min.js
-**/*.min.css
-**/*.bundle.js
-**/*.map
-
-# Tests and fixtures
-**/test/**
-**/tests/**
-**/*.spec.ts
-**/*.spec.js
-**/*.test.ts
-**/*.test.js
-**/fixtures/**
-**/mocks/**
-**/__mocks__/**
-**/test-data/**
-
-# Large binary-ish data
-**/*.json.gz
-**/*.png
-**/*.jpg
-**/*.jpeg
-**/*.gif
-**/*.svg
-
-# Vendor / dependencies
-**/third_party/**
-**/external/**
-**/node_modules/**
-**/vendor/**
-**/Pods/**
-
-# Lockfiles
-**/package-lock.json
-**/yarn.lock
-**/pnpm-lock.yaml
-**/poetry.lock
-
-# Migrations and install scripts
-**/migrations/**
-**/install/**
+cd web
+npm install
+npm run dev   # or npm run build && npm run preview
 ```
 
-#### 3. Auto-generate keywords (optional)
+By default this will start a dev server on something like `http://127.0.0.1:5173`.
 
-AGRO ships with analysis scripts to help you tune search for a specific repo:
+The UI expects the backend at `http://127.0.0.1:8012` unless you’ve configured it differently.
+
+
+## 9. Index a repository
+
+Once the backend and UI are running, you need to build an index for at least one repo.
+
+You can do this from:
+
+- The **Dashboard → Indexing** panels in the web UI (see components like `Dashboard/IndexDisplayPanels.tsx`, `Dashboard/LiveTerminalPanel.tsx`)
+- The CLI (`cli/agro.py` and `cli/commands/index.py`)
+- The HTTP API (`/api/index/start`)
+
+Under the hood, indexing is kicked off by `server/services/indexing.py`:
+
+```py title="server/services/indexing.py" linenums="1" hl_lines="15-27"
+from server.services.config_registry import get_config_registry
+from common.paths import repo_root
+
+_config_registry = get_config_registry()
+
+
+def start(payload: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    global _INDEX_STATUS, _INDEX_METADATA
+    payload = payload or {}
+    _INDEX_STATUS = ["Indexing started..."]
+    _INDEX_METADATA = {}
+
+    def run_index():
+        global _INDEX_STATUS, _INDEX_METADATA
+        try:
+            repo = _config_registry.get_str("REPO", "agro")
+            _INDEX_STATUS.append(f"Indexing repository: {repo}")
+            root = repo_root()
+            env = {**os.environ, "REPO": repo, "REPO_ROOT": str(root), "PYTHONPATH": str(root)}
+            if payload.get("enrich"):
+                env["ENRICH_CODE_CHUNKS"] = "true"
+                _INDEX_STATUS.append("Enriching chunks with summaries...")
+            # ... spawn indexer subprocess here ...
+        except Exception as e:
+            _INDEX_STATUS.append(f"Indexing failed: {e}")
+
+    threading.Thread(target=run_index, daemon=True).start()
+    return {"status": "started"}
+```
+
+The important bits:
+
+- It reads `REPO` from the config registry (`.env` → `agro_config.json` → defaults).
+- It sets `REPO_ROOT` and `PYTHONPATH` so the indexer resolves paths correctly.
+- If you pass `{"enrich": true}` it will set `ENRICH_CODE_CHUNKS=true` and add extra summaries to chunks.
+
+You can watch indexing progress via:
+
+- The UI’s **Dashboard → System Status / Live Terminal** panels
+- The `/api/index/status` endpoint
+
+
+## 10. Try your first query
+
+Once indexing finishes, you can:
+
+- Open the **Chat** tab in the UI (`web/src/components/Chat/ChatInterface.tsx`)
+- Or use the CLI chat (`cli/chat_cli.py`, documented in [CLI Chat Interface](../features/cli-chat.md))
+
+The RAG pipeline entrypoint on the server side is `server/services/rag.py`:
+
+```py title="server/services/rag.py" linenums="1" hl_lines="27-40"
+from retrieval.hybrid_search import search_routed_multi
+from server.services.config_registry import get_config_registry
+
+_config_registry = get_config_registry()
+
+
+def do_search(q: str, repo: Optional[str], top_k: Optional[int], request: Optional[Request] = None) -> Dict[str, Any]:
+    if top_k is None:
+        try:
+            top_k = _config_registry.get_int('FINAL_K', _config_registry.get_int('LANGGRAPH_FINAL_K', 10))
+        except Exception:
+            top_k = 10
+
+    repo = (repo or os.getenv('REPO', 'agro')).strip()
+
+    results = search_routed_multi(
+        query=q,
+        repo=repo,
+        top_k=top_k,
+        # ... other routing / filters ...
+    )
+    return {"results": results, "repo": repo}
+```
+
+You don’t need to touch this to get started, but it’s useful to know where `top_k` and repo selection actually come from. They’re just config registry lookups.
+
+
+## 11. Optional: Editor / DevTools
+
+AGRO ships with an embedded “editor” / DevTools surface that can:
+
+- Show live settings
+- Embed in other tools
+- Expose some LSP‑style behavior
+
+The settings are read from the same config registry, with a small legacy JSON fallback:
+
+```py title="server/services/editor.py" linenums="1" hl_lines="16-25"
+from server.services.config_registry import get_config_registry
+
+
+def read_settings() -> Dict[str, Any]:
+    """Read editor settings, preferring registry (agro_config.json/.env) with legacy file fallback."""
+    registry = get_config_registry()
+    settings = {
+        "port": registry.get_int("EDITOR_PORT", 4440),
+        "enabled": registry.get_bool("EDITOR_ENABLED", True),
+        "embed_enabled": registry.get_bool("EDITOR_EMBED_ENABLED", True),
+        "bind": registry.get_str("EDITOR_BIND", "local"),  # 'local' or 'public'
+        # ...
+    }
+    # ... merge with legacy settings.json if present ...
+    return settings
+```
+
+To use it, set in `.env`:
 
 ```bash
-cd /path/to/agro/scripts
-
-# Basic analysis
-python analyze_keywords.py /path/to/your/repo
-
-# Enhanced analysis
-python analyze_keywords_v2.py /path/to/your/repo
+EDITOR_ENABLED=true
+EDITOR_PORT=4440
 ```
 
-These scripts output:
+Then hit whatever route your deployment exposes for the editor (this is still evolving; check the UI’s **DevTools → Editor** tab and the `/api/editor/*` endpoints).
 
-- Most common file types
-- Directory structure overview
-- Suggested keywords for `hybrid_search.py`
-- Recommended path boosts
 
-You can then wire those into your retrieval config (via GUI or YAML profiles) to bias results toward core code paths.
+## 12. Optional: Monitoring & observability
 
----
+If you want Prometheus / Grafana / Loki wired in, there’s a `docker-compose.yml` and a set of UI components under `web/src/components/Grafana/` and `web/src/components/Infrastructure/`.
 
-### 6. Index a repo
+The high‑level flow is:
 
-Once infra, Python env, and filtering are in place, you can index.
+1. Bring up the infra stack with Docker Compose (Prometheus, Loki, Grafana, etc.).
+2. Point AGRO at those endpoints via `.env` (e.g. `GRAFANA_API_KEY`, `GRAFANA_AUTH_TOKEN`, etc.).
+3. Use the **Infrastructure** and **Grafana** subtabs in the UI to verify connectivity.
 
-#### Using Makefile
+Details live in:
 
-```bash
-# From repo root
-# Usage: make setup repo=/abs/path/to/repo name=my-repo
-make setup repo=/abs/path/to/your/repo name=my-repo
+- [Monitoring & Observability](../operations/monitoring.md)
 
-# Index the repo (Python venv required)
-make index REPO=my-repo
+
+## 13. How configuration actually works (service layer)
+
+You don’t have to care about this to run AGRO, but if you’re going to extend it, it helps to know how config is wired.
+
+The central piece is `server/services/config_registry.py`:
+
+```py title="server/services/config_registry.py" linenums="1" hl_lines="1-20 40-52"
+"""Configuration Registry for AGRO RAG Engine.
+
+This module provides a centralized, thread-safe configuration management system
+that merges settings from multiple sources with clear precedence rules:
+
+Precedence (highest to lowest):
+1. .env file (secrets and infrastructure overrides)
+2. agro_config.json (tunable RAG parameters)
+3. Pydantic defaults (fallback values)
+
+Key features:
+- Thread-safe load/reload with locking
+- Type-safe accessors (get_int, get_float, get_bool)
+- Pydantic validation for agro_config.json
+- Backward compatibility with os.getenv() patterns
+- Config source tracking (which file each value came from)
+"""
+
+from dotenv import load_dotenv
+
+# Load .env FIRST before any os.environ access
+load_dotenv(override=True)
+
+from server.models.agro_config_model import AgroConfigRoot, AGRO_CONFIG_KEYS
+
+# ... registry implementation ...
+
+def get_config_registry():
+    """Return the singleton config registry instance."""
+    # Lazily construct and cache a thread-safe registry
+    # that knows how to read .env + agro_config.json
+    ...
 ```
 
-The `index` target runs:
+Every service layer module that needs configuration calls `get_config_registry()` at import time and then caches values as needed. For example, `server/services/keywords.py`:
 
-```makefile
-index:
-	. .venv/bin/activate && REPO=$(REPO) python index_repo.py
+```py title="server/services/keywords.py" linenums="1" hl_lines="7-15 18-26"
+from server.services.config_registry import get_config_registry
+
+_config_registry = get_config_registry()
+_KEYWORDS_MAX_PER_REPO = _config_registry.get_int('KEYWORDS_MAX_PER_REPO', 50)
+_KEYWORDS_MIN_FREQ = _config_registry.get_int('KEYWORDS_MIN_FREQ', 3)
+_KEYWORDS_BOOST = _config_registry.get_float('KEYWORDS_BOOST', 1.3)
+_KEYWORDS_AUTO_GENERATE = _config_registry.get_int('KEYWORDS_AUTO_GENERATE', 1)
+_KEYWORDS_REFRESH_HOURS = _config_registry.get_int('KEYWORDS_REFRESH_HOURS', 24)
+
+
+def reload_config():
+    """Reload cached config values from registry."""
+    global _KEYWORDS_MAX_PER_REPO, _KEYWORDS_MIN_FREQ, _KEYWORDS_BOOST
+    global _KEYWORDS_AUTO_GENERATE, _KEYWORDS_REFRESH_HOURS
+    _KEYWORDS_MAX_PER_REPO = _config_registry.get_int('KEYWORDS_MAX_PER_REPO', 50)
+    _KEYWORDS_MIN_FREQ = _config_registry.get_int('KEYWORDS_MIN_FREQ', 3)
+    _KEYWORDS_BOOST = _config_registry.get_float('KEYWORDS_BOOST', 1.3)
+    _KEYWORDS_AUTO_GENERATE = _config_registry.get_int('KEYWORDS_AUTO_GENERATE', 1)
+    _KEYWORDS_REFRESH_HOURS = _config_registry.get_int('KEYWORDS_REFRESH_HOURS', 24)
 ```
 
-#### Docker-first indexing (no local venv)
+If you change `.env` or `agro_config.json` at runtime and want those changes to take effect without a restart, you can:
 
-If you don’t want Python on the host, you can index inside the API container:
+- Call the appropriate reload function (like `reload_config()` above) from your own code, or
+- Use the configuration endpoints exposed by the API / UI (see [Configuration](../configuration/settings.md)).
 
-```bash
-# Ensure api service is up
-docker compose -f docker-compose.services.yml up -d api
 
-# Index using the container
-make index-docker REPO=my-repo
-# which runs:
-# docker compose -f docker-compose.services.yml exec -T api \
-#   bash -lc "REPO=${REPO:-agro} OUT_DIR_BASE=/app/out python index_repo.py"
-```
-
-Indexing will:
-
-- Walk the repo with filtering rules
-- Chunk files (AST-based where possible, regex fallback otherwise)
-- Build BM25 indices
-- Compute embeddings and upsert to Qdrant
-- Build “cards” (summarized chunks) and card-level BM25
-
----
-
-### 7. Start API and GUI
-
-If you used `make dev`, the API and GUI should already be running.
-
-#### Start API (production-style)
-
-```bash
-# Uses Gunicorn + Uvicorn workers
-make api
-# internally:
-# bash scripts/api_up.sh
-```
-
-API docs and GUI:
-
-- Swagger / OpenAPI: `http://127.0.0.1:8012/docs`
-- GUI: `http://127.0.0.1:8012/`
-
-#### CLI chat
-
-For local terminal chat with memory:
-
-```bash
-. .venv/bin/activate
-python -m cli.chat_cli
-```
-
----
-
-## Observability stack
-
-If you want to actually see what AGRO is doing (and not just hope), the observability stack is worth turning on. `make dev` already does this.
-
-### Components
-
-| Service | Ports | Purpose |
-|--------|-------|---------|
-| **Prometheus** | `9090` | Metrics scraping from AGRO API |
-| **Alertmanager** | `9093` | Alerts based on Prometheus rules |
-| **Loki** | `3100` | Centralized logs |
-| **Promtail** | – | Ships logs from host + Docker into Loki |
-| **Grafana** | `3000` | Dashboards, embedded in AGRO |
-
-#### Handy Make targets
-
-```bash
-# Prometheus UI
-make prom
-# -> http://127.0.0.1:9090
-
-# Grafana UI
-make grafana
-# -> http://127.0.0.1:3000
-# Default login: admin / Trenton2023
-
-# Generate/import Grafana dashboard JSON
-make dash
-```
+## 14. Common installation issues
 
 !!! warning
-    The Grafana admin password is baked into the infra config for **local dev only**:
-    ```bash
-    GF_SECURITY_ADMIN_USER=admin
-    GF_SECURITY_ADMIN_PASSWORD=Trenton2023
-    ```
-    If you expose this stack beyond localhost, change these values and lock down access.
+    This is a solo‑dev project. There are rough edges. If something here doesn’t match what you see in the code, trust the code and file an issue.
 
----
+**Problem: `ModuleNotFoundError` for `server.*` or `common.*`**
 
-## Common installation issues
+- Make sure you’re running commands from the repo root.
+- Ensure `PYTHONPATH` includes the repo root. The indexer explicitly sets `PYTHONPATH=repo_root()` when it spawns; for ad‑hoc scripts you may need:
 
-This section is intentionally blunt: what usually breaks and how to fix it.
+  ```bash
+  export PYTHONPATH=$(pwd)
+  ```
 
-### Docker / Compose not found
+**Problem: Config values not updating when I edit `.env`**
 
-**Symptom**
+- The registry loads `.env` at import time. If the process is already running, you’ll need to restart it or explicitly trigger a reload path that calls back into the registry.
 
-- `make dev` prints errors like `docker: command not found` or `docker compose: command not found`.
+**Problem: Editor / DevTools not showing up**
 
-**Fix**
+- Check `EDITOR_ENABLED` and `EDITOR_PORT` in `.env`.
+- Look at `server/services/editor.py` to see where it writes `out/editor/settings.json` and `out/editor/status.json`.
 
-- Install Docker and Docker Compose:
-  - Linux: use your distro’s packages or Docker’s official install
-  - macOS: Docker Desktop
-- For old setups where `docker-compose` is separate:
-  - Update scripts to use `docker-compose` instead of `docker compose`, or upgrade Docker.
 
----
+## 15. Next steps
 
-### API not reachable at `http://127.0.0.1:8012/`
+Once AGRO is installed and the first repo is indexed:
 
-**Checklist**
+- [After AGRO Is Running](first-steps.md)
+- [Retrieval pipeline details](../features/rag.md)
+- [Evaluation & regression testing](../features/evaluation.md)
+- [MCP integration](../features/mcp.md)
 
-1. Is the container running?
+AGRO is indexed on itself, so once you have it running you can also just go to the **Chat** tab and ask it:
 
-    ```bash
-    docker compose -f docker-compose.services.yml ps
-    ```
+> “How does configuration precedence work?”
 
-    Look for `api` with state `Up`.
+or
 
-2. Logs look sane?
+> “Where does the indexer get `REPO_ROOT` from?”
 
-    ```bash
-    docker compose -f docker-compose.services.yml logs -f api
-    ```
-
-3. Anything already bound to port `8012`?
-
-    ```bash
-    lsof -i :8012
-    ```
-
-    If another process is using it, either stop that process or change AGRO’s port (via env or Compose).
-
----
-
-### Qdrant / Redis not reachable
-
-**Symptom**
-
-- API logs mention connection errors to Qdrant or Redis.
-- Indexing fails early.
-
-**Checklist**
-
-```bash
-# Check containers
-docker ps | grep -E 'qdrant|rag-redis'
-
-# Test Qdrant
-curl -s http://127.0.0.1:6333/collections
-
-# Test Redis
-docker exec rag-redis redis-cli ping
-# -> PONG
-```
-
-**Fixes**
-
-- If containers are missing: `bash scripts/up.sh` or `make dev`.
-- If ports are changed, update `QDRANT_URL` and `REDIS_URL` in `.env` or GUI.
-
----
-
-### Python dependency issues
-
-**Symptom**
-
-- `pip install` fails on `torch`, `tree_sitter_languages`, or `rerankers`.
-
-**Common causes & fixes**
-
-- **No compatible wheels for `torch`**:
-  - Use a Python version with good wheel support (3.10–3.12).
-  - For GPU installs, follow PyTorch’s official instructions, then install the rest of requirements without `torch` pinned.
-- **`tree_sitter_languages` fails on Python 3.13**:
-  - This is expected; the requirement is conditional:
-    ```text
-    tree_sitter_languages==1.10.2; python_version < "3.13"
-    ```
-  - On 3.13, you’ll see a warning but chunking falls back to regex. No need to fix unless you care deeply about AST-based chunking.
-
----
-
-### Nothing shows up in search for a repo
-
-**Symptom**
-
-- GUI loads, but search results are empty or obviously wrong for a repo you thought you indexed.
-
-**Checklist**
-
-1. Did indexing actually run?
-
-    ```bash
-    # Host
-    REPO=my-repo python index_repo.py
-    # or
-    make index REPO=my-repo
-
-    # Docker
-    make index-docker REPO=my-repo
-    ```
-
-2. Check index logs:
-
-    ```bash
-    docker logs -f agro-api  # if indexing inside container
-    ```
-
-3. Verify Qdrant collections:
-
-    ```bash
-    curl -s http://127.0.0.1:6333/collections | jq
-    ```
-
-4. Confirm `REPO` value in `.env` or GUI matches the repo you indexed.
-
-If you see lots of “skipping file” logs, your `exclude_globs` might be too aggressive.
-
----
-
-### Grafana not embedding in GUI
-
-**Symptom**
-
-- Standalone Grafana at `http://127.0.0.1:3000` works, but inside AGRO’s GUI you see blocking / refused.
-
-**Cause**
-
-- Grafana’s security settings prevent iframe embedding by default.
-
-**Fix**
-
-The infra config already sets:
-
-```yaml
-GF_SECURITY_ALLOW_EMBEDDING=true
-GF_AUTH_ANONYMOUS_ENABLED=true
-GF_AUTH_ANONYMOUS_ORG_ROLE=Editor
-GF_SECURITY_COOKIE_SAMESITE=disabled
-```
-
-If you changed these, restore them or adjust the AGRO GUI settings to point to a Grafana instance that allows embedding.
-
----
-
-### MCP tools not visible in Claude Code / Codex
-
-**Symptom**
-
-- You expect AGRO’s MCP server to show up as a tool but it doesn’t.
-
-**Checklist**
-
-1. Confirm MCP server is running (stdio or HTTP, depending on your agent).
-2. Check the server definition:
-    - `server/mcp/server.py` – stdio MCP server
-    - `server/mcp/http.py` – HTTP MCP server
-3. Confirm your agent config points to:
-    - Correct transport (stdio / HTTP / WebSocket)
-    - Correct host/port (for HTTP/WebSocket)
+and it will walk you through the actual code paths.

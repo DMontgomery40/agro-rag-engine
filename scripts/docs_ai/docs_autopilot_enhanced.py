@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -32,6 +33,15 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 ROOT = Path(__file__).resolve().parents[2]
 DOCS_DIR = ROOT / "mkdocs" / "docs"
+
+# Load .env file (overrides shell env)
+_env_file = ROOT / ".env"
+if _env_file.exists():
+    for line in _env_file.read_text().splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            key, _, value = line.partition("=")
+            os.environ[key.strip()] = value.strip()
 DEFAULT_BASE = "origin/staging"
 
 SYSTEM_PROMPT = """You are writing documentation for AGRO (Another Good RAG Option), a local-first RAG engine for codebases.
@@ -64,27 +74,103 @@ TECHNICAL ACCURACY:
 - Read every source file THOROUGHLY before writing. This is a complete rewrite, not a patch.
 - When you see something genuinely cool in the code, explain WHY it's cool
 
-MKDOCS MATERIAL FORMATTING (MANDATORY):
+MKDOCS MATERIAL FORMATTING - USE WHERE APPROPRIATE:
 Reference: https://squidfunk.github.io/mkdocs-material/reference/
 
-You MUST use these components where appropriate:
-- Admonitions: !!! note, !!! tip, !!! warning, !!! danger, ??? collapsible
-- Code blocks with line numbers, highlighting, annotations
-- Content tabs: === "Tab 1" / === "Tab 2"
-- Data tables for comparisons
-- Diagrams (mermaid) for architecture
-- Icons: :material-icon-name:
-- Tooltips for technical terms
+ADMONITIONS:
+!!! note "Title"
+    Content indented 4 spaces
+
+!!! warning
+    Warning without custom title
+
+??? tip "Collapsible"
+    Click to expand (use ??? instead of !!!)
+
+???+ info "Expanded by default"
+    Use ???+ to start expanded
+
+Types: note, abstract, info, tip, success, question, warning, failure, danger, bug, example, quote
+
+CODE BLOCKS:
+```py title="example.py" linenums="1" hl_lines="2 3"
+def example():
+    highlighted = True
+    return highlighted
+```
+
+Code annotations:
+```yaml
+theme:
+  features:
+    - content.code.annotate # (1)
+```
+1. This annotation explains the line above
+
+CONTENT TABS:
+=== "Python"
+    ```python
+    print("Hello")
+    ```
+
+=== "JavaScript"
+    ```javascript
+    console.log("Hello")
+    ```
+
+DATA TABLES:
+| Method | Description |
+| :----- | :---------- |
+| `GET`  | Fetch resource |
+| `POST` | Create resource |
+
+Alignment: :--- left, :--: center, ---: right
+
+MERMAID v11 DIAGRAMS:
+```mermaid
+graph LR
+  A[Start] --> B{Decision?}
+  B -->|Yes| C[Action]
+  B -->|No| D[End]
+```
+
+```mermaid
+sequenceDiagram
+  Client->>Server: Request
+  Server-->>Client: Response
+```
+
+Mermaid v11 syntax:
+- Shape syntax: `A@{ shape: cyl, label: "Database" }`
+- Shapes: circle, diam, hex, cyl, stadium, card, rect, rounded, ellipse
+- Reference: https://mermaid.js.org/syntax/flowchart.html
+
+ICONS & EMOJIS:
+:material-account-circle: :fontawesome-brands-github: :octicons-heart-fill-24:
+
+TASK LISTS:
+- [x] Completed task
+- [ ] Pending task
+
+DEFINITION LISTS:
+`Term`
+:   Definition text here
+
+TOOLTIPS:
+[Hover text](# "Tooltip content here")
+*[API]: Application Programming Interface
+
+GRIDS:
+<div class="grid cards" markdown>
+- :material-clock-fast: __Title__ Description
+- :material-github: __Another__ More text
+</div>
 """
 
 
 @dataclass
 class DocumentationContext:
-    agents_excerpt: str = ""
-    readme_excerpt: str = ""
-    config_schema: str = ""
     env_example: str = ""
-    rag_pipeline: str = ""
     services_summaries: Dict[str, str] = field(default_factory=dict)
     web_components: List[str] = field(default_factory=list)
     existing_docs: Dict[str, str] = field(default_factory=dict)
@@ -140,7 +226,12 @@ def list_repo_files(limit: int = 800, include_ext: Sequence[str] = (
         line = line.strip()
         if not line:
             continue
-        if any(part in line for part in ("node_modules", "__pycache__", "dist/", "build/")):
+        if any(part in line for part in (
+            "node_modules", "__pycache__", "dist/", "build/",
+            "agent_docs/", "internal_docs", "docs/", "README.md",
+            "gui/", "tests/", "playwright-report/", "reports/",
+            "telemetry/", "tools/", "checkpoints/", "bin/",
+        )) or line.startswith("."):
             continue
         if not any(line.endswith(ext) for ext in include_ext):
             continue
@@ -193,33 +284,13 @@ def glob_snippets(base: Path, pattern: str, *, max_files: int, max_chars_per_fil
 def gather_context(base_ref: Optional[str], full_scan: bool) -> DocumentationContext:
     ctx = DocumentationContext()
 
-    ctx.agents_excerpt = read_file(ROOT / "AGENTS.md", max_chars=4000)
-    ctx.readme_excerpt = read_file(ROOT / "README.md", max_chars=4000)
     ctx.env_example = read_file(ROOT / ".env.example", max_chars=2500)
-
-    config_sources = [
-        "server/models/agro_config_model.py",
-        "server/env_model.py",
-        "agro_config.json",
-    ]
-    ctx.config_schema = gather_snippets(config_sources, max_chars_per_file=4000, max_total_chars=9000)
-
-    rag_files = [
-        "server/langgraph_app.py",
-        "retrieval/hybrid_search.py",
-        "retrieval/embed_cache.py",
-        "retrieval/rerank.py",
-        "server/services/rag.py",
-        "server/langgraph_app.py",
-    ]
-    ctx.rag_pipeline = gather_snippets(rag_files, max_chars_per_file=3500, max_total_chars=12000)
-
     ctx.services_summaries = read_service_summaries()
     ctx.web_components = summarize_web_components()
     ctx.existing_docs = read_existing_docs(limit=60, preview_chars=400)
-
     ctx.recent_files = collect_recent_files(base_ref, full_scan)
-    ctx.repo_snapshot = glob_snippets(ROOT, "*.py", max_files=40, max_chars_per_file=1200, max_total_chars=45000)
+    # Read all files - let token overflow be handled by continuation logic
+    ctx.repo_snapshot = glob_snippets(ROOT, "*.py", max_files=1000, max_chars_per_file=10000, max_total_chars=500000)
 
     return ctx
 
@@ -286,24 +357,9 @@ def build_user_prompt(
 
     parts.append("Generate comprehensive AGRO documentation updates with the following context.")
     parts.append("")
-    parts.append("## Top-level references")
-    parts.append("### AGENTS.md (truncated)")
-    parts.append(ctx.agents_excerpt or "(missing)")
-    parts.append("")
-    parts.append("### README.md (truncated)")
-    parts.append(ctx.readme_excerpt or "(missing)")
-    parts.append("")
 
-    parts.append("## Configuration model snapshots")
-    parts.append(ctx.config_schema or "(no config excerpts)")
-    parts.append("")
-
-    parts.append("## Environment example (sanitized)")
+    parts.append("## Environment example")
     parts.append(ctx.env_example or "(missing .env.example)")
-    parts.append("")
-
-    parts.append("## RAG pipeline & LangGraph")
-    parts.append(ctx.rag_pipeline or "(missing retrieval excerpts)")
     parts.append("")
 
     parts.append("## Service layer summaries")
@@ -340,8 +396,7 @@ def build_user_prompt(
 Return a JSON object where:
   - Keys are Markdown file paths relative to mkdocs/docs (example: "features/rag.md").
   - Values are the COMPLETE Markdown documents using MkDocs Material components.
-  - Each page should contain at least three admonitions, code tabs (Python/Node/curl),
-    a mermaid diagram for flows, configuration tables, and explicit references to AGRO knobs.
+  - Use Material UI components and Mermaid diagrams where appropriate - let the content dictate what makes sense.
   - Keep paths that already exist; create new ones under logical sections (features/, configuration/, api/, operations/).
 """
     )
@@ -352,6 +407,55 @@ Return a JSON object where:
         parts.append("Do not create or modify any other paths.")
 
     return "\n".join(parts).strip()
+
+
+def parse_mkdocs_nav_targets() -> List[str]:
+    """Extract .md targets from mkdocs.yml nav in order."""
+    mkdocs_yml = ROOT / "mkdocs.yml"
+    if not mkdocs_yml.exists():
+        return []
+    try:
+        text = mkdocs_yml.read_text(encoding="utf-8")
+    except Exception:
+        return []
+    matches = re.findall(r"([A-Za-z0-9_./-]+\.md)", text)
+    ordered: List[str] = []
+    for m in matches:
+        if m not in ordered:
+            ordered.append(m)
+    return ordered
+
+
+def list_existing_doc_targets() -> List[str]:
+    if not DOCS_DIR.exists():
+        return []
+    ordered: List[str] = []
+    for path in sorted(DOCS_DIR.rglob("*.md")):
+        rel = path.relative_to(DOCS_DIR)
+        ordered.append(str(rel))
+    return ordered
+
+
+def normalize_target(t: str) -> str:
+    t = t.strip().lstrip("/")
+    if t.startswith("mkdocs/docs/"):
+        t = t[len("mkdocs/docs/") :]
+    return t
+
+
+def resolve_targets(args: argparse.Namespace, ctx: DocumentationContext, full_scan: bool) -> Optional[List[str]]:
+    if args.target:
+        return [normalize_target(t) for t in args.target]
+    if not full_scan:
+        return None
+    nav_targets = parse_mkdocs_nav_targets()
+    existing = list_existing_doc_targets() or list(ctx.existing_docs.keys())
+    combined: List[str] = []
+    for t in nav_targets + existing:
+        t = normalize_target(t)
+        if t not in combined:
+            combined.append(t)
+    return combined or None
 
 
 # --------------------------------------------------------------------------- #
@@ -390,11 +494,7 @@ def call_responses_api(
     if not reasoning_effort or reasoning_effort == "none":
         payload["temperature"] = temperature
     if verbosity:
-        payload.setdefault("text", {})["verbosity"] = verbosity
-    if reasoning_effort:
-        payload["reasoning"] = {"effort": reasoning_effort}
-    if verbosity:
-        payload.setdefault("text", {})["verbosity"] = verbosity
+        payload["text"] = {"verbosity": verbosity}
     body = json.dumps(payload).encode("utf-8")
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -493,14 +593,87 @@ def write_docs(updates: Dict[str, str], *, dry_run: bool) -> None:
 # --------------------------------------------------------------------------- #
 
 
+def _estimate_tokens(s: str) -> int:
+    """Estimate token count (~1 token per 4 chars)."""
+    return max(1, len(s) // 4)
+
+
+def _json_complete(text: str) -> bool:
+    """Check if JSON output appears complete (has opening and closing braces)."""
+    text = text.strip()
+    return text.startswith("{") and text.endswith("}")
+
+
+def call_with_continuations(
+    system_prompt: str,
+    initial_prompt: str,
+    *,
+    model: str,
+    temperature: float,
+    max_output_tokens: int,
+    max_retries: int,
+    backoff_factor: float,
+    reasoning_effort: Optional[str],
+    verbosity: Optional[str],
+    rate_limit_delay: float,
+    max_continuations: int,
+) -> str:
+    """Call Responses API and attempt JSON continuations when truncated."""
+    raw = call_responses_api(
+        system_prompt,
+        initial_prompt,
+        model=model,
+        temperature=temperature,
+        max_output_tokens=max_output_tokens,
+        max_retries=max_retries,
+        backoff_factor=backoff_factor,
+        reasoning_effort=reasoning_effort,
+        verbosity=verbosity,
+    )
+
+    attempts = 0
+    while not _json_complete(raw) and attempts < max_continuations:
+        attempts += 1
+        print(f"Output incomplete, continuation attempt {attempts}/{max_continuations}...")
+        if rate_limit_delay > 0:
+            time.sleep(rate_limit_delay)
+        continuation_prompt = (
+            "You were generating JSON documentation for AGRO.\n"
+            "Here is the partial JSON you already produced:\n\n"
+            f"{raw}\n\n"
+            "Continue from where it left off.\n"
+            "Do not repeat existing entries.\n"
+            "Finish any incomplete entries and close all JSON braces.\n"
+            "Output ONLY valid JSON (no prose)."
+        )
+        more = call_responses_api(
+            system_prompt,
+            continuation_prompt,
+            model=model,
+            temperature=temperature,
+            max_output_tokens=max_output_tokens,
+            max_retries=max_retries,
+            backoff_factor=backoff_factor,
+            reasoning_effort=reasoning_effort,
+            verbosity=verbosity,
+        )
+        raw = raw.rstrip() + "\n" + more.strip()
+
+    if attempts > 0:
+        print(f"Completed after {attempts} continuation(s)")
+    return raw
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Enhanced documentation generator for AGRO.")
     parser.add_argument("--base", default=DEFAULT_BASE, help="Git ref to diff against (default origin/staging).")
     parser.add_argument("--model", default=os.getenv("OPENAI_MODEL", "gpt-5.1"), help="OpenAI Responses model.")
     parser.add_argument("--temperature", type=float, default=0.3, help="Sampling temperature.")
-    parser.add_argument("--max-output-tokens", type=int, default=6000, help="Max tokens per Responses call.")
-    parser.add_argument("--max-retries", type=int, default=5, help="OpenAI retry attempts.")
+    parser.add_argument("--max-output-tokens", type=int, default=16000, help="Max tokens per API call.")
+    parser.add_argument("--max-retries", type=int, default=5, help="API retry attempts.")
     parser.add_argument("--retry-backoff", type=float, default=2.0, help="Exponent base for retry delays.")
+    parser.add_argument("--rate-limit-delay", type=float, default=0, help="Delay in seconds between API calls.")
+    parser.add_argument("--max-continuations", type=int, default=3, help="Max continuation attempts for incomplete output.")
     parser.add_argument("--full-scan", action="store_true", help="Ignore diff and scan entire repo.")
     parser.add_argument("--regenerate-all", action="store_true", help="Alias for --full-scan.")
     parser.add_argument("--dry-run", action="store_true", help="Do not write files; list what would change.")
@@ -517,12 +690,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--reasoning-effort",
         choices=["none", "low", "medium", "high"],
-        help="Set GPT-5.1 reasoning effort.",
+        help="Set reasoning effort (for supported models).",
     )
     parser.add_argument(
         "--verbosity",
         choices=["low", "medium", "high"],
-        help="Set GPT-5.1 text verbosity.",
+        help="Set text verbosity (for supported models).",
     )
     return parser.parse_args()
 
@@ -535,36 +708,98 @@ def main() -> None:
     print(f"Gathering repository context (base={base_ref or 'FULL_SCAN'}) ...")
     ctx = gather_context(base_ref, full_scan)
 
-    print("Building prompt ...")
-    user_prompt = build_user_prompt(ctx, regenerate_all=full_scan, targets=args.target)
+    targets = resolve_targets(args, ctx, full_scan)
 
-    if args.prompt_only:
+    def _print_prompt(system_prompt: str, user_prompt: str) -> None:
         print("=== SYSTEM PROMPT ===")
-        print(SYSTEM_PROMPT)
+        print(system_prompt)
         print("\n=== USER PROMPT ===")
         print(user_prompt)
-        return
 
-    print(f"Calling OpenAI Responses API (model={args.model}) ...")
-    raw = call_responses_api(
-        SYSTEM_PROMPT,
-        user_prompt,
-        model=args.model,
-        temperature=args.temperature,
-        max_output_tokens=args.max_output_tokens,
-        max_retries=args.max_retries,
-        backoff_factor=args.retry_backoff,
-        reasoning_effort=args.reasoning_effort,
-        verbosity=args.verbosity,
-    )
+    all_updates: Dict[str, str] = {}
 
-    updates = parse_docs_response(raw)
-    if not updates:
+    if targets:
+        total_targets = len(targets)
+        print(f"Generating docs for {total_targets} target(s) ...")
+        for idx, target in enumerate(targets, start=1):
+            target = normalize_target(target)
+            print(f"\n[{idx}/{total_targets}] Target: {target}")
+            user_prompt = build_user_prompt(ctx, regenerate_all=full_scan, targets=[target])
+
+            if args.prompt_only:
+                _print_prompt(SYSTEM_PROMPT, user_prompt)
+                continue
+
+            if args.rate_limit_delay > 0:
+                print(f"Rate limit delay: {args.rate_limit_delay}s...")
+                time.sleep(args.rate_limit_delay)
+
+            print(f"Calling OpenAI API (model={args.model}) ...")
+            raw = call_with_continuations(
+                SYSTEM_PROMPT,
+                user_prompt,
+                model=args.model,
+                temperature=args.temperature,
+                max_output_tokens=args.max_output_tokens,
+                max_retries=args.max_retries,
+                backoff_factor=args.retry_backoff,
+                reasoning_effort=args.reasoning_effort,
+                verbosity=args.verbosity,
+                rate_limit_delay=args.rate_limit_delay,
+                max_continuations=args.max_continuations,
+            )
+            updates = parse_docs_response(raw)
+            if not updates:
+                # If model returned markdown directly, assume it's for the target.
+                updates = {target: raw.strip()}
+
+            # Keep only the explicit target if multiple keys returned.
+            if target in updates:
+                all_updates[target] = updates[target]
+            else:
+                for k, v in updates.items():
+                    k_norm = normalize_target(k)
+                    if k_norm == target:
+                        all_updates[target] = v
+                        break
+                else:
+                    # Fallback: write first returned doc to target.
+                    first_key = next(iter(updates.keys()))
+                    all_updates[target] = updates[first_key]
+
+        if args.prompt_only:
+            return
+    else:
+        print("Building prompt ...")
+        user_prompt = build_user_prompt(ctx, regenerate_all=full_scan, targets=None)
+        if args.prompt_only:
+            _print_prompt(SYSTEM_PROMPT, user_prompt)
+            return
+        if args.rate_limit_delay > 0:
+            print(f"Rate limit delay: {args.rate_limit_delay}s...")
+            time.sleep(args.rate_limit_delay)
+        print(f"Calling OpenAI API (model={args.model}) ...")
+        raw = call_with_continuations(
+            SYSTEM_PROMPT,
+            user_prompt,
+            model=args.model,
+            temperature=args.temperature,
+            max_output_tokens=args.max_output_tokens,
+            max_retries=args.max_retries,
+            backoff_factor=args.retry_backoff,
+            reasoning_effort=args.reasoning_effort,
+            verbosity=args.verbosity,
+            rate_limit_delay=args.rate_limit_delay,
+            max_continuations=args.max_continuations,
+        )
+        all_updates = parse_docs_response(raw)
+
+    if not all_updates:
         print("No documentation updates returned.")
         return
 
-    write_docs(updates, dry_run=args.dry_run)
-    if not args.dry_run:
+    write_docs(all_updates, dry_run=args.dry_run)
+    if not args.dry_run and not args.prompt_only:
         print("Done. Review the updated markdown under mkdocs/docs/ and run 'mkdocs serve' to preview.")
 
 
@@ -572,4 +807,3 @@ if __name__ == "__main__":
     if not ROOT.exists():
         sys.exit("Repository root not found.")
     main()
-

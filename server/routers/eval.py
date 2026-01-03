@@ -14,7 +14,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from server.utils import atomic_write_json, read_json
 from server.services.config_registry import get_config_registry
-from eval.eval_rag import capture_eval_config, stamp_eval_runtime_config
+from eval.eval_rag import capture_eval_config, stamp_eval_runtime_config, hit, reciprocal_rank
 
 router = APIRouter()
 _config = get_config_registry()
@@ -132,6 +132,7 @@ def eval_run_instrumented(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
             # Run eval
             hits_top1 = 0
             hits_topk = 0
+            rr_sum = 0.0
             results = []
             t0 = time.time()
 
@@ -146,16 +147,15 @@ def eval_run_instrumented(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
 
                 paths = [d.get('file_path', '') for d in docs]
 
-                def hit(paths, expect):
-                    return any(any(exp in p for p in paths) for exp in expect)
-
                 top1_hit = hit(paths[:1], expect) if paths else False
                 topk_hit = hit(paths, expect) if paths else False
+                rr = reciprocal_rank(paths, expect) if paths else 0.0
 
                 if top1_hit:
                     hits_top1 += 1
                 if topk_hit:
                     hits_topk += 1
+                rr_sum += rr
 
                 results.append({
                     'question': q,
@@ -166,6 +166,7 @@ def eval_run_instrumented(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
                     'top1_hit': top1_hit,
                     'topk_hit': topk_hit,
                     'duration_secs': q_duration,
+                    'reciprocal_rank': round(rr, 4),
                     'docs': [{'file_path': d.get('file_path', ''), 'score': d.get('score', 0)} for d in docs[:5]]
                 })
 
@@ -182,6 +183,7 @@ def eval_run_instrumented(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
                 _EVAL_STATUS["total"] = total
 
             dt = time.time() - t0
+            mrr = rr_sum / max(1, total)
 
             # Record aggregate metrics
             record_eval_run(
@@ -204,6 +206,7 @@ def eval_run_instrumented(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
                 'topk_hits': hits_topk,
                 'top1_accuracy': hits_top1 / max(1, total),
                 'topk_accuracy': hits_topk / max(1, total),
+                'mrr': round(mrr, 4),
                 'duration_secs': dt,
                 'config': config_snapshot,
                 'results': results
@@ -257,7 +260,7 @@ async def eval_run_stream(
             final_k_val = default_final_k if final_k is None else max(1, int(final_k))
 
             # Resolve golden path
-            from eval.eval_rag import _resolve_golden_path, hit, MULTI_M  # type: ignore
+            from eval.eval_rag import _resolve_golden_path, hit, reciprocal_rank, MULTI_M  # type: ignore
             from retrieval.hybrid_search import search_routed, search_routed_multi
 
             golden_path = _resolve_golden_path()
@@ -302,6 +305,7 @@ async def eval_run_stream(
 
             hits_top1 = 0
             hits_topk = 0
+            rr_sum = 0.0
             results = []
             start_time = time.time()
 
@@ -331,11 +335,13 @@ async def eval_run_stream(
                 paths = [d.get('file_path', '') for d in docs]
                 top1_hit = hit(paths[:1], expect) if paths else False
                 topk_hit = hit(paths, expect) if paths else False
+                rr = reciprocal_rank(paths, expect) if paths else 0.0
 
                 if top1_hit:
                     hits_top1 += 1
                 if topk_hit:
                     hits_topk += 1
+                rr_sum += rr
 
                 results.append({
                     "question": q,
@@ -344,7 +350,8 @@ async def eval_run_stream(
                     "top1_path": paths[:1],
                     "top1_hit": top1_hit,
                     "topk_hit": topk_hit,
-                    "top_paths": paths[:final_k_val]
+                    "top_paths": paths[:final_k_val],
+                    "reciprocal_rank": round(rr, 4)
                 })
 
                 percent = (idx / total) * 100 if total else 0
@@ -354,6 +361,7 @@ async def eval_run_stream(
             duration = time.time() - start_time
             top1_accuracy = hits_top1 / max(1, total)
             topk_accuracy = hits_topk / max(1, total)
+            mrr = rr_sum / max(1, total)
 
             # Generate run_id for persistence and traceability
             run_id = time.strftime("%Y%m%d_%H%M%S")
@@ -374,6 +382,7 @@ async def eval_run_stream(
                 "topk_hits": hits_topk,
                 "top1_accuracy": round(top1_accuracy, 3),
                 "topk_accuracy": round(topk_accuracy, 3),
+                "mrr": round(mrr, 4),
                 "final_k": final_k_val,
                 "use_multi": use_multi_val,
                 "duration_secs": round(duration, 2),
@@ -398,7 +407,7 @@ async def eval_run_stream(
                 # Log error but don't fail the eval
                 yield f"data: {json.dumps({'type': 'log', 'message': f'Warning: Failed to save results: {e}'})}\n\n"
 
-            yield f"data: {json.dumps({'type': 'log', 'message': f'Complete: top1={hits_top1}/{total}, topk={hits_topk}/{total}, duration={round(duration, 2)}s'})}\n\n"
+            yield f"data: {json.dumps({'type': 'log', 'message': f'Complete: top1={hits_top1}/{total}, topk={hits_topk}/{total}, mrr={mrr:.4f}, duration={round(duration, 2)}s'})}\n\n"
             yield "data: {\"type\": \"complete\"}\n\n"
         finally:
             _EVAL_STATUS["running"] = False

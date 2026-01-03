@@ -2,8 +2,8 @@
 // Grafana metrics display and alert configuration
 
 import { useState, useEffect } from 'react';
-import { useTooltips } from '@/hooks/useTooltips';
 import { useAlertThresholdsStore, useAlertThresholdField } from '@/stores/useAlertThresholdsStore';
+import { TooltipIcon } from '@/components/ui/TooltipIcon';
 
 /**
  * ---agentspec
@@ -31,7 +31,6 @@ import { useAlertThresholdsStore, useAlertThresholdField } from '@/stores/useAle
 export function MonitoringSubtab() {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const { tooltips } = useTooltips();
   const loadThresholds = useAlertThresholdsStore((state) => state.load);
   const thresholdsLoaded = useAlertThresholdsStore((state) => state.loaded);
   const thresholdsLoading = useAlertThresholdsStore((state) => state.loading && !state.loaded);
@@ -120,7 +119,10 @@ export function MonitoringSubtab() {
 
         <div className="input-row">
           <div className="input-group">
-            <label dangerouslySetInnerHTML={{ __html: tooltips.ERROR_RATE_THRESHOLD }} />
+            <label>
+              Error Rate Threshold (%)
+              <TooltipIcon name="ERROR_RATE_THRESHOLD" />
+            </label>
             <input
               type="number"
               value={errorRateThreshold}
@@ -142,7 +144,10 @@ export function MonitoringSubtab() {
             </p>
           </div>
           <div className="input-group">
-            <label dangerouslySetInnerHTML={{ __html: tooltips.LATENCY_P99_THRESHOLD }} />
+            <label>
+              Latency P99 Threshold (s)
+              <TooltipIcon name="LATENCY_P99_THRESHOLD" />
+            </label>
             <input
               type="number"
               value={latencyP99}
@@ -167,7 +172,10 @@ export function MonitoringSubtab() {
 
         <div className="input-row">
           <div className="input-group">
-            <label dangerouslySetInnerHTML={{ __html: tooltips.TIMEOUT_ERRORS_THRESHOLD }} />
+            <label>
+              Timeout Errors Threshold
+              <TooltipIcon name="TIMEOUT_ERRORS_THRESHOLD" />
+            </label>
             <input
               type="number"
               value={timeoutErrors}
@@ -189,7 +197,10 @@ export function MonitoringSubtab() {
             </p>
           </div>
           <div className="input-group">
-            <label dangerouslySetInnerHTML={{ __html: tooltips.RATE_LIMIT_ERRORS_THRESHOLD }} />
+            <label>
+              Rate Limit Errors Threshold
+              <TooltipIcon name="RATE_LIMIT_ERRORS_THRESHOLD" />
+            </label>
             <input
               type="number"
               value={rateLimitErrors}
@@ -230,7 +241,10 @@ export function MonitoringSubtab() {
 
         <div className="input-row">
           <div className="input-group">
-            <label dangerouslySetInnerHTML={{ __html: tooltips.ENDPOINT_CALL_FREQUENCY }} />
+            <label>
+              Endpoint Call Frequency
+              <TooltipIcon name="ENDPOINT_CALL_FREQUENCY" />
+            </label>
             <input
               type="number"
               value={endpointCallFreq}
@@ -252,7 +266,10 @@ export function MonitoringSubtab() {
             </p>
           </div>
           <div className="input-group">
-            <label dangerouslySetInnerHTML={{ __html: tooltips.ENDPOINT_SUSTAINED_DURATION }} />
+            <label>
+              Sustained Duration (min)
+              <TooltipIcon name="ENDPOINT_SUSTAINED_DURATION" />
+            </label>
             <input
               type="number"
               value={sustainedDuration}
@@ -277,7 +294,10 @@ export function MonitoringSubtab() {
 
         <div className="input-row">
           <div className="input-group">
-            <label dangerouslySetInnerHTML={{ __html: tooltips.COHERE_RERANK_CALLS }} />
+            <label>
+              Cohere Rerank Calls/min
+              <TooltipIcon name="COHERE_RERANK_CALLS" />
+            </label>
             <input
               type="number"
               value={cohereRerankCalls}

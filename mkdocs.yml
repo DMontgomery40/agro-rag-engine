@@ -1,4 +1,5 @@
 site_name: AGRO Docs
+site_url: https://dmontgomery40.github.io/agro-rag-engine/
 repo_url: https://github.com/DMontgomery40/agro-rag-engine
 edit_uri: edit/development/mkdocs/docs/
 
@@ -66,7 +67,7 @@ plugins:
       canonical_version: latest
 
 extra_javascript:
-  - https://unpkg.com/mermaid@10/dist/mermaid.min.js
+  - https://unpkg.com/mermaid@11.4.1/dist/mermaid.min.js
   - assets/js/mermaid-init.js
 
 nav:

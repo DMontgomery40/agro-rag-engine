@@ -38,13 +38,27 @@ def get_vocab_preview(
         with open(vocab_file) as f:
             vocab_data = json.load(f)
 
-        # stem_to_sid maps stemmed terms to integer IDs
+        # Try stem_to_sid first (stemmer tokenizer), fall back to word_to_id (whitespace tokenizer)
         stem_to_sid = vocab_data.get('stem_to_sid', {})
+        if not stem_to_sid:
+            # Whitespace tokenizer uses word_to_id instead
+            stem_to_sid = vocab_data.get('word_to_id', {})
+
         if not stem_to_sid:
             raise HTTPException(status_code=500, detail="Empty vocabulary")
 
-        # Invert to get sid -> stem
-        sid_to_stem = {v: k for k, v in stem_to_sid.items()}
+        # Invert to get sid -> stem (filter out whitespace-only tokens for display)
+        sid_to_stem = {v: k for k, v in stem_to_sid.items() if k.strip()}
+
+        # If all tokens are whitespace-only, the index needs to be rebuilt
+        if not sid_to_stem:
+            return {
+                "terms": [],
+                "total_terms": len(stem_to_sid),
+                "tokenizer": "whitespace (empty - rebuild index)",
+                "repo": repo,
+                "error": "Index contains only whitespace tokens. Please rebuild the BM25 index with a stemmer tokenizer."
+            }
 
         # Load doc frequencies from CSC sparse matrix indptr
         indptr_file = os.path.join(idx_dir, 'indptr.csc.index.npy')

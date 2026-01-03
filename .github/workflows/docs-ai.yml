@@ -30,6 +30,9 @@ jobs:
   propose-docs:
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -45,15 +48,29 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests
 
-      - name: Generate plan (no LLM)
+      - name: Run LLM to produce and apply patch
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_MODEL: gpt-5.1
         run: |
-          python scripts/docs_ai/generate_docs_from_diff.py --base origin/main
+          python scripts/docs_ai/generate_docs_from_diff.py --base origin/main --llm openai --apply
 
-      - name: Upload plan artifact
-        uses: actions/upload-artifact@v4
+      - name: Create PR with changes
+        if: success()
+        uses: peter-evans/create-pull-request@v6
         with:
-          name: mkdocs-docs-plan
-          path: mkdocs-docs-plan.md
+          branch: docs/ai-update-${{ github.run_id }}
+          base: development
+          title: "docs(ai): proposed updates from LLM"
+          body: |
+            Automated proposal from Docs Autopilot on push.
+
+            **Review carefully** - LLM output can be wrong.
+
+            Provider: openai
+            Base ref: origin/main
+          commit-message: "docs(ai): apply LLM-suggested updates"
 
   apply-llm:
     runs-on: ubuntu-latest
@@ -80,6 +97,7 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_MODEL: gpt-5.1
         run: |
           python scripts/docs_ai/generate_docs_from_diff.py --base ${{ inputs.base_ref }} --llm ${{ inputs.provider }}
 

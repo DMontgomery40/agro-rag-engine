@@ -61,6 +61,19 @@ def hit(paths: List[str], expect: List[str]) -> bool:
     """Check if any expected path appears in the results."""
     return any(any(exp in p for p in paths) for exp in expect)
 
+
+def reciprocal_rank(paths: List[str], expect: List[str]) -> float:
+    """Return reciprocal rank (1/(rank+1)) or 0.0 if no hit.
+
+    MRR (Mean Reciprocal Rank) is computed as the average of reciprocal ranks
+    across all questions. For a single question, RR = 1/(rank+1) where rank
+    is the 0-indexed position of the first matching result.
+    """
+    for i, path in enumerate(paths):
+        if any(exp in path for exp in expect):
+            return 1.0 / (i + 1)
+    return 0.0
+
 def extract_config_snapshot() -> Dict[str, Any]:
     """Extract all relevant config parameters for this eval run."""
     config = {}
@@ -129,6 +142,7 @@ def main():
     # Track results
     hits_top1 = 0
     hits_topk = 0
+    rr_sum = 0.0
     results = []
     t0 = time.time()
 
@@ -158,11 +172,13 @@ def main():
         # Check hits
         top1_hit = hit(paths[:1], expect) if paths else False
         topk_hit = hit(paths, expect) if paths else False
+        rr = reciprocal_rank(paths, expect) if paths else 0.0
 
         if top1_hit:
             hits_top1 += 1
         if topk_hit:
             hits_topk += 1
+        rr_sum += rr
 
         # Store detailed result
         result = {
@@ -173,7 +189,8 @@ def main():
             'top1_hit': top1_hit,
             'topk_hit': topk_hit,
             'top_paths': paths,
-            'duration_secs': round(q_duration, 3)
+            'duration_secs': round(q_duration, 3),
+            'reciprocal_rank': round(rr, 4)
         }
         results.append(result)
 
@@ -189,13 +206,14 @@ def main():
 
         print(f"[{i}/{total}] repo={repo} q={q}")
         print(f"  top1={paths[:1]} (hit={top1_hit})")
-        print(f"  top{FINAL_K}={paths} (hit={topk_hit})")
+        print(f"  top{FINAL_K}={paths} (hit={topk_hit}, rr={rr:.3f})")
         print(f"  duration={q_duration:.2f}s\n")
 
     # Calculate aggregates
     dt = time.time() - t0
     top1_accuracy = hits_top1 / max(1, total)
     topk_accuracy = hits_topk / max(1, total)
+    mrr = rr_sum / max(1, total)
 
     # Build summary
     summary = {
@@ -206,6 +224,7 @@ def main():
         'topk_hits': hits_topk,
         'top1_accuracy': round(top1_accuracy, 4),
         'topk_accuracy': round(topk_accuracy, 4),
+        'mrr': round(mrr, 4),
         'final_k': FINAL_K,
         'use_multi': USE_MULTI,
         'duration_secs': round(dt, 2),
@@ -244,6 +263,7 @@ def main():
     print(f"Total Questions: {total}")
     print(f"Top-1 Accuracy: {hits_top1}/{total} ({top1_accuracy*100:.1f}%)")
     print(f"Top-{FINAL_K} Accuracy: {hits_topk}/{total} ({topk_accuracy*100:.1f}%)")
+    print(f"MRR: {mrr:.4f}")
     print(f"Duration: {dt:.2f}s")
     print(f"Results saved to: {output_file}")
     print("=" * 80)

@@ -32,7 +32,10 @@ except Exception:
 # Module-level cached configuration values from ConfigRegistry
 _config_registry = get_config_registry()
 _REPO = _config_registry.get_str('REPO', 'agro')  # Active repository - used when not specified in request
-_MAX_QUERY_REWRITES = _config_registry.get_int('MAX_QUERY_REWRITES', 2)
+_LANGGRAPH_MAX_QUERY_REWRITES = _config_registry.get_int(
+    'LANGGRAPH_MAX_QUERY_REWRITES',
+    _config_registry.get_int('MAX_QUERY_REWRITES', 2)
+)
 _LANGGRAPH_FINAL_K = _config_registry.get_int('LANGGRAPH_FINAL_K', 20)
 _FALLBACK_CONFIDENCE = _config_registry.get_float('FALLBACK_CONFIDENCE', 0.55)
 _CONF_TOP1 = _config_registry.get_float('CONF_TOP1', 0.62)
@@ -70,10 +73,13 @@ def reload_config():
     Call this function after config changes to update module-level cached values.
     This is automatically called when the config registry is reloaded via the API.
     """
-    global _REPO, _MAX_QUERY_REWRITES, _LANGGRAPH_FINAL_K, _FALLBACK_CONFIDENCE
+    global _REPO, _LANGGRAPH_MAX_QUERY_REWRITES, _LANGGRAPH_FINAL_K, _FALLBACK_CONFIDENCE
     global _CONF_TOP1, _CONF_AVG5, _CONF_ANY, _PACK_BUDGET_TOKENS, _HYDRATION_MODE, _SYSTEM_PROMPT
     _REPO = _config_registry.get_str('REPO', 'agro')
-    _MAX_QUERY_REWRITES = _config_registry.get_int('MAX_QUERY_REWRITES', 2)
+    _LANGGRAPH_MAX_QUERY_REWRITES = _config_registry.get_int(
+        'LANGGRAPH_MAX_QUERY_REWRITES',
+        _config_registry.get_int('MAX_QUERY_REWRITES', 2)
+    )
     _LANGGRAPH_FINAL_K = _config_registry.get_int('LANGGRAPH_FINAL_K', 20)
     _FALLBACK_CONFIDENCE = _config_registry.get_float('FALLBACK_CONFIDENCE', 0.55)
     _CONF_TOP1 = _config_registry.get_float('CONF_TOP1', 0.62)
@@ -125,7 +131,7 @@ def should_use_multi_query(question: str) -> bool:
 def retrieve_node(state: RAGState) -> Dict:
     q = state['question']
     repo = state.get('repo') if isinstance(state, dict) else None
-    mq = _MAX_QUERY_REWRITES if should_use_multi_query(q) else 1
+    mq = _LANGGRAPH_MAX_QUERY_REWRITES if should_use_multi_query(q) else 1
     tr = get_trace()
     docs = hybrid_search_routed_multi(q, repo_override=repo, m=mq, final_k=_LANGGRAPH_FINAL_K, trace=tr)
     conf = float(sum(d.get('rerank_score',0.0) for d in docs)/max(1,len(docs)))
@@ -252,7 +258,12 @@ def generate_node(state: RAGState) -> Dict:
     conf = float(state.get('confidence', 0.0) or 0.0)
     if conf < _FALLBACK_CONFIDENCE:
         repo = state.get('repo') or _REPO
-        alt_docs = hybrid_search_routed_multi(q, repo_override=repo, m=4, final_k=10)
+        alt_docs = hybrid_search_routed_multi(
+            q,
+            repo_override=repo,
+            m=_LANGGRAPH_MAX_QUERY_REWRITES,
+            final_k=10
+        )
         if alt_docs:
             ctx2 = alt_docs[:5]
             citations2 = "\n".join([f"- {d['file_path']}:{d['start_line']}-{d['end_line']}" + (" (card)" if d.get('card_hit') else "") for d in ctx2])

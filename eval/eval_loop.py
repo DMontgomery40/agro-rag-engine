@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from pathlib import Path
 from eval.eval_rag import (
     hit,
+    reciprocal_rank,
     _resolve_golden_path,
     USE_MULTI,
     FINAL_K,
@@ -84,6 +85,7 @@ def run_eval_with_results(
     final_k_val = FINAL_K if final_k_override is None else max(1, int(final_k_override))
     hits_top1 = 0
     hits_topk = 0
+    rr_sum = 0.0
     results = []
     t0 = time.time()
     for i, row in enumerate(valid_questions, 1):
@@ -102,10 +104,12 @@ def run_eval_with_results(
         paths = [d.get('file_path', '') for d in docs]
         top1_hit = hit(paths[:1], expect) if paths else False
         topk_hit = hit(paths, expect) if paths else False
+        rr = reciprocal_rank(paths, expect) if paths else 0.0
         if top1_hit:
             hits_top1 += 1
         if topk_hit:
             hits_topk += 1
+        rr_sum += rr
         results.append({
             "question": q,
             "repo": repo,
@@ -113,9 +117,11 @@ def run_eval_with_results(
             "top1_path": paths[:1],
             "top1_hit": top1_hit,
             "topk_hit": topk_hit,
-            "top_paths": paths[:final_k_val]
+            "top_paths": paths[:final_k_val],
+            "reciprocal_rank": round(rr, 4)
         })
     dt = time.time() - t0
+    mrr = rr_sum / max(1, total)
 
     # Capture config using the centralized whitelist and stamp actual run overrides
     eval_config = capture_eval_config()
@@ -132,6 +138,7 @@ def run_eval_with_results(
         "topk_hits": hits_topk,
         "top1_accuracy": round(hits_top1 / max(1, total), 3),
         "topk_accuracy": round(hits_topk / max(1, total), 3),
+        "mrr": round(mrr, 4),
         "final_k": final_k_val,
         "use_multi": use_multi_val,
         "duration_secs": round(dt, 2),

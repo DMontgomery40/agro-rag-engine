@@ -3,6 +3,7 @@
 // This is the keystone feature - comparing eval runs with LLM insights
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { EvalDrillDown } from '@/components/Evaluation/EvalDrillDown';
 import { SystemPromptsSubtab } from '@/components/Evaluation/SystemPromptsSubtab';
 import { LiveTerminal, LiveTerminalHandle } from '@/components/LiveTerminal/LiveTerminal';
@@ -20,6 +21,7 @@ interface EvalRunMeta {
 }
 
 export const EvalAnalysisTab: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [activeSubtab, setActiveSubtab] = useState<EvalSubtab>('analysis');
   const [runs, setRuns] = useState<EvalRunMeta[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
@@ -48,6 +50,14 @@ export const EvalAnalysisTab: React.FC = () => {
   useEffect(() => {
     if (!config) loadConfig();
   }, [config, loadConfig]);
+
+  // Handle URL params for cross-tab navigation (e.g., ?subtab=prompts)
+  useEffect(() => {
+    const subtabParam = searchParams.get('subtab');
+    if (subtabParam === 'prompts') {
+      setActiveSubtab('prompts');
+    }
+  }, [searchParams]);
 
   // Terminal helpers
   const getTerminal = useCallback(() => {

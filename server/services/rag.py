@@ -119,6 +119,7 @@ def do_chat(payload: Dict[str, Any], request: Optional[Request] = None) -> JSONR
         'GEN_TEMPERATURE': payload.get('temperature'),
         'GEN_MAX_TOKENS': payload.get('max_tokens'),
         'MAX_QUERY_REWRITES': payload.get('multi_query'),
+        'LANGGRAPH_MAX_QUERY_REWRITES': payload.get('multi_query'),
         'LANGGRAPH_FINAL_K': payload.get('final_k'),
         'SYSTEM_PROMPT': payload.get('system_prompt'),
     }

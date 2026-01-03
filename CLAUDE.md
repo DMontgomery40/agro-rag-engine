@@ -7,40 +7,23 @@ Local-first Enterprise-Grade RAG Engine for codebases with GUI, CLI, hybrid sear
 ## Tech Stack
 
 - **Backend**: Python 3.11+, FastAPI, Pydantic
-- **Frontend**: React/Vite (`/web`), Legacy JS (`/gui`)
+- **Frontend**: React/Vite (`/web`)
 - **Data**: Qdrant (vectors), Redis (cache), BM25S (sparse)
-- **Testing**: Playwright (GUI), pytest (backend)
-- **Infra**: Docker Compose (up to 12 containers in `/infra`)
+- **Testing**: Playwright (frontend), pytest (backend)
+- **Infra**: Docker Compose (12 containers)
 
-## Project Structure
-
-- `server/` - FastAPI backend, routers, services, MCP servers
-- `web/` - React/Vite frontend (primary GUI)
-- `retrieval/` - Hybrid search, embeddings, AST chunking
-- `indexer/` - Code indexing pipeline
-- `reranker/` - Learning reranker system
-- `tests/` - All tests (Playwright specs, pytest)
-- `scripts/` - `up.sh`, `down.sh`, `dev_up.sh`
-- `agent_docs/` - Agent-created documentation (NOT root)
-
-## Commands
+## Quick Start
 
 ```bash
-# Start services
-./scripts/dev_up.sh          # Development
-./scripts/up.sh              # Production
-
-# Testing
-npx playwright test --config=playwright.web.config.ts        # Dev (port 5173)
-npx playwright test --config=playwright.web-static.config.ts # Prod (port 8012)
-pytest tests/                # Backend tests
-
-# Git workflow
-git rev-parse --abbrev-ref HEAD  # Check branch at session start
+./scripts/dev_up.sh                    # Development
+./scripts/up.sh                        # Production
+pytest tests/                          # Backend tests
+npx playwright test --config=playwright.web.config.ts  # Frontend tests
 ```
 
-## Configuration System (MANDATORY)
+## Critical Rules
 
+### Configuration System (MANDATORY)
 **ALL settings MUST use Pydantic configs—no exceptions:**
 1. Add to `agro_config.json`
 2. Register in `/server/models/`
@@ -51,60 +34,53 @@ git rev-parse --abbrev-ref HEAD  # Check branch at session start
 
 Never use .env for configuration. .env is for secrets only and must never be edited.
 
-## Critical Rules
-
 ### No Stubs or Placeholders
 - Never add stubs, TODOs, placeholders, or simulated functionality
 - All backend must be fully wired to GUI via Pydantic
 - All GUI must be fully wired to backend via Pydantic + Zustand
 - Every new setting/parameter → `agro_config.json` + Pydantic models + config registry
 
-### Verification Required
-- **GUI work**: Playwright smoke test (renders, no black screen, nav works)
-- **Backend work**: Smoke test in `/tests/` exercising endpoints
-- **Config changes**: MANDATORY config contract test after any config-related changes:
-  ```bash
-  pytest tests/test_agro_config.py::TestConfigContractEnforcement -v
-  ```
-  This validates: no `os.getenv` for config keys, JSON/Pydantic/registry parity, no hardcoded fallbacks
-- Never report "done" without proof it works
+### Fix, Don't Delete
+- **Never remove broken features or settings—fix them instead**
+- If GUI settings are broken, fix the wiring
+- If a component doesn't work, repair it
+- All settings MUST appear in the GUI (accessibility requirement)
+- If something is unused or undeclared, we DO NOT delete it—we fix it
 
-### Configuration & Accessibility
-- All new settings MUST appear in GUI (accessibility requirement)
-- Ask user where GUI settings should go if unclear
-- Never remove broken GUI settings—fix them instead
+### API Key Handling
+- API keys stored in `.env` ONLY
+- Frontend checks via `/api/secrets/check` → returns boolean only
+- Keys are NEVER exposed to frontend—only existence is checked
+- Reference: `web/src/components/RAG/RerankerConfigSubtab.tsx`
 
-### Git Workflow
-- Never push to `main` directly
-- Work on `development`, harden on `staging`
-- PRs: `development` → `staging` → `main`
-- Never commit without user approval
+### Other Critical Rules
+- **Git Flow**: `development` → `staging` → `main`. Never push to `main` directly.
+- **No dangerouslySetInnerHTML**: Ever. Use safe alternatives.
+- **TypeScript Only**: No new `.js` files.
+- **JetBrains IDE MCP**: Use over Grep for code navigation.
 
-### Code Style
-- Use relative paths, never hardcoded absolute paths
-- New UI elements must have tooltips (see `useTooltips.ts`)
-- Don't add features without asking user first
-- JetBrains IDE MCP must ALWAYS be used over Grep
+## Config Contract Test (MANDATORY)
 
-### Security - No dangerouslySetInnerHTML
-- NEVER use `dangerouslySetInnerHTML` anywhere in the codebase
-- If pre-existing, it MUST be fixed immediately—no exceptions
-- Use safe alternatives: React components, sanitization libraries, or plain text
+After ANY config change:
+```bash
+pytest tests/test_agro_config.py::TestConfigContractEnforcement -v
+```
 
-### Legacy JS Phase-Out
-- All legacy JS modules in `/web/modules` are being phased out
-- NEVER add new `.js` modules—use TypeScript only
-- When encountering legacy JS that needs modification, refactor to TypeScript
-- Archive refactored legacy files to `/web/_archived`
+This validates: no `os.getenv` for config keys, JSON/Pydantic/registry parity, no hardcoded fallbacks.
 
-## Quick Reference
+## Detailed Rules
 
-```python
-# RAG API
+See `.claude/rules/` for comprehensive documentation:
+- `config/` - Pydantic, Zustand, full-stack config flow
+- `global/` - Security, git workflow, code style, testing
+- `server/` - Routers, services, models
+- `web/` - Components, stores, hooks, UI patterns
+- `retrieval/`, `indexer/`, `reranker/`, `eval/` - Domain systems
+- `tests/`, `scripts/`, `infra/`, `cli/` - Infrastructure
+
+## Quick API Reference
+
+```bash
 curl 'http://127.0.0.1:8012/search?q=query&repo=agro&top_k=5'
 curl 'http://127.0.0.1:8012/answer?q=query&repo=agro'
-
-# Direct code
-from retrieval.hybrid_search import search_routed_multi
-results = search_routed_multi("query", repo_override="agro", final_k=5)
 ```

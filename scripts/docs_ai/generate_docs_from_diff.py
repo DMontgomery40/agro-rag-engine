@@ -253,20 +253,51 @@ def call_external_llm(prompt: str, provider: str) -> str:
         key = os.getenv("OPENAI_API_KEY")
         if not key:
             raise RuntimeError("OPENAI_API_KEY not set")
-        url = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1/chat/completions")
-        model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        base_url = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1").rstrip("/")
+        url = f"{base_url}/responses"
+        model = os.getenv("OPENAI_MODEL", "gpt-5.1")
+        max_output_tokens = int(os.getenv("OPENAI_MAX_OUTPUT_TOKENS", "6000"))
         headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
-        data = {
+        payload = {
             "model": model,
-            "messages": [
-                {"role": "system", "content": "You are a senior technical writer for a RAG engine project. Output unified diffs for MkDocs documentation files only."},
-                {"role": "user", "content": prompt},
+            "input": [
+                {
+                    "role": "system",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": "You are a senior technical writer for a RAG engine project. Output unified diffs for MkDocs documentation files only.",
+                        }
+                    ],
+                },
+                {"role": "user", "content": [{"type": "input_text", "text": prompt}]},
             ],
             "temperature": 0.2,
+            "max_output_tokens": max_output_tokens,
         }
-        r = requests.post(url, headers=headers, json=data, timeout=120)
+
+        r = requests.post(url, headers=headers, json=payload, timeout=300)
         r.raise_for_status()
-        return r.json()["choices"][0]["message"]["content"]
+        data = r.json()
+
+        # Prefer Responses API output_text when present.
+        output_text = data.get("output_text")
+        if output_text:
+            if isinstance(output_text, list):
+                return "\n".join(str(x) for x in output_text).strip()
+            return str(output_text).strip()
+
+        chunks = []
+        for item in data.get("output", []):
+            if not isinstance(item, dict):
+                continue
+            for content in item.get("content", []):
+                if isinstance(content, dict) and content.get("type") in {"output_text", "text"}:
+                    chunks.append(content.get("text", ""))
+        if chunks:
+            return "\n".join(chunks).strip()
+
+        raise RuntimeError(f"Unexpected OpenAI response: {data}")
 
     elif provider == "anthropic":
         key = os.getenv("ANTHROPIC_API_KEY")
@@ -346,8 +377,40 @@ DON'T:
 
 TECHNICAL:
 - Models are NOT a finite list - users can add ANY model via Pydantic config
-- Use MkDocs Material formatting: admonitions, code blocks, content tabs, diagrams, etc.
-- Reference: https://squidfunk.github.io/mkdocs-material/reference/
+- Use MkDocs Material formatting where appropriate
+
+MKDOCS MATERIAL COMPONENTS:
+Reference: https://squidfunk.github.io/mkdocs-material/reference/
+
+Admonitions: !!! note "Title", !!! warning, ??? tip "Collapsible", ???+ info "Expanded"
+Types: note, abstract, info, tip, success, question, warning, failure, danger, bug, example, quote
+
+Code blocks: ```py title="file.py" linenums="1" hl_lines="2 3"
+Code annotations: # (1) with numbered explanation below
+
+Content tabs: === "Python" / === "JavaScript"
+
+Tables: | Method | Desc | with :--- left, :--: center, ---: right alignment
+
+Icons: :material-icon-name: :fontawesome-brands-github: :octicons-heart-fill-24:
+
+Task lists: - [x] Done, - [ ] Pending
+
+Definition lists: `Term` followed by :   Definition
+
+Tooltips: [text](# "tooltip") and *[ABBR]: Full text
+
+MERMAID v11 DIAGRAMS:
+```mermaid
+graph LR
+  A[Start] --> B{Decision?}
+  B -->|Yes| C[Action]
+```
+
+Mermaid v11 syntax:
+- Shape syntax: `A@{ shape: cyl, label: "Database" }`
+- Shapes: circle, diam, hex, cyl, stadium, card, rect, rounded, ellipse
+- Reference: https://mermaid.js.org/syntax/flowchart.html
 
 Output ONLY a unified diff patch that can be applied with `git apply`.
 """

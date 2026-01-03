@@ -1,703 +1,530 @@
+---
+title: Troubleshooting Guide
+---
+
 # Troubleshooting Guide
 
 This page collects the most common problems I’ve seen while running AGRO and how to debug them quickly.
 
-Use this as a “first pass” before diving into the code or filing an issue.
+Use this as a “first pass” before diving into the code or filing an issue. When in doubt, remember that almost everything in AGRO is just:
 
----
+- a FastAPI app
+- a Pydantic‑validated config registry
+- a set of small service modules under `server/services`
 
-## Quick Health Checklist
+If you know which layer is misbehaving, you can usually fix it in a few minutes.
 
-Before going deep, verify the basics:
 
-```bash
-# 1. Are you in the repo?
-pwd
-ls
+## 1. Configuration & Environment Issues
 
-# 2. Is the right Python env active?
-which python
-python -V
+AGRO’s behavior is driven by two main surfaces:
 
-# 3. Is Docker running?
-docker info | head -n 5
+- `.env` – infrastructure, secrets, and hard overrides
+- `agro_config.json` – tunable RAG behavior, models, retrieval knobs
 
-# 4. Are core services up? (Qdrant + Redis + API)
-docker ps --format 'table {{.Names}}\t{{.Status}}' | sed 1,1d
-
-curl -s http://127.0.0.1:6333/collections | jq .status  # Qdrant
-docker exec rag-redis redis-cli ping                     # Redis
-curl -s http://127.0.0.1:8012/health | jq .status        # API
-```
-
-!!! tip "If several things are broken at once"
-    Start from the bottom of the stack (Docker → Qdrant/Redis → API → MCP/GUI) and move upward. Don’t debug MCP or GUI until `/health` passes.
-
----
-
-## Common Connection Issues
-
-### 1. Docker Not Running or Containers Missing
-
-**Symptoms**
-
-- `docker: Cannot connect to the Docker daemon`
-- `curl http://127.0.0.1:6333` fails with `Connection refused`
-- `docker ps` shows no `qdrant`, `rag-redis`, or `agro-api` containers
-
-**Checklist**
-
-```bash
-# Is Docker up at all?
-docker info
-
-# Are AGRO services running?
-cd infra
-docker compose ps
-```
-
-**Fix**
-
-=== "Using helper scripts (recommended)"
-
-```bash
-cd scripts
-
-# Full dev stack (Qdrant, Redis, API, MCP, GUI, etc.)
-./dev_up.sh
-
-# Or minimal stack (Qdrant + Redis + API)
-./up.sh
-```
-
-=== "Manual docker-compose"
-
-```bash
-cd infra
-docker compose up -d
-
-# Or only the API service
-docker compose -f docker-compose.services.yml up -d api
-```
-
-If you see port conflicts:
-
-```bash
-# Who is using 6333 or 6379 or 8012?
-lsof -i :6333
-lsof -i :6379
-lsof -i :8012
-```
-
-Stop any other Qdrant/Redis/API processes using those ports.
-
----
-
-### 2. Qdrant Connection Problems
-
-**Symptoms**
-
-- API logs: `qdrant_client.exceptions.UnexpectedResponse`
-- Indexing fails: `Failed to connect to Qdrant` / `Connection refused`
-- `/search` returns empty results even after indexing
-
-**Basic checks**
-
-```bash
-# Is the container up?
-docker ps | grep qdrant
-
-# Does the HTTP endpoint respond?
-curl -s http://127.0.0.1:6333/collections | jq
-
-# From inside the api container (network issues)
-docker exec -it agro-api bash
-curl -s http://qdrant:6333/collections | jq
-```
-
-**Config to verify**
-
-```bash
-# .env (host-side)
-QDRANT_URL=http://127.0.0.1:6333
-```
-
-Inside Docker, AGRO usually talks to `http://qdrant:6333`. That mapping is handled by `infra/docker-compose.yml`.
-
-!!! warning "Don’t mix host and container URLs"
-    If you set `QDRANT_URL` to `http://127.0.0.1:6333` **inside** the container, it will fail. Inside Docker, use `http://qdrant:6333`. From your host, use `http://127.0.0.1:6333`.
-
-**Resyncing a broken Qdrant instance**
-
-Sometimes the schema or data gets corrupted during heavy tinkering.
-
-```bash
-# Stop Qdrant
-cd infra
-docker compose stop qdrant
-
-# Backup then wipe storage (adjust path to your setup)
-cp -r ../data/qdrant ../data/qdrant.bak.$(date +%s)
-rm -rf ../data/qdrant/*
-
-# Restart
-docker compose up -d qdrant
-```
-
-Then re-index your repos (see [Indexing problems](#indexing-problems)).
-
----
-
-### 3. Redis Connection Problems
-
-**Symptoms**
-
-- LangGraph / chat flows hang or crash
-- Logs mention `redis.exceptions.ConnectionError`
-- `/answer_stream` never yields tokens
-
-**Basic checks**
-
-```bash
-docker ps | grep rag-redis
-docker exec rag-redis redis-cli ping        # Expect "PONG"
-```
-
-**Config to verify**
-
-```bash
-# .env
-REDIS_URL=redis://127.0.0.1:6379/0
-```
-
-Inside Docker, Redis is usually reachable via `redis://rag-redis:6379/0`.
-
-If Redis is corrupted or low on memory:
-
-```bash
-docker exec -it rag-redis redis-cli info memory
-docker exec -it rag-redis redis-cli keys '*' | head
-```
-
-To flush (this clears LangGraph checkpoints and any cached state):
-
-```bash
-docker exec -it rag-redis redis-cli FLUSHALL
-```
-
-!!! note
-    AGRO uses Redis for LangGraph checkpoints and some cache-like state. Flushing Redis will reset conversation history and some pipeline state, but not your Qdrant index.
-
----
-
-### 4. API / GUI Not Responding
-
-**Symptoms**
-
-- `curl http://127.0.0.1:8012/health` fails
-- Browser shows connection error at `http://127.0.0.1:8012/`
-- MCP tools complain that the RAG server is unreachable
-
-**Checklist**
-
-```bash
-# Is the api container running?
-docker ps | grep agro-api
-
-# Check health endpoint
-curl -v http://127.0.0.1:8012/health
-
-# Look at logs
-docker logs --tail=200 agro-api
-```
-
-Common causes:
-
-| Symptom | Likely Cause | Fix |
-|--------|--------------|-----|
-| `ModuleNotFoundError` | Python env mismatch | Reinstall deps in `.venv` |
-| `pydantic` errors on startup | Invalid `agro_config.json` | Restore from backup or delete broken keys |
-| `OSError [Errno 98] Address already in use` | Port 8012 in use | Kill old uvicorn or change port |
-
-To restart the API:
-
-```bash
-cd infra
-docker compose -f docker-compose.services.yml restart api
-```
-
-Or if running bare uvicorn in dev:
-
-```bash
-# From repo root
-uvicorn server.asgi:app --host 0.0.0.0 --port 8012 --reload
-```
-
----
-
-## Indexing Problems
-
-Indexing is where most “it doesn’t find anything” issues start. The main entrypoint is:
-
-- CLI: `python indexer/index_repo.py`
-- API: `/api/index/repo`
-- GUI: RAG / Indexing tab
-
-### 1. Indexing Command Fails
-
-**Symptoms**
-
-- CLI exits with stack trace
-- GUI indexing job never completes
-- API `/api/index/repo` returns 500
-
-**First, run from CLI to see full output:**
-
-```bash
-# Example: index the AGRO repo itself
-REPO=agro python indexer/index_repo.py
-```
-
-Common errors and fixes:
-
-| Error message (truncated) | Likely Cause | Fix |
-|---------------------------|-------------|-----|
-| `ValueError: REPO path not found` | `REPO` env not set or wrong | `export REPO=/path/to/your/repo` or set in GUI |
-| `PermissionError` | No read access to repo | Fix filesystem permissions |
-| `qdrant_client.exceptions` | Qdrant down or misconfigured | See [Qdrant issues](#2-qdrant-connection-problems) |
-| `bm25s` import error | Missing RAG deps | `pip install -r requirements-rag.txt` |
-
-### 2. Nothing Appears in Search After Indexing
-
-**Symptoms**
-
-- Indexing “succeeds” but `/search` returns 0 results
-- GUI shows 0 chunks / 0 cards
-
-**Checklist**
-
-1. **Verify output files**
-
-```bash
-ls out
-ls out/<repo-name>/
-
-# Expect at least:
-# out/<repo-name>/chunks.jsonl
-# out/<repo-name>/cards.jsonl (if cards built)
-```
-
-2. **Inspect chunks**
-
-```bash
-head -n 5 out/<repo-name>/chunks.jsonl | jq .
-```
-
-If `chunks.jsonl` is empty or missing, your filtering is probably too aggressive.
-
-3. **Check exclude patterns**
-
-- Built-in filtering in `common/filtering.py`
-- Project-specific globs in `data/exclude_globs.txt`
-
-If you excluded `**/*.ts` in a TypeScript repo, you’ll get nothing.
-
-??? collapsible "Debugging filtering with a small sample"
-    ```bash
-    # Run indexer in "dry run" style by printing file paths
-    python - << 'PY'
-    from common.filtering import should_index_path
-    import pathlib
-
-    root = pathlib.Path("/path/to/your/repo")
-    for p in root.rglob("*"):
-        if p.is_file() and should_index_path(str(p)):
-            print("INDEX:", p)
-        else:
-            print("SKIP: ", p)
-    PY
-    ```
-
-4. **Check Qdrant collections**
-
-```bash
-curl -s http://127.0.0.1:6333/collections | jq .
-```
-
-You should see collections associated with your repo (names depend on profile/config).
-
-If the local `out/` files contain data but Qdrant is empty, the upsert step failed. Check `agro-api` logs while indexing.
-
----
-
-### 3. Indexing Is Extremely Slow
-
-**Symptoms**
-
-- Indexing takes hours on a modest repo
-- CPU pegged at 100% with little progress
-
-Potential causes:
-
-- Very large monorepo
-- Using large embedding model with no GPU
-- Running heavy reranker or cards-building in the same pass
-
-Mitigations:
-
-- Start with **BM25-only**:
-
-    ```bash
-    # In agro_config.json or profile:
-    "retrieval": "BM25"
-    "embedding": null
-    "rerank_model": null
-    ```
-
-- Limit the repo scope initially (e.g., only `src/`).
-- Use a small local embedding model:
-
-    ```yaml
-    embedding: BGE-small-en-v1.5
-    vectors: 384
-    precision: int4
-    ```
-
-- Disable cards building if you’re just validating pipeline:
-
-    ```bash
-    REPO=myrepo python indexer/index_repo.py --no-cards
-    ```
-
-!!! note
-    Smaller codebases + BM25-only often perform surprisingly well. The fancy pipeline is there when you need it, not a requirement.
-
----
-
-## Search Quality Issues
-
-### 1. “Results Are Irrelevant”
-
-Check **what** is being searched first.
-
-- Is the correct repo selected?
-- Are you using a profile that routes to the right backends?
-
-#### Step 1: Sanity-check BM25-only
-
-Switch to a simple profile:
-
-```yaml
-gen_model: qwen3-coder:7b
-embedding: null
-rerank_model: null
-retrieval: BM25
-top_k: 10
-```
-
-Run a few queries:
-
-```bash
-curl -s 'http://127.0.0.1:8012/search' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "query": "how does hybrid search work?",
-    "repo": "agro",
-    "profile": "bm25_debug"
-  }' | jq '.results[0:5]'
-```
-
-If BM25 results are good but “fancy” profiles are bad, the issue is likely:
-
-- Embedding model mismatch (e.g., multilingual vs English-only)
-- Reranker misconfigured
-- Over-aggressive confidence gating
-
-#### Step 2: Check reranker configuration
-
-```bash
-# .env
-RERANK_BACKEND=cohere     # or hf | local
-COHERE_API_KEY=...
-COHERE_RERANK_MODEL=rerank-3.5
-```
-
-If reranker API is failing, you’ll often see it in `agro-api` logs. Try disabling reranking temporarily:
-
-```yaml
-rerank_model: null
-```
-
-#### Step 3: Inspect raw retrieval vs reranked
-
-Use the **Evals / Debug** tools or API endpoints that expose pre-rerank scores:
-
-```bash
-curl -s 'http://127.0.0.1:8012/api/debug/search' \
-  -H 'Content-Type: application/json' \
-  -d '{"query": "your question", "repo": "your-repo"}' | jq
-```
-
-(See `docs/API_REFERENCE.md` for the exact debug endpoint names; they may evolve.)
-
----
-
-### 2. “It Keeps Pulling From the Wrong Repo”
-
-AGRO enforces repo isolation by design, but misconfig can still leak.
-
-Checklist:
-
-1. **Verify `REPO` in your request**
-
-    - CLI: `REPO=myrepo python -m cli.chat_cli`
-    - API: JSON body includes `"repo": "myrepo"`
-    - MCP: Check the MCP server config passed to Claude Code / Codex.
-
-2. **Check Qdrant collection naming**
-
-    - If you reused a collection name across repos, you’ll mix data.
-    - Use per-repo collection names (default AGRO behavior).
-
-3. **Check local chunks**
-
-    - Look under `out/<repo>/chunks.jsonl` and ensure they only contain paths from that repo.
-
----
-
-### 3. “Quality Was Good, Then Got Worse”
-
-You may have:
-
-- Changed profiles
-- Retrained the learning reranker with noisy feedback
-- Updated exclude patterns and re-indexed
-
-Actions:
-
-1. **Check current profile config in GUI** (RAG / Profiles tab).
-
-2. **Inspect reranker checkpoint**
-
-    - Look under `checkpoints/model/` and `models/` for recently updated configs.
-    - Compare with older checkpoint backups if you keep them.
-
-3. **Run regression evals**
-
-    ```bash
-    python eval/eval_loop.py \
-      --config eval/configs/your_eval_config.json
-    ```
-
-    Compare scores vs previous runs (stored in eval logs / Grafana).
-
-4. **Roll back reranker**
-
-    - Point reranker to an older checkpoint in `models/*.json`.
-    - Or temporarily disable learning reranker to verify it’s the cause.
-
----
-
-## How to Check Logs
-
-AGRO is heavily logged. Knowing where to look saves a lot of time.
-
-### 1. Docker Logs
-
-Use container names:
-
-```bash
-# API
-docker logs -f agro-api
-
-# Qdrant
-docker logs -f qdrant
-
-# Redis
-docker logs -f rag-redis
-
-# Node MCP (if used)
-docker logs -f agro-node-mcp   # adjust to your compose name
-```
-
-Use service vs container names correctly:
-
-| Task | Command |
-|------|---------|
-| Build/start via Compose | `docker compose -f docker-compose.services.yml up -d api` |
-| Follow logs via Compose | `docker compose -f docker-compose.services.yml logs -f api` |
-| Exec inside container | `docker exec -it agro-api bash` |
-| Tail runtime logs | `docker logs -f agro-api` |
-
-!!! tip
-    Use `docker logs --tail=200 agro-api` to get just the recent context. Combine with `grep` (e.g. `grep -i error`) to filter.
-
-### 2. FastAPI / Application Logs
-
-Inside the `agro-api` container:
-
-```bash
-docker exec -it agro-api bash
-
-# Check uvicorn logs if present
-ls -R /app/logs
-```
-
-If you run uvicorn manually in dev, logs will be in your terminal.
-
-### 3. LangGraph / Tracing
-
-If you enabled LangSmith:
-
-```bash
-# .env
-LANGCHAIN_TRACING_V2=true
-LANGCHAIN_PROJECT=rag-service
-LANGCHAIN_API_KEY=...
-```
-
-Go to the LangSmith UI and inspect traces for `/answer` and `/search` calls. This is invaluable for understanding retrieval and tool-calling behavior.
-
-### 4. Grafana & Metrics
-
-AGRO ships with a Grafana dashboard embedded in the GUI.
-
-- Open the Dashboard or Grafana tab in the GUI.
-- Look for:
-  - Qdrant request latency
-  - Redis errors
-  - Eval regression charts
-  - Cost estimation charts
-
-If Grafana isn’t loading, check the corresponding Docker service logs (often `grafana` or similar in `infra/docker-compose.yml`).
-
----
-
-## MCP / Tools Troubleshooting
-
-AGRO exposes MCP servers for Claude Code, Codex, and other tools.
-
-### 1. MCP Server Not Reachable
-
-**Symptoms**
-
-- Claude Code shows tool connection error
-- Codex says “tool server not responding”
-
-**Checklist**
-
-```bash
-# Python MCP stdio
-ps aux | grep mcp_server.py
-
-# HTTP MCP
-docker ps | grep mcp-http    # adjust to your compose service name
-
-# Logs
-docker logs -f agro-api      # MCP HTTP may be integrated here
-```
-
-Verify the MCP configuration in your client:
-
-- Correct URL (for HTTP MCP)
-- Correct transport (stdio vs HTTP vs WebSocket)
-- Correct port (see GUI / Onboarding wizard screenshots for reference)
-
-### 2. Tools Return Empty or Useless Results
-
-Once connectivity is confirmed, this is usually a **profile** or **search** issue, not MCP itself:
-
-- Confirm the MCP is configured to use the right **repo**.
-- Confirm **transport-specific profiles** are set (different models per HTTP/STDIO is supported).
-- Test the same query directly against AGRO’s `/answer` or `/search` endpoints to isolate whether MCP is at fault.
-
----
-
-## Where to Get Help
-
-AGRO is self-documented as much as I can reasonably make it.
-
-### 1. Built-In Help & Tooltips
-
-- Almost every parameter in the GUI has a detailed tooltip with links to:
-  - Official docs
-  - Arxiv papers
-  - Implementation details
-- Use the search in the GUI to find settings by name or concept (e.g., “multiquery”, “reranker backend”).
-
-!!! tip
-    If you don’t understand a parameter, **hover the tooltip first**. The goal is that you shouldn’t need an external LLM to explain AGRO’s own knobs.
-
-### 2. Ask AGRO About AGRO
-
-AGRO is indexed on itself.
-
-- Go to the **Chat** tab.
-- Select the **AGRO repo** as your target.
-- Ask questions like:
-  - “How does hybrid_search.py route between BM25 and Qdrant?”
-  - “Show me where MCP servers are configured.”
-  - “What does the learning reranker pipeline do?”
-
-You’ll get citations directly into the repo files you can inspect.
-
-### 3. Documentation
-
-- Main README: `README.md`
-- Docs index: `docs/README_INDEX.md`
-- API reference: `docs/API_REFERENCE.md`
-- Learning reranker: `docs/LEARNING_RERANKER.md`
-- MCP quickstart: `docs/QUICKSTART_MCP.md`
-- Performance & cost: `docs/PERFORMANCE_AND_COST.md`
-- CLI chat: `docs/CLI_CHAT.md`
-- Model guidance:
-  - `docs/MODEL_RECOMMENDATIONS.md`
-  - `docs/GEN_MODEL_COMPARISON.md`
-
-The published docs site:
-
-- :material-book-open-page-variant: **Full Documentation**  
-  https://dmontgomery40.github.io/agro-rag-engine/
-
-### 4. Filing Issues / Contributing
-
-If you’ve:
-
-- Verified Docker / Qdrant / Redis
-- Checked logs
-- Confirmed configs and still can’t resolve it
-
-Then:
-
-1. Collect:
-   - Output of `pwd` and `git rev-parse --abbrev-ref HEAD`
-   - `docker ps`
-   - Relevant log snippets (API, Qdrant, Redis)
-   - Your `.env` (with secrets redacted)
-   - Any non-default changes to `agro_config.json`
-
-2. Open an issue on the GitHub repo (see the README for the current URL).
-
-!!! warning "No stubs, no half-finished fixes"
-    If you’re contributing code, do **not** add placeholder endpoints, fake settings, or UI controls that don’t actually work. Everything must be fully wired through Pydantic configs and smoke-tested (Playwright for GUI, smoke tests under `/tests` for backend).
-
----
-
-## Minimal Debug Flow (Cheat Sheet)
+Under the hood, everything flows through the **configuration registry** in `server/services/config_registry.py`.
 
 ```mermaid
 flowchart TD
-    A[Start: Something is broken] --> B{Is API /health OK?}
-    B -- No --> B1[Check docker ps<br/>Check agro-api logs] --> B
-    B -- Yes --> C{Is Qdrant OK?}
-    C -- No --> C1[Check QDRANT_URL<br/>docker logs qdrant] --> C
-    C -- Yes --> D{Is Redis OK?}
-    D -- No --> D1[Check REDIS_URL<br/>redis-cli ping] --> D
-    D -- Yes --> E{Indexing works?}
-    E -- No --> E1[Run index_repo.py manually<br/>Check filtering & out/ dir] --> E
-    E -- Yes --> F{Search quality OK?}
-    F -- No --> F1[Try BM25-only profile<br/>Check reranker config] --> F
-    F -- Yes --> G[Check MCP / GUI config<br/>Review logs & docs]
+  A[.env file] -->|highest precedence| R[ConfigRegistry]
+  B[agro_config.json] -->|validated via Pydantic| R
+  C[Pydantic defaults] -->|fallback| R
+  R --> S[Services
+  (rag, indexing, editor,
+  keywords, etc.)]
 ```
 
-Use this as your mental model: **infra → indexing → retrieval → tools**. Fix lower layers before tweaking the higher ones.
+If something “mysteriously” ignores your settings, the registry is the first place to look.
+
+
+### 1.1 My `.env` changes aren’t taking effect
+
+AGRO loads `.env` **once**, at import time, via `python-dotenv`:
+
+```py title="server/services/config_registry.py" hl_lines="8-11" linenums="1"
+from dotenv import load_dotenv
+
+# Load .env FIRST before any os.environ access
+load_dotenv(override=True)
+```
+
+Common failure modes:
+
+- You edited the wrong `.env` (e.g. host vs container)
+- You changed `.env` but didn’t restart the server
+- You’re setting a key that AGRO doesn’t actually read
+
+Steps to debug:
+
+1. **Confirm which `.env` is being used**
+
+   In Docker, the `.env` that matters is usually next to `docker-compose.yml`. On bare metal, it’s whatever is in the current working directory when you start `uvicorn`/`server.app`.
+
+2. **Check the effective value via the config registry**
+
+   Use the HTTP config API or the UI’s Admin → Settings view to inspect the value. Internally, everything goes through `get_config_registry()`:
+
+   ```py title="server/services/config_registry.py" linenums="1"
+   from server.services.config_registry import get_config_registry
+
+   registry = get_config_registry()
+   print(registry.get_str("REPO"))
+   ```
+
+3. **Restart the backend**
+
+   The registry is process‑local. If you change `.env`, you must restart the FastAPI process (and the indexer container if you’re running Docker).
+
+
+### 1.2 `agro_config.json` validation errors
+
+`agro_config.json` is validated by Pydantic models in `server/models/agro_config_model.py`. If the file is malformed or contains unknown keys, the registry will log a `ValidationError` and fall back to defaults.
+
+Symptoms:
+
+- UI loads, but your changes to `agro_config.json` don’t seem to apply
+- Logs show something like `pydantic.ValidationError` when starting the server
+
+How to debug:
+
+1. **Check the logs**
+
+   Look for messages from the `agro.config` logger:
+
+   ```text
+   agro.config ERROR Failed to load agro_config.json: 1 validation error for AgroConfigRoot
+   ```
+
+2. **Validate the file manually**
+
+   Run a quick check in a Python shell:
+
+   ```py title="validate_config.py" linenums="1"
+   import json
+   from pathlib import Path
+   from server.models.agro_config_model import AgroConfigRoot
+
+   data = json.loads(Path("agro_config.json").read_text())
+   cfg = AgroConfigRoot(**data)
+   print(cfg.model_dump())
+   ```
+
+   If this raises, fix the offending field and retry.
+
+3. **Use only known keys**
+
+   The allowed keys are defined in `AGRO_CONFIG_KEYS`. Unknown keys are ignored by the registry layer that merges config for the web UI (`server/services/config_store.py`). If you typo a key, it simply won’t show up.
+
+
+### 1.3 Environment vs config precedence confusion
+
+The registry enforces a clear precedence:
+
+1. `.env` (highest)
+2. `agro_config.json`
+3. Pydantic defaults
+
+There are also **legacy aliases** and a small set of **infrastructure keys** that must be overridable via environment variables.
+
+Example: `MQ_REWRITES` is aliased to `MAX_QUERY_REWRITES`:
+
+```py title="server/services/config_registry.py" linenums="1" hl_lines="1-4"
+LEGACY_KEY_ALIASES = {
+    'MQ_REWRITES': 'MAX_QUERY_REWRITES',
+}
+```
+
+If you set `MQ_REWRITES` in `.env` and `MAX_QUERY_REWRITES` in `agro_config.json`, the `.env` value wins.
+
+To see where a value came from, use the registry’s source tracking (exposed via the config API / UI). If you’re debugging in code, log both the value and its source.
+
+
+## 2. Indexing Problems
+
+Indexing is orchestrated by `server/services/indexing.py`. It shells out to the indexer using the same Python interpreter and passes a small environment block.
+
+```py title="server/services/indexing.py" linenums="1" hl_lines="18-32"
+from common.paths import repo_root
+from server.index_stats import get_index_stats as _get_index_stats
+from server.services.config_registry import get_config_registry
+
+_config_registry = get_config_registry()
+
+_INDEX_STATUS: List[str] = []
+_INDEX_METADATA: Dict[str, Any] = {}
+
+
+def start(payload: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    global _INDEX_STATUS, _INDEX_METADATA
+    payload = payload or {}
+    _INDEX_STATUS = ["Indexing started..."]
+    _INDEX_METADATA = {}
+
+    def run_index():
+        global _INDEX_STATUS, _INDEX_METADATA
+        try:
+            repo = _config_registry.get_str("REPO", "agro")
+            _INDEX_STATUS.append(f"Indexing repository: {repo}")
+            root = repo_root()
+            env = {**os.environ, "REPO": repo, "REPO_ROOT": str(root), "PYTHONPATH": str(root)}
+            if payload.get("enrich"):
+                env["ENRICH_CODE_CHUNKS"] = "true"
+                _INDEX_STATUS.append("Enriching chunks with summaries...")
+            # ... spawn subprocess here ...
+        except Exception as e:
+            _INDEX_STATUS.append(f"Indexing failed: {e}")
+```
+
+The web UI polls `_INDEX_STATUS` and `_INDEX_METADATA` to show progress.
+
+
+### 2.1 Indexing never starts or hangs
+
+Symptoms:
+
+- Clicking “Index” in the UI shows “Indexing started…” but nothing else
+- No new Qdrant collections or index files appear under `data/`
+
+Checklist:
+
+1. **Check the configured repo**
+
+   The indexer uses `REPO` from the config registry:
+
+   ```py
+   repo = _config_registry.get_str("REPO", "agro")
+   ```
+
+   Make sure:
+
+   - `REPO` points to a valid profile / repo name
+   - `REPO_ROOT` (in the environment) matches the actual checkout path
+
+2. **Inspect indexer logs**
+
+   The indexer runs as a separate process. If you’re using Docker, check the `indexer` container logs. On bare metal, look for logs under `data/out/<repo>/logs` or wherever you configured logging.
+
+3. **Verify Python path**
+
+   The indexer process is started with `PYTHONPATH` set to `repo_root()`. If you’ve moved the code or are running from a different working directory, imports inside the indexer may fail.
+
+
+### 2.2 “Indexing failed: …” in the UI
+
+If `_INDEX_STATUS` contains a line like `Indexing failed: <error>`, the exception was caught in `run_index()`.
+
+Steps:
+
+1. **Open browser dev tools → Network** and inspect the `/api/index/status` response to see the full `_INDEX_STATUS` list.
+2. **Reproduce from the CLI** using the same environment:
+
+   ```bash
+   REPO=my-repo REPO_ROOT=/path/to/root PYTHONPATH=/path/to/root \
+   python cli/agro.py index --repo my-repo
+   ```
+
+   This often gives a more complete traceback.
+
+
+## 3. RAG / Search Issues
+
+The HTTP search and chat endpoints ultimately call `server/services/rag.py`.
+
+```py title="server/services/rag.py" linenums="1" hl_lines="21-40"
+from retrieval.hybrid_search import search_routed_multi
+from server.services.config_registry import get_config_registry
+
+_config_registry = get_config_registry()
+
+_graph = None
+CFG = {"configurable": {"thread_id": "http"}}
+
+
+def _get_graph():
+    global _graph
+    if _graph is None:
+        try:
+            from server.langgraph_app import build_graph
+            _graph = build_graph()
+        except Exception as e:
+            logger.warning("build_graph failed: %s", e)
+            _graph = None
+    return _graph
+
+
+def do_search(q: str, repo: Optional[str], top_k: Optional[int], request: Optional[Request] = None) -> Dict[str, Any]:
+    if top_k is None:
+        try:
+            top_k = _config_registry.get_int('FINAL_K', _config_registry.get_int('LANGGRAPH_FINAL_K', 10))
+        except Exception:
+            top_k = 10
+    # ... call search_routed_multi(...) ...
+```
+
+
+### 3.1 Empty or obviously wrong results
+
+Before blaming embeddings or rerankers, check the **simple stuff**:
+
+1. **BM25 only sanity check**
+
+   For small repos, BM25 alone is often better than a misconfigured dense stack. In the UI, set the retrieval mode to “BM25 only” (or disable dense search in `agro_config.json`) and retry.
+
+2. **Verify `FINAL_K` / `LANGGRAPH_FINAL_K`**
+
+   If `FINAL_K` is set too low, you may be seeing only a tiny slice of the candidate set. The code falls back to 10 if both keys are missing or invalid.
+
+3. **Check discriminative keywords**
+
+   AGRO supports discriminative / semantic keywords via `server/services/keywords.py`. If you’ve cranked `KEYWORDS_BOOST` or set `KEYWORDS_MAX_PER_REPO` to something extreme, BM25 scoring can get skewed.
+
+   The module caches config at import time:
+
+   ```py title="server/services/keywords.py" linenums="1" hl_lines="8-16"
+   _config_registry = get_config_registry()
+   _KEYWORDS_MAX_PER_REPO = _config_registry.get_int('KEYWORDS_MAX_PER_REPO', 50)
+   _KEYWORDS_MIN_FREQ = _config_registry.get_int('KEYWORDS_MIN_FREQ', 3)
+   _KEYWORDS_BOOST = _config_registry.get_float('KEYWORDS_BOOST', 1.3)
+   _KEYWORDS_AUTO_GENERATE = _config_registry.get_int('KEYWORDS_AUTO_GENERATE', 1)
+   _KEYWORDS_REFRESH_HOURS = _config_registry.get_int('KEYWORDS_REFRESH_HOURS', 24)
+   ```
+
+   If you change these at runtime, call `reload_config()` in that module or restart the server.
+
+
+### 3.2 LangGraph errors or missing graph behavior
+
+AGRO can optionally run a LangGraph‑based orchestration layer (`server.langgraph_app`). If `build_graph()` fails, the RAG service logs a warning and continues without a graph:
+
+```py title="server/services/rag.py" hl_lines="11-19" linenums="1"
+_graph = None
+
+
+def _get_graph():
+    global _graph
+    if _graph is None:
+        try:
+            from server.langgraph_app import build_graph
+            _graph = build_graph()
+        except Exception as e:
+            logger.warning("build_graph failed: %s", e)
+            _graph = None
+    return _graph
+```
+
+If you expect graph‑driven behavior (multi‑step tools, custom nodes) but don’t see it:
+
+1. **Check logs for `build_graph failed`**
+2. **Import `server.langgraph_app` in a REPL** and call `build_graph()` manually to see the traceback.
+3. If you’re iterating on the graph code, remember that `_graph` is cached at module level; restart the server after changes.
+
+
+## 4. Editor & DevTools Integration
+
+AGRO ships with an embedded “editor” / devtools panel, controlled by `server/services/editor.py`.
+
+```py title="server/services/editor.py" linenums="1" hl_lines="15-25"
+from server.services.config_registry import get_config_registry
+
+
+def read_settings() -> Dict[str, Any]:
+    """Read editor settings, preferring registry (agro_config.json/.env) with legacy file fallback."""
+    registry = get_config_registry()
+    settings = {
+        "port": registry.get_int("EDITOR_PORT", 4440),
+        "enabled": registry.get_bool("EDITOR_ENABLED", True),
+        "embed_enabled": registry.get_bool("EDITOR_EMBED_ENABLED", True),
+        "bind": registry.get_str("EDITOR_BIND", "local"),  # 'local' or 'public'
+        # ... more keys ...
+    }
+    # legacy file fallback under server/out/editor/settings.json
+    return settings
+```
+
+
+### 4.1 Editor panel not showing up in the UI
+
+The web UI checks `read_settings()` to decide whether to show the embedded editor.
+
+- Ensure `EDITOR_ENABLED=true` in `.env` or `agro_config.json`
+- If you’ve previously written `server/out/editor/settings.json`, those values may override defaults; delete the file to reset to registry‑only behavior
+
+
+### 4.2 Editor server not reachable
+
+If the embedded editor runs as a separate process (e.g. a code‑server container), the UI needs to know where to find it:
+
+- `EDITOR_PORT` – port the editor listens on
+- `EDITOR_BIND` – `local` vs `public` (affects how URLs are constructed)
+
+Check the DevTools network tab for failing requests to `/editor/...` and cross‑check with `read_settings()`.
+
+
+## 5. Traces & Evaluation
+
+AGRO writes traces for RAG runs and evaluation under `out/<repo>/traces`. The service layer for listing and fetching traces lives in `server/services/traces.py`.
+
+```py title="server/services/traces.py" linenums="1" hl_lines="7-23"
+from common.config_loader import out_dir
+from server.tracing import latest_trace_path
+
+
+def list_traces(repo: Optional[str]) -> Dict[str, Any]:
+    r = (repo or __import__('os').getenv('REPO', 'agro')).strip()
+    base = Path(out_dir(r)) / 'traces'
+    files: List[Dict[str, Any]] = []
+    try:
+        if base.exists():
+            for p in sorted(
+                [x for x in base.glob('*.json') if x.is_file()],
+                key=lambda x: x.stat().st_mtime,
+                reverse=True,
+            )[:50]:
+                files.append({
+                    'path': str(p),
+                    'name': p.name,
+                    'mtime': __import__('datetime').datetime.fromtimestamp(p.stat().st_mtime).isoformat(),
+                })
+    except Exception as e:
+        logger.exception("Failed to list traces: %s", e)
+    return {'repo': r, 'files': files}
+```
+
+
+### 5.1 “No traces found” in the UI
+
+If the Evaluation / Tracing tabs show no traces:
+
+1. **Check the repo name**
+
+   `list_traces()` uses the `repo` query param or falls back to `REPO` from the environment. If your UI is pointing at `repo=agro` but you indexed `my-repo`, you’ll see an empty list.
+
+2. **Inspect the filesystem**
+
+   Look under `out/<repo>/traces` (or whatever `out_dir(repo)` resolves to). If there are no `.json` files, tracing may be disabled or the RAG pipeline never wrote any traces.
+
+3. **Check for exceptions in `list_traces`**
+
+   Any filesystem errors are logged via `logger.exception`. If you’re running inside a container, make sure the `out/` directory is writable and mounted correctly.
+
+
+### 5.2 “latest trace” endpoint fails
+
+`latest_trace(repo)` wraps `server.tracing.latest_trace_path` and returns a small JSON payload. If `latest_trace_path` raises, the service logs and returns an empty result.
+
+If the UI shows an error when loading the latest trace:
+
+- Check logs for `latest_trace_path failed`
+- Verify that at least one trace file exists under `out/<repo>/traces`
+- Confirm that trace filenames follow the expected pattern (the helper usually looks for the newest `*.json`)
+
+
+## 6. File Writes & Docker Volume Quirks
+
+When AGRO writes config or settings files from the API / UI, it uses an **atomic write helper** with a Docker‑specific fallback in `server/services/config_store.py`.
+
+```py title="server/services/config_store.py" linenums="1" hl_lines="15-32"
+SECRET_FIELDS = {
+    'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GOOGLE_API_KEY',
+    # ... many more ...
+}
+
+
+def _atomic_write_text(path: Path, content: str, max_retries: int = 3) -> None:
+    """Atomically write text to a file with fallback for Docker volume mounts.
+
+    Docker Desktop on macOS can fail with 'Device or resource busy' on os.replace()
+    when the file is being watched. We try atomic first, then fall back to direct write.
+    """
+    import time
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = Path(tempfile.gettempdir()) / f".{path.name}.tmp"
+
+    for i in range(max_retries):
+        try:
+            tmp.write_text(content, encoding="utf-8")
+            os.replace(tmp, path)
+            return
+        except OSError as e:
+            if "Device or resource busy" in str(e) and i < max_retries - 1:
+                time.sleep(0.1 * (i + 1))
+                continue
+            # Fallback: direct write (non‑atomic)
+            path.write_text(content, encoding="utf-8")
+            return
+```
+
+
+### 6.1 “Device or resource busy” when saving config
+
+On Docker Desktop for macOS, `os.replace()` on a bind‑mounted file can intermittently fail with `EBUSY` if something is watching the file.
+
+AGRO already retries and falls back to a non‑atomic write, but if you still see errors:
+
+- Ensure the mount point is not being aggressively watched by external tools
+- Consider moving `data/` and `out/` to a Docker volume instead of a host bind mount
+
+
+### 6.2 Secrets not persisting or showing up blank
+
+Secrets (API keys, tokens) are treated specially:
+
+- The set of secret field names is in `SECRET_FIELDS`
+- When reading config for the UI, these values are **redacted**
+- When writing, the API will avoid echoing them back
+
+If you save a secret in the UI and then re‑open the page, seeing an empty field is expected. To verify persistence:
+
+- Inspect the underlying config file on disk (e.g. `agro_config.json` or the profile JSON under `web/public/profiles`)
+- Or call the config API directly and check the raw JSON (outside the UI’s redaction logic)
+
+
+## 7. When All Else Fails: Let AGRO Explain Itself
+
+Two meta‑features are worth remembering when debugging:
+
+1. **Config registry is indexed into AGRO’s own RAG**
+
+   You can go to the Chat tab and ask things like:
+
+   > “How does `KEYWORDS_AUTO_GENERATE` work?”
+
+   or
+
+   > “Where is `FINAL_K` used in the retrieval pipeline?”
+
+   The system will pull from `server/services`, `retrieval/`, and the Pydantic models to answer.
+
+2. **Every knob has documentation attached**
+
+   The web UI surfaces tooltips for each parameter, often with links to the relevant arXiv papers or provider docs. If a setting behaves differently than you expect, hover it first; if that’s not enough, search for the key name in the repo.
+
+
+## 8. Quick Triage Checklist
+
+Use this as a fast path before deeper debugging:
+
+<div class="grid cards" markdown>
+
+- :material-cog-outline: **Config not applying**  
+  - Confirm `.env` location and restart backend  
+  - Validate `agro_config.json` with `AgroConfigRoot`  
+  - Check registry values via Admin → Settings
+
+- :material-database-search: **Indexing issues**  
+  - Verify `REPO` / `REPO_ROOT`  
+  - Run `cli/agro.py index` manually  
+  - Inspect indexer logs / `data/` contents
+
+- :material-magnify: **Bad search results**  
+  - Try BM25‑only  
+  - Check `FINAL_K` and keyword boosts  
+  - Look for LangGraph warnings
+
+- :material-file-search-outline: **Missing traces / evals**  
+  - Confirm `out/<repo>/traces` exists  
+  - Check `repo` param vs `REPO` env  
+  - Look for exceptions in `server/services/traces.py`
+
+</div>

@@ -1,501 +1,424 @@
-# Configuration
-
-AGRO has a single source of truth for tunable RAG behavior: `agro_config.json`, backed by Pydantic models and surfaced through a central `ConfigRegistry`. Secrets and infrastructure paths live in `.env`.
-
-This page covers:
-
-- Overall config architecture
-- `agro_config.json` structure and categories
-- Environment variables (`.env`)
-- The Pydantic config system
-- How settings flow from config → backend → GUI
-
+---
+title: Configuration
 ---
 
-## Configuration Architecture
+# Configuration
 
-AGRO merges configuration from three places, with clear roles:
+AGRO has a single source of truth for tunable behavior: a central **configuration registry** backed by Pydantic models and a thin service layer.
 
-1. `agro_config.json` — **tunable RAG + app behavior** (Pydantic‑validated)
-2. `.env` — **secrets + infrastructure** (API keys, paths, ports)
-3. Pydantic defaults — **safe fallbacks** when nothing else is set
+This page explains how that registry is wired, how `.env` and `agro_config.json` interact, and how the web UI / HTTP API talk to it.
 
-!!! note "Precedence & responsibilities"
-    - :material-file-code: `agro_config.json`: All **AGRO\_*** runtime knobs  
-    - :material-file-hidden: `.env`: Provider keys, host URLs, editor image, etc.  
-    - :material-shield-alert: `.env` **does not override** `agro_config.json` for AGRO config keys. This is intentional and enforced in `ConfigRegistry`.
+<div class="grid cards" markdown>
+- :material-tune: **Goal**  
+  One place to ask "what is AGRO configured to do right now?" and one place to change it.
+- :material-file-document: **Sources**  
+  `.env` for infrastructure & secrets, `agro_config.json` for RAG behavior, Pydantic defaults for everything else.
+- :material-cog-sync: **Runtime**  
+  Thread‑safe registry, hot‑reload support, and a small API surface (`get_int`, `get_str`, etc.).
+</div>
+
+
+## Configuration sources & precedence
+
+All configuration flows through `server/services/config_registry.py`. That module builds a single `ConfigRegistry` instance at process start and everything else (indexer, RAG, editor, keywords, web UI) reads from it.
+
+Precedence is explicit and simple:
+
+1. **`.env` file** – secrets and infrastructure overrides
+2. **`agro_config.json`** – tunable RAG parameters, model config, UI defaults
+3. **Pydantic defaults** – fallback values defined in `AgroConfigRoot`
+
+Higher precedence wins. If a key is present in `.env`, it *always* overrides the same key in `agro_config.json`.
 
 ```mermaid
 flowchart TD
-    subgraph Files
-      A[.env] -->|load_dotenv| B[os.environ]
-      C[agro_config.json] --> D[Pydantic AgroConfigRoot]
-    end
+  A[.env] -->|highest precedence| D[ConfigRegistry]
+  B[agro_config.json] --> D
+  C[Pydantic defaults<br/>AgroConfigRoot] --> D
 
-    D -->|to_flat_dict| E[ConfigRegistry._config]
-    B -->|non-AGRO keys only| E
-
-    E -->|get_*| F[Backend services]
-    F -->|REST / WebSocket| G[GUI]
-    G -->|user edits| H[set_config API]
-    H -->|update_agro_config| C
-    H -->|atomic write| I[.env]
+  D --> E[server/services/*]
+  D --> F[HTTP API]
+  D --> G[Web UI]
 ```
 
----
+!!! note "Legacy env variables"
+    `config_registry` keeps a small alias map for older keys. For example:
 
-## `agro_config.json` Overview
+    ```py
+    LEGACY_KEY_ALIASES = {
+        "MQ_REWRITES": "MAX_QUERY_REWRITES",
+    }
+    ```
 
-`agro_config.json` is a nested JSON file, with sections mapped to Pydantic models in `server/models/agro_config_model.py`. Each nested field is exposed as a flat, env‑style key (e.g. `retrieval.rrf_k_div` → `RRF_K_DIV`) via `AgroConfigRoot.to_flat_dict()`.
+    If you still have `MQ_REWRITES` in your environment, AGRO will treat it as `MAX_QUERY_REWRITES`. New setups should use the canonical names from `AGRO_CONFIG_KEYS`.
 
-Top‑level sections:
 
-| Section          | Purpose                                             |
-|------------------|------------------------------------------------------|
-| `retrieval`      | Hybrid search, query expansion, hydration, BM25     |
-| `scoring`        | File/path boosts, vendor preference                 |
-| `layer_bonus`    | Layer‑aware prioritization, intent matrix           |
-| `embedding`      | Embedding models, dimensions, caching               |
-| `chunking`       | AST/greedy chunking behavior                        |
-| `indexing`       | Vector DB, BM25, repo paths, indexing limits        |
-| `reranking`      | Local/cloud rerankers and blending                  |
-| `generation`     | Chat models, timeouts, Ollama/OpenAI backends       |
-| `enrichment`     | Semantic cards and code enrichment                   |
-| `keywords`       | Automatic keyword extraction settings               |
-| `tracing`        | Logging, metrics, LangSmith/LangTrace               |
-| `training`       | Reranker training hyperparameters                   |
-| `ui`             | Chat UI, editor, Grafana, theme, runtime mode       |
-| `hydration`      | Result hydration defaults                           |
-| `evaluation`     | Evaluation dataset paths and multi‑query settings   |
-| `system_prompts` | System prompts for different internal agents        |
+## The configuration registry
 
-<figure markdown="span">
-  ![System Prompts Configuration](../assets/images/system-prompts.png){ width="100%" }
-  <figcaption>Configure system prompts for Chat, Retrieval, and other agents directly in the UI.</figcaption>
-</figure>
+The registry lives in `server/services/config_registry.py` and is accessed via a single helper:
 
-In the GUI, every field has a tooltip with:
+```py title="server/services/config_registry.py" linenums="1"
+from server.services.config_registry import get_config_registry
 
-- A plain‑language explanation
-- Links to relevant docs or papers when applicable
-- Searchable descriptions so you don’t have to leave AGRO to understand a knob
+_config_registry = get_config_registry()
 
-<figure markdown="span">
-  ![Parameter Glossary](../assets/images/help-glossary.png){ width="100%" }
-  <figcaption>The built-in Parameter Glossary helps you understand every configuration knob.</figcaption>
-</figure>
-
----
-
-## Pydantic Config System
-
-All of `agro_config.json` is validated and documented via Pydantic models in `server/models/agro_config_model.py`.
-
-Key pieces:
-
-- `RetrievalConfig`, `ScoringConfig`, `LayerBonusConfig`, `EmbeddingConfig`, `ChunkingConfig`, `IndexingConfig`, `RerankingConfig`, `GenerationConfig`, etc.
-- `AgroConfigRoot` (not shown in the snippet here) wraps all of them and provides:
-  - `to_flat_dict()` — nested JSON → flat env‑style keys
-  - `from_flat_dict()` — flat keys back to nested JSON
-- `AGRO_CONFIG_KEYS` — the list of all flat config keys that belong to AGRO (used to separate AGRO config from `.env` vars).
-
-Some notable validators and behaviors:
-
-- :material-function: `RetrievalConfig.validate_rrf_k_div`  
-  Enforces `rrf_k_div >= 10` for meaningful rank smoothing.
-
-- :material-function: `RetrievalConfig.normalize_hydration`  
-  Normalizes hydration mode aliases (`off` → `none`).
-
-- :material-function: `RetrievalConfig.validate_weights_sum_to_one`  
-  **Normalizes** `bm25_weight + vector_weight` to 1.0 instead of failing. This means you can set rough weights; AGRO will renormalize and clamp them rather than crashing.
-
-- :material-function: `ScoringConfig.validate_exact_boost_greater_than_partial`  
-  Ensures exact filename matches always get a higher boost than partial path matches.
-
-- :material-function: `ChunkingConfig.validate_overlap_less_than_size`  
-  Guards against pathological `chunk_overlap >= chunk_size`.
-
-- :material-function: `EmbeddingConfig.validate_dim_matches_model`  
-  Rejects unusual embedding dimensions (catches “I mis‑read the model docs” bugs early).
-
-!!! tip "Why Pydantic everywhere?"
-    I wanted config to be self‑documenting and safe:
-    - Types and ranges enforced at load time
-    - Defaults live next to the code that consumes them
-    - JSON schema is available for future autogenerated docs
-    - The GUI can show **exact** constraints in tooltips
-
----
-
-## Config Registry (`ConfigRegistry`)
-
-`server/services/config_registry.py` wraps all config access behind a single API.
-
-### Load & precedence
-
-On startup (or first access), `ConfigRegistry.load()`:
-
-1. Loads `.env` via `load_dotenv(override=True)` at module import time.
-2. Loads `agro_config.json` into `AgroConfigRoot` with full Pydantic validation.
-3. Flattens the Pydantic model into `self._config` with `source="agro_config.json"`.
-4. Adds additional env vars from `os.environ` **only if** they’re not AGRO config keys.
-
-```python linenums="1" hl_lines="29-41 44-51"
-class ConfigRegistry:
-    def load(self) -> None:
-        with self._lock:
-            self._config.clear()
-            self._sources.clear()
-
-            agro_config_path = repo_root() / "agro_config.json"
-            try:
-                if agro_config_path.exists():
-                    raw_json = json.loads(agro_config_path.read_text())
-                    self._agro_config_model = AgroConfigRoot(**raw_json)
-                else:
-                    self._agro_config_model = AgroConfigRoot()
-            except ValidationError:
-                self._agro_config_model = AgroConfigRoot()
-            ...
-
-            flat_agro_config = self._agro_config_model.to_flat_dict()
-            for key, value in flat_agro_config.items():
-                self._config[key] = value
-                self._sources[key] = "agro_config.json"
-
-            # .env is for secrets only; AGRO_CONFIG_KEYS stay from agro_config.json
-            for key, value in os.environ.items():
-                if key not in self._config:
-                    self._config[key] = value
-                    self._sources[key] = ".env"
+value = _config_registry.get_int("FINAL_K", 10)
 ```
 
-### Access helpers
+### What the registry does
 
-`ConfigRegistry` exposes typed getters:
+At a high level:
 
-```python linenums="1"
-registry = get_config_registry()
-registry.load()  # once at startup
+- Loads `.env` **first** (via `python-dotenv`) so `os.getenv` sees the same values
+- Loads and validates `agro_config.json` into a Pydantic `AgroConfigRoot`
+- Merges everything with the precedence rules above
+- Exposes **type‑safe accessors**:
+  - `get_str(key, default)`
+  - `get_int(key, default)`
+  - `get_float(key, default)`
+  - `get_bool(key, default)`
+- Tracks **where** each value came from (env vs config vs default)
+- Uses a lock so reloads are thread‑safe
 
-k = registry.get_int("FINAL_K", default=10)
-bm25_weight = registry.get_float("BM25_WEIGHT", default=0.3)
-debug = registry.get_bool("DEBUG", default=False)
-model = registry.get_str("GEN_MODEL", default="gpt-4o-mini")
-intent_matrix = registry.get_dict("INTENT_MATRIX")
+You almost never touch this directly; you call `get_config_registry()` and then use the typed helpers.
+
+
+### Thread‑safety & reloads
+
+The registry is built once at import time and guarded by a `threading.Lock`. When a reload happens (e.g. via the config API), the registry:
+
+- Re‑reads `.env`
+- Re‑parses `agro_config.json`
+- Rebuilds the internal maps under the lock
+
+Callers that cache individual values (see `keywords.py` below) expose their own `reload_config()` to pick up changes.
+
+
+## How services use configuration
+
+Most of the service layer modules take the same approach:
+
+```py title="Typical pattern" linenums="1"
+from server.services.config_registry import get_config_registry
+
+_config_registry = get_config_registry()
+
+SOME_FLAG = _config_registry.get_bool("SOME_FLAG", False)
 ```
 
-It also tracks where values came from:
+This section walks through the concrete services that matter for day‑to‑day configuration.
 
-```python linenums="1"
-sources = registry.get_all_with_sources()
-# {
-#   "RRF_K_DIV": {"value": 60, "source": "agro_config.json"},
-#   "OPENAI_API_KEY": {"value": "••••", "source": ".env"},
-#   ...
-# }
-```
 
-The GUI uses this to show “source badges” (e.g. `agro_config.json` vs `.env`).
+### Config store & secrets
 
-### Updating config (`update_agro_config`)
+`server/services/config_store.py` is the bridge between the registry, the web UI, and the on‑disk config files.
 
-The GUI (and APIs) update AGRO settings via `ConfigRegistry.update_agro_config()`:
+Key responsibilities:
 
-1. Accepts flat env‑style keys:
-   ```json
-   {"RRF_K_DIV": 80, "BM25_WEIGHT": 0.6}
-   ```
-2. Normalizes legacy aliases (e.g. `MQ_REWRITES` → `MAX_QUERY_REWRITES`).
-3. Merges with current `agro_config.json` content.
-4. Validates via Pydantic (`AgroConfigRoot.from_flat_dict`).
-5. Atomically writes a new `agro_config.json`.
-6. Calls `self.reload()` so all services see the new values.
+- Load the current `agro_config.json` (via `common.config_loader._load_repos_raw`)
+- Apply edits from the UI / API
+- Validate against `AgroConfigRoot`
+- Write back to disk **atomically**
+- Hide secret values when returning config to the UI
 
-This is wired to the GUI “Save config” flow.
+#### Atomic writes
 
-## Integrations
+The helper `_atomic_write_text` is used whenever AGRO writes `agro_config.json` or related files:
 
-AGRO provides a centralized UI to manage external integrations like MCP, LangSmith, and Grafana.
+```py title="server/services/config_store.py" linenums="1"
+def _atomic_write_text(path: Path, content: str, max_retries: int = 3) -> None:
+    """Atomically write text to a file with fallback for Docker volume mounts.
 
-<figure markdown="span">
-  ![Integrations & Channels](../assets/images/integrations.png){ width="100%" }
-  <figcaption>Configure MCP servers, LangSmith tracing, and Grafana connections in one place.</figcaption>
-</figure>
+    Docker Desktop on macOS can fail with 'Device or resource busy' on os.replace()
+    when the file is being watched. We try atomic first, then fall back to direct write.
+    """
+    import time
 
----
-
-## Backend Config Store (`config_store.py`)
-
-`server/services/config_store.py` is the bridge between:
-
-- Config files (`.env`, `repos.json`, `agro_config.json`)
-- Environment variables (`os.environ`)
-- API endpoints used by the GUI
-
-### Atomic writes
-
-All file writes go through `_atomic_write_text`, which writes to a temp file and `os.replace()`s it:
-
-```python linenums="1"
-def _atomic_write_text(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_path_str = tempfile.mkstemp(dir=path.parent, prefix=path.name, suffix=".tmp")
-    tmp_path = Path(tmp_path_str)
-    try:
-        with os.fdopen(fd, 'w', encoding='utf-8') as fh:
-            fh.write(content)
-            fh.flush()
-            os.fsync(fh.fileno())
-        os.replace(tmp_path, path)
-    finally:
-        if tmp_path.exists():
-            tmp_path.unlink()
+    for attempt in range(max_retries):
+        tmp = Path(tempfile.mkstemp(dir=path.parent)[1])
+        tmp.write_text(content, encoding="utf-8")
+        try:
+            os.replace(tmp, path)
+            return
+        except OSError:
+            time.sleep(0.05)
+    # Fallback: best‑effort direct write
+    path.write_text(content, encoding="utf-8")
 ```
 
-This avoids partial writes if the process dies mid‑write.
+This is one of those boring but important details: it avoids half‑written config files when the file is being watched by Docker / bind mounts.
 
-### Secrets and `.env`
+#### Secret fields
 
-AGRO distinguishes between:
+`config_store` defines a set of keys that are treated as secrets:
 
-- **AGRO config keys** (from `AGRO_CONFIG_KEYS`) → `agro_config.json`
-- **Everything else** → `.env`
-
-`SECRET_FIELDS` defines which env vars are considered secrets and should be masked in API responses:
-
-```python linenums="1"
+```py title="server/services/config_store.py" linenums="1"
 SECRET_FIELDS = {
-    'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GOOGLE_API_KEY',
-    'COHERE_API_KEY', 'VOYAGE_API_KEY', 'LANGSMITH_API_KEY',
-    'LANGCHAIN_API_KEY', 'LANGTRACE_API_KEY', 'NETLIFY_API_KEY',
-    'OAUTH_TOKEN', 'GRAFANA_API_KEY', 'GRAFANA_AUTH_TOKEN',
-    'MCP_API_KEY'
+    "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GOOGLE_API_KEY",
+    "COHERE_API_KEY", "VOYAGE_API_KEY", "LANGSMITH_API_KEY",
+    "LANGCHAIN_API_KEY", "LANGTRACE_API_KEY", "NETLIFY_API_KEY",
+    "OAUTH_TOKEN", "GRAFANA_API_KEY", "GRAFANA_AUTH_TOKEN",
+    "MCP_API_KEY", "JINA_API_KEY", "DEEPSEEK_API_KEY", "MISTRAL_API_KEY",
+    "XAI_API_KEY", "GROQ_API_KEY", "FIREWORKS_API_KEY"
 }
 ```
 
-#### `env_reload()`
+When the UI asks for the current config, these values are either omitted or replaced with placeholders. The actual values live in `.env` and are loaded by `load_dotenv` at startup.
 
-Reloads `.env`, clears cached repo config, and reloads the config registry:
+!!! warning
+    Do not commit `.env` to version control. Use `.env.example` (see `getting-started/environment-example.md`) as a template and keep real keys local.
 
-```python linenums="1"
-def env_reload() -> Dict[str, Any]:
-    from dotenv import load_dotenv as _ld
-    _ld(override=False)
-    from common.config_loader import clear_cache
-    clear_cache()
+
+### Editor service configuration
+
+The **DevTools → Editor** panel in the UI is backed by `server/services/editor.py`.
+
+The service exposes a small JSON settings file for the embedded code editor, but it prefers the central registry when possible:
+
+```py title="server/services/editor.py" linenums="1" hl_lines="13-20"
+from server.services.config_registry import get_config_registry
+
+
+def _settings_path() -> Path:
+    settings_dir = Path(__file__).parent.parent / "out" / "editor"
+    settings_dir.mkdir(parents=True, exist_ok=True)
+    return settings_dir / "settings.json"
+
+
+def read_settings() -> Dict[str, Any]:
+    """Read editor settings, preferring registry (agro_config.json/.env) with legacy file fallback."""
     registry = get_config_registry()
-    registry.reload()
-    return {"ok": True}
-```
-
-#### `secrets_ingest(text, persist)`
-
-Parses `KEY=VALUE` lines, sets them in `os.environ`, and optionally persists them to `.env`.
-
-Useful for pasting a block of API keys from the GUI.
-
-#### `save_mcp_key(key)`
-
-A dedicated helper to store an MCP API key safely in `.env` and `os.environ`, without logging the value.
-
-### Getting a config snapshot: `get_config()`
-
-`get_config(unmask=False)` returns a JSON‑serializable snapshot for the GUI:
-
-```json
-{
-  "env": {
-    "RRF_K_DIV": 60,
-    "OPENAI_API_KEY": "••••••••••••••••",
-    "REPO_ROOT": "/path/to/repo",
-    "FILES_ROOT": "...",
-    ...
-  },
-  "default_repo": "my-repo",
-  "repos": [...],
-  "hints": {
-    "rerank_backend": {"backend": "local", "reason": "local_model_present"},
-    "config_sources": {
-      "RRF_K_DIV": "agro_config.json",
-      "OPENAI_API_KEY": ".env"
+    settings = {
+        "port": registry.get_int("EDITOR_PORT", 4440),
+        "enabled": registry.get_bool("EDITOR_ENABLED", True),
+        "embed_enabled": registry.get_bool("EDITOR_EMBED_ENABLED", True),
+        "bind": registry.get_str("EDITOR_BIND", "local"),  # 'local' or 'public'
+        "image": registry.get_str("EDITOR_IMAGE", "codercom/code-server:latest"),
     }
-  }
-}
+    # ... merge with legacy settings.json if present
+    return settings
 ```
 
-Steps:
+So if you want to change the embedded editor:
 
-1. Loads `repos.json` via `load_repos()`.
-2. Iterates `os.environ`, masking `SECRET_FIELDS` unless `unmask=True`.
-3. Adds derived path defaults: `REPO_ROOT`, `FILES_ROOT`, `GUI_DIR`, `DOCS_DIR`, `DATA_DIR`.
-4. Merges in `agro_config.json` values from `ConfigRegistry` **only for keys not already in `env`**.
-5. Adds `hints`:
-   - `rerank_backend`: result of `_effective_rerank_backend()`
-   - `config_sources`: per‑key source from `ConfigRegistry.get_source()`
+- Set `EDITOR_PORT`, `EDITOR_ENABLED`, `EDITOR_EMBED_ENABLED`, `EDITOR_BIND`, `EDITOR_IMAGE` in `agro_config.json` or `.env`
+- Or edit the DevTools → Editor panel in the UI, which writes through `config_store`
 
-`_effective_rerank_backend()` auto‑detects what reranker backend you actually have available (local model present, Cohere key set, etc.), so the GUI can show a realistic default.
 
-### Setting config: `set_config(payload)`
+### Indexing service configuration
 
-`set_config` is the main write API used by the GUI. It accepts:
+`server/services/indexing.py` is the entry point for starting an index run from the UI or HTTP API.
 
-```json
-{
-  "env": {
-    "RRF_K_DIV": 80,
-    "BM25_WEIGHT": 0.6,
-    "OPENAI_API_KEY": "sk-...",
-    "REPO": "my-repo"
-  },
-  "repos": [
-    {
-      "name": "my-repo",
-      "path": "/code/my-repo",
-      "keywords": ["agro", "rag"],
-      "path_boosts": ["server", "retrieval"],
-      "layer_bonuses": {...},
-      "exclude_paths": ["node_modules", ".git"]
-    }
-  ]
-}
+It uses the registry to determine which repo to index and which enrichment options to enable:
+
+```py title="server/services/indexing.py" linenums="1" hl_lines="15-27"
+from server.services.config_registry import get_config_registry
+from common.paths import repo_root
+
+_config_registry = get_config_registry()
+
+
+def start(payload: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    global _INDEX_STATUS, _INDEX_METADATA
+    payload = payload or {}
+    _INDEX_STATUS = ["Indexing started..."]
+    _INDEX_METADATA = {}
+
+    def run_index():
+        try:
+            repo = _config_registry.get_str("REPO", "agro")
+            _INDEX_STATUS.append(f"Indexing repository: {repo}")
+
+            root = repo_root()
+            env = {**os.environ, "REPO": repo, "REPO_ROOT": str(root), "PYTHONPATH": str(root)}
+
+            if payload.get("enrich"):
+                env["ENRICH_CODE_CHUNKS"] = "true"
+                _INDEX_STATUS.append("Enriching chunks with summaries and symbols")
+
+            # spawn indexer subprocess with this env
+        except Exception as e:
+            _INDEX_STATUS.append(f"Indexing failed: {e}")
 ```
 
-Behavior:
+Relevant knobs:
 
-1. Split env updates into:
-   - `agro_config_updates` — keys in `AGRO_CONFIG_KEYS`
-   - `env_file_updates` — everything else
+- `REPO` – default repository name (also used by other services)
+- `ENRICH_CODE_CHUNKS` – when set (via payload or env), the indexer adds summaries / symbols to chunks
 
-2. For AGRO config keys:
-   - Call `registry.update_agro_config(agro_config_updates)`
-   - On validation error, return an error and **do not** touch `.env` or `repos.json`
+The indexer itself reads many more settings from `agro_config.json` (chunk sizes, BM25 weights, dense model names, etc.); those are documented in the retrieval and model configuration pages.
 
-3. For `.env` keys:
-   - Backup existing `.env` to `.env.backup-YYYYMMDD-HHMMSS` (best effort)
-   - Merge updates into an in‑memory copy
-   - Apply to `os.environ`
-   - Atomically rewrite `.env`
 
-4. For `repos.json`:
-   - Upsert repo entries by name
-   - Update `default_repo` from `REPO` env var if set
-   - Atomically rewrite `repos.json`
+### Keyword extraction configuration
 
-Return payload:
+`server/services/keywords.py` controls the discriminative keyword layer that sits on top of BM25.
 
-```json
-{
-  "status": "success",
-  "applied_env_keys": ["OPENAI_API_KEY", "REPO", ...],
-  "applied_agro_config_keys": ["RRF_K_DIV", "BM25_WEIGHT"],
-  "repos_count": 3
-}
+It reads its configuration once at import time and exposes a `reload_config()` helper to pick up changes:
+
+```py title="server/services/keywords.py" linenums="1" hl_lines="8-22"
+from server.services.config_registry import get_config_registry
+
+_config_registry = get_config_registry()
+_KEYWORDS_MAX_PER_REPO = _config_registry.get_int("KEYWORDS_MAX_PER_REPO", 50)
+_KEYWORDS_MIN_FREQ = _config_registry.get_int("KEYWORDS_MIN_FREQ", 3)
+_KEYWORDS_BOOST = _config_registry.get_float("KEYWORDS_BOOST", 1.3)
+_KEYWORDS_AUTO_GENERATE = _config_registry.get_int("KEYWORDS_AUTO_GENERATE", 1)
+_KEYWORDS_REFRESH_HOURS = _config_registry.get_int("KEYWORDS_REFRESH_HOURS", 24)
+
+
+def reload_config():
+    """Reload cached config values from registry."""
+    global _KEYWORDS_MAX_PER_REPO, _KEYWORDS_MIN_FREQ, _KEYWORDS_BOOST
+    global _KEYWORDS_AUTO_GENERATE, _KEYWORDS_REFRESH_HOURS
+    _KEYWORDS_MAX_PER_REPO = _config_registry.get_int("KEYWORDS_MAX_PER_REPO", 50)
+    _KEYWORDS_MIN_FREQ = _config_registry.get_int("KEYWORDS_MIN_FREQ", 3)
+    _KEYWORDS_BOOST = _config_registry.get_float("KEYWORDS_BOOST", 1.3)
+    _KEYWORDS_AUTO_GENERATE = _config_registry.get_int("KEYWORDS_AUTO_GENERATE", 1)
+    _KEYWORDS_REFRESH_HOURS = _config_registry.get_int("KEYWORDS_REFRESH_HOURS", 24)
 ```
 
----
+These map directly to the discriminative keyword behavior:
 
-## `agro_config.json` Sections (Detailed)
+| Key                       | Type   | Meaning |
+| :------------------------ | :----- | :------ |
+| `KEYWORDS_MAX_PER_REPO`   | int    | Max number of discriminative keywords per repo |
+| `KEYWORDS_MIN_FREQ`       | int    | Minimum frequency for a term to be considered |
+| `KEYWORDS_BOOST`          | float  | Multiplicative boost applied to keyword matches in BM25 |
+| `KEYWORDS_AUTO_GENERATE`  | int    | `1` to auto‑generate keywords from the index, `0` to rely on static files |
+| `KEYWORDS_REFRESH_HOURS`  | int    | How often to refresh auto‑generated keywords |
 
-Below are the main sections, with key options. The GUI presents these with tooltips and validation hints; you rarely need to edit the JSON by hand.
+If you change these via the UI/API, the keyword service will call `reload_config()` so the new values take effect without a restart.
 
-???+ collapsible "retrieval"
-    **Model:** `RetrievalConfig` in `server/models/agro_config_model.py`  
-    **JSON path:** `retrieval.*`
 
-    | Key                      | Type   | Default | Description |
-    |--------------------------|--------|---------|-------------|
-    | `rrf_k_div`              | int    | 60      | RRF rank smoothing constant (higher = more weight to top ranks). Must be 10–200. |
-    | `langgraph_final_k`      | int    | 20      | Final number of results to return from the LangGraph pipeline. |
-    | `max_query_rewrites`     | int    | 2       | Max query rewrites for multi‑query expansion. |
-    | `fallback_confidence`    | float  | 0.55    | Confidence threshold for switching to fallback retrieval strategies. |
-    | `final_k`                | int    | 10      | Default top‑k for search results. |
-    | `eval_final_k`           | int    | 5       | Top‑k during evaluation runs. |
-    | `conf_top1`              | float  | 0.62    | Confidence threshold for top‑1 result. |
-    | `conf_avg5`              | float  | 0.55    | Confidence threshold for average over top‑5. |
-    | `conf_any`               | float  | 0.55    | Minimum acceptable confidence for any hit. |
-    | `eval_multi`             | int    | 1       | Enable multi‑query in eval (0/1). |
-    | `query_expansion_enabled`| int    | 1       | Enable synonym expansion (0/1). |
-    | `bm25_weight`            | float  | 0.3     | Weight for BM25 in hybrid search (auto‑normalized). |
-    | `bm25_k1`                | float  | 1.2     | BM25 term frequency saturation. Higher = more weight to term frequency. |
-    | `bm25_b`                 | float  | 0.4     | BM25 length normalization (0 = no penalty, 1 = full penalty). 0.3–0.5 recommended for code. |
-    | `vector_weight`          | float  | 0.7     | Weight for dense vector search (auto‑normalized). |
-    | `card_search_enabled`    | int    | 1       | Enable semantic card‑based retrieval (0/1). |
-    | `multi_query_m`          | int    | 4       | Number of query variants in multi‑query. |
-    | `use_semantic_synonyms`  | int    | 1       | Enable semantic synonym expansion (0/1). |
-    | `topk_dense`             | int    | 75      | Top‑k for dense vector search. |
-    | `topk_sparse`            | int    | 75      | Top‑k for sparse BM25 search. |
-    | `hydration_mode`         | str    | `"lazy"`| Result hydration mode: `lazy`, `eager`, `none`. `"off"` is accepted and normalized to `"none"`. |
-    | `hydration_max_chars`    | int    | 2000    | Max characters per hydrated result. |
-    | `disable_rerank`         | int    | 0       | Disable reranking entirely (0/1). |
+### RAG / search configuration
 
-    !!! note "Weight normalization"
-        `bm25_weight + vector_weight` is automatically normalized to 1.0. If both are zero or invalid, AGRO resets them to safe defaults (0.3 / 0.7) instead of failing.
+The HTTP search endpoint (`/api/search` and `/api/rag`) is implemented in `server/services/rag.py`. It uses the registry for a few key parameters:
 
-???+ collapsible "scoring"
-    **Model:** `ScoringConfig`  
-    **JSON path:** `scoring.*`
+```py title="server/services/rag.py" linenums="1" hl_lines="21-33"
+from server.services.config_registry import get_config_registry
+from retrieval.hybrid_search import search_routed_multi
 
-    | Key                     | Type   | Default | Description |
-    |-------------------------|--------|---------|-------------|
-    | `card_bonus`            | float  | 0.08    | Additive bonus for chunks matched via card‑based retrieval. |
-    | `filename_boost_exact`  | float  | 1.5     | Multiplier when filename exactly matches query terms. Must be > `filename_boost_partial`. |
-    | `filename_boost_partial`| float  | 1.2     | Multiplier when path components partially match query terms. |
-    | `vendor_mode`           | str    | `"prefer_first_party"` | Vendor code preference: `prefer_first_party`, `prefer_vendor`, `neutral`. |
-    | `path_boosts`           | str    | `"/gui,/server,/indexer,/retrieval"` | Comma‑separated path prefixes to boost. |
+_config_registry = get_config_registry()
 
-???+ collapsible "layer_bonus"
-    **Model:** `LayerBonusConfig`  
-    **JSON path:** `layer_bonus.*`
 
-    | Key             | Type   | Default | Description |
-    |-----------------|--------|---------|-------------|
-    | `gui`           | float  | 0.15    | Bonus for GUI/front‑end layers. |
-    | `retrieval`     | float  | 0.15    | Bonus for retrieval/API layers. |
-    | `indexer`       | float  | 0.15    | Bonus for indexing/ingestion layers. |
-    | `vendor_penalty`| float  | -0.1    | Penalty for vendor/third‑party code (negative). |
-    | `freshness_bonus`| float | 0.05–0.1| Bonus for recently modified files. |
-    | `intent_matrix` | dict   | see JSON | Intent‑to‑layer bonus matrix. Keys are query intents, values are layer→multiplier maps. |
+def do_search(q: str, repo: Optional[str], top_k: Optional[int], request: Optional[Request] = None) -> Dict[str, Any]:
+    if top_k is None:
+        try:
+            # Try FINAL_K first, fall back to LANGGRAPH_FINAL_K
+            top_k = _config_registry.get_int("FINAL_K", _config_registry.get_int("LANGGRAPH_FINAL_K", 10))
+        except Exception:
+            top_k = 10
 
-    The `intent_matrix` lets AGRO bias results based on inferred query intent (e.g. “infra” vs “gui”). This is more flexible than hard‑coding path rules.
+    repo = (repo or _config_registry.get_str("REPO", "agro")).strip()
 
-???+ collapsible "embedding"
-    **Model:** `EmbeddingConfig`  
-    **JSON path:** `embedding.*`
+    results = search_routed_multi(
+        query=q,
+        repo=repo,
+        top_k=top_k,
+        # ... other options come from agro_config.json via retrieval stack
+    )
+    # ... wrap into JSON response
+```
 
-    | Key                     | Type   | Default                  | Description |
-    |-------------------------|--------|--------------------------|-------------|
-    | `embedding_type`        | str    | `"openai"`               | Provider: `openai`, `voyage`, `local`, `mxbai`. |
-    | `embedding_model`       | str    | `"text-embedding-3-large"` | OpenAI embedding model name. |
-    | `embedding_dim`         | int    | 3072                     | Embedding dimension; must be one of `[128,256,384,512,768,1024,1536,3072]`. |
-    | `voyage_model`          | str    | `"voyage-code-3"`        | Voyage embedding model. |
-    | `embedding_model_local` | str    | `"all-MiniLM-L6-v2"`     | Local SentenceTransformer model. |
-    | `embedding_batch_size`  | int    | 64                       | Batch size for embedding generation. |
-    | `embedding_max_tokens`  | int    | 8000                     | Max tokens per embedding chunk. |
-    | `embedding_cache_enabled`| int   | 1                        | Enable embedding cache (0/1). |
-    | `embedding_timeout`     | int    | 30                       | Embedding API timeout (seconds). |
-    | `embedding_retry_max`   | int    | 3                        | Max retries for embedding API. |
+Important keys here:
 
-???+ collapsible "chunking"
-    **Model:** `ChunkingConfig`  
-    **JSON path:** `chunking.*`
-    | Key                     | Type   | Default | Description |
-    |-------------------------|--------|---------|-------------|
-    | `chunk_size`            | int    | 900     | Target characters per chunk. |
-    | `chunk_overlap`         | int    | 300     | Overlap characters between chunks. |
-    | `language_aware`        | int    | 1       | Use AST-based chunking if available (0/1). |
+- `FINAL_K` – default number of final chunks to return from the hybrid pipeline
+- `LANGGRAPH_FINAL_K` – legacy / graph‑specific fallback
+- `REPO` – default repository if the client doesn’t specify one
 
-???+ collapsible "indexing"
-    **Model:** `IndexingConfig`  
-    **JSON path:** `indexing.*`
+The rest of the retrieval behavior (BM25 weights, dense reranker, learning reranker, etc.) is configured via `agro_config.json` and documented in `features/rag.md` and `features/learning-reranker.md`.
 
-    <figure markdown="span">
-      ![Indexing Settings](../assets/images/indexing-settings.png){ width="100%" }
-      <figcaption>Advanced indexing settings allow fine-tuning of chunking strategies, embedding models, and exclusions.</figcaption>
-    </figure>
 
-    | Key                     | Type   | Default | Description |
-    |-------------------------|--------|---------|-------------|
-    | `index_batch_size`      | int    | 100     | Batch size for Qdrant upserts. |
-    | `exclude_patterns`      | list   | []      | Additional glob patterns to exclude. |
+### Trace listing configuration
+
+`server/services/traces.py` is a small helper used by the **Analytics → Tracing** UI to list and fetch LangGraph / RAG traces.
+
+It doesn’t use the registry directly, but it does respect the `REPO` environment variable:
+
+```py title="server/services/traces.py" linenums="1" hl_lines="8-15"
+from common.config_loader import out_dir
+from server.tracing import latest_trace_path
+
+
+def list_traces(repo: Optional[str]) -> Dict[str, Any]:
+    r = (repo or __import__("os").getenv("REPO", "agro")).strip()
+    base = Path(out_dir(r)) / "traces"
+    # ... list up to 50 JSON trace files
+```
+
+If you want traces for a different repo by default, set `REPO` in `.env` or `agro_config.json`.
+
+
+## How the web UI maps to configuration
+
+The React components under `web/src/components` talk to the backend through a small config API. The important bit is that **everything** they surface is ultimately backed by the registry and/or `agro_config.json`.
+
+Some examples:
+
+- **Admin → General / Integrations / Secrets**
+  - Reads and writes model provider keys, telemetry flags, and general settings via `config_store`
+  - Secret fields are masked using `SECRET_FIELDS`
+- **Dashboard → EmbeddingConfigPanel / StorageCalculatorSuite**
+  - Reads embedding model names, dimensions, and storage estimates from `agro_config.json`
+- **DevTools → Editor / Reranker / Testing**
+  - Editor uses `EDITOR_*` keys as shown above
+  - Reranker and Testing panels use the same model / retrieval config keys as the CLI and evaluation pipeline
+
+You don’t need to know the exact HTTP endpoints to use this; the UI is just a front‑end for the registry and config store.
+
+
+## Environment vs agro_config.json
+
+AGRO splits configuration into two surfaces on purpose:
+
+- `.env` – **infrastructure & secrets**
+  - Database / Qdrant URLs
+  - API keys
+  - Ports and bind addresses
+  - Anything you’d normally set in a deployment manifest
+- `agro_config.json` – **RAG behavior & models**
+  - Which embedding model to use
+  - BM25 vs dense weights
+  - Reranker models and thresholds
+  - Keyword extraction knobs
+  - UI defaults (e.g. default model in chat)
+
+!!! tip "Rule of thumb"
+    If it’s something you’d change per‑environment (dev vs prod), put it in `.env`.
+
+    If it’s something you’d change per‑**experiment** (different retrieval setup, different reranker), put it in `agro_config.json`.
+
+
+## Backwards compatibility
+
+A few design choices are there to avoid breaking existing setups:
+
+- **`load_dotenv(override=True)`** at the top of `config_registry` means older code that still calls `os.getenv` directly will see the same values as the registry.
+- **Legacy key aliases** (`LEGACY_KEY_ALIASES`) keep older env names working.
+- Services that used to read their own JSON files (like the editor) now:
+  - Prefer the registry
+  - Fall back to their legacy `out/*/settings.json` if present
+
+If you’re extending AGRO, prefer going through `get_config_registry()` instead of calling `os.getenv` directly. It keeps everything consistent and makes it easier to document.
+
+
+## Extending configuration
+
+If you want to add a new tunable parameter:
+
+1. Add it to the Pydantic model in `server/models/agro_config_model.py` and to `AGRO_CONFIG_KEYS`
+2. Use `get_config_registry().get_*` in your service code
+3. (Optional) Expose it in the web UI under an appropriate panel
+
+Because everything flows through Pydantic, new fields:
+
+- Get validation for free
+- Show up in the config API
+- Can be documented and surfaced with tooltips in the UI
+
+AGRO is indexed on itself, so once you add a field you can go to the **Chat** tab and ask:
+
+> “Where is `MY_NEW_SETTING` used and how should I document it?”
+
+The retrieval pipeline will find the relevant code and docs so you don’t have to grep.
