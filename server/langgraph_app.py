@@ -147,7 +147,7 @@ def retrieve_node(state: RAGState) -> Dict:
                 'dense_updated_min': stats.get('timestamp'),
                 'dense_updated_max': stats.get('timestamp'),
                 'dense_backlog': 0,
-                'vector_backend': (os.getenv('VECTOR_BACKEND','qdrant') or 'qdrant'),
+                'vector_backend': _config_registry.get_str('VECTOR_BACKEND', 'qdrant'),
             })
     except Exception:
         pass

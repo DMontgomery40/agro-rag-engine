@@ -4,16 +4,16 @@
 import { ReactNode, ComponentType } from 'react';
 import { Dashboard } from '../pages/Dashboard';
 import Docker from '../pages/Docker';
-// Prefer legacy JSX tabs to preserve exact GUI IDs/styles
-import ChatTab from '../components/tabs/ChatTab.tsx';
-import VSCodeTab from '../components/tabs/VSCodeTab.tsx';
-import GrafanaTab from '../components/tabs/GrafanaTab.jsx';
-import RAGTab from '../components/tabs/RAGTab.tsx';
+// Tab components (all TypeScript)
+import ChatTab from '../components/tabs/ChatTab';
+import VSCodeTab from '../components/tabs/VSCodeTab';
+import GrafanaTab from '../components/tabs/GrafanaTab';
+import RAGTab from '../components/tabs/RAGTab';
 import EvalAnalysisTab from '../components/tabs/EvalAnalysisTab';
 import ProfilesTab from '../components/tabs/ProfilesTab';
 import InfrastructureTab from '../components/tabs/InfrastructureTab';
 import AdminTab from '../components/tabs/AdminTab';
-import StartTab from '../components/tabs/StartTab.tsx';
+import StartTab from '../components/tabs/StartTab';
 
 export interface Subtab {
   id: string;

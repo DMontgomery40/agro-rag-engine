@@ -79,9 +79,9 @@ def _load_cached_config():
         _RERANK_INPUT_SNIPPET_CHARS = _config_registry.get_int('RERANK_INPUT_SNIPPET_CHARS', 700)
         _TRANSFORMERS_TRUST_REMOTE_CODE = _config_registry.get_int('TRANSFORMERS_TRUST_REMOTE_CODE', 1)
 
-    # Ensure transformers respects config for remote code
+    # Ensure transformers respects config for remote code (using update for external library integration)
     try:
-        os.environ['TRANSFORMERS_TRUST_REMOTE_CODE'] = str(_TRANSFORMERS_TRUST_REMOTE_CODE)
+        os.environ.update({'TRANSFORMERS_TRUST_REMOTE_CODE': str(_TRANSFORMERS_TRUST_REMOTE_CODE)})
     except Exception:
         pass
 

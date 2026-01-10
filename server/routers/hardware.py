@@ -4,8 +4,12 @@ import platform
 from pathlib import Path
 from typing import Dict, Any
 from fastapi import APIRouter
+from server.services.config_registry import get_config_registry
 
 router = APIRouter()
+
+# Module-level config registry cache
+_config_registry = get_config_registry()
 
 @router.post("/api/scan-hw")
 def scan_hw() -> Dict[str, Any]:
@@ -32,7 +36,7 @@ def scan_hw() -> Dict[str, Any]:
     except Exception:
         pass
     runtimes = {
-        "ollama": bool(os.getenv("OLLAMA_URL") or shutil.which("ollama")),
+        "ollama": bool(_config_registry.get_str("OLLAMA_URL", "") or shutil.which("ollama")),
         "coreml": info["os"] == "Darwin",
         "cuda": bool(shutil.which("nvidia-smi")),
         "mps": info["os"] == "Darwin",

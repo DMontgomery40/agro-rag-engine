@@ -4,15 +4,20 @@ from pathlib import Path
 from fastapi import APIRouter, Query, Body
 from server.tracing import latest_trace_path
 from server.webhook_config import get_webhooks, update_webhooks
+from server.services.config_registry import get_config_registry
 import json
 
 router = APIRouter()
 
+# Module-level config registry cache
+_config_registry = get_config_registry()
+
 @router.get("/health/langsmith")
 def health_langsmith() -> Dict[str, Any]:
-    enabled = str(os.getenv('LANGCHAIN_TRACING_V2','0')).strip().lower() in {'1','true','on'}
-    project = os.getenv('LANGCHAIN_PROJECT') or os.getenv('LANGSMITH_PROJECT')
-    endpoint = os.getenv('LANGCHAIN_ENDPOINT') or 'https://api.smith.langchain.com'
+    enabled = str(_config_registry.get_str('LANGCHAIN_TRACING_V2', '0')).strip().lower() in {'1','true','on'}
+    project = _config_registry.get_str('LANGCHAIN_PROJECT', '') or _config_registry.get_str('LANGSMITH_PROJECT', '')
+    endpoint = _config_registry.get_str('LANGCHAIN_ENDPOINT', '') or 'https://api.smith.langchain.com'
+    # API keys remain in .env - check existence via env var (secrets pattern)
     key = os.getenv('LANGCHAIN_API_KEY') or os.getenv('LANGSMITH_API_KEY')
     installed = True
     can_connect = None
@@ -54,7 +59,7 @@ def api_langsmith_latest(
     """Return the latest LangSmith run URL for embedding."""
     # 1) Try local trace snapshot
     try:
-        p = latest_trace_path(project or os.getenv('REPO','agro'))
+        p = latest_trace_path(project or _config_registry.get_str('REPO', 'agro'))
         if p:
             try:
                 data = json.loads(Path(p).read_text())
@@ -68,7 +73,7 @@ def api_langsmith_latest(
     try:
         from langsmith import Client  # type: ignore
         cl = Client()
-        proj = (project or os.getenv('LANGCHAIN_PROJECT') or os.getenv('LANGSMITH_PROJECT') or os.getenv('REPO','agro'))
+        proj = (project or _config_registry.get_str('LANGCHAIN_PROJECT', '') or _config_registry.get_str('LANGSMITH_PROJECT', '') or _config_registry.get_str('REPO', 'agro'))
         # list_runs returns generator; take first
         runs = list(cl.list_runs(project_name=proj, limit=1))
         if not runs:
@@ -98,7 +103,7 @@ def api_langsmith_runs(
     try:
         from langsmith import Client  # type: ignore
         cl = Client()
-        proj = (project or os.getenv('LANGCHAIN_PROJECT') or os.getenv('LANGSMITH_PROJECT') or os.getenv('REPO','agro'))
+        proj = (project or _config_registry.get_str('LANGCHAIN_PROJECT', '') or _config_registry.get_str('LANGSMITH_PROJECT', '') or _config_registry.get_str('REPO', 'agro'))
         out = []
         for r in cl.list_runs(project_name=proj, limit=limit):
             url = getattr(r, 'url', None) or getattr(r, 'dashboard_url', None)
