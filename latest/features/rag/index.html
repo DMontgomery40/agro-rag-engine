@@ -1698,7 +1698,7 @@
 </div>
 <p>For a deeper dive into the registry itself, see <a href="../../configuration/settings/">Configuration</a>.</p>
 <h2 id="3-indexing-how-code-becomes-chunks">3. Indexing: how code becomes chunks<a class="headerlink" href="#3-indexing-how-code-becomes-chunks" title="Permanent link">¶</a></h2>
-<p>Retrieval only works if the index is sane. Indexing is orchestrated by <code>server/services/indexing.py</code> and the standalone indexer (see <code>README-INDEXER.md</code>).</p>
+<p>Retrieval only works if the index is sane. Indexing is orchestrated by <code>server/services/indexing.py</code> and the standalone indexer (see <code>indexer/README.md</code>).</p>
 <div class="highlight"><table class="highlighttable"><tbody><tr><th colspan="2" class="filename"><span class="filename">server/services/indexing.py</span></th></tr><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-3-1"> 1</a></span>
 <span class="normal"><a href="#__codelineno-3-2"> 2</a></span>
 <span class="normal"><a href="#__codelineno-3-3"> 3</a></span>
@@ -1860,7 +1860,7 @@
 <a id="__codelineno-4-28" name="__codelineno-4-28"></a><span class="hll">
 </span><a id="__codelineno-4-29" name="__codelineno-4-29"></a><span class="hll">
 </span><a id="__codelineno-4-30" name="__codelineno-4-30"></a><span class="hll"><span class="k">def</span><span class="w"> </span><span class="nf">_keywords_path</span><span class="p">(</span><span class="n">repo</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-</span><a id="__codelineno-4-31" name="__codelineno-4-31"></a><span class="hll">    <span class="k">return</span> <span class="n">repo_root</span><span class="p">()</span> <span class="o">/</span> <span class="s1">'data'</span> <span class="o">/</span> <span class="s1">'discriminative_keywords.json'</span>
+</span><a id="__codelineno-4-31" name="__codelineno-4-31"></a><span class="hll">    <span class="k">return</span> <span class="n">repo_root</span><span class="p">()</span> <span class="o">/</span> <span class="s1">'data'</span> <span class="o">/</span> <span class="s1">'keywords'</span> <span class="o">/</span> <span class="s1">'discriminative_keywords.json'</span>
 </span><a id="__codelineno-4-32" name="__codelineno-4-32"></a><span class="hll">
 </span><a id="__codelineno-4-33" name="__codelineno-4-33"></a><span class="hll">
 </span><a id="__codelineno-4-34" name="__codelineno-4-34"></a><span class="hll"><span class="k">def</span><span class="w"> </span><span class="nf">get_keywords</span><span class="p">(</span><span class="n">repo</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
@@ -1872,7 +1872,7 @@
 <li>For small codebases, plain BM25 is often enough. You can set <code>KEYWORDS_AUTO_GENERATE=0</code> and ignore this entire layer.</li>
 <li>For larger repos, this gives you a cheap, interpretable way to bias retrieval toward “interesting” tokens without retraining the dense model.</li>
 </ul>
-<p>The keywords are stored in <code>data/discriminative_keywords.json</code> and can be inspected or edited directly if you want full control.</p>
+<p>The keywords are stored in <code>data/keywords/discriminative_keywords.json</code> and can be inspected or edited directly if you want full control.</p>
 <h2 id="5-hybrid-search-and-reranking">5. Hybrid search and reranking<a class="headerlink" href="#5-hybrid-search-and-reranking" title="Permanent link">¶</a></h2>
 <p>The core retrieval logic lives in <code>retrieval/hybrid_search.py</code> (not shown here in full). Conceptually it does:</p>
 <ol>
@@ -2116,7 +2116,7 @@
 </li>
 <li>Enable <code>KEYWORDS_AUTO_GENERATE</code> for large repos.</li>
 <li>
-<p>Inspect <code>data/discriminative_keywords.json</code> and adjust thresholds.</p>
+<p>Inspect <code>data/keywords/discriminative_keywords.json</code> and adjust thresholds.</p>
 </li>
 <li>
 <p><strong>LangGraph / advanced orchestration</strong></p>

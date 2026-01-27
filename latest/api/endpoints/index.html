@@ -1923,7 +1923,7 @@
 <li><code>GET /api/keywords</code> – list current discriminative keywords for a repo</li>
 <li><code>POST /api/keywords/rebuild</code> – force regeneration, ignoring the refresh window</li>
 </ul>
-<p>Responses are backed by JSON files under <code>data/discriminative_keywords.json</code> and per‑repo keyword caches under <code>data/</code>.</p>
+<p>Responses are backed by JSON files under <code>data/keywords/discriminative_keywords.json</code> and per‑repo keyword caches under <code>data/</code>.</p>
 <h2 id="rag-search-endpoints">RAG &amp; Search Endpoints<a class="headerlink" href="#rag-search-endpoints" title="Permanent link">¶</a></h2>
 <p>The main RAG/search endpoints delegate into <code>server/services/rag.py</code>, which in turn calls the hybrid retrieval stack and (optionally) a LangGraph‑based orchestration graph.</p>
 <h3 id="get-apisearch">GET <code>/api/search</code><a class="headerlink" href="#get-apisearch" title="Permanent link">¶</a></h3>
