@@ -39,6 +39,7 @@ interface TestResult {
 interface EvalResults {
   top1_accuracy: number;
   topk_accuracy: number;
+  mrr?: number;
   duration_secs: number;
   results?: Array<{
     question: string;
@@ -47,6 +48,7 @@ interface EvalResults {
     top1_hit: boolean;
     topk_hit: boolean;
     top_paths: string[];
+    reciprocal_rank?: number;
   }>;
 }
 
@@ -80,7 +82,7 @@ export function EvaluateSubtab() {
     goldenPath: 'data/golden.json',
     baselinePath: 'data/evals/eval_baseline.json'
   });
-  const [availableRuns, setAvailableRuns] = useState<Array<{run_id: string, top1_accuracy: number, topk_accuracy: number}>>([]);
+  const [availableRuns, setAvailableRuns] = useState<Array<{run_id: string, top1_accuracy: number, topk_accuracy: number, mrr?: number}>>([]);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [compareRunId, setCompareRunId] = useState<string | null>(null);
   const [latestRunId, setLatestRunId] = useState<string | null>(null);
@@ -859,7 +861,7 @@ export function EvaluateSubtab() {
         {/* Results Display */}
         {evalResults && (
           <div style={{ marginTop: '16px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
               <div style={{ background: 'var(--card-bg)', border: '1px solid var(--line)', borderRadius: '6px', padding: '12px', textAlign: 'center' }}>
                 <div style={{ fontSize: '11px', color: 'var(--fg-muted)', marginBottom: '4px' }}>Top-1 Accuracy</div>
                 <div style={{ fontSize: '24px', color: 'var(--accent)', fontWeight: 700 }}>
@@ -870,6 +872,12 @@ export function EvaluateSubtab() {
                 <div style={{ fontSize: '11px', color: 'var(--fg-muted)', marginBottom: '4px' }}>Top-K Accuracy</div>
                 <div style={{ fontSize: '24px', color: 'var(--accent)', fontWeight: 700 }}>
                   {(evalResults.topk_accuracy * 100).toFixed(1)}%
+                </div>
+              </div>
+              <div style={{ background: 'var(--card-bg)', border: '1px solid var(--line)', borderRadius: '6px', padding: '12px', textAlign: 'center' }}>
+                <div style={{ fontSize: '11px', color: 'var(--fg-muted)', marginBottom: '4px' }}>MRR</div>
+                <div style={{ fontSize: '24px', color: 'var(--warn)', fontWeight: 700 }}>
+                  {(evalResults.mrr ?? 0).toFixed(4)}
                 </div>
               </div>
               <div style={{ background: 'var(--card-bg)', border: '1px solid var(--line)', borderRadius: '6px', padding: '12px', textAlign: 'center' }}>

@@ -1,10 +1,22 @@
 
+"""Unified Reranking Module for AGRO RAG Engine.
+
+Supports 4 modes:
+- none: Skip reranking
+- local: Any HuggingFace cross-encoder model
+- learning: AGRO's self-learning cross-encoder with hot-reload
+- cloud: Cohere, Voyage, Jina APIs
+
+All config through config_registry (no os.getenv for config values).
+"""
 import math
 import os
-from typing import List, Dict, Any, Optional
+from pathlib import Path
+from typing import List, Dict, Any, Optional, Union
 import time as _time
 
 from rerankers import Reranker  # type: ignore[import-untyped]
+from sentence_transformers import CrossEncoder
 
 from reranker.config import (
     load_settings,
@@ -49,20 +61,8 @@ def _load_cached_config():
     global _RERANKER_TIMEOUT, _RERANK_INPUT_SNIPPET_CHARS, _TRANSFORMERS_TRUST_REMOTE_CODE
 
     if _config_registry is None:
-        # Use unified env keys only (no legacy fallbacks)
-        _RERANKER_MODE = os.getenv('RERANKER_MODE', 'local')
-        _RERANKER_CLOUD_PROVIDER = os.getenv('RERANKER_CLOUD_PROVIDER', '')
-        _RERANKER_CLOUD_MODEL = os.getenv('RERANKER_CLOUD_MODEL', '')
-        _RERANKER_LOCAL_MODEL = os.getenv('RERANKER_LOCAL_MODEL', 'cross-encoder/ms-marco-MiniLM-L-12-v2')
-        _AGRO_RERANKER_ALPHA = float(os.getenv('AGRO_RERANKER_ALPHA', '0.7') or '0.7')
-        _AGRO_RERANKER_TOPN = int(os.getenv('AGRO_RERANKER_TOPN', '50') or '50')
-        _AGRO_RERANKER_BATCH = int(os.getenv('AGRO_RERANKER_BATCH', '16') or '16')
-        _AGRO_RERANKER_MAXLEN = int(os.getenv('AGRO_RERANKER_MAXLEN', '512') or '512')
-        _AGRO_RERANKER_RELOAD_ON_CHANGE = int(os.getenv('AGRO_RERANKER_RELOAD_ON_CHANGE', '0') or '0')
-        _AGRO_RERANKER_RELOAD_PERIOD_SEC = int(os.getenv('AGRO_RERANKER_RELOAD_PERIOD_SEC', '60') or '60')
-        _RERANKER_TIMEOUT = int(os.getenv('RERANKER_TIMEOUT', '10') or '10')
-        _RERANK_INPUT_SNIPPET_CHARS = int(os.getenv('RERANK_INPUT_SNIPPET_CHARS', '700') or '700')
-        _TRANSFORMERS_TRUST_REMOTE_CODE = int(os.getenv('TRANSFORMERS_TRUST_REMOTE_CODE', '1') or '1')
+        # Config registry must be available - this is a fatal error
+        raise RuntimeError("Config registry not available. Ensure server.services.config_registry is importable.")
     else:
         # Use unified config registry keys only (no legacy fallbacks)
         _RERANKER_MODE = _config_registry.get_str('RERANKER_MODE', 'local')
@@ -79,9 +79,9 @@ def _load_cached_config():
         _RERANK_INPUT_SNIPPET_CHARS = _config_registry.get_int('RERANK_INPUT_SNIPPET_CHARS', 700)
         _TRANSFORMERS_TRUST_REMOTE_CODE = _config_registry.get_int('TRANSFORMERS_TRUST_REMOTE_CODE', 1)
 
-    # Ensure transformers respects config for remote code
+    # Ensure transformers respects config for remote code (using update for external library integration)
     try:
-        os.environ['TRANSFORMERS_TRUST_REMOTE_CODE'] = str(_TRANSFORMERS_TRUST_REMOTE_CODE)
+        os.environ.update({'TRANSFORMERS_TRUST_REMOTE_CODE': str(_TRANSFORMERS_TRUST_REMOTE_CODE)})
     except Exception:
         pass
 

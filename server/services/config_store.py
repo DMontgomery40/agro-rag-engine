@@ -588,6 +588,7 @@ def config_schema() -> Dict[str, Any]:
                 "properties": {
                     "FINAL_K": {"type": "integer", "title": "Top-K", "minimum": 1},
                     "LANGGRAPH_FINAL_K": {"type": "integer", "title": "LangGraph Top-K", "minimum": 1},
+                    "LANGGRAPH_MAX_QUERY_REWRITES": {"type": "integer", "title": "LangGraph Max Rewrites", "minimum": 1, "maximum": 10},
                     "MQ_REWRITES": {"type": "integer", "title": "Multi-Query Rewrites", "minimum": 1, "maximum": 10},
                     "SKIP_DENSE": {"type": "boolean", "title": "Skip Dense Embeddings"},
                 },
@@ -687,6 +688,10 @@ def config_schema() -> Dict[str, Any]:
         "retrieval": {
             "FINAL_K": registry.get_int("FINAL_K", registry.get_int("LANGGRAPH_FINAL_K", 10)),
             "LANGGRAPH_FINAL_K": registry.get_int("LANGGRAPH_FINAL_K", registry.get_int("FINAL_K", 10)),
+            "LANGGRAPH_MAX_QUERY_REWRITES": registry.get_int(
+                "LANGGRAPH_MAX_QUERY_REWRITES",
+                registry.get_int("MAX_QUERY_REWRITES", 2)
+            ),
             "MQ_REWRITES": registry.get_int("MQ_REWRITES", 2),
             "SKIP_DENSE": registry.get_bool("SKIP_DENSE", False),
         },

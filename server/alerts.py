@@ -401,7 +401,8 @@ async def get_top_queries(limit: int = 20) -> Dict[str, Any]:
     if _config_registry is not None:
         log_path_str = _config_registry.get_str("AGRO_LOG_PATH", "data/logs/queries.jsonl")
     else:
-        log_path_str = os.getenv("AGRO_LOG_PATH", "data/logs/queries.jsonl")
+        # Fallback when registry not available - should not happen in production
+        log_path_str = "data/logs/queries.jsonl"
     log_path = Path(log_path_str)
     counts: Dict[str, int] = {}
     by_query_route: Dict[str, Dict[str, int]] = {}

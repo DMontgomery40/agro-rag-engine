@@ -10,6 +10,20 @@ if TYPE_CHECKING:
 
 _CACHE: Dict[str, Any] = {}
 
+# Module-level config registry (lazy init to avoid circular imports)
+_config_registry = None
+
+def _get_registry():
+    """Get config registry with lazy initialization to avoid circular imports."""
+    global _config_registry
+    if _config_registry is None:
+        try:
+            from server.services.config_registry import get_config_registry
+            _config_registry = get_config_registry()
+        except ImportError:
+            _config_registry = None
+    return _config_registry
+
 def clear_cache():
     """Clear cached config - forces reload from disk."""
     global _CACHE
@@ -17,7 +31,11 @@ def clear_cache():
 
 
 def _repos_file_path() -> Path:
-    env_path = os.getenv("REPOS_FILE")
+    registry = _get_registry()
+    if registry is not None:
+        env_path = registry.get_str("REPOS_FILE", "")
+    else:
+        env_path = ""
     if env_path:
         return Path(env_path).expanduser().resolve()
     return Path(__file__).resolve().parents[1] / "repos.json"
@@ -36,8 +54,9 @@ def _load_repos_raw() -> Dict[str, Any]:
                 return data
         except Exception:
             pass
-    env_repo = (os.getenv("REPO") or "default").strip()
-    env_path = os.getenv("REPO_PATH") or os.getenv(f"REPO_{env_repo.upper()}_PATH")
+    registry = _get_registry()
+    env_repo = (registry.get_str("REPO", "default") if registry else "default").strip()
+    env_path = (registry.get_str("REPO_PATH", "") if registry else "") or (registry.get_str(f"REPO_{env_repo.upper()}_PATH", "") if registry else "")
     if env_path:
         cfg = {"default_repo": env_repo, "repos": [{"name": env_repo, "path": env_path}]}
         _CACHE["config"] = cfg
@@ -59,7 +78,8 @@ def get_default_repo() -> str:
     repos = cfg.get("repos", [])
     if repos:
         return str(repos[0].get("name"))
-    return (os.getenv("REPO") or "default").strip()
+    registry = _get_registry()
+    return (registry.get_str("REPO", "default") if registry else "default").strip()
 
 
 def _find_repo(name: str) -> Optional[Dict[str, Any]]:
@@ -105,7 +125,8 @@ def _get_repo_paths_raw(name: str) -> List[str]:
 
 def _out_base_dir() -> Path:
     root = Path(__file__).resolve().parents[1]
-    env_base = os.getenv("OUT_DIR_BASE") or os.getenv("RAG_OUT_BASE")
+    registry = _get_registry()
+    env_base = (registry.get_str("OUT_DIR_BASE", "") if registry else "") or (registry.get_str("RAG_OUT_BASE", "") if registry else "")
     if env_base:
         p = Path(env_base).expanduser()
         if not p.is_absolute():

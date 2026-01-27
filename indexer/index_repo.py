@@ -43,6 +43,14 @@ EMBEDDING_TYPE = _cfg.get_str('EMBEDDING_TYPE', 'openai').lower()
 EMBEDDING_MODEL = _cfg.get_str('EMBEDDING_MODEL', 'text-embedding-3-large')
 EMBEDDING_MODEL_LOCAL = _cfg.get_str('EMBEDDING_MODEL_LOCAL', 'BAAI/bge-small-en-v1.5')
 VOYAGE_MODEL = _cfg.get_str('VOYAGE_MODEL', 'voyage-code-3')
+SKIP_DENSE = _cfg.get_bool('SKIP_DENSE', False)
+INDEX_MAX_FILE_SIZE_MB = _cfg.get_int('INDEX_MAX_FILE_SIZE_MB', 10)
+MAX_FILE_SIZE_BYTES = INDEX_MAX_FILE_SIZE_MB * 1_000_000
+INDEX_EXCLUDED_EXTS = {
+    e.strip().lower()
+    for e in _cfg.get_str('INDEX_EXCLUDED_EXTS', '').split(',')
+    if e.strip()
+}
 
 # Get provider-specific token limits (no hardcoding!)
 from common.provider_limits import get_provider_limits
@@ -60,6 +68,8 @@ provider_limits = get_provider_limits(
 MAX_TOKENS = provider_limits['max_tokens']
 BATCH_SIZE = provider_limits['batch_size']
 CHUNK_TARGET = _cfg.get_int('CHUNK_SIZE', 1000)
+CHUNK_STRATEGY = _cfg.get_str('CHUNKING_STRATEGY', 'ast').lower()
+AST_OVERLAP_LINES = _cfg.get_int('AST_OVERLAP_LINES', 20)
 
 # File extensions to index
 SOURCE_EXTS = {
@@ -114,7 +124,10 @@ def should_index(path: str, repo_excludes: List[str] = None) -> bool:
     path_lower = path_str.lower()
     
     # Check extension
-    if p.suffix.lower() not in SOURCE_EXTS:
+    ext = p.suffix.lower()
+    if ext not in SOURCE_EXTS:
+        return False
+    if ext in INDEX_EXCLUDED_EXTS:
         return False
     
     # Check for skip files (tooltips, etc - descriptions not implementations)
@@ -139,7 +152,7 @@ def should_index(path: str, repo_excludes: List[str] = None) -> bool:
     
     # Skip very large files
     try:
-        if p.stat().st_size > 1_000_000:  # 1MB
+        if p.stat().st_size > MAX_FILE_SIZE_BYTES:
             return False
     except:
         return False
@@ -329,7 +342,9 @@ def main():
             lang,
             target=CHUNK_TARGET,
             max_tokens=MAX_TOKENS,
-            provider=EMBEDDING_TYPE
+            provider=EMBEDDING_TYPE,
+            strategy=CHUNK_STRATEGY,
+            overlap_lines=AST_OVERLAP_LINES,
         )
         
         for c in file_chunks:
@@ -369,6 +384,10 @@ def main():
         # Whitespace tokenization - no stemming, no stopwords, split on whitespace
         tokenizer = Tokenizer(stemmer=None, stopwords=[], splitter=r"\s+")
         print(f"   Using whitespace tokenizer (no stemming)")
+    elif tokenizer_type == 'lowercase':
+        # Lowercase tokenization - lowercasing + stopwords, no stemming
+        tokenizer = Tokenizer(stemmer=None, stopwords=stopwords_lang)
+        print(f"   Using lowercase tokenizer (stopwords={stopwords_lang})")
     else:
         # Stemmer tokenization - full text processing
         stemmer = Stemmer(stemmer_lang)
@@ -378,7 +397,9 @@ def main():
     corpus_tokens = tokenizer.tokenize(corpus)
     
     # Build BM25 index
-    bm25 = bm25s.BM25(method='lucene', k1=1.2, b=0.75)
+    bm25_k1 = _cfg.get_float('BM25_K1', 1.2)
+    bm25_b = _cfg.get_float('BM25_B', 0.4)
+    bm25 = bm25s.BM25(method='lucene', k1=bm25_k1, b=bm25_b)
     bm25.index(corpus_tokens)
     
     # CRITICAL: Set vocab from tokenizer
@@ -410,6 +431,23 @@ def main():
             f.write(json.dumps(c, ensure_ascii=False) + '\n')
     print(f"   Chunks saved to {chunks_path}")
     
+    if SKIP_DENSE:
+        print(f"\n4. SKIP_DENSE=1 - skipping dense embeddings and Qdrant upsert.")
+        meta = {
+            'repo': REPO,
+            'timestamp': datetime.utcnow().isoformat() + 'Z',
+            'chunk_count': len(chunks),
+            'embedding_type': EMBEDDING_TYPE,
+            'embedding_dim': provider_limits.get('dimensions'),
+            'skip_dense': True,
+        }
+        with open(os.path.join(outdir, 'last_index.json'), 'w') as f:
+            json.dump(meta, f, indent=2)
+        print(f"\n=== Indexing Complete (BM25-only) ===")
+        print(f"Chunks: {len(chunks)}")
+        print(f"Output: {outdir}")
+        return
+
     # Embed and store in Qdrant
     print(f"\n4. Embedding and storing in Qdrant...")
 
@@ -514,4 +552,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

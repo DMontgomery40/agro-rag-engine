@@ -1,9 +1,9 @@
-import os
 import json
 import subprocess
 from pathlib import Path
 from typing import Any, Dict, List
 from common.paths import repo_root, data_dir
+from server.services.config_registry import get_config_registry
 
 
 def _read_json(path: Path, default: Any) -> Any:
@@ -143,9 +143,11 @@ def get_index_stats() -> Dict[str, Any]:
     import subprocess
     from datetime import datetime
 
-    # Get embedding configuration
-    embedding_type = os.getenv("EMBEDDING_TYPE", "openai").lower()
-    embedding_dim = int(os.getenv("EMBEDDING_DIM", "3072" if embedding_type == "openai" else "512"))
+    # Get embedding configuration from config registry
+    registry = get_config_registry()
+    embedding_type = registry.get_str("EMBEDDING_TYPE", "openai").lower()
+    default_dim = 3072 if embedding_type == "openai" else 512
+    embedding_dim = registry.get_int("EMBEDDING_DIM", default_dim)
 
     stats: Dict[str, Any] = {
         "timestamp": datetime.now().isoformat(),  # may be replaced below
@@ -175,9 +177,9 @@ def get_index_stats() -> Dict[str, Any]:
 
     # Current repo + branch
     try:
-        repo = os.getenv("REPO", "agro")
-        # Try env var first (for Docker containers where git isn't available)
-        branch = os.getenv("GIT_BRANCH", "").strip()
+        repo = registry.get_str("REPO", "agro")
+        # Try config first, then env var (for Docker containers where git isn't available)
+        branch = registry.get_str("GIT_BRANCH", "").strip()
         if not branch:
             # Fallback to git command (for local development)
             branch_result = subprocess.run(["git", "branch", "--show-current"], capture_output=True, text=True, cwd=str(repo_root()))
@@ -185,8 +187,8 @@ def get_index_stats() -> Dict[str, Any]:
         stats["current_repo"] = repo
         stats["current_branch"] = branch if branch else "unknown"
     except Exception:
-        stats["current_repo"] = os.getenv("REPO", "agro")
-        stats["current_branch"] = os.getenv("GIT_BRANCH", "unknown")
+        stats["current_repo"] = registry.get_str("REPO", "agro")
+        stats["current_branch"] = registry.get_str("GIT_BRANCH", "unknown")
 
     total_chunks = 0
 

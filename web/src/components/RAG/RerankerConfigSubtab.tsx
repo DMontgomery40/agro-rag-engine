@@ -681,14 +681,14 @@ export function RerankerConfigSubtab() {
               <div className="input-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
                 <div className="input-group">
                   <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                    Top-N to Rerank
-                    <TooltipIcon name="AGRO_RERANKER_TOPN" />
+                    Top-N to Rerank (Cloud)
+                    <TooltipIcon name="RERANKER_CLOUD_TOP_N" />
                   </label>
                   <input
                     type="number"
-                    value={Number(get('AGRO_RERANKER_TOPN', 50))}
-                    onChange={(e) => set('AGRO_RERANKER_TOPN', parseInt(e.target.value) || 50)}
-                    min={10}
+                    value={Number(get('RERANKER_CLOUD_TOP_N', 50))}
+                    onChange={(e) => set('RERANKER_CLOUD_TOP_N', parseInt(e.target.value) || 50)}
+                    min={1}
                     max={200}
                     style={{
                       width: '100%',

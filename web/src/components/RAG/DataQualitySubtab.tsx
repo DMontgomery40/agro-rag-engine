@@ -4,12 +4,14 @@
 // Fully wired to repos.json for all repository configuration
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAPI } from '@/hooks';
+import { useAPI, useConfigField } from '@/hooks';
 import { useCards } from '@/hooks/useCards';
 import { RepositoryConfig } from './RepositoryConfig';
 import { useRepoStore } from '@/stores/useRepoStore';
 import { CardsViewer } from './CardsViewer';
 import { CardsBuilderPanel } from './CardsBuilderPanel';
+import { LiveTerminal } from '@/components/ui/LiveTerminal';
+import { PromptLink } from '@/components/ui/PromptLink';
 
 type CardItem = {
   file_path: string;
@@ -64,24 +66,33 @@ export function DataQualitySubtab() {
    */
   const repos = storeRepos.map(r => r.name);
   const [selectedRepo, setSelectedRepo] = useState('');
-  const [excludeDirs, setExcludeDirs] = useState('');
-  const [excludePatterns, setExcludePatterns] = useState('');
-  const [excludeKeywords, setExcludeKeywords] = useState('');
-  const [cardsMax, setCardsMax] = useState(100);  // Pydantic default: 100, min: 10
-  const [enrichEnabled, setEnrichEnabled] = useState(true);
 
-  // Keywords Manager state
-  const [keywordsMaxPerRepo, setKeywordsMaxPerRepo] = useState<number>(50);
-  const [keywordsMinFreq, setKeywordsMinFreq] = useState<number>(3);
-  const [keywordsBoost, setKeywordsBoost] = useState<number>(1.3);
-  const [keywordsAutoGenerate, setKeywordsAutoGenerate] = useState<number>(1);
-  const [keywordsRefreshHours, setKeywordsRefreshHours] = useState<number>(24);
+  // Config values via useConfigField (auto-sync with backend)
+  const [excludeDirs, setExcludeDirs] = useConfigField<string>('CARDS_EXCLUDE_DIRS', '');
+  const [excludePatterns, setExcludePatterns] = useConfigField<string>('CARDS_EXCLUDE_PATTERNS', '');
+  const [excludeKeywords, setExcludeKeywords] = useConfigField<string>('CARDS_EXCLUDE_KEYWORDS', '');
+  const [cardsMax, setCardsMax] = useConfigField<number>('CARDS_MAX', 100);
+  const [enrichEnabled, setEnrichEnabled] = useConfigField<string>('CARDS_ENRICH', '1');
+
+  // Keywords Manager config
+  const [keywordsMaxPerRepo, setKeywordsMaxPerRepo] = useConfigField<number>('KEYWORDS_MAX_PER_REPO', 50);
+  const [keywordsMinFreq, setKeywordsMinFreq] = useConfigField<number>('KEYWORDS_MIN_FREQ', 3);
+  const [keywordsBoost, setKeywordsBoost] = useConfigField<number>('KEYWORDS_BOOST', 1.3);
+  const [keywordsAutoGenerate, setKeywordsAutoGenerate] = useConfigField<number>('KEYWORDS_AUTO_GENERATE', 1);
+  const [keywordsRefreshHours, setKeywordsRefreshHours] = useConfigField<number>('KEYWORDS_REFRESH_HOURS', 24);
+
+  // Local UI state
   const [error, setError] = useState<string>('');
 
   // Keyword generation state
   const [keywordsGenerating, setKeywordsGenerating] = useState<boolean>(false);
   const [keywordsGenerateStatus, setKeywordsGenerateStatus] = useState<string>('');
   const [generatedKeywordsCount, setGeneratedKeywordsCount] = useState<number | null>(null);
+
+  // Terminal state for build logs
+  const [showTerminal, setShowTerminal] = useState<boolean>(false);
+  const [terminalLines, setTerminalLines] = useState<string[]>([]);
+  const [terminalProgress, setTerminalProgress] = useState<{ percent: number; message: string } | null>(null);
 
   // Load repos list via store (once if not initialized)
   useEffect(() => {
@@ -107,90 +118,10 @@ export function DataQualitySubtab() {
     }
   }, [repos, activeRepo, selectedRepo]);
 
-  // Load cards filters + keywords config from backend
-  useEffect(() => {
-    /**
-     * ---agentspec
-     * what: |
-     *   Fetches cards config from API endpoint. On success, extracts env object; on failure (non-2xx or parse error), logs warning and returns undefined.
-     *
-     * why: |
-     *   Graceful degradation: app continues with defaults if config unavailable, avoiding hard failures on network/API issues.
-     *
-     * guardrails:
-     *   - DO NOT throw on fetch failure; silent fallback to defaults required
-     *   - NOTE: Only extracts env; ignores other config fields
-     *   - ASK USER: Should 404 vs 5xx be handled differently?
-     * ---/agentspec
-     */
-    const loadCardsConfig = async () => {
-      try {
-        const response = await fetch(api('config'));
-        if (!response.ok) {
-          console.warn('[DataQualitySubtab] Config fetch returned', response.status, '- using defaults');
-          return;
-        }
-        const data = await response.json();
-        const env = data.env || {};
-        const cardsMaxValue = parseInt(env.CARDS_MAX ?? '100', 10);
-        if (!isNaN(cardsMaxValue) && cardsMaxValue >= 10) {
-          setCardsMax(cardsMaxValue);
-        }
-        setExcludeDirs(env.CARDS_EXCLUDE_DIRS || '');
-        setExcludePatterns(env.CARDS_EXCLUDE_PATTERNS || '');
-        setExcludeKeywords(env.CARDS_EXCLUDE_KEYWORDS || '');
-        setKeywordsMaxPerRepo(parseInt(env.KEYWORDS_MAX_PER_REPO || '50', 10));
-        setKeywordsMinFreq(parseInt(env.KEYWORDS_MIN_FREQ || '3', 10));
-        setKeywordsBoost(parseFloat(env.KEYWORDS_BOOST || '1.3'));
-        setKeywordsAutoGenerate(parseInt(env.KEYWORDS_AUTO_GENERATE || '1', 10));
-        setKeywordsRefreshHours(parseInt(env.KEYWORDS_REFRESH_HOURS || '24', 10));
-      } catch (err) {
-        console.warn('[DataQualitySubtab] Could not load cards config, using defaults:', err);
-      }
-    };
-    loadCardsConfig();
-  }, [api]);
+  // Config loading is handled automatically by useConfigField hooks
 
 
-  /**
-   * ---agentspec
-   * what: |
-   *   POSTs config key-value pair to /config endpoint. Takes key string and value any; returns response JSON.
-   *
-   * why: |
-   *   Centralizes config updates via API to maintain server-side state consistency.
-   *
-   * guardrails:
-   *   - DO NOT validate value type client-side; server enforces schema
-   *   - NOTE: Clears error state before request; fails silently if response is non-JSON
-   *   - ASK USER: Add retry logic or timeout handling?
-   * ---/agentspec
-   */
-  const updateConfig = async (key: string, value: any) => {
-    try {
-      setError('');
-
-      const response = await fetch(api('config'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ env: { [key]: value } })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to save ${key}: ${response.status}`);
-      }
-
-      // Reload config to ensure backend picks up changes
-      await fetch(api('env/reload'), { method: 'POST' });
-
-      console.log(`[DataQualitySubtab] Successfully saved ${key} = ${value}`);
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : `Failed to save ${key}`;
-      console.error(`[DataQualitySubtab] Error saving ${key}:`, err);
-      setError(errorMsg);
-    }
-  };
+  // Config updates are handled automatically by useConfigField setters
 
   /**
    * Generate keywords for the selected repository
@@ -341,8 +272,7 @@ export function DataQualitySubtab() {
               min="10"
               max="500"
               step="10"
-              onChange={(e) => setKeywordsMaxPerRepo(parseInt(e.target.value, 10))}
-              onBlur={() => updateConfig('KEYWORDS_MAX_PER_REPO', keywordsMaxPerRepo)}
+              onChange={(e) => setKeywordsMaxPerRepo(parseInt(e.target.value, 10) || 50)}
             />
           </div>
           <div className="input-group">
@@ -358,8 +288,7 @@ export function DataQualitySubtab() {
               min="1"
               max="10"
               step="1"
-              onChange={(e) => setKeywordsMinFreq(parseInt(e.target.value, 10))}
-              onBlur={() => updateConfig('KEYWORDS_MIN_FREQ', keywordsMinFreq)}
+              onChange={(e) => setKeywordsMinFreq(parseInt(e.target.value, 10) || 3)}
             />
           </div>
         </div>
@@ -378,8 +307,7 @@ export function DataQualitySubtab() {
               min="1.0"
               max="3.0"
               step="0.1"
-              onChange={(e) => setKeywordsBoost(parseFloat(e.target.value))}
-              onBlur={() => updateConfig('KEYWORDS_BOOST', keywordsBoost)}
+              onChange={(e) => setKeywordsBoost(parseFloat(e.target.value) || 1.3)}
             />
           </div>
           <div className="input-group">
@@ -391,11 +319,7 @@ export function DataQualitySubtab() {
               id="KEYWORDS_AUTO_GENERATE"
               name="KEYWORDS_AUTO_GENERATE"
               value={keywordsAutoGenerate}
-              onChange={(e) => {
-                const value = parseInt(e.target.value, 10);
-                setKeywordsAutoGenerate(value);
-                updateConfig('KEYWORDS_AUTO_GENERATE', value);
-              }}
+              onChange={(e) => setKeywordsAutoGenerate(parseInt(e.target.value, 10))}
             >
               <option value="1">Enabled</option>
               <option value="0">Disabled</option>
@@ -417,8 +341,7 @@ export function DataQualitySubtab() {
               min="1"
               max="168"
               step="1"
-              onChange={(e) => setKeywordsRefreshHours(parseInt(e.target.value, 10))}
-              onBlur={() => updateConfig('KEYWORDS_REFRESH_HOURS', keywordsRefreshHours)}
+              onChange={(e) => setKeywordsRefreshHours(parseInt(e.target.value, 10) || 24)}
             />
           </div>
         </div>
@@ -521,7 +444,6 @@ export function DataQualitySubtab() {
               placeholder="e.g., node_modules, vendor, dist"
               value={excludeDirs}
               onChange={(e) => setExcludeDirs(e.target.value)}
-              onBlur={() => updateConfig('CARDS_EXCLUDE_DIRS', excludeDirs)}
               style={{ width: '100%' }}
             />
             <p className="small" style={{ color: 'var(--fg-muted)' }}>
@@ -543,7 +465,6 @@ export function DataQualitySubtab() {
               placeholder="e.g., .test.js, .spec.ts, .min.js"
               value={excludePatterns}
               onChange={(e) => setExcludePatterns(e.target.value)}
-              onBlur={() => updateConfig('CARDS_EXCLUDE_PATTERNS', excludePatterns)}
               style={{ width: '100%' }}
             />
             <p className="small" style={{ color: 'var(--fg-muted)' }}>
@@ -565,7 +486,6 @@ export function DataQualitySubtab() {
               placeholder="e.g., deprecated, legacy, TODO"
               value={excludeKeywords}
               onChange={(e) => setExcludeKeywords(e.target.value)}
-              onBlur={() => updateConfig('CARDS_EXCLUDE_KEYWORDS', excludeKeywords)}
               style={{ width: '100%' }}
             />
             <p className="small" style={{ color: 'var(--fg-muted)' }}>
@@ -588,7 +508,6 @@ export function DataQualitySubtab() {
                 // Enforce Pydantic constraint: ge=10
                 setCardsMax(Math.max(10, val));
               }}
-              onBlur={() => updateConfig('CARDS_MAX', cardsMax)}
               min="10"
               step="10"
               style={{ maxWidth: '160px' }}
@@ -603,14 +522,20 @@ export function DataQualitySubtab() {
                 type="checkbox"
                 id="cards-enrich-gui"
                 name="CARDS_ENRICH"
-                checked={enrichEnabled}
-                onChange={(e) => setEnrichEnabled(e.target.checked)}
+                checked={enrichEnabled === '1'}
+                onChange={(e) => setEnrichEnabled(e.target.checked ? '1' : '0')}
               />{' '}
               Enrich with AI
             </label>
             <p className="small" style={{ color: 'var(--fg-muted)' }}>
               Use LLM for rich semantic cards
             </p>
+            {/* Quick links to edit card-related system prompts */}
+            <div className="related-prompts" style={{ marginTop: '10px' }}>
+              <span className="related-prompts-label">Edit:</span>
+              <PromptLink promptKey="semantic_cards">Semantic Cards</PromptLink>
+              <PromptLink promptKey="code_enrichment">Code Enrichment</PromptLink>
+            </div>
           </div>
         </div>
 
@@ -698,47 +623,34 @@ export function DataQualitySubtab() {
               className="small-button"
               onClick={() => {
                 setShowTerminal(true);
-                // Simulate some logs for testing
-                setTimeout(() => {
-                  const terminal = (window as any).terminal_cards_terminal;
-                  if (terminal) {
-                    terminal.appendLine('\x1b[32m✓\x1b[0m Connected to build server');
-                    terminal.appendLine('Scanning repository files...');
-                    terminal.updateProgress(10, 'Scanning files...');
-
-                    setTimeout(() => {
-                      terminal.appendLine('Found 247 files to process');
-                      terminal.appendLine('\x1b[33mWarning:\x1b[0m Skipping node_modules');
-                      terminal.updateProgress(30, 'Chunking code...');
-                    }, 500);
-
-                    setTimeout(() => {
-                      terminal.appendLine('Creating code chunks...');
-                      terminal.appendLine('\x1b[34mInfo:\x1b[0m Average chunk size: 150 lines');
-                      terminal.updateProgress(50, 'Generating summaries...');
-                    }, 1000);
-
-                    setTimeout(() => {
-                      terminal.appendLine('\x1b[31mError:\x1b[0m Failed to summarize chunk 42');
-                      terminal.appendLine('Retrying...');
-                      terminal.updateProgress(70, 'Creating embeddings...');
-                    }, 1500);
-
-                    setTimeout(() => {
-                      terminal.appendLine('\x1b[32m✓\x1b[0m Successfully built cards!');
-                      terminal.updateProgress(100, 'Complete!');
-                    }, 2000);
-                  }
-                }, 100);
+                // Demo: add some test log lines
+                setTerminalLines(prev => [
+                  ...prev,
+                  '\x1b[32m✓\x1b[0m Connected to build server',
+                  'Scanning repository files...'
+                ]);
+                setTerminalProgress({ percent: 10, message: 'Scanning files...' });
               }}
             >
-              View Logs (Test)
+              View Logs
             </button>
-            <button id="cards-progress-clear" className="small-button">
+            <button id="cards-progress-clear" className="small-button" onClick={() => {
+              setTerminalLines([]);
+              setTerminalProgress(null);
+            }}>
               Clear
             </button>
           </div>
         </div>
+
+        {/* Live Terminal for Build Logs */}
+        <LiveTerminal
+          title="Cards Build Logs"
+          isVisible={showTerminal}
+          onClose={() => setShowTerminal(false)}
+          lines={terminalLines}
+          progress={terminalProgress}
+        />
 
         {/* Action Buttons */}
         <CardsBuilderPanel
@@ -756,7 +668,6 @@ export function DataQualitySubtab() {
           onChangeCardsMax={setCardsMax}
           enrichEnabled={enrichEnabled}
           onChangeEnrich={setEnrichEnabled}
-          onUpdateConfig={updateConfig}
           onError={setError}
         />
 

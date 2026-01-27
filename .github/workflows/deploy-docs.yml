@@ -2,7 +2,7 @@ name: Publish MkDocs (mike)
 
 on:
   push:
-    branches: [main]
+    branches: [development, staging, main]
     paths:
       - 'mkdocs.yml'
       - 'mkdocs/**'
@@ -23,10 +23,10 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install mkdocs + material + mike
+      - name: Install mkdocs + material + plugins + mike
         run: |
           python -m pip install --upgrade pip
-          pip install mkdocs mkdocs-material mike
+          pip install mkdocs mkdocs-material mkdocs-glightbox mike
 
       - name: Build (sanity check)
         run: |

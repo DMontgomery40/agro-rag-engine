@@ -24,27 +24,6 @@ from typing import Dict, Optional
 from common.paths import repo_root
 
 
-_BOOL_TRUE = {"1", "true", "yes", "on"}
-
-
-def _env_bool(name: str, default: str = "0") -> bool:
-    return os.getenv(name, default).strip().lower() in _BOOL_TRUE
-
-
-def _env_int(name: str, default: str) -> int:
-    try:
-        return int(os.getenv(name, default).strip())
-    except Exception:
-        return int(default)
-
-
-def _env_float(name: str, default: str) -> float:
-    try:
-        return float(os.getenv(name, default).strip())
-    except Exception:
-        return float(default)
-
-
 @dataclass(frozen=True)
 class RerankerSettings:
     enabled: bool
@@ -90,18 +69,44 @@ def _resolve_local_model_path(path_value: str) -> Optional[Path]:
     return None
 
 
+def _get_config_registry():
+    """Get config registry singleton. Import here to avoid circular imports."""
+    from server.services.config_registry import get_config_registry
+    return get_config_registry()
+
+
 def load_settings() -> RerankerSettings:
-    """Load consolidated reranker settings from environment variables."""
+    """Load consolidated reranker settings from config registry (Pydantic).
+
+    Config values come from agro_config.json via config_registry.
+    API keys (secrets) come from .env via os.getenv - this is correct per rules.
+    """
+    registry = _get_config_registry()
     raw_env: Dict[str, str] = {}
 
-    def _get(name: str, default: str = "") -> str:
-        val = os.getenv(name, default)
+    def _get_str(name: str, default: str = "") -> str:
+        val = registry.get_str(name, default)
         raw_env[name] = val
+        return val
+
+    def _get_int(name: str, default: int) -> int:
+        val = registry.get_int(name, default)
+        raw_env[name] = str(val)
+        return val
+
+    def _get_float(name: str, default: float) -> float:
+        val = registry.get_float(name, default)
+        raw_env[name] = str(val)
+        return val
+
+    def _get_bool(name: str, default: bool) -> bool:
+        val = registry.get_bool(name, default)
+        raw_env[name] = "1" if val else "0"
         return val
 
     # Read RERANKER_MODE - single source of truth for reranker enable/disable
     # mode='none' means reranking disabled; no separate ENABLED boolean needed
-    mode = _get("RERANKER_MODE", "").strip().lower()
+    mode = _get_str("RERANKER_MODE", "").strip().lower()
     if not mode:
         raise ValueError(
             "RERANKER_MODE must be set to one of: 'cloud', 'local', 'learning', 'none'"
@@ -112,10 +117,10 @@ def load_settings() -> RerankerSettings:
             f"Must be one of: 'cloud', 'local', 'learning', 'none'"
         )
 
-    # Read provider and models
-    provider = _get("RERANKER_CLOUD_PROVIDER", "").strip().lower()
-    cloud_model = _get("RERANKER_CLOUD_MODEL", "").strip()
-    local_model = _get("RERANKER_LOCAL_MODEL", "").strip()
+    # Read provider and models from config registry
+    provider = _get_str("RERANKER_CLOUD_PROVIDER", "").strip().lower()
+    cloud_model = _get_str("RERANKER_CLOUD_MODEL", "").strip()
+    local_model = _get_str("RERANKER_LOCAL_MODEL", "").strip()
 
     # Validate based on mode
     cloud_api_key_present = False
@@ -130,8 +135,10 @@ def load_settings() -> RerankerSettings:
                 f"RERANKER_MODE='{mode}' with RERANKER_CLOUD_PROVIDER='{provider}' "
                 f"requires RERANKER_CLOUD_MODEL to be set"
             )
+        # API keys are SECRETS - correctly read from os.getenv (not config registry)
         api_key_env = f"{provider.upper()}_API_KEY"
-        api_key = _get(api_key_env, "")
+        api_key = os.getenv(api_key_env, "")
+        raw_env[api_key_env] = "[REDACTED]" if api_key else ""
         if not api_key.strip():
             raise ValueError(
                 f"RERANKER_MODE='{mode}' with RERANKER_CLOUD_PROVIDER='{provider}' "
@@ -146,8 +153,8 @@ def load_settings() -> RerankerSettings:
             )
 
     elif mode == "learning":
-        # Learning mode uses AGRO cross encoder
-        local_model = "models/cross-encoder-agro"
+        # Learning mode uses AGRO cross encoder - get path from config
+        local_model = _get_str("AGRO_RERANKER_MODEL_PATH", "models/cross-encoder-agro")
 
     # Resolve local model path for learning/local modes
     if mode in {"learning", "local"}:
@@ -157,14 +164,15 @@ def load_settings() -> RerankerSettings:
 
     hf_model_id = local_model
 
-    alpha = _env_float("AGRO_RERANKER_ALPHA", "0.7")
-    top_n_local = max(0, _env_int("AGRO_RERANKER_TOPN", "50"))
-    top_n_cloud = max(1, _env_int("RERANKER_CLOUD_TOP_N", "50"))
-    batch_size = max(1, _env_int("AGRO_RERANKER_BATCH", "16"))
-    max_length = max(1, _env_int("AGRO_RERANKER_MAXLEN", "512"))
-    snippet_chars = max(1, _env_int("RERANK_INPUT_SNIPPET_CHARS", "600"))
-    reload_on_change = _env_bool("AGRO_RERANKER_RELOAD_ON_CHANGE", "0")
-    reload_period_sec = max(1, _env_int("AGRO_RERANKER_RELOAD_PERIOD_SEC", "60"))
+    # All these come from config registry (Pydantic validated)
+    alpha = _get_float("AGRO_RERANKER_ALPHA", 0.7)
+    top_n_local = max(0, _get_int("AGRO_RERANKER_TOPN", 50))
+    top_n_cloud = max(1, _get_int("RERANKER_CLOUD_TOP_N", 50))
+    batch_size = max(1, _get_int("AGRO_RERANKER_BATCH", 16))
+    max_length = max(1, _get_int("AGRO_RERANKER_MAXLEN", 512))
+    snippet_chars = max(1, _get_int("RERANK_INPUT_SNIPPET_CHARS", 700))
+    reload_on_change = _get_bool("AGRO_RERANKER_RELOAD_ON_CHANGE", False)
+    reload_period_sec = max(1, _get_int("AGRO_RERANKER_RELOAD_PERIOD_SEC", 60))
 
     return RerankerSettings(
         enabled=mode != "none",
@@ -209,8 +217,24 @@ def as_env(settings: RerankerSettings) -> Dict[str, str]:
 
 
 def shared_loader_enabled() -> bool:
-    """Feature flag guard for shared reranker config."""
-    return _env_bool("AGRO_RERANKER_SHARED_LOADER", "0")
+    """Feature flag guard for shared reranker config.
+
+    Uses config registry instead of os.getenv.
+    """
+    registry = _get_config_registry()
+    return registry.get_bool("AGRO_RERANKER_SHARED_LOADER", False)
+
 
 # Backward compatibility alias
 unified_config_enabled = shared_loader_enabled
+
+
+def reload_config() -> None:
+    """Reload configuration from disk.
+
+    This function should be called when config changes.
+    Since we use config_registry, which handles its own reload,
+    we just need to ensure the registry is reloaded.
+    """
+    registry = _get_config_registry()
+    registry.reload()

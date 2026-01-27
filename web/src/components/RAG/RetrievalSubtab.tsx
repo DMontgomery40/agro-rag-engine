@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { EmbeddingMismatchWarning } from '@/components/ui/EmbeddingMismatchWarning';
 import { LiveTerminal, LiveTerminalHandle } from '@/components/LiveTerminal/LiveTerminal';
+import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
+import { IntentMatrixEditor } from '@/components/RAG/IntentMatrixEditor';
+import { PromptLink } from '@/components/ui/PromptLink';
+import { ApiKeyStatus } from '@/components/ui/ApiKeyStatus';
 import { createAlertError, createInlineError } from '@/utils/errorHelpers';
 import { useConfig, useConfigField } from '@/hooks';
 
@@ -24,17 +28,14 @@ export function RetrievalSubtab() {
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [hydrating, setHydrating] = useState(true);
   const [traceLoading, setTraceLoading] = useState(false);
-  const [traceStatus, setTraceStatus] = useState<{ type: 'info' | 'error'; message: string; isHtml?: boolean } | null>(null);
+  const [traceStatus, setTraceStatus] = useState<{ type: 'info' | 'error'; message: string } | null>(null);
   const traceTerminalRef = useRef<LiveTerminalHandle>(null);
 
   // --- Generation Models ---------------------------------------------------
   const [genModel, setGenModel] = useConfigField<string>('GEN_MODEL', '');
-  const [openaiApiKey, setOpenaiApiKey] = useConfigField<string>('OPENAI_API_KEY', '');
   const [genTemperature, setGenTemperature] = useConfigField<number>('GEN_TEMPERATURE', 0.0);
   const [enrichModel, setEnrichModel] = useConfigField<string>('ENRICH_MODEL', '');
   const [enrichModelOllama, setEnrichModelOllama] = useConfigField<string>('ENRICH_MODEL_OLLAMA', '');
-  const [anthropicApiKey, setAnthropicApiKey] = useConfigField<string>('ANTHROPIC_API_KEY', '');
-  const [googleApiKey, setGoogleApiKey] = useConfigField<string>('GOOGLE_API_KEY', '');
   const [ollamaUrl, setOllamaUrl] = useConfigField<string>('OLLAMA_URL', 'http://127.0.0.1:11434');
   const [openaiBaseUrl, setOpenaiBaseUrl] = useConfigField<string>('OPENAI_BASE_URL', '');
   const [genModelHttp, setGenModelHttp] = useConfigField<string>('GEN_MODEL_HTTP', '');
@@ -51,6 +52,7 @@ export function RetrievalSubtab() {
   const [multiQueryRewrites, setMultiQueryRewrites] = useConfigField<number>('MAX_QUERY_REWRITES', 2);
   const [finalK, setFinalK] = useConfigField<number>('FINAL_K', 10);
   const [useSemanticSynonyms, setUseSemanticSynonyms] = useConfigField<string>('USE_SEMANTIC_SYNONYMS', '1');
+  const [synonymsPath, setSynonymsPath] = useConfigField<string>('AGRO_SYNONYMS_PATH', '');
   const [topkDense, setTopkDense] = useConfigField<number>('TOPK_DENSE', 75);
   const [vectorBackend, setVectorBackend] = useConfigField<string>('VECTOR_BACKEND', 'qdrant');
   const [topkSparse, setTopkSparse] = useConfigField<number>('TOPK_SPARSE', 75);
@@ -72,7 +74,8 @@ export function RetrievalSubtab() {
   const [filenameBoostExact, setFilenameBoostExact] = useConfigField<number>('FILENAME_BOOST_EXACT', 1.5);
   const [filenameBoostPartial, setFilenameBoostPartial] = useConfigField<number>('FILENAME_BOOST_PARTIAL', 1.2);
   const [langgraphFinalK, setLanggraphFinalK] = useConfigField<number>('LANGGRAPH_FINAL_K', 20);
-  const [maxQueryRewrites, setMaxQueryRewrites] = useConfigField<number>('MAX_QUERY_REWRITES', 3);
+  const [langgraphMaxQueryRewrites, setLanggraphMaxQueryRewrites] =
+    useConfigField<number>('LANGGRAPH_MAX_QUERY_REWRITES', 3);
   const [fallbackConfidence, setFallbackConfidence] = useConfigField<number>('FALLBACK_CONFIDENCE', 0.55);
   const [layerBonusGui, setLayerBonusGui] = useConfigField<number>('LAYER_BONUS_GUI', 0.15);
   const [layerBonusRetrieval, setLayerBonusRetrieval] = useConfigField<number>('LAYER_BONUS_RETRIEVAL', 0.15);
@@ -83,12 +86,9 @@ export function RetrievalSubtab() {
   const [traceRetention, setTraceRetention] = useConfigField<number>('TRACE_RETENTION', 50);
   const [langchainTracingV2, setLangchainTracingV2] = useConfigField<string>('LANGCHAIN_TRACING_V2', '0');
   const [langchainEndpoint, setLangchainEndpoint] = useConfigField<string>('LANGCHAIN_ENDPOINT', '');
-  const [langchainApiKey, setLangchainApiKey] = useConfigField<string>('LANGCHAIN_API_KEY', '');
-  const [langsmithApiKey, setLangsmithApiKey] = useConfigField<string>('LANGSMITH_API_KEY', '');
   const [langchainProject, setLangchainProject] = useConfigField<string>('LANGCHAIN_PROJECT', '');
   const [langtraceApiHost, setLangtraceApiHost] = useConfigField<string>('LANGTRACE_API_HOST', '');
   const [langtraceProjectId, setLangtraceProjectId] = useConfigField<string>('LANGTRACE_PROJECT_ID', '');
-  const [langtraceApiKey, setLangtraceApiKey] = useConfigField<string>('LANGTRACE_API_KEY', '');
 
   const {
     config,
@@ -192,7 +192,6 @@ export function RetrievalSubtab() {
       setTraceStatus({
         type: 'error',
         message: createInlineError('Failed to load trace'),
-        isHtml: true,
       });
     } finally {
       setTraceLoading(false);
@@ -245,13 +244,12 @@ export function RetrievalSubtab() {
         </div>
       )}
 
-      <div className="settings-section">
-        <h3>Generation Models</h3>
-        <p className="small">
-          Primary answer model plus overrides for HTTP, MCP, CLI, and enrichment pipelines. Values
-          propagate directly through the Pydantic config, so changes take effect immediately.
-        </p>
-
+      <CollapsibleSection
+        title="Generation Models"
+        description="Primary answer model plus overrides for HTTP, MCP, CLI, and enrichment pipelines."
+        storageKey="retrieval-generation"
+        defaultExpanded={true}
+      >
         <div className="input-row">
           <div className="input-group">
             <label>
@@ -272,12 +270,7 @@ export function RetrievalSubtab() {
               OpenAI API Key
               <span className="help-icon" data-tooltip="OPENAI_API_KEY">?</span>
             </label>
-            <input
-              type="password"
-              placeholder="sk-..."
-              value={openaiApiKey}
-              onChange={(e) => setOpenaiApiKey(e.target.value)}
-            />
+            <ApiKeyStatus keyName="OPENAI_API_KEY" label="OpenAI API Key" />
           </div>
         </div>
 
@@ -327,12 +320,7 @@ export function RetrievalSubtab() {
               Anthropic API Key
               <span className="help-icon" data-tooltip="ANTHROPIC_API_KEY">?</span>
             </label>
-            <input
-              type="password"
-              placeholder="sk-ant-..."
-              value={anthropicApiKey}
-              onChange={(e) => setAnthropicApiKey(e.target.value)}
-            />
+            <ApiKeyStatus keyName="ANTHROPIC_API_KEY" label="Anthropic API Key" />
           </div>
         </div>
 
@@ -342,12 +330,7 @@ export function RetrievalSubtab() {
               Google API Key
               <span className="help-icon" data-tooltip="GOOGLE_API_KEY">?</span>
             </label>
-            <input
-              type="password"
-              placeholder="AI..."
-              value={googleApiKey}
-              onChange={(e) => setGoogleApiKey(e.target.value)}
-            />
+            <ApiKeyStatus keyName="GOOGLE_API_KEY" label="Google API Key" />
           </div>
           <div className="input-group">
             <label>
@@ -508,15 +491,14 @@ export function RetrievalSubtab() {
             />
           </div>
         </div>
-      </div>
+      </CollapsibleSection>
 
-      <div className="settings-section">
-        <h3>Retrieval Parameters</h3>
-        <p className="small">
-          Hybrid search blends BM25 and dense embeddings. Tune candidate counts, weights, and hydration settings to
-          match your repos.
-        </p>
-
+      <CollapsibleSection
+        title="Retrieval Parameters"
+        description="Hybrid search blends BM25 and dense embeddings. Tune candidate counts and weights."
+        storageKey="retrieval-params"
+        defaultExpanded={true}
+      >
         <div className="input-row">
           <div className="input-group">
             <label>
@@ -559,6 +541,21 @@ export function RetrievalSubtab() {
           </div>
           <div className="input-group">
             <label>
+              Synonyms File Path
+              <span className="help-icon" data-tooltip="AGRO_SYNONYMS_PATH">?</span>
+            </label>
+            <input
+              type="text"
+              placeholder="data/semantic_synonyms.json"
+              value={synonymsPath}
+              onChange={(e) => setSynonymsPath(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>
               Dense Top-K
               <span className="help-icon" data-tooltip="TOPK_DENSE">?</span>
             </label>
@@ -568,6 +565,19 @@ export function RetrievalSubtab() {
               max={400}
               value={topkDense}
               onChange={(e) => setTopkDense(snapNumber(e.target.value, 75))}
+            />
+          </div>
+          <div className="input-group">
+            <label>
+              Sparse Top-K
+              <span className="help-icon" data-tooltip="TOPK_SPARSE">?</span>
+            </label>
+            <input
+              type="number"
+              min={10}
+              max={400}
+              value={topkSparse}
+              onChange={(e) => setTopkSparse(snapNumber(e.target.value, 75))}
             />
           </div>
         </div>
@@ -584,19 +594,6 @@ export function RetrievalSubtab() {
               <option value="weaviate">Weaviate</option>
               <option value="redis">Redis</option>
             </select>
-          </div>
-          <div className="input-group">
-            <label>
-              Sparse Top-K
-              <span className="help-icon" data-tooltip="TOPK_SPARSE">?</span>
-            </label>
-            <input
-              type="number"
-              min={10}
-              max={400}
-              value={topkSparse}
-              onChange={(e) => setTopkSparse(snapNumber(e.target.value, 75))}
-            />
           </div>
         </div>
 
@@ -761,14 +758,14 @@ export function RetrievalSubtab() {
           </div>
           <div className="input-group" />
         </div>
-      </div>
+      </CollapsibleSection>
 
-      <div className="settings-section">
-        <h3>Advanced RAG Tuning</h3>
-        <p className="small">
-          Fine-tune reranker settings, LangGraph bonuses, and freshness tuning for policy routing and safety overrides.
-        </p>
-
+      <CollapsibleSection
+        title="Advanced RAG Tuning"
+        description="Fine-tune reranker settings, LangGraph bonuses, and freshness tuning."
+        storageKey="retrieval-advanced"
+        defaultExpanded={false}
+      >
         <div className="input-row">
           <div className="input-group">
             <label>
@@ -847,14 +844,14 @@ export function RetrievalSubtab() {
           <div className="input-group">
             <label>
               Max Query Rewrites (LangGraph)
-              <span className="help-icon" data-tooltip="MAX_QUERY_REWRITES">?</span>
+              <span className="help-icon" data-tooltip="LANGGRAPH_MAX_QUERY_REWRITES">?</span>
             </label>
             <input
               type="number"
               min={0}
               max={10}
-              value={maxQueryRewrites}
-              onChange={(e) => setMaxQueryRewrites(snapNumber(e.target.value, 3))}
+              value={langgraphMaxQueryRewrites}
+              onChange={(e) => setLanggraphMaxQueryRewrites(snapNumber(e.target.value, 3))}
             />
           </div>
         </div>
@@ -938,15 +935,25 @@ export function RetrievalSubtab() {
           </div>
           <div className="input-group" />
         </div>
-      </div>
 
-      <div className="settings-section">
-        <h3>Routing Trace & LangSmith</h3>
-        <p className="small">
-          Inspect the most recent LangGraph trace, verify router decisions, and jump directly into LangSmith for deeper
-          debugging.
-        </p>
+        {/* Intent Matrix JSON Editor */}
+        <IntentMatrixEditor />
 
+        {/* Quick links to edit related system prompts */}
+        <div className="related-prompts">
+          <span className="related-prompts-label">Related Prompts:</span>
+          <PromptLink promptKey="main_rag_chat">System Prompt</PromptLink>
+          <PromptLink promptKey="query_expansion">Query Expansion</PromptLink>
+          <PromptLink promptKey="query_rewrite">Query Rewrite</PromptLink>
+        </div>
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        title="Routing Trace & LangSmith"
+        description="Inspect LangGraph traces and jump directly into LangSmith for debugging."
+        storageKey="retrieval-tracing"
+        defaultExpanded={false}
+      >
         <div className="input-row">
           <div className="input-group">
             <button className="small-button" onClick={handleLoadTrace} disabled={traceLoading}>
@@ -965,11 +972,7 @@ export function RetrievalSubtab() {
             className="result-display"
             style={{ color: traceStatus.type === 'error' ? 'var(--err)' : 'var(--fg-muted)' }}
           >
-            {traceStatus.isHtml ? (
-              <div dangerouslySetInnerHTML={{ __html: traceStatus.message }} />
-            ) : (
-              traceStatus.message
-            )}
+            {traceStatus.message}
           </div>
         ) : null}
 
@@ -1050,12 +1053,7 @@ export function RetrievalSubtab() {
               LangSmith API Key
               <span className="help-icon" data-tooltip="LANGCHAIN_API_KEY">?</span>
             </label>
-            <input
-              type="password"
-              placeholder="ls-..."
-              value={langchainApiKey}
-              onChange={(e) => setLangchainApiKey(e.target.value)}
-            />
+            <ApiKeyStatus keyName="LANGCHAIN_API_KEY" label="LangChain API Key" />
           </div>
         </div>
 
@@ -1077,11 +1075,7 @@ export function RetrievalSubtab() {
               LangSmith User Key
               <span className="help-icon" data-tooltip="LANGSMITH_API_KEY">?</span>
             </label>
-            <input
-              type="password"
-              value={langsmithApiKey}
-              onChange={(e) => setLangsmithApiKey(e.target.value)}
-            />
+            <ApiKeyStatus keyName="LANGSMITH_API_KEY" label="LangSmith API Key" />
           </div>
         </div>
 
@@ -1117,15 +1111,11 @@ export function RetrievalSubtab() {
               LangTrace API Key
               <span className="help-icon" data-tooltip="LANGTRACE_API_KEY">?</span>
             </label>
-            <input
-              type="password"
-              value={langtraceApiKey}
-              onChange={(e) => setLangtraceApiKey(e.target.value)}
-            />
+            <ApiKeyStatus keyName="LANGTRACE_API_KEY" label="LangTrace API Key" />
           </div>
           <div className="input-group" />
         </div>
-      </div>
+      </CollapsibleSection>
     </>
   );
 }
@@ -1211,4 +1201,3 @@ function formatTraceTable(rows: Array<Array<string | number>>, headers: string[]
     .filter(Boolean)
     .join('\n');
 }
-

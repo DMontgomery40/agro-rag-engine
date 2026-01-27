@@ -69,7 +69,7 @@ def pipeline_summary() -> Dict[str, Any]:
 
     # Health checks
     def _qdrant_health() -> str:
-        base = (os.getenv("QDRANT_URL") or "").rstrip("/") or "http://127.0.0.1:6333"
+        base = _config_registry.get_str("QDRANT_URL", "http://127.0.0.1:6333").rstrip("/")
         url = f"{base}/collections"
         try:
             r = requests.get(url, timeout=1.5)
@@ -78,7 +78,7 @@ def pipeline_summary() -> Dict[str, Any]:
             return "fail"
 
     def _redis_health() -> str:
-        u = os.getenv("REDIS_URL") or ""
+        u = _config_registry.get_str("REDIS_URL", "")
         try:
             if u.startswith("redis://"):
                 host_port = u.split("redis://", 1)[1].split("/", 1)[0]
@@ -90,7 +90,7 @@ def pipeline_summary() -> Dict[str, Any]:
         return "unknown"
 
     def _llm_health() -> str:
-        base = (os.getenv("OLLAMA_URL") or "").rstrip("/")
+        base = _config_registry.get_str("OLLAMA_URL", "").rstrip("/")
         if base:
             try:
                 r = requests.get(f"{base}/api/tags", timeout=1.5)

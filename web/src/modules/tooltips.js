@@ -205,12 +205,12 @@
         ['OpenAI: API Keys', 'https://platform.openai.com/docs/quickstart/step-2-set-up-your-api-key'],
         ['OpenAI Models', 'https://platform.openai.com/docs/models']
       ]),
-      EMBEDDING_TYPE: L('Embedding Provider', 'Dense vectors (hybrid).\n• openai — strong quality, paid\n• voyage — strong retrieval, paid\n• mxbai — OSS via SentenceTransformers\n• local — any HF ST model', [
+      EMBEDDING_TYPE: L('Embedding Provider', 'Selects the embedding provider for dense vector search. Also determines the token counter used during code chunking, which affects chunk boundaries and splitting behavior.\n\n• openai — strong quality, paid (cl100k tokenizer)\n• voyage — strong retrieval, paid (voyage tokenizer)\n• mxbai — OSS via SentenceTransformers\n• local — any HuggingFace SentenceTransformer model\n• gemini — Google Gemini embeddings\n\nNote: Changing this setting affects both retrieval quality AND how code is split into chunks during indexing. A reindex is required after changing.', [
         ['OpenAI Embeddings', 'https://platform.openai.com/docs/guides/embeddings'],
         ['Voyage AI Embeddings', 'https://docs.voyageai.com/docs/embeddings'],
         ['Google Gemini Embeddings', 'https://ai.google.dev/gemini-api/docs/embeddings'],
         ['SentenceTransformers Docs', 'https://www.sbert.net/']
-      ], [['Requires reindex','reindex']]),
+      ], [['Requires reindex','reindex'], ['Affects chunking','info']]),
       VOYAGE_API_KEY: L('Voyage API Key', 'API key for Voyage AI embeddings when EMBEDDING_TYPE=voyage.', [
         ['Voyage AI Docs', 'https://docs.voyageai.com/']
       ]),
@@ -314,6 +314,16 @@
           ['Hybrid Search + Rerank', 'https://qdrant.tech/articles/hybrid-search/']
         ],
         [['Advanced RAG tuning', 'info'], ['Affects latency', 'warn']]
+      ),
+
+      RERANKER_CLOUD_TOP_N: L(
+        'Cloud Reranker Top-N',
+        'Maximum number of candidates to send to cloud reranking APIs (Cohere, Voyage, Jina). Cloud rerankers have rate limits and per-request pricing, so this setting is separate from the local reranker top-N. Lower values reduce API costs and stay within rate limits. Higher values improve recall but increase costs per query.\n\n• Typical range: 20-100 candidates\n• Cost-conscious: 20-30 for budget limits\n• Balanced default: 50 for most workloads\n• High recall: 80-100 for exploratory queries\n• Note: Cloud reranking is billed per candidate, so monitor costs',
+        [
+          ['Cohere Rerank API', 'https://docs.cohere.com/reference/rerank'],
+          ['Voyage Rerank', 'https://docs.voyageai.com/docs/reranker']
+        ],
+        [['Cloud API costs', 'warn'], ['Rate limits apply', 'info']]
       ),
 
       // Learning Reranker — Training controls (GUI-only; not env vars)
@@ -1544,6 +1554,15 @@
         ],
         [['Better recall','info'], ['Higher cost','warn']]
       ),
+      LANGGRAPH_MAX_QUERY_REWRITES: L(
+        'LangGraph Max Query Rewrites',
+        'Number of query rewrites used inside the LangGraph answer pipeline (/answer). Separate from MAX_QUERY_REWRITES used by general multi-query retrieval. Higher values improve recall but increase latency and LLM cost. Typical: 2-4.',
+        [
+          ['LangGraph', 'https://langchain-ai.github.io/langgraph/'],
+          ['Multi\u2011Query RAG (paper)', 'https://arxiv.org/abs/2305.14283']
+        ],
+        [['LangGraph only','info'], ['Higher cost','warn']]
+      ),
       USE_SEMANTIC_SYNONYMS: L(
         'Semantic Synonyms Expansion',
         'Expands queries with curated domain synonyms and abbreviations (e.g., auth \u2192 authentication, oauth, jwt). Complements LLM rewrites. Configure in data/semantic_synonyms.json.',
@@ -1551,6 +1570,15 @@
           ['Synonym Config', '/files/data/semantic_synonyms.json'],
           ['Synonym Guide', '/docs/RETRIEVAL.md#synonyms']
         ]
+      ),
+      AGRO_SYNONYMS_PATH: L(
+        'Synonyms File Path',
+        'Custom path to the semantic synonyms JSON file. Defaults to data/semantic_synonyms.json if empty. Use this to point to a repository-specific or custom synonym dictionary. The file should contain a JSON object mapping terms to arrays of synonyms (e.g., {"auth": ["authentication", "oauth", "jwt"]}).\n\n\u2022 Default: data/semantic_synonyms.json\n\u2022 Example: /path/to/custom_synonyms.json\n\u2022 Format: {"term": ["synonym1", "synonym2", ...]}\n\u2022 Works with: USE_SEMANTIC_SYNONYMS toggle',
+        [
+          ['Synonym Config', '/files/data/semantic_synonyms.json'],
+          ['Synonym Expander', '/retrieval/synonym_expander.py']
+        ],
+        [['Optional override', 'info']]
       ),
 
       // Fusion & Scoring
@@ -2453,4 +2481,3 @@
 
   window.Tooltips = { buildTooltipMap, attachTooltips, attachManualTooltips };
 })();
-

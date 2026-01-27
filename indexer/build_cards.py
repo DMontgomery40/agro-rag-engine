@@ -21,7 +21,8 @@ REPO = os.getenv('REPO','project').strip()
 if _config_registry is not None:
     MAX_CHUNKS = _config_registry.get_int('CARDS_MAX', 100)
 else:
-    MAX_CHUNKS = int(os.getenv('CARDS_MAX') or '0')
+    # Fallback when registry not available - should not happen in production
+    MAX_CHUNKS = 100
 
 BASE = out_dir(REPO)
 CHUNKS = os.path.join(BASE, 'chunks.jsonl')

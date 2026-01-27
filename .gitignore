@@ -226,7 +226,7 @@ test-results/gui-GUI-smoke-wizard-one-click-config-produces-preview/video.webm
 
 out/**
 !out.noindex-shared/**
- test-results/**
+test-results/**
 *.png
 
 # Large Qdrant snapshots

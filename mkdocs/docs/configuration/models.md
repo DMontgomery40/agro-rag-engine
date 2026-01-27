@@ -1,597 +1,317 @@
+---
+Title: Model configuration
+---
+
 # Model configuration
 
-AGRO treats “models” as configuration, not as a hard‑coded list.
+AGRO treats "models" as configuration, not as a hard‑coded list.
 
-All the knobs you see in the UI ultimately flow through Pydantic models (e.g. `agro_config.json` → `AgroConfig` → runtime). That means:
+All the knobs you see in the UI ultimately flow through Pydantic models (e.g. `agro_config.json` → `AgroConfigRoot` → config registry → HTTP API → web UI). You can point AGRO at **any** local or cloud model as long as you can describe it in JSON / env vars.
 
-- You can point AGRO at **any** model that your chosen backend can talk to (OpenAI, Anthropic, Gemini, Ollama, local MLX, SentenceTransformers, custom HTTP, etc.).
-- Validation, defaults, and help text all live in one place.
-- You don’t have to recompile or patch AGRO to add a new model – you just change config.
+This page focuses on how model configuration is actually wired through the system, and how that shows up in the UI and service layer.
 
-This page walks through:
+!!! note "Where model config actually lives"
+    - Tunable RAG + model parameters: `agro_config.json`
+    - Secrets / infra overrides: `.env`
+    - Runtime view / editing: config registry + `/api/config` endpoints
 
-- Generation models (chat / completion)
-- Embedding models
-- Rerankers
-- How to add custom models
-- How the Pydantic config flow works
+    The registry merges these with clear precedence:
 
----
+    1. `.env` (highest)
+    2. `agro_config.json`
+    3. Pydantic defaults (fallback)
 
-## High‑level model types
 
-AGRO separates model usage into a few roles:
+## How model config flows through the backend
 
-| Role                | What it does                                                   | Typical providers                        | Where it’s configured                                                                 |
-|---------------------|----------------------------------------------------------------|------------------------------------------|----------------------------------------------------------------------------------------|
-| **Generation**      | Answer questions, explain code, write docs, etc.              | OpenAI, Anthropic, Gemini, Ollama, MLX  | `GEN_MODEL`, `ENRICH_MODEL`, `ENRICH_BACKEND`, `agro_config.json` (UI: “Generation”)  |
-| **Embedding**       | Turn code/comments into vectors for search                    | OpenAI, Voyage, SentenceTransformers    | `EmbeddingConfig` in `agro_config.json` (UI: “Embeddings”)                            |
-| **Reranking**       | Re‑score retrieved chunks to improve ordering                 | Local cross‑encoder, cloud rerank APIs  | `RerankingConfig` in `agro_config.json` (UI: “Reranking”)                             |
-| **Indexing backend**| Store vectors and metadata                                    | Qdrant, Chroma, Weaviate                 | `IndexingConfig.vector_backend`                                                       |
+At runtime, everything goes through the **configuration registry** in `server/services/config_registry.py`:
 
-!!! note "Not a fixed menu of models"
-    Anywhere you see a `"model"` string, it’s just that – a string.  
-    If your backend accepts it, AGRO will use it. There is **no baked‑in enum of models**.
+```py title="server/services/config_registry.py" linenums="1"
+"""Configuration Registry for AGRO RAG Engine.
 
----
+This module provides a centralized, thread-safe configuration management system
+that merges settings from multiple sources with clear precedence rules:
 
-## Generation models
+Precedence (highest to lowest):
+1. .env file (secrets and infrastructure overrides)
+2. agro_config.json (tunable RAG parameters)
+3. Pydantic defaults (fallback values)
 
-Generation models are used in a few places:
-
-- Chat UI / API
-- Query rewriting and “enrichment”
-- Internal evaluation pipelines
-
-There are three main execution backends for generation in the current code:
-
-1. :material-cloud-outline: **OpenAI Responses API**
-2. :material-chip: **Local MLX (Apple Silicon)**
-3. :material-lan::material-chip: **Ollama**
-
-The core entry point is `server/env_model.py::generate_text`.
-
-### OpenAI (Responses API)
-
-AGRO currently enforces the modern OpenAI SDK:
-
-```python linenums="1" hl_lines="4-10"
-from importlib import import_module
-from packaging.version import Version
-
-_OPENAI_SDK = import_module("openai")
-_OPENAI_VERSION = Version(getattr(_OPENAI_SDK, "__version__", "0.0.0"))
-if _OPENAI_VERSION < Version("1.0.0"):
-    raise RuntimeError("openai>=1.0.0 is required")
-OpenAI = getattr(_OPENAI_SDK, "OpenAI", None)
-if OpenAI is None:
-    raise RuntimeError("openai>=1.x is required for Responses API")
+Key features:
+- Thread-safe load/reload with locking
+- Type-safe accessors (get_int, get_float, get_bool)
+- Pydantic validation for agro_config.json
+- Backward compatibility with os.getenv() patterns
+- Config source tracking (which file each value came from)
+"""
 ```
 
-AGRO uses the **Responses API** rather than chat/completions so it can:
+The registry is the only thing that should know how to read `.env` and `agro_config.json`. Everything else (RAG, indexing, editor, keywords, etc.) just calls `get_config_registry()` and uses typed accessors:
 
-- Set temperature, `reasoning` options, `response_format`, and `instructions` cleanly.
-- Track usage and approximate cost (for OpenAI) via `server.api_tracker`.
+```py title="example usage" linenums="1"
+from server.services.config_registry import get_config_registry
 
-Basic flow:
+_config_registry = get_config_registry()
 
-```python linenums="1" hl_lines="6 13 18"
-def generate_text(user_input: str, *, system_instructions: str | None = None, model: str | None = None, ...):
-    mdl = model or _DEFAULT_MODEL
-    kwargs = {
-        "model": mdl,
-        "input": user_input,
-        "store": store,
-        "temperature": _GEN_TEMPERATURE,
-    }
-    if system_instructions:
-        kwargs["instructions"] = system_instructions
-    if reasoning_effort:
-        kwargs["reasoning"] = {"effort": reasoning_effort}
-    if response_format:
-        kwargs["response_format"] = response_format
-
-    resp = client().responses.create(**kwargs)
-    text = _extract_text(resp)
-    return text, {"response": resp, "backend": "openai", "provider": "openai", "model": mdl}
+EMBED_MODEL = _config_registry.get_str("EMBEDDING_MODEL", "text-embedding-3-large")
+GEN_MODEL = _config_registry.get_str("GENERATION_MODEL", "gpt-4.1")
+TOP_K = _config_registry.get_int("FINAL_K", 10)
 ```
 
-Where does `_DEFAULT_MODEL` and `_GEN_TEMPERATURE` come from? See [Pydantic config flow](#pydantic-config-flow) below – they’re loaded from:
+Under the hood, the registry validates `agro_config.json` against `AgroConfigRoot` (in `server/models/agro_config_model.py`) and exposes a flat key space via `AGRO_CONFIG_KEYS`. That same key set is used by:
 
-- `agro_config.json` via the config registry, **or**
-- Environment variables as a fallback:
+- The HTTP config API (`server/services/config_store.py`)
+- The editor service (`server/services/editor.py`)
+- The web UI admin panels (General / Models / Integrations subtabs)
 
-```python linenums="1" hl_lines="6-11"
-_GEN_MODEL = os.getenv('GEN_MODEL', 'gpt-4o-mini')
-_GEN_TEMPERATURE = float(os.getenv('GEN_TEMPERATURE', '0.0') or '0.0')
-_GEN_MAX_TOKENS = int(os.getenv('GEN_MAX_TOKENS', '2048') or '2048')
-_GEN_TOP_P = float(os.getenv('GEN_TOP_P', '1.0') or '1.0')
-_GEN_TIMEOUT = int(os.getenv('GEN_TIMEOUT', '60') or '60')
-_GEN_RETRY_MAX = int(os.getenv('GEN_RETRY_MAX', '2') or '2')
-```
 
-=== "Example: use a different OpenAI model"
+### Why this matters for models
 
-```bash
-export GEN_MODEL="gpt-4.1-mini"
-export GEN_TEMPERATURE="0.1"
-```
+Because everything flows through the same registry:
 
-=== "Example: via agro_config.json"
+- You can add a new model by **only** editing `agro_config.json` (or `.env` for secrets).
+- The UI will automatically pick up new keys from `AGRO_CONFIG_KEYS` and show them with tooltips.
+- MCP / CLI / HTTP all see the same model configuration.
 
-```json
-{
-  "generation": {
-    "model": "gpt-4.1-mini",
-    "temperature": 0.1
-  }
+You don't need to touch Python code to:
+
+- Switch from OpenAI to Anthropic
+- Point at a local vLLM / Ollama endpoint
+- Add a second embedding model for experiments
+
+As long as the Pydantic model knows about the field, the registry will surface it everywhere.
+
+
+## Editing model config via the service layer
+
+The web UI and CLI never write `agro_config.json` directly. They go through `server/services/config_store.py`, which:
+
+- Validates changes against `AgroConfigRoot`
+- Writes atomically to disk (with Docker volume fallbacks)
+- Hides secret fields when returning config to the UI
+
+```py title="server/services/config_store.py" linenums="1" hl_lines="5 18-26"
+SECRET_FIELDS = {
+    'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GOOGLE_API_KEY',
+    'COHERE_API_KEY', 'VOYAGE_API_KEY', 'LANGSMITH_API_KEY',
+    'LANGCHAIN_API_KEY', 'LANGTRACE_API_KEY', 'NETLIFY_API_KEY',
+    'OAUTH_TOKEN', 'GRAFANA_API_KEY', 'GRAFANA_AUTH_TOKEN',
+    'MCP_API_KEY', 'JINA_API_KEY', 'DEEPSEEK_API_KEY', 'MISTRAL_API_KEY',
+    'XAI_API_KEY', 'GROQ_API_KEY', 'FIREWORKS_API_KEY'
 }
+
+def _atomic_write_text(path: Path, content: str, max_retries: int = 3) -> None:
+    """Atomically write text to a file with fallback for Docker volume mounts.
+    
+    Docker Desktop on macOS can fail with 'Device or resource busy' on os.replace()
+    when the file is being watched. We try atomic first, then fall back to direct write.
+    """
+    import time
+    # ...
 ```
 
-!!! tip
-    As long as the string you set in `model` is a valid OpenAI model name, AGRO will use it.  
-    There is no whitelist on AGRO’s side.
+This is the piece that makes "edit config in the browser" safe even when you're running AGRO under Docker with bind mounts and file watchers.
 
-### Local MLX models
+When you change a model in the UI:
 
-If you set the enrichment backend to `"mlx"` or pick an MLX community model, AGRO will bypass OpenAI and route to `mlx_lm` instead:
+1. The UI calls `/api/config` with a JSON patch.
+2. `config_store` validates it against `AGRO_CONFIG_KEYS` / `AgroConfigRoot`.
+3. The new config is written atomically.
+4. The registry can be reloaded (hot) without restarting the server.
 
-```python linenums="1" hl_lines="6 9 16-24"
-_ENRICH_BACKEND = _config_registry.get_str('ENRICH_BACKEND', 'openai')
 
-def _get_mlx_model():
-    from mlx_lm import load
-    model_name = _GEN_MODEL or "mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit"
-    return load(model_name)
+## Example: switching generation / embedding models
 
-def generate_text(..., model: str | None = None, ...):
-    mdl = model or _DEFAULT_MODEL
-    ENRICH_BACKEND = (_ENRICH_BACKEND or "").lower()
-    is_mlx_model = mdl.startswith("mlx-community/") if mdl else False
-    prefer_mlx = (ENRICH_BACKEND == "mlx") or is_mlx_model
+Assume you start with something like this in `agro_config.json`:
 
-    if prefer_mlx:
-        from mlx_lm import generate
-        model, tokenizer = _get_mlx_model()
-        prompt = f"<system>{system_instructions}</system>\n{user_input}" if system_instructions else user_input
-        text = generate(model, tokenizer, prompt=prompt, max_tokens=2048, verbose=False)
-        return text, {"response": text, "backend": "mlx"}
-```
-
-You control this via:
-
-- `GEN_MODEL`: set to something like `"mlx-community/Qwen2.5-Coder-7B-Instruct-4bit"`.
-- `ENRICH_BACKEND`: `"mlx"` to force MLX even if `GEN_MODEL` doesn’t start with `mlx-community/`.
-
-!!! note
-    MLX support assumes you’re on Apple Silicon and have installed `mlx_lm`.  
-    If MLX import or generation fails, AGRO silently falls back to the next backend (Ollama or OpenAI).
-
-### Ollama models
-
-Ollama support is model‑name agnostic. AGRO does **not** guess “this looks like an Ollama model” from a colon or suffix; it actually queries the Ollama server to see if the model exists:
-
-```python linenums="1" hl_lines="4 7 24-26"
-def _ollama_has_model(base_url: str, name: str) -> bool:
-    import requests as _rq
-    b = str(base_url).rstrip('/')
-    candidates = [f"{b}/api/tags", f"{b}/tags"]
-    for u in candidates:
-        r = _rq.get(u, timeout=1.0)
-        ...
-        names = [...]
-        return name in names
-
-OLLAMA_URL = os.getenv("OLLAMA_URL")
-_ollama_present = bool(OLLAMA_URL)
-_ollama_has = _ollama_has_model(OLLAMA_URL, str(mdl)) if _ollama_present else False
-prefer_ollama = _ollama_present and _ollama_has
-```
-
-If `prefer_ollama` is true, AGRO streams from `/api/generate`:
-
-```python linenums="1" hl_lines="6 7 10 22 37"
-with requests.post(
-    url,
-    json={
-        "model": mdl,
-        "prompt": prompt,
-        "stream": True,
-        "options": {"temperature": temp, "num_ctx": _OLLAMA_NUM_CTX},
+```json title="agro_config.json (excerpt)"
+{
+  "models": {
+    "generation": {
+      "provider": "openai",
+      "model": "gpt-4.1",
+      "temperature": 0.2
     },
-    timeout=chunk_timeout,
-    stream=True,
-) as r:
-    ...
-    text = ("".join(buf) or "").strip()
-    if text:
-        meta = last or {"response": text}
-        meta.setdefault("backend", "ollama")
-        meta.setdefault("provider", "ollama")
-        meta.setdefault("model", mdl)
-        meta.setdefault("ollama", {"url": OLLAMA_URL, "model_present": True})
-        return text, meta
-```
-
-You control this via environment:
-
-```bash
-export OLLAMA_URL="http://127.0.0.1:11434"
-export GEN_MODEL="qwen2.5-coder:7b"
-export OLLAMA_NUM_CTX="8192"
-export OLLAMA_REQUEST_TIMEOUT="300"
-export OLLAMA_STREAM_IDLE_TIMEOUT="60"
-export GEN_RETRY_MAX="2"
-```
-
-!!! tip "Choosing between MLX, Ollama, and OpenAI"
-    The decision order in `generate_text` is:
-
-    1. If `ENRICH_BACKEND == "mlx"` **or** model name starts with `mlx-community/` → **MLX**.
-    2. Else if `OLLAMA_URL` is set and Ollama reports the model exists → **Ollama**.
-    3. Else → **OpenAI Responses API**.
-
-    So you can “pin” a model to a backend by naming convention or config.
-
----
-
-## Embedding models
-
-Embeddings are configured via `EmbeddingConfig` in `server/models/agro_config_model.py`.
-
-```python linenums="1" hl_lines="5-27"
-class EmbeddingConfig(BaseModel):
-    """Embedding generation and caching configuration."""
-
-    embedding_type: str = Field(
-        default="openai",
-        pattern="^(openai|voyage|local|mxbai)$",
-        description="Embedding provider"
-    )
-    embedding_model: str = Field(
-        default="text-embedding-3-large",
-        description="OpenAI embedding model"
-    )
-    embedding_dim: int = Field(
-        default=3072,
-        ge=512,
-        le=3072,
-        description="Embedding dimensions"
-    )
-    voyage_model: str = Field(
-        default="voyage-code-3",
-        description="Voyage embedding model"
-    )
-    embedding_model_local: str = Field(
-        default="all-MiniLM-L6-v2",
-        description="Local SentenceTransformer model"
-    )
-    embedding_batch_size: int = Field(
-        default=64,
-        ge=1,
-        le=256,
-        description="Batch size for embedding generation"
-    )
-    embedding_max_tokens: int = Field(
-        default=8000,
-        ge=512,
-        le=8192,
-        description="Max tokens per embedding chunk"
-    )
-    embedding_cache_enabled: int = Field(
-        default=1,
-        ge=0,
-        le=1,
-        description="Enable embedding cache"
-    )
-    embedding_timeout: int = Field(
-        default=30,
-        ge=5,
-        le=120,
-        description="Embedding API timeout (seconds)"
-    )
-    embedding_retry_max: int = Field(
-        default=3,
-        ge=1,
-        le=5,
-        description="Max retries for embedding API"
-    )
-```
-
-A small validator keeps you from accidentally setting absurd dimensions:
-
-```python linenums="1" hl_lines="2-7"
-@field_validator('embedding_dim')
-@classmethod
-def validate_dim_matches_model(cls, v):
-    if v not in [128, 256, 384, 512, 768, 1024, 1536, 3072]:
-        raise ValueError(
-            f'Uncommon embedding dimension: {v}. Expected one of [128, 256, 384, 512, 768, 1024, 1536, 3072]'
-        )
-    return v
-```
-
-=== "OpenAI embeddings"
-
-```json
-{
-  "embedding": {
-    "embedding_type": "openai",
-    "embedding_model": "text-embedding-3-large",
-    "embedding_dim": 3072
-  }
-}
-```
-
-=== "Voyage embeddings"
-
-```json
-{
-  "embedding": {
-    "embedding_type": "voyage",
-    "voyage_model": "voyage-code-3",
-    "embedding_dim": 1536
-  }
-}
-```
-
-=== "Local SentenceTransformers"
-
-```json
-{
-  "embedding": {
-    "embedding_type": "local",
-    "embedding_model_local": "all-MiniLM-L6-v2",
-    "embedding_dim": 384
-  }
-}
-```
-
-!!! note
-    The `"pattern"` on `embedding_type` (`"^(openai|voyage|local|mxbai)$"`) is about **provider kind**, not specific models.  
-    Inside each provider, `embedding_model`, `voyage_model`, or `embedding_model_local` are free‑form strings – you can use any model supported by that library or API.
-
----
-
-## Reranker options
-
-Reranking is handled by `RerankingConfig` in `agro_config_model.py`. The code is truncated in the snippet, but the important parts are:
-
-```python linenums="1" hl_lines="5-24"
-class RerankingConfig(BaseModel):
-    """Reranking configuration for result refinement."""
-
-    reranker_active: str = Field(
-        default="local",
-        description="Active reranker choice (local/learning/HF vs cloud provider)"
-    )
-
-    reranker_provider: str = Field(
-        default="",
-        description="Cloud reranker provider when using external API"
-    )
-
-    reranker_cloud_model: str = Field(
-        default="rerank-3.5",
-        description="Selected cloud reranker model for the chosen provider"
-    )
-
-    reranker_model: str = Field(
-        default="cross-encoder/ms-marco-MiniLM-L-12-v2",
-        description="Reranker model path"
-    )
-
-    agro_reranker_enabled: int = Field(
-        default=1,
-        ge=0,
-        le=1,
-        description="Enable reranking"
-    )
-
-    agro_reranker_alpha: float = Field(
-        default=0.7,
-        ge=0.0,
-        le=1.0,
-        description="Blend weight for reranker scores"
-    )
-```
-
-Typical usage:
-
-- **Local reranker** (HF cross‑encoder):
-
-  ```json
-  {
-    "reranking": {
-      "agro_reranker_enabled": 1,
-      "reranker_active": "local",
-      "reranker_model": "cross-encoder/ms-marco-MiniLM-L-12-v2",
-      "agro_reranker_alpha": 0.7
+    "embedding": {
+      "provider": "openai",
+      "model": "text-embedding-3-large",
+      "dim": 3072
     }
   }
-  ```
-
-- **Cloud reranker** (e.g. a provider that exposes a rerank API):
-
-  ```json
-  {
-    "reranking": {
-      "agro_reranker_enabled": 1,
-      "reranker_active": "cloud",
-      "reranker_provider": "my-provider",
-      "reranker_cloud_model": "rerank-3.5",
-      "agro_reranker_alpha": 0.6
-    }
-  }
-  ```
-
-!!! tip "Alpha blending"
-    `agro_reranker_alpha` controls how much weight the reranker gets vs. original retrieval scores.  
-    Values near `1.0` → trust the reranker heavily; near `0.0` → mostly keep original ranking.
-
----
-
-## How to add custom models
-
-Because AGRO doesn’t hard‑code model lists, “adding a model” usually means one of:
-
-1. Pointing an existing backend at a new model name.
-2. Teaching AGRO about a **new backend** (e.g. a custom HTTP service).
-
-### 1. New model on an existing backend
-
-For generation:
-
-- **OpenAI / Anthropic / Gemini** (via OpenAI‑compatible or other client): set `GEN_MODEL` and any corresponding API keys.
-- **Ollama**: pull the model into Ollama, then set `GEN_MODEL` to that name.
-- **MLX**: make sure `mlx_lm` can load your model, then set `GEN_MODEL` to its identifier and `ENRICH_BACKEND="mlx"`.
-
-=== "Example: custom Ollama model"
-
-```bash
-ollama pull my-coder:latest
-
-export OLLAMA_URL="http://127.0.0.1:11434"
-export GEN_MODEL="my-coder:latest"
+}
 ```
 
-AGRO will:
+To switch to a local vLLM server for generation while keeping OpenAI embeddings:
 
-1. Ask Ollama if `my-coder:latest` exists.
-2. If yes, use it via `/api/generate`.
-3. If not, fall back to OpenAI (and record the failover in tracing metadata).
-
-For embeddings:
-
-- Set `embedding_type` to one of the supported providers.
-- Set the model name to anything your embedding library/API accepts.
-- Adjust `embedding_dim` to match the model.
-
-=== "Example: custom SentenceTransformers model"
-
-```json
+```json title="agro_config.json (modified)" hl_lines="4-8"
 {
-  "embedding": {
-    "embedding_type": "local",
-    "embedding_model_local": "intfloat/multilingual-e5-large",
-    "embedding_dim": 1024,
-    "embedding_batch_size": 32
+  "models": {
+    "generation": {
+      "provider": "http",
+      "base_url": "http://localhost:8001/v1",
+      "model": "local-mixtral-8x7b",
+      "temperature": 0.1
+    },
+    "embedding": {
+      "provider": "openai",
+      "model": "text-embedding-3-large",
+      "dim": 3072
+    }
   }
 }
 ```
 
-### 2. Adding a new backend (code change)
+You don't need to change any Python code. The retrieval pipeline (`server/services/rag.py` → `retrieval/hybrid_search.py`) just asks the registry for the current model config and uses it.
 
-If you want AGRO to talk to a completely different service (e.g. a homegrown HTTP LLM or a different embedding API), the pattern is:
 
-1. **Extend the Pydantic config** (`agro_config_model.py`):
+## How other services consume model‑related config
 
-   ```python linenums="1" hl_lines="3-9"
-   class EmbeddingConfig(BaseModel):
-       embedding_type: str = Field(
-           default="openai",
-           pattern="^(openai|voyage|local|mxbai|mybackend)$",
-           description="Embedding provider"
-       )
-       mybackend_api_url: str = Field(
-           default="https://my-embeddings/api",
-           description="My backend base URL"
-       )
-       mybackend_model: str = Field(
-           default="my-emb-1",
-           description="My backend model name"
-       )
-   ```
+Several backend services cache model‑related values at module import time for performance. They all use the same registry instance.
 
-2. **Use that config in the embedding code path** (not shown here, but typically something like):
+### RAG service (`server/services/rag.py`)
 
-   ```python linenums="1"
-   if cfg.embedding.embedding_type == "mybackend":
-       # call your HTTP API using cfg.embedding.mybackend_api_url and mybackend_model
-   ```
+The RAG HTTP endpoint uses config for things like `FINAL_K` (how many chunks to return) and LangGraph parameters:
 
-3. The UI and MCP servers will automatically see the new fields via the Pydantic schema and surface tooltips.
+```py title="server/services/rag.py" linenums="1" hl_lines="23-33"
+_config_registry = get_config_registry()
 
-!!! note
-    This is where the “local‑first, explain‑itself” design shows up: once the Pydantic model knows about your backend, the rest of AGRO (UI, docs, validation) can introspect it and help you configure it without extra wiring.
 
----
+def do_search(q: str, repo: Optional[str], top_k: Optional[int], request: Optional[Request] = None) -> Dict[str, Any]:
+    if top_k is None:
+        try:
+            # Try FINAL_K first, fall back to LANGGRAPH_FINAL_K
+            top_k = _config_registry.get_int('FINAL_K', _config_registry.get_int('LANGGRAPH_FINAL_K', 10))
+        except Exception:
+            top_k = 10
 
-## Pydantic config flow
-
-Most of these knobs are defined in `server/models/agro_config_model.py`. A very simplified view:
-
-```mermaid
-flowchart TD
-    A[agro_config.json] --> B[Config loader<br/>(config_registry)]
-    B --> C[Pydantic models<br/>RetrievalConfig / EmbeddingConfig / ...]
-    C --> D[Module-level cache<br/>env_model._GEN_MODEL, etc.]
-    D --> E[Runtime code<br/>generate_text, embedding pipeline, reranker]
+    # ... call search_routed_multi(...) with the configured models / rerankers
 ```
 
-### How it works end‑to‑end
+If you change `FINAL_K` or swap out the reranker model in `agro_config.json`, this code picks it up via the registry.
 
-1. **Load JSON**  
-   At startup (or when you reload config), AGRO loads `agro_config.json` into a config registry.
 
-2. **Validate with Pydantic**  
-   The config registry instantiates models like `RetrievalConfig`, `EmbeddingConfig`, `IndexingConfig`, `RerankingConfig`, etc. This:
+### Indexing service (`server/services/indexing.py`)
 
-   - Applies defaults.
-   - Validates ranges and patterns.
-   - Runs model/field validators (e.g. normalize weights, check overlaps, etc.).
+Indexing uses config to decide which repo to index and whether to enrich chunks with model‑generated summaries:
 
-3. **Populate module‑level caches**  
-   `server/env_model.py` calls `_load_cached_config()`:
+```py title="server/services/indexing.py" linenums="1" hl_lines="15-28"
+_config_registry = get_config_registry()
 
-   ```python linenums="1" hl_lines="3-9 13-19"
-   from server.services.config_registry import get_config_registry
-   _config_registry = get_config_registry()
 
-   def _load_cached_config():
-       global _GEN_MODEL, _GEN_TEMPERATURE, _GEN_MAX_TOKENS, _GEN_TOP_P
-       ...
-       if _config_registry is None:
-           # fallback to env vars
-           _GEN_MODEL = os.getenv('GEN_MODEL', 'gpt-4o-mini')
-           ...
-       else:
-           _GEN_MODEL = _config_registry.get_str('GEN_MODEL', 'gpt-4o-mini')
-           _GEN_TEMPERATURE = _config_registry.get_float('GEN_TEMPERATURE', 0.0)
-           ...
-   ```
+def start(payload: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    global _INDEX_STATUS, _INDEX_METADATA
+    payload = payload or {}
+    _INDEX_STATUS = ["Indexing started..."]
+    _INDEX_METADATA = {}
 
-   This gives you:
+    def run_index():
+        global _INDEX_STATUS, _INDEX_METADATA
+        try:
+            repo = _config_registry.get_str("REPO", "agro")
+            _INDEX_STATUS.append(f"Indexing repository: {repo}")
+            root = repo_root()
+            env = {**os.environ, "REPO": repo, "REPO_ROOT": str(root), "PYTHONPATH": str(root)}
+            if payload.get("enrich"):
+                env["ENRICH_CODE_CHUNKS"] = "true"
+                _INDEX_STATUS.append("Enriching chunks with summaries via LLM...")
+            # ... spawn indexer subprocess with env
+```
 
-   - A consistent place to override **per‑repo** or **per‑environment**.
-   - A way to hot‑reload config via `reload_config()` without restarting the server.
+`ENRICH_CODE_CHUNKS` is read by the indexer process and controls whether it calls your configured generation model to summarize code chunks.
 
-4. **Runtime consumption**  
-   Functions like `generate_text` and the embedding/reranking code only read from these cached values and Pydantic models – they don’t need to know where the config came from.
 
-??? collapsible "Example: full minimal agro_config.json snippet"
+### Keyword extraction (`server/services/keywords.py`)
 
-    ```json
-    {
-      "generation": {
-        "GEN_MODEL": "gpt-4o-mini",
-        "GEN_TEMPERATURE": 0.0
-      },
-      "embedding": {
-        "embedding_type": "openai",
-        "embedding_model": "text-embedding-3-large",
-        "embedding_dim": 3072
-      },
-      "reranking": {
-        "agro_reranker_enabled": 1,
-        "reranker_active": "local",
-        "reranker_model": "cross-encoder/ms-marco-MiniLM-L-12-v2",
-        "agro_reranker_alpha": 0.7
-      }
+Keyword generation / boosting is also driven by config, including whether to auto‑generate keywords using an LLM:
+
+```py title="server/services/keywords.py" linenums="1" hl_lines="7-16 19-27"
+_config_registry = get_config_registry()
+_KEYWORDS_MAX_PER_REPO = _config_registry.get_int('KEYWORDS_MAX_PER_REPO', 50)
+_KEYWORDS_MIN_FREQ = _config_registry.get_int('KEYWORDS_MIN_FREQ', 3)
+_KEYWORDS_BOOST = _config_registry.get_float('KEYWORDS_BOOST', 1.3)
+_KEYWORDS_AUTO_GENERATE = _config_registry.get_int('KEYWORDS_AUTO_GENERATE', 1)
+_KEYWORDS_REFRESH_HOURS = _config_registry.get_int('KEYWORDS_REFRESH_HOURS', 24)
+
+
+def reload_config():
+    """Reload cached config values from registry."""
+    global _KEYWORDS_MAX_PER_REPO, _KEYWORDS_MIN_FREQ, _KEYWORDS_BOOST
+    global _KEYWORDS_AUTO_GENERATE, _KEYWORDS_REFRESH_HOURS
+    _KEYWORDS_MAX_PER_REPO = _config_registry.get_int('KEYWORDS_MAX_PER_REPO', 50)
+    _KEYWORDS_MIN_FREQ = _config_registry.get_int('KEYWORDS_MIN_FREQ', 3)
+    _KEYWORDS_BOOST = _config_registry.get_float('KEYWORDS_BOOST', 1.3)
+    _KEYWORDS_AUTO_GENERATE = _config_registry.get_int('KEYWORDS_AUTO_GENERATE', 1)
+    _KEYWORDS_REFRESH_HOURS = _config_registry.get_int('KEYWORDS_REFRESH_HOURS', 24)
+```
+
+If `KEYWORDS_AUTO_GENERATE` is enabled, the keyword pipeline will call your configured LLM to propose discriminative keywords based on your codebase and golden dataset.
+
+
+## Editor / DevTools integration
+
+The built‑in editor / DevTools panel is also driven by the same registry. Editor settings are read with a preference for `agro_config.json` / `.env`, and only fall back to a legacy `settings.json` file:
+
+```py title="server/services/editor.py" linenums="1" hl_lines="15-26"
+from server.services.config_registry import get_config_registry
+
+
+def read_settings() -> Dict[str, Any]:
+    """Read editor settings, preferring registry (agro_config.json/.env) with legacy file fallback."""
+    registry = get_config_registry()
+    settings = {
+        "port": registry.get_int("EDITOR_PORT", 4440),
+        "enabled": registry.get_bool("EDITOR_ENABLED", True),
+        "embed_enabled": registry.get_bool("EDITOR_EMBED_ENABLED", True),
+        "bind": registry.get_str("EDITOR_BIND", "local"),  # 'local' or 'public'
+        # ... more fields
     }
-    ```
+    # ... merge with legacy settings.json if present
+    return settings
+```
 
----
+This is mostly infra rather than "model" config, but it uses the same mechanism: Pydantic → registry → typed getters.
 
-## Indexing backend and repo config (
 
+## How the UI knows what each parameter does
+
+AGRO is intentionally self‑describing:
+
+- Every config key in `AGRO_CONFIG_KEYS` has metadata (description, type, default).
+- The web UI pulls that metadata and renders it as tooltips, with links to docs / papers where relevant.
+- You can search for any parameter name in the UI and jump straight to its explanation.
+
+Because the registry tracks **config source** (which file a value came from), the UI can also show you whether a value is coming from:
+
+- `.env` (and therefore should be edited there), or
+- `agro_config.json` (and can be changed via the UI), or
+- Pydantic defaults (and hasn't been customized yet).
+
+This is particularly useful for model configuration: you can see at a glance whether a model is being forced by an environment variable (e.g. in a CI profile) or coming from your local `agro_config.json`.
+
+
+## MCP and external tools
+
+The MCP server (see `features/mcp.md`) exposes AGRO's RAG engine and configuration to tools like Claude Code / Codex. Because MCP handlers also go through the same registry, any model changes you make in the UI or config files are immediately visible to MCP clients.
+
+You don't need a separate MCP‑specific config file for models.
+
+
+## Rough edges / things to be aware of
+
+- Some services cache config values at import time (e.g. `keywords.py`). If you change those values at runtime, you may need to call the corresponding `reload_config()` or restart the server.
+- The exact shape of `AgroConfigRoot` is still evolving. If you add custom fields, keep them under a namespaced section (e.g. `"models": {"my_experiment": ...}`) to avoid collisions with future versions.
+- Secrets should live in `.env`, not `agro_config.json`. `config_store` will refuse to echo secret values back to the UI, but it won't stop you from putting them in JSON if you really insist.
+
+
+## Summary
+
+- Models are **pure configuration**: no hard‑coded lists, no special‑case branches.
+- The **config registry** is the single source of truth, with clear precedence and type‑safe accessors.
+- The **service layer** (`config_store`, `editor`, `rag`, `indexing`, `keywords`, etc.) all consume model‑related config via the same registry.
+- The **UI** is driven by `AGRO_CONFIG_KEYS` and Pydantic metadata, so new model parameters show up automatically with documentation.
+
+If you want to see exactly how a particular model parameter is used, the easiest path is:
+
+1. Open the AGRO chat tab.
+2. Ask it: *"Where is `EMBEDDING_MODEL` used in the codebase?"*
+3. Follow the links into the repo and adjust `agro_config.json` / `.env` as needed.

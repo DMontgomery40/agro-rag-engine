@@ -325,10 +325,10 @@ def create_app() -> FastAPI:
         import requests
 
         repo_cfg = _load_repos_raw()
-        repo_name = os.getenv("REPO") or repo_cfg.get("default_repo") or "local"
+        repo_name = _config_registry.get_str("REPO", "") or repo_cfg.get("default_repo") or "local"
         repo_mode = "repo" if repo_name and repo_name != "local" else "local"
 
-        branch = os.getenv("GIT_BRANCH") or None
+        branch = _config_registry.get_str("GIT_BRANCH", "") or None
         if not branch:
             try:
                 out = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=str(ROOT))
@@ -395,7 +395,7 @@ def create_app() -> FastAPI:
             return "unknown"
 
         def _llm_health() -> str:
-            base = (os.getenv("OLLAMA_URL") or "").rstrip("/")
+            base = _config_registry.get_str("OLLAMA_URL", "").rstrip("/")
             if base:
                 try:
                     r = requests.get(f"{base}/api/tags", timeout=1.5)

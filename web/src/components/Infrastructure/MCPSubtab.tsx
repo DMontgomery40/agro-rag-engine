@@ -2,10 +2,11 @@
 // MCP Server connection and configuration
 // MCP_API_KEY is configured in .env only - never written programmatically
 
-import { useState, useEffect } from 'react';
-import { configApi } from '@/api/config';
-import { useTooltips } from '@/hooks/useTooltips';
+import { useState, useEffect, useMemo } from 'react';
+import { TooltipIcon } from '@/components/ui/TooltipIcon';
 import { ApiKeyStatus } from '@/components/ui/ApiKeyStatus';
+import { useAPI } from '@/hooks/useAPI';
+import { useConfig, useConfigField } from '@/hooks';
 
 interface MCPServer {
   name: string;
@@ -17,7 +18,7 @@ interface MCPServer {
  * ---agentspec
  * what: |
  *   React component that manages Model Context Protocol (MCP) server configuration and testing.
- *   Accepts user input for server URL and API key via controlled form inputs (serverUrl, apiKey state).
+ *   Accepts user input for MCP HTTP host/port/path via controlled form inputs (config-backed fields).
  *   Maintains a list of MCPServer objects with name, url, and status fields; initializes with a default localhost server.
  *   Returns JSX rendering a subtab UI with server list, input fields, test/save buttons, and result display.
  *   Side effects: Updates component state on user input; triggers async operations (test connection, save config) that set loading states and display results.
@@ -30,70 +31,47 @@ interface MCPServer {
  *
  * guardrails:
  *   - DO NOT store sensitive API keys in component state long-term; consider moving to secure credential storage (e.g., environment variables or encrypted store) before production
- *   - ALWAYS validate serverUrl format (must be valid HTTP/HTTPS URL) before attempting connection test to avoid malformed requests
- *   - NOTE: Current implementation uses local useState; for multi-component state sharing, migrate to Zustand store or React Context to avoid prop drilling
+ *   - ALWAYS validate host/port/path values before attempting connection test to avoid malformed requests
+ *   - NOTE: MCP HTTP config is store-backed; only transient UI state uses useState
  *   - ASK USER: Confirm whether MCPServer list should persist across sessions (requires localStorage or backend persistence) or reset on component unmount
  *   - DO NOT expose apiKey in console logs, error messages, or UI output; sanitize all debug output to prevent credential leakage
  * ---/agentspec
  */
 export function MCPSubtab() {
-  const [servers, setServers] = useState<MCPServer[]>([
-    { name: 'MCP HTTP Server', url: 'http://127.0.0.1:8013/mcp', status: 'unknown' }
+  const { api } = useAPI();
+  const { saveNow } = useConfig();
+  const [mcpHttpHost, setMcpHttpHost] = useConfigField<string>('MCP_HTTP_HOST', '127.0.0.1');
+  const [mcpHttpPort, setMcpHttpPort] = useConfigField<number>('MCP_HTTP_PORT', 8013);
+  const [mcpHttpPath, setMcpHttpPath] = useConfigField<string>('MCP_HTTP_PATH', '/mcp');
+
+  const serverUrl = useMemo(() => {
+    const host = mcpHttpHost || '127.0.0.1';
+    const port = Number(mcpHttpPort) || 8013;
+    const rawPath = mcpHttpPath || '/mcp';
+    const path = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+    return `http://${host}:${port}${path}`;
+  }, [mcpHttpHost, mcpHttpPort, mcpHttpPath]);
+
+  const [servers, setServers] = useState<MCPServer[]>(() => [
+    { name: 'MCP HTTP Server', url: serverUrl, status: 'unknown' }
   ]);
-  const [serverUrl, setServerUrl] = useState('http://127.0.0.1:8013/mcp');
   // apiKey is in .env only - not stored in React state
   const [testResult, setTestResult] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
-  const { tooltips } = useTooltips();
 
   useEffect(() => {
     checkMCPStatus();
-    loadMCPConfig();
-  }, []);
+  }, [api]);
 
-  /**
-   * ---agentspec
-   * what: |
-   *   Constructs API endpoint URLs by prepending a configurable base URL to a given path string.
-   *   Takes a path parameter (string) and returns the full API endpoint URL.
-   *   Reads API_BASE_URL from window object (browser global scope); defaults to empty string if undefined.
-   *   No side effects beyond reading from window; purely functional URL construction.
-   *   Edge case: Empty path returns just the base URL; undefined or null paths will cause string concatenation errors.
-   *
-   * why: |
-   *   Centralizes API endpoint construction to support environment-specific base URLs (dev, staging, production).
-   *   Allows runtime configuration via window.API_BASE_URL instead of hardcoding endpoints throughout the codebase.
-   *   Enables easy switching between API hosts without code changes or recompilation.
-   *
-   * guardrails:
-   *   - DO NOT use window.API_BASE_URL directly in components; always route through this api() function to maintain single source of truth
-   *   - ALWAYS validate that path is a non-null string before calling api(); null/undefined paths will produce malformed URLs
-   *   - NOTE: This function reads from browser global scope (window); will fail in non-browser environments (Node.js, SSR) without polyfill
-   *   - ASK USER: Confirm whether API_BASE_URL should be loaded from Pydantic config store (zustand hook) instead of window object for consistency with infrastructure standards
-   * ---/agentspec
-   */
-  const api = (path: string) => {
-    const base = (window as any).API_BASE_URL || '';
-    return `${base}${path}`;
-  };
-
-  async function loadMCPConfig() {
-    try {
-      const config = await configApi.load();
-      const host = config.env?.MCP_HTTP_HOST || '127.0.0.1';
-      const port = config.env?.MCP_HTTP_PORT || '8013';
-      const path = config.env?.MCP_HTTP_PATH || '/mcp';
-      setServerUrl(`http://${host}:${port}${path}`);
-    } catch (error) {
-      console.error('Failed to load MCP config:', error);
-    }
-  }
+  useEffect(() => {
+    setServers((prev) => prev.map((server) => ({ ...server, url: serverUrl })));
+  }, [serverUrl]);
 
   async function checkMCPStatus() {
     try {
-      const response = await fetch(api('/api/mcp/http/status'));
+      const response = await fetch(api('/mcp/http/status'));
       const data = await response.json();
       const running = !!data.running;
       setServers(prev => prev.map(s => ({
@@ -112,7 +90,7 @@ export function MCPSubtab() {
   async function testConnection() {
     setTestResult('Testing connection...');
     try {
-      const response = await fetch(api('/api/mcp/http/status'));
+      const response = await fetch(api('/mcp/http/status'));
       const data = await response.json();
       const running = !!data.running;
       if (running) setTestResult(`Connected! Host: ${data.host} Port: ${data.port} Path: ${data.path}`);
@@ -126,7 +104,7 @@ export function MCPSubtab() {
     setIsLoading(true);
     setActionMessage('Starting MCP HTTP Server...');
     try {
-      const response = await fetch(api('/api/mcp/http/start'), { method: 'POST' });
+      const response = await fetch(api('/mcp/http/start'), { method: 'POST' });
       const data = await response.json();
       if (data.success) {
         setActionMessage('MCP HTTP Server started successfully on port 8013');
@@ -146,7 +124,7 @@ export function MCPSubtab() {
     setIsLoading(true);
     setActionMessage('Stopping MCP HTTP Server...');
     try {
-      const response = await fetch(api('/api/mcp/http/stop'), { method: 'POST' });
+      const response = await fetch(api('/mcp/http/stop'), { method: 'POST' });
       const data = await response.json();
       if (data.success) {
         setActionMessage('MCP HTTP Server stopped successfully');
@@ -166,7 +144,7 @@ export function MCPSubtab() {
     setIsLoading(true);
     setActionMessage('Restarting MCP HTTP Server...');
     try {
-      const response = await fetch(api('/api/mcp/http/restart'), { method: 'POST' });
+      const response = await fetch(api('/mcp/http/restart'), { method: 'POST' });
       const data = await response.json();
       if (data.success) {
         setActionMessage('MCP HTTP Server restarted successfully');
@@ -186,19 +164,10 @@ export function MCPSubtab() {
     setIsSaving(true);
     setActionMessage('Saving MCP settings...');
     try {
-      // Parse URL to extract host, port, and path
-      const url = new URL(serverUrl);
-      const host = url.hostname;
-      const port = url.port || '8013';
-      const path = url.pathname;
-
-      // Save URL settings to config
-      await configApi.saveConfig({
-        env: {
-          MCP_HTTP_HOST: host,
-          MCP_HTTP_PORT: port,
-          MCP_HTTP_PATH: path,
-        }
+      await saveNow({
+        MCP_HTTP_HOST: mcpHttpHost,
+        MCP_HTTP_PORT: Number(mcpHttpPort) || 8013,
+        MCP_HTTP_PATH: mcpHttpPath,
       });
 
       // API key must be configured in .env file directly - never saved via GUI
@@ -375,12 +344,15 @@ export function MCPSubtab() {
       <div style={{ marginBottom: '16px' }}>
         <div className="input-row">
           <div className="input-group">
-            <label dangerouslySetInnerHTML={{ __html: tooltips.MCP_SERVER_URL }} />
+            <label>
+              MCP HTTP Host
+              <TooltipIcon name="MCP_HTTP_HOST" />
+            </label>
             <input
               type="text"
-              value={serverUrl}
-              onChange={(e) => setServerUrl(e.target.value)}
-              placeholder="http://127.0.0.1:8013/mcp"
+              value={mcpHttpHost}
+              onChange={(e) => setMcpHttpHost(e.target.value)}
+              placeholder="127.0.0.1"
               style={{
                 width: '100%',
                 padding: '8px',
@@ -391,7 +363,58 @@ export function MCPSubtab() {
               }}
             />
             <p className="small" style={{ color: 'var(--fg-muted)', marginTop: '4px' }}>
-              Full URL to the MCP HTTP endpoint
+              Bind address for the MCP HTTP server
+            </p>
+          </div>
+          <div className="input-group">
+            <label>
+              MCP HTTP Port
+              <TooltipIcon name="MCP_HTTP_PORT" />
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={65535}
+              value={mcpHttpPort}
+              onChange={(e) => setMcpHttpPort(Number(e.target.value) || 8013)}
+              placeholder="8013"
+              style={{
+                width: '100%',
+                padding: '8px',
+                background: 'var(--input-bg)',
+                border: '1px solid var(--line)',
+                borderRadius: '4px',
+                color: 'var(--fg)'
+              }}
+            />
+            <p className="small" style={{ color: 'var(--fg-muted)', marginTop: '4px' }}>
+              Port for the MCP HTTP server
+            </p>
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>
+              MCP HTTP Path
+              <TooltipIcon name="MCP_HTTP_PATH" />
+            </label>
+            <input
+              type="text"
+              value={mcpHttpPath}
+              onChange={(e) => setMcpHttpPath(e.target.value)}
+              placeholder="/mcp"
+              style={{
+                width: '100%',
+                padding: '8px',
+                background: 'var(--input-bg)',
+                border: '1px solid var(--line)',
+                borderRadius: '4px',
+                color: 'var(--fg)'
+              }}
+            />
+            <p className="small" style={{ color: 'var(--fg-muted)', marginTop: '4px' }}>
+              Endpoint URL: {serverUrl}
             </p>
           </div>
         </div>

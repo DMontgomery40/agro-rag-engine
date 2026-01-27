@@ -29,6 +29,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from common.config_loader import out_dir
 from server.services.config_registry import get_config_registry
+from retrieval.synonym_expander import expand_query_with_synonyms
 
 # Config
 _cfg = get_config_registry()
@@ -44,6 +45,12 @@ VOYAGE_MODEL = _cfg.get_str('VOYAGE_MODEL', 'voyage-code-3')
 BM25_WEIGHT = _cfg.get_float('BM25_WEIGHT', 0.3)
 VECTOR_WEIGHT = _cfg.get_float('VECTOR_WEIGHT', 0.7)
 
+# Retrieval parameters (from config)
+RRF_K_DIV = _cfg.get_int('RRF_K_DIV', 60)
+TOPK_DENSE = _cfg.get_int('TOPK_DENSE', 75)
+TOPK_SPARSE = _cfg.get_int('TOPK_SPARSE', 75)
+FINAL_K = _cfg.get_int('FINAL_K', 10)
+
 # Scoring bonuses (all multiplicative - value > 1.0 is a boost)
 CARD_BONUS = _cfg.get_float('CARD_BONUS', 1.08)  # 8% multiplicative boost
 FILENAME_BOOST_EXACT = _cfg.get_float('FILENAME_BOOST_EXACT', 1.5)
@@ -55,6 +62,9 @@ FRESHNESS_BONUS = _cfg.get_float('FRESHNESS_BONUS', 1.05)  # 5% boost
 VENDOR_PENALTY = _cfg.get_float('VENDOR_PENALTY', 0.9)  # 10% penalty (multiplicative)
 KEYWORDS_BOOST = _cfg.get_float('KEYWORDS_BOOST', 1.3)  # 30% boost for keyword matches
 PATH_BOOSTS = _cfg.get_str('PATH_BOOSTS', '/server,/retrieval,/indexer,/web')
+
+# Synonym expansion
+USE_SEMANTIC_SYNONYMS = _cfg.get_str('USE_SEMANTIC_SYNONYMS', '1') == '1'
 
 # Caches
 _DISCRIMINATIVE_KEYWORDS = None
@@ -355,6 +365,8 @@ def bm25_search(query: str, repo: str, k: int = 50) -> List[tuple]:
 
     if tokenizer_type == 'whitespace':
         tokenizer = Tokenizer(stemmer=None, stopwords=[], splitter=r"\s+")
+    elif tokenizer_type == 'lowercase':
+        tokenizer = Tokenizer(stemmer=None, stopwords=stopwords_lang)
     else:
         stemmer = Stemmer(stemmer_lang)
         tokenizer = Tokenizer(stemmer=stemmer, stopwords=stopwords_lang)
@@ -614,35 +626,43 @@ def dedupe_by_file(docs: List[Dict]) -> List[Dict]:
 def search(
     query: str,
     repo: str = None,
-    topk_bm25: int = 50,
-    topk_vector: int = 50,
-    final_k: int = 10,
+    topk_bm25: int = None,
+    topk_vector: int = None,
+    final_k: int = None,
 ) -> List[Dict]:
     """
     Main search function.
-    
+
     Args:
         query: Search query
         repo: Repository name (defaults to config)
-        topk_bm25: Number of BM25 results
-        topk_vector: Number of vector results
-        final_k: Final number of results to return
-    
+        topk_bm25: Number of BM25 results (defaults to TOPK_SPARSE from config)
+        topk_vector: Number of vector results (defaults to TOPK_DENSE from config)
+        final_k: Final number of results to return (defaults to FINAL_K from config)
+
     Returns:
         List of result dicts with file_path, start_line, end_line, code, score
     """
     repo = repo or REPO
-    
+    topk_bm25 = topk_bm25 if topk_bm25 is not None else TOPK_SPARSE
+    topk_vector = topk_vector if topk_vector is not None else TOPK_DENSE
+    final_k = final_k if final_k is not None else FINAL_K
+
     # Load chunk metadata
     chunks = load_chunks(repo)
     if not chunks:
         print(f"[search] No chunks found for repo '{repo}'")
         return []
-    
-    # BM25 search
-    bm25_results = bm25_search(query, repo, k=topk_bm25)
-    
-    # Vector search
+
+    # Expand query with synonyms (for BM25 - keyword matching benefits from expansion)
+    bm25_query = query
+    if USE_SEMANTIC_SYNONYMS:
+        bm25_query = expand_query_with_synonyms(query, repo, max_expansions=3)
+
+    # BM25 search (use expanded query for better keyword matching)
+    bm25_results = bm25_search(bm25_query, repo, k=topk_bm25)
+
+    # Vector search (use original query - semantics work better without expansion)
     vector_results = vector_search(query, repo, k=topk_vector)
     
     # Debug: Show overlap
@@ -651,7 +671,7 @@ def search(
     overlap = len(bm25_ids & vector_ids)
     
     # RRF fusion
-    fused_ids = rrf_fusion([bm25_results, vector_results], k=60)
+    fused_ids = rrf_fusion([bm25_results, vector_results], k=RRF_K_DIV)
     
     # Build result docs
     docs = []
@@ -694,13 +714,14 @@ def route_repo(query: str, default_repo: str = None) -> str:
     return default_repo or REPO
 
 
-def search_routed(query: str, repo_override: str = None, final_k: int = 10, trace=None) -> List[Dict]:
+def search_routed(query: str, repo_override: str = None, final_k: int = None, trace=None) -> List[Dict]:
     """Simple search with repo routing."""
     repo = repo_override or route_repo(query)
+    final_k = final_k if final_k is not None else FINAL_K
     return search(query, repo=repo, final_k=final_k)
 
 
-def search_routed_multi(query: str, repo_override: str = None, m: int = 4, final_k: int = 10, trace=None) -> List[Dict]:
+def search_routed_multi(query: str, repo_override: str = None, m: int = 4, final_k: int = None, trace=None) -> List[Dict]:
     """
     Multi-query search with LLM-based query expansion.
 
@@ -718,6 +739,7 @@ def search_routed_multi(query: str, repo_override: str = None, m: int = 4, final
         Merged and deduplicated search results
     """
     repo = repo_override or route_repo(query)
+    final_k = final_k if final_k is not None else FINAL_K
 
     # Expand query into variants
     queries = expand_queries(query, m)
@@ -806,10 +828,11 @@ def reload_config():
     """
     global REPO, QDRANT_URL, COLLECTION, EMBEDDING_TYPE, EMBEDDING_MODEL
     global EMBEDDING_MODEL_LOCAL, VOYAGE_MODEL, BM25_WEIGHT, VECTOR_WEIGHT
+    global RRF_K_DIV, TOPK_DENSE, TOPK_SPARSE, FINAL_K
     global CARD_BONUS, FILENAME_BOOST_EXACT, FILENAME_BOOST_PARTIAL
     global LAYER_BONUS_GUI, LAYER_BONUS_RETRIEVAL, LAYER_BONUS_INDEXER
     global FRESHNESS_BONUS, VENDOR_PENALTY, KEYWORDS_BOOST, PATH_BOOSTS
-    global _DISCRIMINATIVE_KEYWORDS
+    global USE_SEMANTIC_SYNONYMS, _DISCRIMINATIVE_KEYWORDS
     
     # Re-read all values from registry
     REPO = _cfg.get_str('REPO', 'agro')
@@ -821,6 +844,10 @@ def reload_config():
     VOYAGE_MODEL = _cfg.get_str('VOYAGE_MODEL', 'voyage-code-3')
     BM25_WEIGHT = _cfg.get_float('BM25_WEIGHT', 0.3)
     VECTOR_WEIGHT = _cfg.get_float('VECTOR_WEIGHT', 0.7)
+    RRF_K_DIV = _cfg.get_int('RRF_K_DIV', 60)
+    TOPK_DENSE = _cfg.get_int('TOPK_DENSE', 75)
+    TOPK_SPARSE = _cfg.get_int('TOPK_SPARSE', 75)
+    FINAL_K = _cfg.get_int('FINAL_K', 10)
     CARD_BONUS = _cfg.get_float('CARD_BONUS', 1.08)
     FILENAME_BOOST_EXACT = _cfg.get_float('FILENAME_BOOST_EXACT', 1.5)
     FILENAME_BOOST_PARTIAL = _cfg.get_float('FILENAME_BOOST_PARTIAL', 1.2)
@@ -831,9 +858,14 @@ def reload_config():
     VENDOR_PENALTY = _cfg.get_float('VENDOR_PENALTY', 0.9)
     KEYWORDS_BOOST = _cfg.get_float('KEYWORDS_BOOST', 1.3)
     PATH_BOOSTS = _cfg.get_str('PATH_BOOSTS', '/server,/retrieval,/indexer,/web')
-    
+    USE_SEMANTIC_SYNONYMS = _cfg.get_str('USE_SEMANTIC_SYNONYMS', '1') == '1'
+
     # Clear cached keywords to force re-load with new repo
     _DISCRIMINATIVE_KEYWORDS = None
+
+    # Also reload synonym expander cache
+    from retrieval.synonym_expander import reload_config as reload_synonym_config
+    reload_synonym_config()
 
 
 # Simple test
@@ -848,4 +880,3 @@ if __name__ == '__main__':
         fp = r.get('file_path', '?')
         score = r.get('rerank_score', 0)
         print(f"  {i+1}. [{score:.3f}] {fp}")
-

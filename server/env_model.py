@@ -1,4 +1,3 @@
-import os
 from typing import Optional, Dict, Any, Tuple
 from importlib import import_module
 from packaging.version import Version
@@ -20,12 +19,9 @@ except Exception as e:
     # Fail fast with a clear error; UI should surface this
     raise RuntimeError("openai>=1.x is required for Responses API") from e
 
-# Module-level cached configuration
-try:
-    from server.services.config_registry import get_config_registry
-    _config_registry = get_config_registry()
-except ImportError:
-    _config_registry = None
+# Module-level cached configuration - requires config registry
+from server.services.config_registry import get_config_registry
+_config_registry = get_config_registry()
 
 # Cached generation parameters
 _GEN_MODEL = None
@@ -42,38 +38,23 @@ _OLLAMA_REQUEST_TIMEOUT = None
 _OLLAMA_STREAM_IDLE_TIMEOUT = None
 
 def _load_cached_config():
-    """Load all generation config values into module-level cache."""
+    """Load all generation config values into module-level cache from config registry."""
     global _GEN_MODEL, _GEN_TEMPERATURE, _GEN_MAX_TOKENS, _GEN_TOP_P, _GEN_TIMEOUT
     global _GEN_RETRY_MAX, _ENRICH_MODEL, _ENRICH_BACKEND, _ENRICH_DISABLED, _OLLAMA_NUM_CTX
     global _OLLAMA_REQUEST_TIMEOUT, _OLLAMA_STREAM_IDLE_TIMEOUT
 
-    if _config_registry is None:
-        # Fallback to env vars
-        _GEN_MODEL = os.getenv('GEN_MODEL', 'gpt-4o-mini')
-        _GEN_TEMPERATURE = float(os.getenv('GEN_TEMPERATURE', '0.0') or '0.0')
-        _GEN_MAX_TOKENS = int(os.getenv('GEN_MAX_TOKENS', '2048') or '2048')
-        _GEN_TOP_P = float(os.getenv('GEN_TOP_P', '1.0') or '1.0')
-        _GEN_TIMEOUT = int(os.getenv('GEN_TIMEOUT', '60') or '60')
-        _GEN_RETRY_MAX = int(os.getenv('GEN_RETRY_MAX', '2') or '2')
-        _ENRICH_MODEL = os.getenv('ENRICH_MODEL', 'gpt-4o-mini')
-        _ENRICH_BACKEND = os.getenv('ENRICH_BACKEND', 'openai')
-        _ENRICH_DISABLED = int(os.getenv('ENRICH_DISABLED', '0') or '0')
-        _OLLAMA_NUM_CTX = int(os.getenv('OLLAMA_NUM_CTX', '8192') or '8192')
-        _OLLAMA_REQUEST_TIMEOUT = int(os.getenv('OLLAMA_REQUEST_TIMEOUT', '300') or '300')
-        _OLLAMA_STREAM_IDLE_TIMEOUT = int(os.getenv('OLLAMA_STREAM_IDLE_TIMEOUT', '60') or '60')
-    else:
-        _GEN_MODEL = _config_registry.get_str('GEN_MODEL', 'gpt-4o-mini')
-        _GEN_TEMPERATURE = _config_registry.get_float('GEN_TEMPERATURE', 0.0)
-        _GEN_MAX_TOKENS = _config_registry.get_int('GEN_MAX_TOKENS', 2048)
-        _GEN_TOP_P = _config_registry.get_float('GEN_TOP_P', 1.0)
-        _GEN_TIMEOUT = _config_registry.get_int('GEN_TIMEOUT', 60)
-        _GEN_RETRY_MAX = _config_registry.get_int('GEN_RETRY_MAX', 2)
-        _ENRICH_MODEL = _config_registry.get_str('ENRICH_MODEL', 'gpt-4o-mini')
-        _ENRICH_BACKEND = _config_registry.get_str('ENRICH_BACKEND', 'openai')
-        _ENRICH_DISABLED = _config_registry.get_int('ENRICH_DISABLED', 0)
-        _OLLAMA_NUM_CTX = _config_registry.get_int('OLLAMA_NUM_CTX', 8192)
-        _OLLAMA_REQUEST_TIMEOUT = _config_registry.get_int('OLLAMA_REQUEST_TIMEOUT', 300)
-        _OLLAMA_STREAM_IDLE_TIMEOUT = _config_registry.get_int('OLLAMA_STREAM_IDLE_TIMEOUT', 60)
+    _GEN_MODEL = _config_registry.get_str('GEN_MODEL', 'gpt-4o-mini')
+    _GEN_TEMPERATURE = _config_registry.get_float('GEN_TEMPERATURE', 0.0)
+    _GEN_MAX_TOKENS = _config_registry.get_int('GEN_MAX_TOKENS', 2048)
+    _GEN_TOP_P = _config_registry.get_float('GEN_TOP_P', 1.0)
+    _GEN_TIMEOUT = _config_registry.get_int('GEN_TIMEOUT', 60)
+    _GEN_RETRY_MAX = _config_registry.get_int('GEN_RETRY_MAX', 2)
+    _ENRICH_MODEL = _config_registry.get_str('ENRICH_MODEL', 'gpt-4o-mini')
+    _ENRICH_BACKEND = _config_registry.get_str('ENRICH_BACKEND', 'openai')
+    _ENRICH_DISABLED = _config_registry.get_int('ENRICH_DISABLED', 0)
+    _OLLAMA_NUM_CTX = _config_registry.get_int('OLLAMA_NUM_CTX', 8192)
+    _OLLAMA_REQUEST_TIMEOUT = _config_registry.get_int('OLLAMA_REQUEST_TIMEOUT', 300)
+    _OLLAMA_STREAM_IDLE_TIMEOUT = _config_registry.get_int('OLLAMA_STREAM_IDLE_TIMEOUT', 60)
 
 def reload_config():
     """Reload all cached config values from registry."""
@@ -223,7 +204,7 @@ def generate_text(
             pass
         return False
 
-    OLLAMA_URL = os.getenv("OLLAMA_URL")
+    OLLAMA_URL = _config_registry.get_str("OLLAMA_URL", "")
     _ollama_present = bool(OLLAMA_URL)
     _ollama_has = _ollama_has_model(OLLAMA_URL, str(mdl)) if _ollama_present else False
     prefer_ollama = _ollama_present and _ollama_has

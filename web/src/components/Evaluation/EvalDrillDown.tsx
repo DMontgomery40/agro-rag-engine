@@ -10,6 +10,7 @@ interface QuestionResult {
   top1_hit: boolean;
   topk_hit: boolean;
   duration_secs: number;
+  reciprocal_rank?: number;
   docs?: Array<{ file_path: string; score: number }>;
 }
 
@@ -20,6 +21,7 @@ interface EvalRun {
   topk_hits: number;
   top1_accuracy: number;
   topk_accuracy: number;
+  mrr?: number;
   duration_secs: number;
   use_multi?: boolean;
   final_k?: number;
@@ -391,6 +393,23 @@ export const EvalDrillDown: React.FC<EvalDrillDownProps> = ({ runId, compareWith
           </div>
           <div style={{ fontSize: '11px', color: 'var(--fg-muted)' }}>
             {evalRun?.topk_hits ?? 0} / {evalRun?.total ?? 0} questions
+          </div>
+        </div>
+
+        <div style={{
+          background: 'var(--card-bg)',
+          border: '1px solid var(--line)',
+          borderRadius: '8px',
+          padding: '16px'
+        }}>
+          <div style={{ fontSize: '12px', color: 'var(--fg-muted)', marginBottom: '8px' }}>
+            MRR
+          </div>
+          <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--warn)' }}>
+            {evalRun?.mrr !== undefined ? evalRun.mrr.toFixed(4) : 'N/A'}
+          </div>
+          <div style={{ fontSize: '11px', color: 'var(--fg-muted)' }}>
+            Mean Reciprocal Rank
           </div>
         </div>
 

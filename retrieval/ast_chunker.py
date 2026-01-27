@@ -242,7 +242,9 @@ def chunk_code(
     lang: str,
     target: int = 900,
     max_tokens: Optional[int] = None,
-    provider: str = "openai"
+    provider: str = "openai",
+    strategy: Optional[str] = None,
+    overlap_lines: Optional[int] = None,
 ) -> List[Dict]:
     """Chunk code with optional token limit awareness.
 
@@ -253,10 +255,23 @@ def chunk_code(
         target: Target non-whitespace character count
         max_tokens: Maximum tokens per chunk (from provider limits)
         provider: Provider for token counting (openai, voyage, etc)
+        strategy: Chunking strategy ('ast', 'greedy', or 'hybrid'). None defaults to 'ast'.
+        overlap_lines: Override for AST overlap line window. None uses OVERLAP_LINES.
 
     Returns:
         List of chunk dictionaries
     """
+    strat = (strategy or "ast").strip().lower()
+    if strat == "greedy":
+        return greedy_fallback(src, fpath, lang, target, max_tokens=max_tokens, provider=provider)
+
+    overlap = OVERLAP_LINES
+    if overlap_lines is not None:
+        try:
+            overlap = max(0, int(overlap_lines))
+        except Exception:
+            overlap = OVERLAP_LINES
+
     try:
         if _ts_get_parser is None:
             raise RuntimeError("tree_sitter_languages not available")
@@ -286,7 +301,7 @@ def chunk_code(
                 name = _guess_name(lang, text)
                 start_line = n.start_point[0] + 1
                 end_line = n.end_point[0] + 1
-                actual_start = max(1, start_line - OVERLAP_LINES) if OVERLAP_LINES > 0 else start_line
+                actual_start = max(1, start_line - overlap) if overlap > 0 else start_line
                 chunk_text = "\n".join(all_lines[actual_start-1:end_line])
                 chunks.append({
                     "id": hashlib.md5((fpath+str(i)+text[:80]).encode()).hexdigest()[:12],
@@ -350,4 +365,3 @@ def chunk_code(
             f"Falling back to greedy chunker."
         )
         return greedy_fallback(src, fpath, lang, target, max_tokens=max_tokens, provider=provider)
-

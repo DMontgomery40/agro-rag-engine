@@ -1,179 +1,254 @@
+---
+Title: Quick Start: Run AGRO in 5 Minutes
+---
+
 # Quick Start: Run AGRO in 5 Minutes
 
-This gets you from zero to a working AGRO stack as fast as possible.
+This page gets you from zero to a working AGRO stack as fast as possible, using the **actual** configuration surfaces the backend reads:
 
-=== "Step 1: Welcome"
-    <figure markdown="span">
-      ![Step 1: Welcome](../assets/images/onboarding-step-1.png){ width="100%" }
-      <figcaption>The Onboarding Wizard welcomes you and explains the core concepts.</figcaption>
-    </figure>
+- `.env` – infrastructure, secrets, ports, repo name
+- `agro_config.json` – RAG behavior, models, retrieval knobs
 
-=== "Step 2: Add Code"
-    <figure markdown="span">
-      ![Step 2: Add Code](../assets/images/onboarding-step-2.png){ width="100%" }
-      <figcaption>Point AGRO at a local folder or a GitHub URL. No code leaves your machine unless you enable cloud models.</figcaption>
-    </figure>
+Under the hood, everything flows through the **configuration registry** in `server/services/config_registry.py`, so the same values drive the CLI, HTTP API, and web UI.
 
-=== "Step 3: Build Indexes"
-    <figure markdown="span">
-      ![Step 3: Indexes](../assets/images/onboarding-step-3.png){ width="100%" }
-      <figcaption>AGRO scans your repo, builds a keyword index (offline), and optionally a dense vector index.</figcaption>
-    </figure>
 
-=== "Step 4: Golden Questions"
-    <figure markdown="span">
-      ![Step 4: Golden Questions](../assets/images/onboarding-step-4.png){ width="100%" }
-      <figcaption>Test retrieval quality immediately by asking questions against your codebase.</figcaption>
-    </figure>
+## 1. Clone the repo and install
 
-=== "Step 5: Tune & Save"
-    <figure markdown="span">
-      ![Step 5: Tune & Save](../assets/images/onboarding-step-5.png){ width="100%" }
-      <figcaption>Adjust speed vs. quality trade-offs and save your configuration as a profile.</figcaption>
-    </figure>
+```bash
+git clone https://github.com/your-org/agro.git
+cd agro
 
----
+# Recommended: use a virtualenv
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
-## 1. Prerequisites
+pip install -r requirements.txt
+```
 
-!!! warning "Required before you start"
-    - :material-docker: **Docker** (Desktop, Colima, Rancher, etc.)  
-      - Docker daemon must be running
-    - :material-language-python: **Python 3.11+**
-    - :material-git: **Git**
-    - :material-console: **Make** (optional but recommended; comes with most UNIX-like systems)
+If you prefer Docker, you can skip the Python environment and jump to the Docker section in the main installation docs. The rest of this page still applies for configuration.
 
-??? note "Optional but useful"
-    - :material-application-braces-outline: **VS Code** (for working with your codebase)
-    - :material-cpu-64-bit: **Ollama** if you want fully-local generation out of the box
 
----
+## 2. Create a `.env` file
 
-## 2. Clone and start the stack
+AGRO does **not** ship a `.env.example` file. Instead, the backend loads environment variables via `python-dotenv` in `server/services/config_registry.py` and `server/services/config_store.py`, and falls back to Pydantic defaults.
 
-=== "Linux / macOS"
+Use the dedicated example page as your template:
 
-    ```bash linenums="1"
-    # 1. Clone
-    git clone https://github.com/DMontgomery40/agro.git
-    cd agro
+- [`Example .env file`](environment-example.md)
 
-    # 2. Start full stack (Qdrant, Redis, API, GUI, MCP, Grafana, etc.)
-    make dev
-    ```
+At minimum, you should set:
 
-=== "If you don't have `make`"
+```bash
+# Which repo to index and query
+REPO=agro
 
-    ```bash linenums="1"
-    git clone https://github.com/DMontgomery40/agro.git
-    cd agro
+# HTTP API / web UI
+AGRO_HOST=127.0.0.1
+AGRO_PORT=8012
 
-    # Equivalent to `make dev`
-    bash scripts/dev_up.sh
-    ```
+# Editor / devtools (optional, but useful)
+EDITOR_ENABLED=1
+EDITOR_PORT=4440
+EDITOR_BIND=local
 
-!!! note "What `make dev` actually does"
-    Under the hood, `make dev` (via `scripts/dev_up.sh` + `scripts/up.sh`) will:
-    
-    - :material-docker: Check that Docker is reachable (auto-starts Colima if configured)
-    - :material-database: Start infra via `docker compose up -d`:
-        - Qdrant (vectors)
-        - Redis (BM25 + checkpoints)
-        - Prometheus + Grafana (metrics)
-        - API + GUI (`api` / `agro-api`)
-        - MCP servers
-        - Embedded editor service
-    - :material-rocket-launch: Verify key services (Qdrant, Redis, Prometheus, Grafana)
-    - :material-eye: Optionally open the browser to the GUI (unless `OPEN_BROWSER=0`)
+# At least one LLM provider key if you want RAG answers, not just search
+# (pick whatever you actually use)
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=...
+MISTRAL_API_KEY=...
+```
 
----
+!!! note "Where these values are read from"
+    - `REPO` is read by multiple services, e.g. `server/services/indexing.py` and `server/services/rag.py`.
+    - `EDITOR_*` flags are read in `server/services/editor.py`.
+    - API keys are treated as **secrets** in `server/services/config_store.py` and never echoed back in clear text.
 
-## 3. Run the onboarding wizard
+You can add more infra settings (Qdrant host/port, monitoring, MCP, etc.) later; the registry will pick them up without code changes.
 
-Once `make dev` finishes:
 
-1. Open the GUI:  
-   - :material-web: http://127.0.0.1:8012/
-2. The **Onboarding Wizard** walks you through:
-   - Pointing AGRO at one or more repos
-   - Basic RAG settings
-   - (Optional) API keys for OpenAI/Cohere/etc.
+## 3. Check `agro_config.json`
 
-!!! tip "Index your first repo"
-    - You can let the wizard handle indexing, **or** from another terminal:
-      ```bash linenums="1"
-      cd /path/to/agro
-      # Example: index the AGRO repo itself
-      REPO=agro make index
-      ```
+`agro_config.json` is the main RAG configuration file. It is validated by `AgroConfigRoot` in `server/models/agro_config_model.py` and loaded by the config registry.
 
----
+For a first run, you can usually keep the defaults and only tweak:
 
-## 4. Verify it’s working
+- Default chat / answer model
+- Embedding model
+- Basic retrieval knobs like `BM25_K1`, `BM25_B`, or `FINAL_K`
 
-Use any (or all) of these checks:
+```json title="agro_config.json" hl_lines="4 8 16"
+{
+  "models": {
+    "default_chat_model": "gpt-4o-mini",
+    "default_answer_model": "gpt-4o-mini",
+    "default_embedding_model": "text-embedding-3-large"
+  },
+  "retrieval": {
+    "BM25_ENABLED": true,
+    "DENSE_ENABLED": true,
+    "RERANK_ENABLED": true,
+    "FINAL_K": 10
+  },
+  "ui": {
+    "show_advanced": true
+  }
+}
+```
 
-=== "Docker services"
+!!! note "Models are configuration, not a hard‑coded list"
+    You can point `default_*_model` at **any** local or cloud model you’ve wired up. The Pydantic models in `server/models/agro_config_model.py` just treat them as strings; nothing is baked into the code.
 
-    ```bash linenums="1"
-    cd /path/to/agro
+If the file is missing or invalid, the config registry falls back to Pydantic defaults and logs a warning.
 
-    # Show running containers
-    docker compose ps
-    ```
 
-    You should see services like `api`, `qdrant`, `rag-redis`, `agro-grafana`, etc.
+## 4. Start the AGRO server
 
-=== "API & GUI"
+The FastAPI app lives in `server/asgi.py`. The legacy `server/app.py` just wires it up for older entry points.
 
-    <figure markdown="span">
-      ![AGRO Dashboard Home](../assets/images/dashboard-home.png){ width="100%" }
-      <figcaption>The AGRO Dashboard gives you a quick system status overview and shortcuts to common actions.</figcaption>
-    </figure>
+From the repo root:
 
-    - Open: http://127.0.0.1:8012/
-    - Check API docs (Swagger): http://127.0.0.1:8012/docs
+```bash
+# Simple dev run
+uvicorn server.asgi:create_app \
+  --factory \
+  --host "${AGRO_HOST:-127.0.0.1}" \
+  --port "${AGRO_PORT:-8012}"
+```
 
-=== "Qdrant & Redis"
+Then open:
 
-    ```bash linenums="1"
-    # Qdrant
-    curl -s http://127.0.0.1:6333/collections
+- Web UI: `http://127.0.0.1:8012`
+- OpenAPI docs: `http://127.0.0.1:8012/docs`
 
-    # Redis (inside container)
-    docker exec rag-redis redis-cli ping
-    ```
+If you see errors about missing config, check:
 
-=== "CLI chat (optional)"
+- `.env` is in the repo root (same dir as `docker-compose.yml` and `agro_config.json`).
+- The process is running from the repo root so `common.paths.repo_root()` resolves correctly.
 
-    ```bash linenums="1"
-    cd /path/to/agro
-    . .venv/bin/activate  # if you created a venv
-    python -m cli.chat_cli
-    ```
 
----
+## 5. Index a repository
 
-## 5. Where to go next
+AGRO’s indexer is a separate process invoked via the service layer in `server/services/indexing.py`. The web UI, CLI, and HTTP API all call into the same function.
 
-Use AGRO to explore itself; the docs are indexed into the engine.
+### Option A: Use the web UI
 
-- :material-book-open-page-variant: **Full docs site**  
-  https://dmontgomery40.github.io/agro-rag-engine/
-- :material-book-outline: **Docs index in repo**  
-  `docs/README_INDEX.md`
-- :material-robot: **MCP / Claude Code / Codex setup**  
-  `docs/QUICKSTART_MCP.md`
-- :material-clipboard-text: **API reference**  
-  - Swagger: http://127.0.0.1:8012/docs  
-  - Markdown: `docs/API_REFERENCE.md`
-- :material-test-tube: **Evals & cost estimation**  
-  `docs/PERFORMANCE_AND_COST.md`
+1. Go to the **Dashboard** tab.
+2. Use the **Index** / **Quick Actions** panel to start indexing.
+3. Watch progress in:
+   - **Live Terminal Panel**
+   - **System Status** / **Index Stats** panels
 
-!!! tip "Ask AGRO about AGRO"
-    The entire codebase and docs are indexed.  
-    Go to the **Chat** tab in the GUI and ask things like:
-    
-    - “How do I add a new model provider?”
-    - “Where is hybrid search implemented?”
-    - “Show me how MCP servers are configured.”
+The UI ultimately calls the `/index/start` HTTP endpoint, which in turn calls `server/services/indexing.start()`.
+
+### Option B: Use the CLI
+
+```bash
+python -m cli.agro index --repo agro
+```
+
+This sets `REPO` and spawns the same indexer code. The indexer process uses:
+
+- `REPO` and `REPO_ROOT` from the environment
+- `PYTHONPATH` pointing at the repo root
+
+So it sees the same configuration as the HTTP server.
+
+
+## 6. Try your first query
+
+Once indexing finishes, you can:
+
+- Use the **Chat** tab in the web UI.
+- Or hit the HTTP API directly.
+
+### Web UI
+
+1. Open the **Chat** tab.
+2. Make sure the correct repo is selected (defaults to `REPO` from `.env`).
+3. Ask something like:
+
+   > Where is the configuration registry implemented?
+
+You should see chunks from `server/services/config_registry.py` and related files.
+
+### HTTP API
+
+```bash
+curl -s "http://127.0.0.1:8012/api/rag" \
+  -H 'Content-Type: application/json' \
+  -d '{"q": "How does AGRO merge .env and agro_config.json?", "repo": "agro"}' | jq
+```
+
+Under the hood this calls `server/services/rag.do_search()`, which:
+
+- Reads `FINAL_K` (or `LANGGRAPH_FINAL_K`) from the config registry
+- Runs the hybrid retrieval pipeline (`retrieval.hybrid_search.search_routed_multi`)
+- Optionally routes through a LangGraph app if `server/langgraph_app.py` is present
+
+
+## 7. Optional: Enable the in‑browser editor
+
+AGRO ships a small “editor” service for quick edits and live config experiments. It’s controlled entirely by config registry values and a tiny service layer in `server/services/editor.py`.
+
+In your `.env`:
+
+```bash
+EDITOR_ENABLED=1
+EDITOR_PORT=4440
+EDITOR_BIND=local   # or "public" if you know what you’re doing
+```
+
+Then restart the server. The UI’s **DevTools → Editor** tab will reflect these settings via the `/editor/settings` and `/editor/status` endpoints, which read from the same registry.
+
+!!! warning
+    The editor writes to files under `server/out/editor/` and can be wired to real repos. Treat it as a dev tool, not a production IDE.
+
+
+## 8. Where configuration actually comes from
+
+AGRO’s configuration registry is the single source of truth. It merges values from:
+
+1. `.env` (loaded first, via `python-dotenv`)
+2. `agro_config.json` (validated by `AgroConfigRoot`)
+3. Pydantic defaults in the model classes
+
+With clear precedence:
+
+```mermaid
+flowchart TD
+  A[.env file] -->|highest precedence| R[Config Registry]
+  B[agro_config.json] --> R
+  C[Pydantic defaults] -->|fallback| R
+
+  R --> S[Services & HTTP API]
+  R --> W[Web UI]
+  R --> Cfg[CLI]
+```
+
+The registry also:
+
+- Tracks which source each key came from
+- Provides type‑safe accessors: `get_int`, `get_float`, `get_bool`, `get_str`
+- Maintains a small set of **infrastructure keys** that must be overridable via env vars (ports, hosts, etc.)
+
+You don’t need to know any of this to get started, but it’s useful once you start tuning retrieval or running multiple profiles.
+
+
+## 9. Next steps
+
+Once the basics work:
+
+- Read more about configuration:
+  - [Environment configuration](environment.md)
+  - [Configuration registry & settings](../configuration/settings.md)
+  - [Model configuration](../configuration/models.md)
+  - [Profiles](../configuration/profiles.md)
+- Explore the retrieval stack: [Retrieval Pipeline](../features/rag.md)
+- Try the CLI chat: [CLI Chat Interface](../features/cli-chat.md)
+- Run an evaluation: [Evaluation & Regression Testing](../features/evaluation.md)
+
+AGRO is indexed on itself, so once your own instance is running, you can also just ask it:
+
+> How does the config registry work, and where do I change X?
+
+The answer will come from the actual source files you just wired up.

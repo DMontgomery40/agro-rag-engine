@@ -1,578 +1,568 @@
-# Monitoring & Observability
-
-AGRO ships with a full monitoring stack: Prometheus, Alertmanager, Loki, and Grafana — wired into the app and the GUI. You can run AGRO “just local, no metrics” if you want, but if you care about cost, performance, or weird query patterns, the monitoring stack is worth turning on.
-
-This page covers:
-
-- Embedded Grafana in the AGRO UI
-- Prometheus metrics and what they track
-- Built‑in dashboards
-- Slack/Discord/custom webhook alerts on **any** metric
-- LangSmith tracing integration
-- The local monitoring APIs AGRO exposes
-
+---
+Title: Monitoring & Observability
 ---
 
-## Architecture
+# Monitoring & Observability
+
+AGRO ships with a full monitoring stack, but you don't have to run all of it.
+This page explains what each piece does, how it connects to the AGRO
+services, and how configuration actually flows through the code.
+
+The monitoring stack is built around:
+
+- Prometheus (metrics scraping)
+- Alertmanager (alerts)
+- Loki (logs)
+- Grafana (dashboards)
+- AGRO's own HTTP APIs for traces, index stats, and system status
+
+Under the hood, the web UI talks to a small set of service-layer modules in
+`server/services/` that expose monitoring data in a way that's safe for the
+browser and stable across config changes.
+
+
+## High-level architecture
+
+At runtime, there are three main data flows that matter for monitoring:
+
+1. **Configuration** – what repo is active, where data lives, which ports to use
+2. **Indexing & retrieval status** – what the indexer is doing, how many
+   documents are indexed, current errors
+3. **Traces & analytics** – per-query traces, evaluation runs, and cost/usage
 
 ```mermaid
 flowchart LR
-    subgraph AGRO["AGRO Server"]
-        API[FastAPI app<br/>/api/*]
-        Alerts[Alert webhook<br/>& monitoring APIs]
-        Logs[(data/logs/*<br/>data/tracking/*)]
-    end
+  subgraph User
+    UI[Web UI]
+  end
 
-    subgraph PrometheusStack["Prometheus Stack"]
-        Prom[Prometheus]
-        AM[Alertmanager]
-    end
+  subgraph AGRO API
+    RAG[server/services/rag.py]
+    IDX[server/services/indexing.py]
+    KW[server/services/keywords.py]
+    TR[server/services/traces.py]
+    CFG[server/services/config_registry.py]
+  end
 
-    subgraph LogsStack["Logs Stack"]
-        Loki[Loki]
-        Promtail[Promtail]
-    end
+  subgraph Storage
+    FS[(Filesystem: data/, out/, logs/)]
+    QD[(Qdrant)]
+    MON[(Prometheus / Loki / Grafana)]
+  end
 
-    subgraph UI["Grafana"]
-        Dash[Dashboards<br/>embedded + native]
-    end
+  UI -->|HTTP /fetch| RAG
+  UI --> IDX
+  UI --> KW
+  UI --> TR
 
-    API -->|/metrics, /health, etc.| Prom
-    Prom --> AM
-    AM -->|webhook| Alerts
+  RAG -->|reads| QD
+  IDX -->|writes| QD
+  IDX -->|writes status & stats| FS
+  KW -->|reads/writes keywords| FS
+  TR -->|reads traces| FS
 
-    Logs -->|file tail| Promtail --> Loki
+  CFG --> RAG
+  CFG --> IDX
+  CFG --> KW
 
-    Prom --> Dash
-    Loki --> Dash
-
-    subgraph External
-        Slack[Slack]
-        Discord[Discord]
-        Webhook[Custom HTTP]
-        LangSmith[LangSmith Traces]
-    end
-
-    Alerts -->|Slack/Discord/JSON| Slack
-    Alerts --> Discord
-    Alerts --> Webhook
-
-    API -->|LangChain/OpenAI/etc.| LangSmith
-    LangSmith -. dashboards .-> Dash
+  MON -->|scrape / tail| FS
+  MON -->|scrape| AGRO API
 ```
 
-!!! note
-    `infra/docker-compose.yml` in this repo is **deprecated**. The actual services are managed from the root‑level `docker-compose.yml`. The infra file is kept around as a reference.
+The important bit: **all monitoring-related behavior is driven by the same
+configuration registry** that powers the rest of AGRO. You don't have to
+thread environment variables through every service manually.
 
----
 
-## Embedded Grafana Dashboard
+## Configuration: where monitoring reads its settings
 
-<figure markdown="span">
-  ![Embedded Grafana in AGRO GUI](../assets/images/built-in-grafana.png){ width="100%" }
-  <figcaption>The embedded Grafana view lets you correlate metrics with RAG behavior without leaving the app.</figcaption>
-</figure>
+Monitoring-related services don't read `os.environ` directly. They go through
+`server/services/config_registry.py`, which implements a central
+configuration registry with clear precedence rules:
 
-AGRO embeds Grafana directly into the UI via an `<iframe>`. You don’t have to remember another port, copy URLs, or juggle logins; you just click the **Monitoring** tab in the AGRO GUI and you’re looking at live dashboards.
+1. `.env` file (secrets and infrastructure overrides)
+2. `agro_config.json` (tunable RAG and monitoring parameters)
+3. Pydantic defaults (fallback values)
 
-Why this is actually useful:
+```py title="server/services/config_registry.py" linenums="1"
+"""Configuration Registry for AGRO RAG Engine.
 
-- You can correlate “why is retrieval slow?” with token burn, error rates, and query patterns without context‑switching.
-- Grafana is configured to allow embedding (`GF_SECURITY_ALLOW_EMBEDDING=true`) and anonymous editor access for local networks, so you can:
-  - Clone and tweak the default dashboards
-  - Add your own panels and alerts
-  - Treat Grafana as a built‑in monitoring cockpit rather than another external thing
+This module provides a centralized, thread-safe configuration management system
+that merges settings from multiple sources with clear precedence rules:
 
-The Grafana container is configured with:
+Precedence (highest to lowest):
+1. .env file (secrets and infrastructure overrides)
+2. agro_config.json (tunable RAG parameters)
+3. Pydantic defaults (fallback values)
 
-- Dark theme by default
-- Infinity datasource plugin (`yesoreyeram-infinity-datasource`) for JSON/HTTP data sources
-- Provisioned dashboards and datasources in `infra/grafana/provisioning` (see that directory for the exact dashboards)
-
----
-
-## Prometheus Metrics
-
-Prometheus scrapes AGRO (and the rest of the stack) and stores time‑series metrics. Those metrics are what power:
-
-- The Grafana dashboards
-- Alertmanager alerts (and then Slack/Discord/custom webhooks via AGRO)
-- Any custom PromQL queries you want to run
-
-At a high level, AGRO exports metrics for:
-
-| Area                | Examples (not exhaustive)                                    |
-|---------------------|--------------------------------------------------------------|
-| Request performance | Request latency (p50/p95/p99), per‑route timings             |
-| Throughput          | Requests per second, queries per route                       |
-| Error rates         | 4xx/5xx counts, timeout counts, rate‑limit errors           |
-| Token usage         | Tokens per request, per provider/model, rolling averages     |
-| Cost                | Estimated cost per request, per provider, rolling windows    |
-| Retrieval quality   | Canary query pass rate, MRR estimates if you enable them     |
-
-!!! tip
-    The exact metric names are visible in Grafana’s “Explore” tab by selecting the Prometheus datasource and starting to type `agro_…` in the metric selector.
-
----
-
-## Built‑in Dashboards
-
-<figure markdown="span">
-  ![AGRO Overview Dashboard](../assets/images/grafana-rag-stats.png){ width="100%" }
-  <figcaption>The main AGRO Overview dashboard showing request rates, latency, and system health.</figcaption>
-</figure>
-
-AGRO ships with a small but focused set of dashboards. You can modify them freely; they’re just Grafana JSON that lives under `infra/grafana/provisioning`.
-
-Typical dashboards include:
-
-| Dashboard                     | What it shows                                                                                     |
-|-------------------------------|----------------------------------------------------------------------------------------------------|
-| **AGRO – Overview**          | High‑level health: request rate, latency, error rate, token usage, cost, basic host stats         |
-| **AGRO – Retrieval & RAG**   | Query volumes, BM25 vs. vector hits, rerank usage, canary query performance                       |
-| **AGRO – Cost & Tokens**     | Tokens per minute/hour, estimated cost per provider/model, spikes vs. baseline                    |
-| **AGRO – Errors & Alerts**   | Error breakdown (timeouts, rate limits, 5xx), alert counts, recent alert events                   |
-| **AGRO – Logs (Loki)**       | Searchable logs for AGRO + containers via Loki (if you mount Docker logs into promtail)          |
-
-=== "From the AGRO GUI"
-
-    1. Start AGRO with monitoring enabled (see the main `docker-compose.yml`).
-    2. Open the AGRO web UI.
-    3. Click the **Monitoring** / **Grafana** tab.
-    4. Use the built‑in dashboards or duplicate them to customize.
-
-=== "Direct Grafana access"
-
-    - URL: `http://localhost:3000` (by default)
-    - Default admin credentials:
-      - `GF_SECURITY_ADMIN_USER=admin`
-      - `GF_SECURITY_ADMIN_PASSWORD=Trenton2023`  
-    - Once logged in, you can:
-      - Import/export dashboards
-      - Add datasources (e.g., LangSmith, other JSON APIs)
-      - Configure advanced alert rules
-
-!!! warning
-    These Grafana credentials are for local/dev setups. If you expose Grafana beyond your local machine, change the password and disable anonymous access.
-
----
-
-## Alerting: Slack, Discord & Custom Webhooks
-
-### How alerting is wired
-
-There are two layers:
-
-1. **Prometheus + Alertmanager**  
-   - You define alert rules in Prometheus config (for metrics like latency, error rate, cost, etc.).
-   - When an alert fires or resolves, Alertmanager sends a webhook to AGRO:
-
-     ```http
-     POST /api/webhooks/alertmanager
-     Content-Type: application/json
-     ```
-
-     The payload is the standard Alertmanager schema:
-
-     ```json
-     {
-       "status": "firing",
-       "alerts": [
-         {
-           "status": "firing",
-           "labels": {
-             "alertname": "HighLatency",
-             "severity": "critical",
-             "service": "agro-api"
-           },
-           "annotations": {
-             "summary": "p99 latency > 10s",
-             "description": "Requests to /api/query have p99 latency over 10s for 5m"
-           },
-           "startsAt": "2025-01-01T00:00:00.000Z",
-           "endsAt": "0001-01-01T00:00:00Z"
-         }
-       ],
-       "receiver": "critical"
-     }
-     ```
-
-2. **AGRO’s alert webhook receiver** (`server/alerts.py`)  
-   - Endpoint: `POST /api/webhooks/alertmanager`
-   - It:
-     - Logs each alert as JSONL to `data/logs/alerts.jsonl`
-     - Logs a human‑readable summary to the app logger (shows up in container logs)
-     - Dispatches notifications to:
-       - Slack
-       - Discord
-       - Arbitrary HTTP webhooks (JSON payload)
-
-The important part: **Alertmanager can fire on any metric** you have in Prometheus. AGRO doesn’t hard‑code which conditions are “alert‑worthy”; it just receives whatever Alertmanager sends and fans it out to your channels.
-
----
-
-### Alert webhook internals
-
-The key pieces in `server/alerts.py`:
-
-- `alertmanager_webhook` – receives and logs alerts, then calls `_dispatch_notifications`.
-- `_log_alert` – appends each alert to `data/logs/alerts.jsonl` with a UTC timestamp.
-- `_dispatch_notifications` – filters alerts by severity and sends them to:
-  - Slack (`cfg.slack_webhook_url`)
-  - Discord (`cfg.discord_webhook_url`)
-  - Generic webhooks (`ALERT_WEBHOOK_URLS`, `ALERT_WEBHOOK_HEADERS`)
-
-The notification text is concise and chat‑friendly:
-
-```text
-[CRITICAL] HighLatency — p99 latency > 10s (agro-api) @ 2025-01-01T00:00:00Z
-[WARNING] TokenBurnSpike — Token burn > 5000/min (openai-gpt-4o) @ 2025-01-01T00:02:00Z
+Key features:
+- Thread-safe load/reload with locking
+- Type-safe accessors (get_int, get_float, get_bool)
+- Pydantic validation for agro_config.json
+- Backward compatibility with os.getenv() patterns
+- Config source tracking (which file each value came from)
+"""
 ```
 
-Slack payload example:
+Every monitoring-facing service module grabs a module-level registry instance:
 
-```json
-{
-  "text": "*AGRO Alerts (firing)*\n[CRITICAL] HighLatency — p99 latency > 10s (agro-api) @ 2025-01-01T00:00:00Z"
-}
+```py title="example: module-level registry" linenums="1"
+from server.services.config_registry import get_config_registry
+
+_config_registry = get_config_registry()
+
+# Later, inside functions:
+port = _config_registry.get_int("EDITOR_PORT", 4440)
 ```
 
-Discord payload example:
+This is why the docs and UI can show you exactly *where* a value came from
+(`.env` vs `agro_config.json` vs default) and why you can safely reload
+configuration without restarting everything.
 
-```json
-{
-  "content": "**AGRO Alerts (firing)**\n[CRITICAL] HighLatency — p99 latency > 10s (agro-api) @ 2025-01-01T00:00:00Z"
-}
+
+## System status & indexing status
+
+The **Dashboard → System Status** and **Dashboard → Indexing** panels in the
+web UI are backed by a couple of small service modules:
+
+- `server/services/indexing.py` – starts and monitors the indexer process
+- `server/index_stats.py` – reads index statistics from disk / Qdrant
+
+### Indexing service
+
+`server/services/indexing.py` is responsible for kicking off indexing runs and
+exposing their status to the UI.
+
+Key points:
+
+- It uses the same Python interpreter as the running server
+- It passes `REPO`, `REPO_ROOT`, and `PYTHONPATH` through the environment so
+  the indexer resolves paths correctly
+- It stores human-readable status messages and metadata in module-level
+  variables that the HTTP API can read
+
+```py title="server/services/indexing.py" linenums="1" hl_lines="10-22"
+import asyncio
+import os
+import subprocess
+import sys
+import threading
+from typing import Any, Dict, List
+
+from common.paths import repo_root
+from server.index_stats import get_index_stats as _get_index_stats
+from server.services.config_registry import get_config_registry
+
+# Module-level config registry
+_config_registry = get_config_registry()
+
+_INDEX_STATUS: List[str] = []
+_INDEX_METADATA: Dict[str, Any] = {}
+
+
+def start(payload: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    global _INDEX_STATUS, _INDEX_METADATA
+    payload = payload or {}
+    _INDEX_STATUS = ["Indexing started..."]
+    _INDEX_METADATA = {}
+
+    def run_index():
+        global _INDEX_STATUS, _INDEX_METADATA
+        try:
+            repo = _config_registry.get_str("REPO", "agro")
+            _INDEX_STATUS.append(f"Indexing repository: {repo}")
+            # Ensure the indexer resolves repo paths correctly and uses the same interpreter
+            root = repo_root()
+            env = {**os.environ, "REPO": repo, "REPO_ROOT": str(root), "PYTHONPATH": str(root)}
+            if payload.get("enrich"):
+                env["ENRICH_CODE_CHUNKS"] = "true"
+                _INDEX_STATUS.append("Enriching chunks with su...")
+            # ... spawn subprocess, update _INDEX_STATUS / _INDEX_METADATA
+        except Exception as e:
+            _INDEX_STATUS.append(f"Indexing failed: {e}")
+
+    threading.Thread(target=run_index, daemon=True).start()
+    return {"status": _INDEX_STATUS, "metadata": _INDEX_METADATA}
 ```
 
-Generic webhook payload example:
+The HTTP API exposes this via a simple endpoint (see `api/endpoints.md`), and
+the web UI polls it to render live status.
 
-```json
-{
-  "title": "AGRO Alerts (firing)",
-  "status": "firing",
-  "count": 1,
-  "lines": [
-    "[CRITICAL] HighLatency — p99 latency > 10s (agro-api) @ 2025-01-01T00:00:00Z"
-  ],
-  "alerts": [
-    {
-      "...": "full Alertmanager alert object"
+
+## Keyword extraction & discriminative keywords
+
+AGRO maintains a set of **discriminative keywords** per repo to help BM25 and
+hybrid search. These are surfaced in the **Dashboard → Glossary / Keywords**
+areas and used in evaluation.
+
+The service layer for this lives in `server/services/keywords.py`.
+
+### How keyword config is loaded
+
+`keywords.py` uses the config registry once at import time to populate a set
+of module-level constants, then exposes a `reload_config()` helper so you can
+pick up changes without restarting the server.
+
+```py title="server/services/keywords.py" linenums="1" hl_lines="7-18 21-29"
+import json
+import os
+import time
+from pathlib import Path
+from typing import Any, Dict, List
+
+from common.paths import repo_root
+from server.services.config_registry import get_config_registry
+
+# Module-level config caching
+_config_registry = get_config_registry()
+_KEYWORDS_MAX_PER_REPO = _config_registry.get_int('KEYWORDS_MAX_PER_REPO', 50)
+_KEYWORDS_MIN_FREQ = _config_registry.get_int('KEYWORDS_MIN_FREQ', 3)
+_KEYWORDS_BOOST = _config_registry.get_float('KEYWORDS_BOOST', 1.3)
+_KEYWORDS_AUTO_GENERATE = _config_registry.get_int('KEYWORDS_AUTO_GENERATE', 1)
+_KEYWORDS_REFRESH_HOURS = _config_registry.get_int('KEYWORDS_REFRESH_HOURS', 24)
+
+
+def reload_config():
+    """Reload cached config values from registry."""
+    global _KEYWORDS_MAX_PER_REPO, _KEYWORDS_MIN_FREQ, _KEYWORDS_BOOST
+    global _KEYWORDS_AUTO_GENERATE, _KEYWORDS_REFRESH_HOURS
+    _KEYWORDS_MAX_PER_REPO = _config_registry.get_int('KEYWORDS_MAX_PER_REPO', 50)
+    _KEYWORDS_MIN_FREQ = _config_registry.get_int('KEYWORDS_MIN_FREQ', 3)
+    _KEYWORDS_BOOST = _config_registry.get_float('KEYWORDS_BOOST', 1.3)
+    _KEYWORDS_AUTO_GENERATE = _config_registry.get_int('KEYWORDS_AUTO_GENERATE', 1)
+    _KEYWORDS_REFRESH_HOURS = _config_registry.get_int('KEYWORDS_REFRESH_HOURS', 24)
+```
+
+Why this is useful:
+
+- The UI can show you the *effective* values and where they came from
+- You can tweak keyword behavior (`*_BOOST`, `*_MIN_FREQ`, etc.) and reload
+  without restarting AGRO
+- The keyword service can be used both by the HTTP API and the CLI without
+  duplicating config parsing logic
+
+
+## Traces & evaluation
+
+AGRO writes detailed traces for RAG queries and evaluation runs under
+`out/<repo>/traces/`. These are JSON files that the UI can render in the
+**Analytics → Tracing** and **Evaluation → Trace Viewer** tabs.
+
+The service-layer entry point for listing and reading traces is
+`server/services/traces.py`.
+
+```py title="server/services/traces.py" linenums="1" hl_lines="7-23 26-38"
+import json
+import logging
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from common.config_loader import out_dir
+from server.tracing import latest_trace_path
+
+logger = logging.getLogger("agro.api")
+
+
+def list_traces(repo: Optional[str]) -> Dict[str, Any]:
+    r = (repo or __import__('os').getenv('REPO', 'agro')).strip()
+    base = Path(out_dir(r)) / 'traces'
+    files: List[Dict[str, Any]] = []
+    try:
+        if base.exists():
+            for p in sorted(
+                [x for x in base.glob('*.json') if x.is_file()],
+                key=lambda x: x.stat().st_mtime,
+                reverse=True,
+            )[:50]:
+                files.append({
+                    'path': str(p),
+                    'name': p.name,
+                    'mtime': __import__('datetime').datetime.fromtimestamp(p.stat().st_mtime).isoformat(),
+                })
+    except Exception as e:
+        logger.exception("Failed to list traces: %s", e)
+    return {'repo': r, 'files': files}
+
+
+def latest_trace(repo: Optional[str]) -> Dict[str, Any]:
+    r = (repo or __import__('os').getenv('REPO', 'agro')).strip()
+    try:
+        p = latest_trace_path(r)
+    except Exception as e:
+        logger.exception("latest_trace_path failed: %s", e)
+        # ... error handling / empty response
+```
+
+A couple of things to note:
+
+- The repo is taken from the argument or `REPO` env var, with a default of
+  `agro`. This keeps the HTTP API simple while still working in multi-repo
+  setups.
+- `out_dir()` centralizes where "ephemeral" outputs go. If you move that
+  directory, traces, eval snapshots, and other monitoring artifacts move with
+  it.
+- The service layer is intentionally defensive: exceptions are logged and
+  turned into empty-ish responses so the UI doesn't explode when a trace file
+  is missing or corrupted.
+
+
+## Editor / DevTools integration
+
+AGRO ships with an embedded editor / DevTools UI that can be used to inspect
+and tweak configuration, run quick experiments, and inspect logs.
+
+The backend for this is `server/services/editor.py`.
+
+```py title="server/services/editor.py" linenums="1" hl_lines="12-23"
+import json
+import logging
+from pathlib import Path
+from typing import Any, Dict
+from urllib.request import urlopen
+from urllib.error import URLError
+
+from server.services.config_registry import get_config_registry
+from server.models.agro_config_model import AGRO_CONFIG_KEYS
+
+logger = logging.getLogger("agro.api")
+
+
+def _settings_path() -> Path:
+    settings_dir = Path(__file__).parent.parent / "out" / "editor"
+    settings_dir.mkdir(parents=True, exist_ok=True)
+    return settings_dir / "settings.json"
+
+
+def _status_path() -> Path:
+    status_dir = Path(__file__).parent.parent / "out" / "editor"
+    status_dir.mkdir(parents=True, exist_ok=True)
+    return status_dir / "status.json"
+
+
+def read_settings() -> Dict[str, Any]:
+    """Read editor settings, preferring registry (agro_config.json/.env) with legacy file fallback."""
+    registry = get_config_registry()
+    settings = {
+        "port": registry.get_int("EDITOR_PORT", 4440),
+        "enabled": registry.get_bool("EDITOR_ENABLED", True),
+        "embed_enabled": registry.get_bool("EDITOR_EMBED_ENABLED", True),
+        "bind": registry.get_str("EDITOR_BIND", "local"),  # 'local' or 'public'
+        # ... more fields
     }
-  ]
+    # ... merge with legacy settings.json if present
+    return settings
+```
+
+Why this matters for monitoring:
+
+- The editor can show live status (via `_status_path()`), including indexing
+  progress and last error
+- The same config registry is used to decide whether the editor is enabled,
+  which port it binds to, and whether it should be reachable from outside
+  `localhost`
+
+
+## RAG query telemetry
+
+RAG queries themselves are instrumented in `server/services/rag.py`. This is
+where query events are logged, metrics are emitted, and (optionally) traces
+are written.
+
+```py title="server/services/rag.py" linenums="1" hl_lines="1-5 15-28 31-42"
+import logging
+import os
+from typing import Any, Dict, List, Optional
+
+from fastapi import Request
+from fastapi.responses import JSONResponse
+
+from retrieval.hybrid_search import search_routed_multi
+from server.metrics import stage
+from server.telemetry import log_query_event
+from server.services.config_registry import get_config_registry
+import uuid
+
+logger = logging.getLogger("agro.api")
+
+# Module-level config registry
+_config_registry = get_config_registry()
+
+_graph = None
+CFG = {"configurable": {"thread_id": "http"}}
+
+
+def _get_graph():
+    global _graph
+    if _graph is None:
+        try:
+            from server.langgraph_app import build_graph
+            _graph = build_graph()
+        except Exception as e:
+            logger.warning("build_graph failed: %s", e)
+            _graph = None
+    return _graph
+
+
+def do_search(q: str, repo: Optional[str], top_k: Optional[int], request: Optional[Request] = None) -> Dict[str, Any]:
+    if top_k is None:
+        try:
+            # Try FINAL_K first, fall back to LANGGRAPH_FINAL_K
+            top_k = _config_registry.get_int('FINAL_K', _config_registry.get_int('LANGGRAPH_FINAL_K', 10))
+        except Exception:
+            top_k = 10
+
+    # ... run retrieval, log_query_event, wrap response
+```
+
+A few things to call out:
+
+- `stage` from `server.metrics` is used to time and label different phases of
+the RAG pipeline (retrieval, reranking, synthesis). Those metrics are what
+Prometheus scrapes.
+- `log_query_event` writes a structured event that can be used for analytics,
+  evaluation, or training the learning reranker.
+- `FINAL_K` and `LANGGRAPH_FINAL_K` are read from the config registry, so you
+  can change how many results are returned without touching code.
+
+
+## Config store & secrets in the UI
+
+The **Admin → General / Integrations / Secrets** tabs in the web UI talk to
+`server/services/config_store.py`. This module is responsible for:
+
+- Reading and writing `agro_config.json`
+- Masking secrets when sending config to the browser
+- Atomically writing config files even on Docker Desktop / macOS volume
+  mounts (which are notorious for `Device or resource busy` errors)
+
+```py title="server/services/config_store.py" linenums="1" hl_lines="9-20 23-40"
+import json
+import logging
+import os
+import tempfile
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+from pydantic import ValidationError
+
+from common.config_loader import _load_repos_raw
+from common.paths import repo_root, gui_dir
+from server.services.config_registry import get_config_registry
+from server.models.agro_config_model import AGRO_CONFIG_KEYS
+
+logger = logging.getLogger("agro.api")
+
+
+SECRET_FIELDS = {
+    'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GOOGLE_API_KEY',
+    'COHERE_API_KEY', 'VOYAGE_API_KEY', 'LANGSMITH_API_KEY',
+    'LANGCHAIN_API_KEY', 'LANGTRACE_API_KEY', 'NETLIFY_API_KEY',
+    'OAUTH_TOKEN', 'GRAFANA_API_KEY', 'GRAFANA_AUTH_TOKEN',
+    'MCP_API_KEY', 'JINA_API_KEY', 'DEEPSEEK_API_KEY', 'MISTRAL_API_KEY',
+    'XAI_API_KEY', 'GROQ_API_KEY', 'FIREWORKS_API_KEY'
 }
+
+
+def _atomic_write_text(path: Path, content: str, max_retries: int = 3) -> None:
+    """Atomically write text to a file with fallback for Docker volume mounts.
+
+    Docker Desktop on macOS can fail with 'Device or resource busy' on os.replace()
+    when the file is being watched. We try atomic first, then fall back to direct write.
+    """
+    import time
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    for attempt in range(max_retries):
+        tmp = Path(tempfile.mkstemp(dir=path.parent, prefix=path.name, suffix=".tmp")[1])
+        try:
+            tmp.write_text(content, encoding="utf-8")
+            os.replace(tmp, path)
+            return
+        except OSError as e:
+            logger.warning("Atomic write failed (%s), attempt %s/%s", e, attempt + 1, max_retries)
+            time.sleep(0.1)
+        finally:
+            if tmp.exists():
+                tmp.unlink(missing_ok=True)
+
+    # Fallback: direct write
+    path.write_text(content, encoding="utf-8")
 ```
 
----
+This is one of those "not glamorous but important" pieces: without the
+atomic write + fallback, saving config from the UI on macOS Docker can fail
+randomly when file watchers are active.
 
-### Configuring alert notifications
 
-<figure markdown="span">
-  ![Alert Notifications Setup](../assets/images/alerts-setup.png){ width="80%" }
-  <figcaption>Configure Slack/Discord webhooks and severity filters directly in the GUI.</figcaption>
-</figure>
+## How this shows up in the web UI
 
-There are two config layers:
+The React components under `web/src/components/` are wired to these service
+modules via the HTTP API. A few relevant ones for monitoring:
 
-1. **AGRO webhook behavior** (`server/webhook_config.py` + env vars)
-2. **Alert rules** (Prometheus/Alertmanager config)
+- `Dashboard/SystemStatus.tsx`, `SystemStatusPanel.tsx`, `SystemStatusSubtab.tsx`
+- `Dashboard/MonitoringLogsPanel.tsx`, `Dashboard/MonitoringSubtab.tsx`
+- `Analytics/Tracing.tsx`, `Analytics/Usage.tsx`, `Analytics/Performance.tsx`
+- `Evaluation/TraceViewer.tsx`, `Evaluation/HistoryViewer.tsx`
 
-#### 1. AGRO webhook behavior
+They don't talk to Prometheus or Loki directly. Instead, they:
 
-AGRO reads notification config via `_get_webhook_config()` and a few helpers:
+- Call AGRO's HTTP endpoints (documented in `api/endpoints.md`)
+- Render whatever the service layer returns
+- Let you drill into traces, index stats, and evaluation runs without
+  needing to know where files live on disk
 
-- `_notify_enabled()` → `cfg.alert_notify_enabled`
-- `_notify_severities()` → `cfg.alert_notify_severities` (e.g. `"critical,warning"`)
-- `_include_resolved()` → `cfg.alert_include_resolved`
-- `_timeout_seconds()` → `cfg.alert_webhook_timeout_seconds`
-- `_title_prefix()` → `ALERT_TITLE_PREFIX` (defaults to `AGRO`)
-- `_generic_webhook_urls()` → `ALERT_WEBHOOK_URLS` (comma‑separated URLs)
-- `_generic_webhook_headers()` → `ALERT_WEBHOOK_HEADERS` (JSON string)
 
-??? example "Minimal Slack + Discord configuration (env vars)"
+## Running with and without the full monitoring stack
 
-    ```bash
-    export ALERT_TITLE_PREFIX="AGRO"
-    export ALERT_WEBHOOK_URLS="https://example.com/my-monitoring-hook"
+You can run AGRO in a few different modes:
 
-    # Optional: generic headers for custom webhooks
-    export ALERT_WEBHOOK_HEADERS='{"X-AGRO-Env":"dev","X-AGRO-Source":"alertmanager"}'
-    ```
+1. **Just AGRO, no external monitoring**
 
-    And in `server/webhook_config.py` (or via your config UI):
+   - Only AGRO's own HTTP APIs and file-based traces are used
+   - Useful for local experiments or CI jobs
 
-    ```python
-    from pydantic import BaseModel
+2. **AGRO + Prometheus + Grafana**
 
-    class WebhookConfig(BaseModel):
-        alert_notify_enabled: bool = True
-        alert_notify_severities: str = "critical,warning"
-        alert_include_resolved: bool = True
-        alert_webhook_timeout_seconds: float = 3.0
+   - Prometheus scrapes AGRO's `/metrics` endpoint and any sidecars
+   - Grafana dashboards read from Prometheus
+   - Loki can tail logs from `docker-compose` or your own logging setup
 
-        slack_webhook_url: str = "https://hooks.slack.com/services/..."
-        discord_webhook_url: str = "https://discord.com/api/webhooks/..."
-    ```
+3. **AGRO + external observability (your own stack)**
 
-!!! tip
-    If you only care about **critical** alerts, set `alert_notify_severities="critical"` and leave everything else alone.
+   - You can ignore the bundled compose file and point your own Prometheus /
+     Grafana / Loki at AGRO's endpoints and log files
 
-#### 2. Alert rules (Prometheus/Alertmanager)
+The important part is that **AGRO itself doesn't care** which of these you
+choose. The service layer always exposes the same:
 
-You define *what* to alert on in Prometheus rule files and Alertmanager config. The repo’s `infra/prometheus-alert-rules.yml` is a good starting point.
+- Indexing status
+- Keyword stats
+- Traces
+- RAG query telemetry
 
-Examples of things you might alert on:
+The monitoring stack just decides how much of that you want to aggregate and
+visualize.
 
-- **Cost & tokens**
-  - Token burn spikes (tokens/min)
-  - Sustained high token usage
-  - Approaching monthly budget
-- **API anomalies**
-  - Endpoint call frequency per IP
-  - Suspicious rerank usage
-- **Errors & performance**
-  - Error rate > 5%
-  - Timeouts or rate‑limit bursts
-  - p99 latency > threshold
-- **Retrieval quality**
-  - Canary query pass rate < 90%
-  - MRR below threshold
 
-The thresholds for many of these live in `server/alert_config.py`.
+## Debugging monitoring issues
 
----
+A few practical tips if something looks off in the UI:
 
-## Alert Threshold Configuration (`alert_config.py`)
+!!! tip "Check the config registry first"
+    - Hit the **Admin → General** tab and inspect the effective values
+    - Make sure `REPO`, `OUT_DIR`, and any monitoring-related keys are what
+you expect
 
-`server/alert_config.py` is where I keep **user‑configurable thresholds** that can be used by metrics collection or by rules that generate alerts. It’s a `dataclass` persisted to JSON:
+!!! tip "Look at the raw traces"
+    - Go to `out/<repo>/traces/` and open the latest JSON file
+    - If the UI trace viewer is blank but files exist, it's probably a
+      frontend bug, not a backend one
 
-```python
-@dataclass
-class AlertThresholds:
-    # Cost & Token Burn
-    cost_burn_spike_usd_per_hour: float = 0.10
-    token_burn_spike_per_minute: int = 5000
-    token_burn_sustained_per_minute: int = 2000
+!!! tip "Check index status from the API"
+    - Use `curl` or the CLI to hit the indexing status endpoint
+    - If `_INDEX_STATUS` never updates, the indexer subprocess may be
+      failing early – check logs under `out/<repo>/logs/` or your Docker logs
 
-    # API Anomalies
-    endpoint_call_frequency_per_minute: int = 10
-    endpoint_frequency_sustained_minutes: int = 2
-    cohere_rerank_calls_per_minute: int = 20
-
-    # Error Rates
-    error_rate_threshold_percent: float = 5.0
-    timeout_errors_per_5min: int = 10
-    rate_limit_errors_per_5min: int = 5
-
-    # Performance
-    request_latency_p99_seconds: float = 10.0
-
-    # Monthly Budget
-    monthly_budget_usd: float = 50.0
-    budget_warning_usd: float = 5.0
-    budget_critical_usd: float = 40.0
-
-    # Retrieval Quality
-    retrieval_mrr_threshold: float = 0.6
-    canary_pass_rate_threshold: float = 0.90
-```
-
-- Stored at: `data/config/alert_thresholds.json`
-- Helper functions:
-  - `load_thresholds()` → `AlertThresholds`
-  - `save_thresholds(thresholds: AlertThresholds)` → writes JSON
-  - `get_thresholds()` → `Dict[str, Any]`
-  - `update_threshold(key: str, value: Any)` → bool
-  - `update_multiple_thresholds(updates: Dict[str, Any])` → `Dict[str, bool]`
-
-This is intentionally **simple and local‑first**: just a JSON file you can edit, backed by a small Python API.
-
-??? example "Programmatic threshold update"
-
-    ```python
-    from server.alert_config import update_multiple_thresholds
-
-    updates = {
-        "monthly_budget_usd": 100.0,
-        "error_rate_threshold_percent": 2.5,
-        "request_latency_p99_seconds": 5.0,
-    }
-
-    results = update_multiple_thresholds(updates)
-    # results: {"monthly_budget_usd": True, "error_rate_threshold_percent": True, ...}
-    ```
-
-You can wire these thresholds into:
-
-- Metric exporters (e.g., emit `agro_budget_remaining` or `agro_latency_threshold` gauges)
-- Prometheus rules (e.g., “if actual > threshold, fire alert”)
-
----
-
-## Local Monitoring APIs (server/alerts.py)
-
-AGRO exposes a few internal endpoints for the GUI and for troubleshooting.
-
-### Alert history
-
-#### `GET /api/webhooks/alertmanager/status`
-
-Returns a lightweight view of recent alerts logged to `data/logs/alerts.jsonl`:
-
-```json
-{
-  "total_alerts_logged": 42,
-  "recent_alerts": [
-    {
-      "timestamp": "2025-01-01T00:00:00Z",
-      "alert": { "...": "raw alertmanager alert" }
-    }
-  ],
-  "log_file": "data/logs/alerts.jsonl"
-}
-```
-
-#### `GET /api/monitoring/logs/alerts?limit=100`
-
-Alias for the GUI; same log file, but returns exactly the last `limit` entries:
-
-```json
-{
-  "total_alerts_logged": 100,
-  "recent_alerts": [ { "...": "alert line" } ],
-  "log_file": "data/logs/alerts.jsonl"
-}
-```
-
-### API call logs
-
-#### `GET /api/monitoring/logs/api-calls?limit=100`
-
-Reads from `data/tracking/api_calls.jsonl`:
-
-```json
-{
-  "count": 50,
-  "entries": [
-    {
-      "ts": "...",
-      "route": "/api/query",
-      "model": "gpt-4o",
-      "tokens": 123,
-      "status": 200
-    }
-  ],
-  "log_file": "data/tracking/api_calls.jsonl"
-}
-```
-
-AGRO uses this for basic usage visualizations and for debugging.
-
-### Health snapshot
-
-#### `GET /api/monitoring/health/detailed`
-
-Returns a **fast** health report without hitting external services:
-
-```json
-{
-  "ok": true,
-  "ts": "2025-01-01T00:00:00Z",
-  "alerts_log": {
-    "exists": true,
-    "size": 12345,
-    "recent": 42
-  },
-  "api_calls_log": {
-    "exists": true,
-    "size": 67890,
-    "recent": 500
-  }
-}
-```
-
-This is what the dashboard uses to decide whether to show “monitoring looks healthy” vs. “your logs are missing”.
-
-### Frequency stats & top queries
-
-#### `GET /api/monitoring/frequency-stats`
-
-```python
-@monitoring_router.get("/frequency-stats")
-async def get_frequency_monitoring() -> Dict[str, Any]:
-    """Get endpoint call frequency statistics to detect anomalies."""
-    from server.frequency_limiter import get_frequency_stats
-    return get_frequency_stats()
-```
-
-This endpoint exposes **endpoint call frequency** and is used for:
-
-- Detecting spammy clients
-- Feeding into alert rules (e.g., “same IP hitting /api/query > N times per minute”)
-
-#### `GET /api/monitoring/top-queries?limit=20`
-
-Reads query logs from `AGRO_LOG_PATH` (defaults to `data/logs/queries.jsonl`) and aggregates:
-
-- Total count per query
-- By route
-- By client IP
-
-This is mainly for spotting:
-
-- “test”, “hello”, or other spammy queries
-- Abnormal patterns in what people (or bots) are asking
-
-!!! note
-    The implementation in the snippet is truncated in this doc, but in the repo it builds `counts`, `by_query_route`, and `by_query_ip` from the JSONL log.
-
----
-
-## LangSmith Tracing Integration
-
-AGRO can emit detailed traces for:
-
-- Retrieval steps (BM25, vector search, rerank)
-- Tool calls / MCP usage
-- LLM calls (prompt, response, metadata)
-- End‑to‑end request timelines
-
-Those traces can be sent to **LangSmith** and then visualized in Grafana or LangSmith’s own UI.
-
-Why this matters:
-
-- Prometheus/Grafana are great at “how many” and “how fast”.
-- LangSmith is good at “what exactly happened on this one weird query?”.
-
-The combination lets you:
-
-- Spot anomalies or regressions in Grafana (high latency, low canary pass rate).
-- Jump into LangSmith traces to inspect:
-  - Which docs were retrieved
-  - How the prompt was built
-  - Which tool calls were made
-  - Where the time went
-
-=== "Enabling LangSmith"
-
-    1. Install LangSmith client (usually via LangChain or their SDK).
-    2. Set the required env vars (`LANGCHAIN_TRACING_V2`, `LANGCHAIN_API_KEY`, etc.).
-    3. AGRO’s LangChain‑based components will start emitting traces automatically.
-
-=== "Using LangSmith with Grafana"
-
-    - Option 1: Use Grafana’s JSON/Infinity datasource to call LangSmith’s APIs and plot:
-      - Trace counts over time
-      - Error rates per chain/tool
-    - Option 2: Keep LangSmith as a separate UI and just correlate timestamps with Grafana’s graphs.
-
----
-
-## Why this monitoring stack is worth using
-
-- **Embedded Grafana**: You don’t have to glue together random dashboards; AGRO’s GUI already knows about your metrics and exposes them in one place. You can still go full Grafana power‑user if you want.
-- **Alertmanager → AGRO → Slack/Discord/webhooks**: You define what “bad” means in Prometheus, and AGRO handles the last mile. All the formatting, filtering by severity, and multi‑channel fan‑out is in `server/alerts.py` — easy to read and modify.
-- **Local‑first**: Logs are JSONL files under `data/`, thresholds are a JSON file under `data/config/`, metrics are Prometheus; nothing is hidden behind a SaaS.
-- **Traces + metrics**: LangSmith for deep dives, Prometheus/Grafana for trends and budgets.
-
-If you want to change or extend any of this, AGRO is indexed on itself — open the Chat tab and ask it about `server/alerts.py`, `server/alert_config.py`, or the Prometheus/Grafana config, and it will walk you through the code.
+If you run into something that isn't covered here, remember that **AGRO is
+indexed on itself**. Go to the chat tab and ask it about
+`server/services/config_registry.py`, `server/services/indexing.py`, or any
+other module – the RAG engine will happily walk you through the code.

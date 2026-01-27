@@ -20,7 +20,8 @@ def _resolve_log_path() -> Path:
     if _config_registry is not None:
         _log_path_str = _config_registry.get_str("AGRO_LOG_PATH", "data/logs/queries.jsonl")
     else:
-        _log_path_str = os.getenv("AGRO_LOG_PATH", "data/logs/queries.jsonl")
+        # Fallback when registry not available - should not happen in production
+        _log_path_str = "data/logs/queries.jsonl"
 
     if Path(_log_path_str).is_absolute():
         path = Path(_log_path_str)
