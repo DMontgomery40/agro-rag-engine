@@ -9,14 +9,14 @@
 ## Phase 2: SAFETY BACKUPS ✅ COMPLETE
 
 ### Current Container State
-**Backup File**: `backup-containers.txt`
+**Backup File**: `_archived/docker/backup-containers.txt`
 **Active Containers**: 11 containers running
 **Split Brain**:
 - `rag-service-api` (Exited) - from root compose
 - `agro-api` (Created) - from services compose
 
 ### Named Volumes Discovered
-**Backup File**: `backup-volumes.txt`
+**Backup File**: `_archived/docker/backup-volumes.txt`
 **Volumes Found**:
 - `agro_alertmanager_data`
 - `agro_grafana_data`
@@ -48,7 +48,7 @@
 - **Status**: ✅ Data copied (ownership warnings OK)
 
 ### Docker Compose Configuration
-**Backup File**: `backup-docker-compose-config.yml`
+**Backup File**: `_archived/docker/backup-docker-compose-config.yml`
 **Contains**: Complete merged configuration of current root `docker-compose.yml`
 
 ## Rollback Procedure

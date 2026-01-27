@@ -1,6 +1,6 @@
 # Reranker Training Runbook (Target State)
 
-> **Agents:** confirm you are operating under the policies in [`AGENTS.md`](../../AGENTS.md) before running any command in this runbook.
+> **Agents:** confirm you are operating under the policies in [`AGENTS.md`](../../../.codex/docs/AGENTS.md) before running any command in this runbook.
 
 ## Data Pipeline
 

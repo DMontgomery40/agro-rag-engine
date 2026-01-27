@@ -90,7 +90,7 @@ DOC_PAGES: Dict[str, Dict[str, Any]] = {
         "source_files": [
             "README.md",
             "server/app.py",
-            "CLAUDE.md",
+            ".claude/docs/CLAUDE.md",
         ],
         "instruction": """Write the main landing page for AGRO documentation.
 
@@ -379,7 +379,7 @@ The embedded Grafana and custom alerting are genuinely useful - explain why.""",
         "title": "Troubleshooting",
         "source_files": [
             "README.md",
-            "CLAUDE.md",
+            ".claude/docs/CLAUDE.md",
             "docker-compose.services.yml",
         ],
         "instruction": """Write a troubleshooting guide.

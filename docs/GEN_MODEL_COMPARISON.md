@@ -39,7 +39,7 @@ python scripts/test_token_comparison.py
 Notes
 - The comparison script reports tokens for four approaches; focus on “2. RAG CLI Standalone” for generation head-to-head.
 - If OpenAI embeddings hit quota, retrieval still works with local fallback; this does not affect generation comparison.
-- If you want a larger suite, add questions to `golden.json` and/or duplicate the test list at the bottom of `scripts/test_token_comparison.py`.
+- If you want a larger suite, add questions to `data/golden.json` and/or duplicate the test list at the bottom of `scripts/test_token_comparison.py`.
 
 Optional: structured benchmark
 - Capture wall-clock timings using `/usr/bin/time -lp` or `time.perf_counter()` around graph invocation.

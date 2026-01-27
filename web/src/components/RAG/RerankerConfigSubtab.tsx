@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { useConfig } from '@/hooks/useConfig';
+import { useConfig } from '@/hooks';
 import { useReranker } from '@/hooks/useReranker';
 import { TooltipIcon } from '@/components/ui/TooltipIcon';
 

@@ -39,7 +39,7 @@ ensure_local_port_free() {
   fi
   log "Port ${PORT} already in use by host process(es):"
   lsof -nP -i tcp:${PORT} || true
-  log "Stop the local uvicorn (AGENTS.md lines 93-97) or rerun with DEV_FORCE_KILL_API=1 to auto-kill."
+  log "Stop the local uvicorn (see .codex/docs/AGENTS.md) or rerun with DEV_FORCE_KILL_API=1 to auto-kill."
   exit 1
 }
 

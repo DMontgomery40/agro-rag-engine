@@ -214,7 +214,8 @@ if __name__ == '__main__':
             print(q)
     
     # Save
-    with open('semantic_keywords.json', 'w') as f:
+    Path("data/keywords").mkdir(parents=True, exist_ok=True)
+    with open('data/keywords/semantic_keywords.json', 'w') as f:
         json.dump(all_results, f, indent=2)
     
-    print(f'\n✓ Saved to semantic_keywords.json')
+    print(f'\n✓ Saved to data/keywords/semantic_keywords.json')

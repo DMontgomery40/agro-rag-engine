@@ -1,6 +1,6 @@
 # Reranker Metrics & Observability Plan
 
-> **Agents:** Review [`AGENTS.md`](../AGENTS.md) before working on instrumentation. Every change must keep GUI indicators and accessibility copy in sync with backend metrics.
+> **Agents:** Review [`AGENTS.md`](../../.codex/docs/AGENTS.md) before working on instrumentation. Every change must keep GUI indicators and accessibility copy in sync with backend metrics.
 
 _Last updated: 2025-10-24_
 

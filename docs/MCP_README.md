@@ -162,7 +162,7 @@ Returns:
 
 ## Agent Rules (Codex Behavior)
 
-These rules are documented in [`AGENTS.md`](AGENTS.md) and should be enforced:
+These rules are documented in [`AGENTS.md`](../.codex/docs/AGENTS.md) and should be enforced:
 
 1. **Never assume the user is wrong** about file paths, function names, or code locations
 2. **Always call RAG tools first** before claiming something doesn't exist
@@ -195,7 +195,7 @@ python -m eval.eval_loop --json
 
 ### Adding Golden Test Cases
 
-Edit `golden.json`:
+Edit `data/golden.json`:
 
 ```json
 [

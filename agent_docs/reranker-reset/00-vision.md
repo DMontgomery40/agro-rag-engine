@@ -1,6 +1,6 @@
 # Vision & Scope
 
-> **Always enforce [`AGENTS.md`](../AGENTS.md).** Every agent must follow the global rules (sandbox, approvals, test mandates) before acting on the steps below.
+> **Always enforce [`AGENTS.md`](../../.codex/docs/AGENTS.md).** Every agent must follow the global rules (sandbox, approvals, test mandates) before acting on the steps below.
 
 ## Why This Reset Exists
 

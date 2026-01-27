@@ -131,7 +131,7 @@ def build_plan(base_ref: str) -> str:
     changed = git_diff_names(base_ref)
 
     # Read context files
-    claude_md = _read(ROOT / "CLAUDE.md")
+    claude_md = _read(ROOT / ".claude" / "docs" / "CLAUDE.md") or _read(ROOT / "CLAUDE.md")
     env_example = _read(ROOT / ".env.example")
     readme = _read(ROOT / "README.md")
 

@@ -9,9 +9,9 @@
    - `netlify_deploy(domain)` → trigger Netlify build (your domains; requires `NETLIFY_API_KEY`)
    - `web_get(url, max_bytes)` → HTTP GET for allowlisted hosts (openai.com, platform.openai.com, github.com, openai.github.io)
 3. **Codex Registration** - Register as `rag-service` (recommended)
-4. **Agent Rules** - Updated in `AGENTS.md`
+4. **Agent Rules** - Updated in `.codex/docs/AGENTS.md`
 5. **Eval Loop** - `eval/eval_loop.py` with baselines and regression tracking
-6. **Golden Tests** - `golden.json` with 10 test cases
+6. **Golden Tests** - `data/golden.json` with 10 test cases
 
 ## Before You Start
 
@@ -109,7 +109,7 @@ mcp_server.py
 
 ## Agent Behavior Rules
 
-These are now documented in `AGENTS.md`:
+These are now documented in `.codex/docs/AGENTS.md`:
 
 1. ✗ Never assume user is wrong about paths/functions
 2. ✓ Always call RAG tools first before claiming something doesn't exist
@@ -123,13 +123,13 @@ These are now documented in `AGENTS.md`:
 |------|---------|------|
 | `mcp_server.py` | MCP stdio server | 11KB |
 | `eval/eval_loop.py` | Eval harness with regression tracking | 8KB |
-| `golden.json` | Test cases (10 questions) | 1.4KB |
+| `data/golden.json` | Test cases (10 questions) | 1.4KB |
 | `MCP_README.md` | Full documentation | 5.5KB |
 | `test_mcp.sh` | Manual test script | 2.8KB |
 
 ## Next Steps
 
-1. **Add more golden test cases** to `golden.json`
+1. **Add more golden test cases** to `data/golden.json`
 2. **Run baseline**: `python -m eval.eval_loop --baseline`
 3. **Try in Codex**: Open chat and use `rag_answer` or `rag_search`
 4. **Monitor regressions**: `python -m eval.eval_loop --watch` (runs on code changes)
@@ -154,5 +154,5 @@ These are now documented in `AGENTS.md`:
 ## References
 
 - Full docs: [`MCP_README.md`](MCP_README.md)
-- Agent guidelines: [`AGENTS.md`](AGENTS.md)
+- Agent guidelines: [`AGENTS.md`](../.codex/docs/AGENTS.md)
 - Project runbook: [`new_agents_runbookd.md`](new_agents_runbookd.md)

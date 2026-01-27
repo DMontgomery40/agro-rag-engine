@@ -172,7 +172,7 @@ For a deeper dive into the registry itself, see [Configuration](../configuration
 
 ## 3. Indexing: how code becomes chunks
 
-Retrieval only works if the index is sane. Indexing is orchestrated by `server/services/indexing.py` and the standalone indexer (see `README-INDEXER.md`).
+Retrieval only works if the index is sane. Indexing is orchestrated by `server/services/indexing.py` and the standalone indexer (see `indexer/README.md`).
 
 ```py title="server/services/indexing.py" linenums="1" hl_lines="11-31"
 import asyncio
@@ -267,7 +267,7 @@ def reload_config():
 
 
 def _keywords_path(repo: str) -> Path:
-    return repo_root() / 'data' / 'discriminative_keywords.json'
+    return repo_root() / 'data' / 'keywords' / 'discriminative_keywords.json'
 
 
 def get_keywords(repo: str) -> Dict[str, Any]:
@@ -280,7 +280,7 @@ Why this is useful:
 - For small codebases, plain BM25 is often enough. You can set `KEYWORDS_AUTO_GENERATE=0` and ignore this entire layer.
 - For larger repos, this gives you a cheap, interpretable way to bias retrieval toward “interesting” tokens without retraining the dense model.
 
-The keywords are stored in `data/discriminative_keywords.json` and can be inspected or edited directly if you want full control.
+The keywords are stored in `data/keywords/discriminative_keywords.json` and can be inspected or edited directly if you want full control.
 
 
 ## 5. Hybrid search and reranking
@@ -469,7 +469,7 @@ You don’t need to memorize every config key. A practical tuning order:
 
 4. **Discriminative keywords**
    - Enable `KEYWORDS_AUTO_GENERATE` for large repos.
-   - Inspect `data/discriminative_keywords.json` and adjust thresholds.
+   - Inspect `data/keywords/discriminative_keywords.json` and adjust thresholds.
 
 5. **LangGraph / advanced orchestration**
    - Only once retrieval itself is solid.

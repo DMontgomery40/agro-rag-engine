@@ -383,22 +383,25 @@ class SmartKeywordAnalyzer:
     
     def save_results(self, discriminative: List[Dict], semantic: List[Dict], llm_keywords: List[str]):
         """Save results to JSON files"""
+        out_dir = Path("data") / "keywords"
+        out_dir.mkdir(parents=True, exist_ok=True)
+
         # Save discriminative keywords
-        with open('discriminative_keywords.json', 'w') as f:
+        with open(out_dir / 'discriminative_keywords.json', 'w') as f:
             result = {self.repo_name: [d['term'] for d in discriminative]}
             json.dump(result, f, indent=2)
         
         # Save semantic keywords
-        with open('semantic_keywords.json', 'w') as f:
+        with open(out_dir / 'semantic_keywords.json', 'w') as f:
             result = {self.repo_name: semantic}
             json.dump(result, f, indent=2)
         
         # Save LLM keywords
-        with open('llm_keywords.json', 'w') as f:
+        with open(out_dir / 'llm_keywords.json', 'w') as f:
             result = {self.repo_name: llm_keywords}
             json.dump(result, f, indent=2)
         
-        print(f"✅ Saved keywords to discriminative_keywords.json, semantic_keywords.json, llm_keywords.json")
+        print(f"✅ Saved keywords to {out_dir}/discriminative_keywords.json, {out_dir}/semantic_keywords.json, {out_dir}/llm_keywords.json")
     
     def print_summary(self, discriminative: List[Dict], semantic: List[Dict], llm_keywords: List[str]):
         """Print a summary of the analysis"""

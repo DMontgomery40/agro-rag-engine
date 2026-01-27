@@ -1,6 +1,6 @@
 # Codex CLI Guardrails
 
-> Follow [`AGENTS.md`](../AGENTS.md) first. The profile below enforces those policies for Codex. Full CLI reference: [Codex CLI configuration](https://github.com/openai/codex/blob/main/docs/config.md).
+> Follow [`AGENTS.md`](../../../.codex/docs/AGENTS.md) first. The profile below enforces those policies for Codex. Full CLI reference: [Codex CLI configuration](https://github.com/openai/codex/blob/main/docs/config.md).
 
 - Profile: add to `~/.codex/config.toml`:
   ```toml

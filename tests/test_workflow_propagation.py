@@ -11,8 +11,9 @@ def test_workflow_file_exists():
 
 def test_workflow_contains_required_paths():
     text = WF.read_text()
-    assert "CLAUDE.md" in text
-    assert "AGENTS.md" in text
+    assert ".claude/docs/CLAUDE.md" in text
+    assert ".claude/docs/cursor.rules" in text
+    assert ".codex/docs/AGENTS.md" in text
     assert "README.md" in text
     assert "docs/**" in text
     assert "assets/**" in text

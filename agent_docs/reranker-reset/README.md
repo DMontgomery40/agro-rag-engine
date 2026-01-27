@@ -1,6 +1,6 @@
 # Reranker Reset Program
 
-> **Agents: mandatory reminder** — before acting on anything in this folder, re-read the policies in [`AGENTS.md`](../AGENTS.md). Every workflow and guardrail below assumes those instructions are followed verbatim.
+> **Agents: mandatory reminder** — before acting on anything in this folder, re-read the policies in [`AGENTS.md`](../../.codex/docs/AGENTS.md). Every workflow and guardrail below assumes those instructions are followed verbatim.
 
 This directory is the source of truth for the cross-encoder/reranker consolidation effort. Everything that follows in code must trace back to an explicit item in these docs.
 

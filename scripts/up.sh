@@ -47,7 +47,7 @@ check_host_port_conflict() {
   local listeners
   listeners="$(lsof -ti tcp:${API_PORT} || true)"
   if [ -n "$listeners" ]; then
-    echo "[err] Port ${API_PORT} is already in use by host process(es) and violates AGENTS.md (#96-97)." >&2
+    echo "[err] Port ${API_PORT} is already in use by host process(es) and violates project policy in .codex/docs/AGENTS.md." >&2
     lsof -nP -i tcp:${API_PORT} || true
     echo "[err] Stop the local uvicorn (e.g. 'pkill -f \"uvicorn.*server.app:app\"') or rerun with ALLOW_HOST_API_DUP=1 if you truly intend to override docker." >&2
     exit 1

@@ -2,9 +2,9 @@
 Comprehensive test that React components follow AGRO config migration patterns.
 
 This test verifies the fixes applied by:
-- migrate_config.py (original migration)
-- fix_onchange_handlers.py (onChange handler fixes)
-- fix_config_init.py (useEffect sync initialization)
+- _archived/migrations/migrate_config.py (original migration)
+- _archived/migrations/fix_onchange_handlers.py (onChange handler fixes)
+- _archived/migrations/fix_config_init.py (useEffect sync initialization)
 - pydantic_guard_tests.py (Pydantic model correctness)
 
 It ensures:
@@ -256,7 +256,7 @@ def test_no_bad_onchange_setters():
             f"    {v['pattern']}"
             for v in violations
         ) +
-        "\n\nRun: python fix_onchange_handlers.py <file.tsx>"
+        "\n\nRun: python _archived/migrations/fix_onchange_handlers.py <file.tsx>"
     )
 
 
@@ -422,7 +422,7 @@ def test_migrate_config_patterns():
             "\n".join(f"    - {issue}" for issue in v['issues'])
             for v in violations
         ) +
-        "\n\nRun: python migrate_config.py <file.tsx>"
+        "\n\nRun: python _archived/migrations/migrate_config.py <file.tsx>"
     )
 
 
@@ -584,21 +584,26 @@ def test_parameter_coverage():
     
     # Verify AGRO_CONFIG_KEYS matches (accounting for legacy aliases)
     declared_count = len(AGRO_CONFIG_KEYS)
-    # Known legacy aliases that are in to_flat_dict() but not AGRO_CONFIG_KEYS
-    known_legacy_aliases = {'MQ_REWRITES'}
-    expected_count = declared_count + len(known_legacy_aliases)
+    flat_keys = set(flat.keys())
+    allowed_legacy_aliases = {'MQ_REWRITES'}
+    actual_legacy_aliases = flat_keys - AGRO_CONFIG_KEYS
+
+    assert actual_legacy_aliases <= allowed_legacy_aliases, (
+        "Found unexpected legacy aliases in to_flat_dict() not present in AGRO_CONFIG_KEYS:\n"
+        f"  {sorted(actual_legacy_aliases - allowed_legacy_aliases)}\n"
+        "Update AGRO_CONFIG_KEYS (or update this allowlist) to match."
+    )
+
+    expected_count = declared_count + len(actual_legacy_aliases)
     
     assert actual_count == expected_count, (
         f"to_flat_dict() has {actual_count} keys but "
-        f"AGRO_CONFIG_KEYS has {declared_count} (+ {len(known_legacy_aliases)} legacy aliases = {expected_count}). "
+        f"AGRO_CONFIG_KEYS has {declared_count} (+ {len(actual_legacy_aliases)} legacy aliases = {expected_count}). "
         f"Update AGRO_CONFIG_KEYS to match."
     )
     
     # Verify all keys in flat dict are in AGRO_CONFIG_KEYS
-    flat_keys = set(flat.keys())
-    # Known legacy aliases that are in to_flat_dict() but not AGRO_CONFIG_KEYS
-    known_legacy_aliases = {'MQ_REWRITES'}
-    missing = flat_keys - AGRO_CONFIG_KEYS - known_legacy_aliases
+    missing = flat_keys - AGRO_CONFIG_KEYS - allowed_legacy_aliases
     
     assert len(missing) == 0, (
         f"Found {len(missing)} keys in to_flat_dict() not in AGRO_CONFIG_KEYS:\n"

@@ -1,6 +1,6 @@
 # Terminology Migration Audit
 
-> **Agents:** Re-read [`AGENTS.md`](../AGENTS.md) before attempting any rename. Accessibility rules require the GUI, backend APIs, docs, and tests to stay in lockstep. Do **not** ship partial terminology changes.
+> **Agents:** Re-read [`AGENTS.md`](../../.codex/docs/AGENTS.md) before attempting any rename. Accessibility rules require the GUI, backend APIs, docs, and tests to stay in lockstep. Do **not** ship partial terminology changes.
 
 _Last updated: 2025-10-24_
 

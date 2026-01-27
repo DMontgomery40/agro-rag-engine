@@ -1,6 +1,6 @@
 # Branch Governance & Controls
 
-> **Reminder:** enforce [`AGENTS.md`](../../AGENTS.md) before following any procedure here. Sandbox mode, approval policies, and testing rules there remain in force.
+> **Reminder:** enforce [`AGENTS.md`](../../../.codex/docs/AGENTS.md) before following any procedure here. Sandbox mode, approval policies, and testing rules there remain in force.
 
 ## Branch Strategy
 

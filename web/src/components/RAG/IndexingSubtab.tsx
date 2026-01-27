@@ -14,7 +14,7 @@
  */
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { useConfig } from '@/hooks/useConfig';
+import { useConfig } from '@/hooks';
 import { useEmbeddingStatus } from '@/hooks/useEmbeddingStatus';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { useRepoStore } from '@/stores/useRepoStore';

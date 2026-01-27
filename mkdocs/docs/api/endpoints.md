@@ -285,7 +285,7 @@ Typical keyword‑related endpoints:
 - `GET /api/keywords` – list current discriminative keywords for a repo
 - `POST /api/keywords/rebuild` – force regeneration, ignoring the refresh window
 
-Responses are backed by JSON files under `data/discriminative_keywords.json` and per‑repo keyword caches under `data/`.
+Responses are backed by JSON files under `data/keywords/discriminative_keywords.json` and per‑repo keyword caches under `data/`.
 
 
 ## RAG & Search Endpoints
