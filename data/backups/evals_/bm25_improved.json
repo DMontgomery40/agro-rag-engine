@@ -1,8 +1,0 @@
-{
-  "total": 52,
-  "top1": 30,
-  "topk": 44,
-  "final_k": 5,
-  "use_multi": true,
-  "secs": 355.48
-}
