@@ -3,12 +3,12 @@ from typing import Dict, Any
 from fastapi import APIRouter, HTTPException
 from server.utils import read_json, atomic_write_json
 from common.paths import gui_dir
-from server.services.config_store import get_config
+from server.services.config_store import get_config, models_get
 
 router = APIRouter()
 
-def _read_prices() -> Dict[str, Any]:
-    return read_json(gui_dir() / "prices.json", {"models": []})
+def _read_models() -> Dict[str, Any]:
+    return models_get()
 
 @router.get("/api/profiles")
 def profiles_list() -> Dict[str, Any]:
@@ -57,15 +57,15 @@ except Exception:
 def api_profile_autoselect(payload: Dict[str, Any]):
     if _ap_select is None:
         raise HTTPException(status_code=500, detail="autoprofile module not available")
-    prices = _read_prices()
-    env, reason = _ap_select(payload, prices)
+    models = _read_models()
+    env, reason = _ap_select(payload, models)
     if not env:
         raise HTTPException(status_code=422, detail=reason)
     return {"env": env, "reason": reason}
 
 @router.post("/api/checkpoint/config")
 def checkpoint_config() -> Dict[str, Any]:
-    """Write a timestamped checkpoint of current env + repos to gui/profiles."""
+    """Write a timestamped checkpoint of current env + repos to web/public/profiles."""
     cfg = get_config()
     from datetime import datetime
     ts = datetime.now().strftime('%Y%m%d-%H%M%S')
@@ -74,4 +74,3 @@ def checkpoint_config() -> Dict[str, Any]:
     path = out_dir / f"checkpoint-{ts}.json"
     atomic_write_json(path, cfg)
     return {"ok": True, "path": str(path)}
-

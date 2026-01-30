@@ -11,13 +11,13 @@ function resolveAPIBase(): string {
     const override = q.get('api');
     if (override) return override.replace(/\/$/, '');
     
-    // If on Vite dev server (ports 5170-5179), talk directly to backend on 8012
+    // If on the Vite dev server (ports 5170-5179), talk directly to backend on 8012
     const port = u.port || '';
     if (port && /^517[0-9]$/.test(port)) {
       return 'http://127.0.0.1:8012/api';
     }
     
-    // If protocol is http/https but not Vite dev port, use same origin
+    // If the protocol is http/https but not Vite dev port, use the same origin
     if (u.protocol.startsWith('http')) {
       return (u.origin.replace(/\/$/, '')) + '/api';
     }
@@ -30,7 +30,7 @@ function resolveAPIBase(): string {
   }
 }
 
-// Get API base URL from env or resolve dynamically
+// TODO:  THIS SHOULD BE PYDANTIC
 const API_BASE = import.meta.env.VITE_API_BASE || resolveAPIBase();
 
 // Create axios instance with defaults
@@ -57,7 +57,39 @@ export const api = (path: string): string => {
 };
 
 // Helper to build full API URLs for fetch
+// Handles paths like '/api/models' or '/models' or 'models'
 export const apiUrl = (path: string): string => {
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  return `${API_BASE}${normalizedPath}`;
+  const p = String(path || '');
+  // If path starts with /api/, strip it since API_BASE already ends with /api
+  if (p.startsWith('/api/')) return `${API_BASE}${p.slice(4)}`;
+  // If path starts with /, append directly
+  if (p.startsWith('/')) return `${API_BASE}${p}`;
+  // Otherwise add leading slash
+  return `${API_BASE}/${p}`;
 };
+
+// Expose window.CoreUtils for legacy JS modules during migration
+// This replaces /modules/core-utils.js
+if (typeof window !== 'undefined') {
+  // Legacy state object - kept for modules that still access it
+  // New code should use Zustand stores (useConfigStore, useRepoStore)
+  const legacyState = {
+    models: null as any,
+    config: null as any,
+    profiles: [] as any[],
+    defaultProfile: null as any,
+  };
+
+  (window as any).CoreUtils = {
+    API_BASE,
+    api: apiUrl, // Legacy modules expect api() to return full URL
+    $: (sel: string) => document.querySelector(sel),
+    $$: (sel: string) => Array.from(document.querySelectorAll(sel)),
+    state: legacyState
+  };
+
+  // Also expose API_BASE directly on window for diagnostics
+  (window as any).API_BASE = API_BASE;
+
+  console.log('[CoreUtils] Loaded from TypeScript client - API:', API_BASE);
+}

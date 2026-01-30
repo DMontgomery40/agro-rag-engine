@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from pydantic import ValidationError
 
-from common.config_loader import load_repos
+from common.config_loader import _load_repos_raw
 from common.paths import repo_root, gui_dir
 from server.services.config_registry import get_config_registry
 from server.models.agro_config_model import AGRO_CONFIG_KEYS
@@ -19,12 +19,22 @@ SECRET_FIELDS = {
     'COHERE_API_KEY', 'VOYAGE_API_KEY', 'LANGSMITH_API_KEY',
     'LANGCHAIN_API_KEY', 'LANGTRACE_API_KEY', 'NETLIFY_API_KEY',
     'OAUTH_TOKEN', 'GRAFANA_API_KEY', 'GRAFANA_AUTH_TOKEN',
-    'MCP_API_KEY'
+    'MCP_API_KEY', 'JINA_API_KEY', 'DEEPSEEK_API_KEY', 'MISTRAL_API_KEY',
+    'XAI_API_KEY', 'GROQ_API_KEY', 'FIREWORKS_API_KEY'
 }
 
 
-def _atomic_write_text(path: Path, content: str) -> None:
+def _atomic_write_text(path: Path, content: str, max_retries: int = 3) -> None:
+    """Atomically write text to a file with fallback for Docker volume mounts.
+    
+    Docker Desktop on macOS can fail with 'Device or resource busy' on os.replace()
+    when the file is being watched. We try atomic first, then fall back to direct write.
+    """
+    import time
+    
     path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Try atomic write first (safe against corruption on crash)
     fd, tmp_path_str = tempfile.mkstemp(dir=path.parent, prefix=path.name, suffix=".tmp")
     tmp_path = Path(tmp_path_str)
     try:
@@ -32,12 +42,31 @@ def _atomic_write_text(path: Path, content: str) -> None:
             fh.write(content)
             fh.flush()
             os.fsync(fh.fileno())
-        os.replace(tmp_path, path)
+        
+        # Try os.replace with retries
+        for attempt in range(max_retries):
+            try:
+                os.replace(tmp_path, path)
+                return  # Success
+            except OSError as e:
+                if e.errno == 16:  # EBUSY - Device or resource busy
+                    time.sleep(0.05 * (attempt + 1))
+                else:
+                    raise
+        
+        # Atomic failed - fall back to direct write (less safe but works on Docker)
+        # This can cause brief inconsistency if read during write, but won't corrupt
+        logger.warning(f"Atomic write failed for {path}, falling back to direct write")
+        with open(path, 'w', encoding='utf-8') as fh:
+            fh.write(content)
+            fh.flush()
+            os.fsync(fh.fileno())
+            
     finally:
         if tmp_path.exists():
             try:
                 tmp_path.unlink()
-            except FileNotFoundError:
+            except (FileNotFoundError, OSError):
                 pass
 
 
@@ -60,6 +89,11 @@ def env_reload() -> Dict[str, Any]:
 
 
 def secrets_ingest(text: str, persist: bool) -> Dict[str, Any]:
+    """Ingest secrets from uploaded text - RUNTIME ONLY, NEVER writes to .env.
+    
+    User must manually edit .env file to persist secrets.
+    This only applies them to os.environ for the current session.
+    """
     applied: Dict[str, str] = {}
     for line in text.splitlines():
         s = line.strip()
@@ -73,67 +107,48 @@ def secrets_ingest(text: str, persist: bool) -> Dict[str, Any]:
         os.environ[k] = v
         applied[k] = v
 
-    saved = False
+    # NEVER write to .env - user must manually edit it
+    # The persist parameter is ignored - we never persist secrets programmatically
     if persist:
-        env_path = repo_root() / ".env"
-        existing: Dict[str, str] = {}
-        if env_path.exists():
-            for ln in env_path.read_text().splitlines():
-                if not ln.strip() or ln.strip().startswith("#") or "=" not in ln:
-                    continue
-                kk, vv = ln.split("=", 1)
-                existing[kk.strip()] = vv.strip()
-        existing.update(applied)
-        _atomic_write_text(env_path, "\n".join(f"{k}={existing[k]}" for k in sorted(existing.keys())) + "\n")
-        saved = True
+        logger.warning("secrets_ingest: persist=True ignored - .env is NEVER written programmatically")
 
-    return {"ok": True, "applied": sorted(applied.keys()), "persisted": saved}
+    return {
+        "ok": True, 
+        "applied": sorted(applied.keys()), 
+        "persisted": False,  # Always false - we never write to .env
+        "message": "Secrets applied to runtime only. To persist, manually edit .env file."
+    }
 
 
 def save_mcp_key(key: str) -> Dict[str, Any]:
-    """Save MCP API key to .env file.
+    """Apply MCP API key to runtime - NEVER writes to .env.
+    
+    User must manually add MCP_API_KEY to .env file to persist.
+    This only applies it to os.environ for the current session.
 
     Args:
         key: MCP API key value
 
     Returns:
         Success status
-
-    Security:
-        - Key is written to .env (not logged)
-        - Updates both file and os.environ for immediate effect
     """
     try:
-        env_path = repo_root() / ".env"
-
-        # Read existing .env
-        existing: Dict[str, str] = {}
-        if env_path.exists():
-            for line in env_path.read_text().splitlines():
-                if not line.strip() or line.strip().startswith("#") or "=" not in line:
-                    continue
-                k, v = line.split("=", 1)
-                existing[k.strip()] = v.strip()
-
-        # Update or append MCP_API_KEY
+        # NEVER write to .env - only apply to os.environ for runtime
         key_name = "MCP_API_KEY"
-        existing[key_name] = key
-
-        # Write back atomically
-        _atomic_write_text(env_path, "\n".join(f"{k}={existing[k]}" for k in sorted(existing.keys())) + "\n")
-
-        # Update os.environ for immediate effect
         os.environ[key_name] = key
 
-        logger.info("MCP API key saved successfully")  # Don't log the actual key!
-        return {"status": "success", "message": "MCP API key saved"}
+        logger.info("MCP API key applied to runtime (NOT persisted to .env)")
+        return {
+            "status": "success", 
+            "message": "MCP API key applied to runtime. To persist, manually add to .env file."
+        }
 
     except Exception as e:
-        logger.error(f"Failed to save MCP key: {e}")  # Don't log the actual key!
-        return {"status": "error", "message": "Failed to save API key"}
+        logger.error(f"Failed to apply MCP key: {e}")
+        return {"status": "error", "message": "Failed to apply API key"}
 
 
-def _effective_rerank_backend() -> Dict[str, Any]:
+def _effective_rerank_mode() -> Dict[str, Any]:
     try:
         from server.learning_reranker import get_reranker_info
     except Exception:
@@ -141,42 +156,45 @@ def _effective_rerank_backend() -> Dict[str, Any]:
             return {}
     import time
     registry = get_config_registry()
-    backend_env_raw = (
-        registry.get_str("RERANKER_BACKEND", "").strip().lower()
-        or registry.get_str("RERANK_BACKEND", "").strip().lower()
-        or ""
-    )
-    def _norm_backend(val: str) -> str:
+    
+    mode_raw = registry.get_str("RERANKER_MODE", "").strip().lower()
+    provider_raw = registry.get_str("RERANKER_CLOUD_PROVIDER", "").strip().lower()
+    cloud_model = registry.get_str("RERANKER_CLOUD_MODEL", "").strip()
+    
+    def _norm_mode(val: str) -> str:
         if not val:
             return ""
-        if val in {"off", "none", "disabled"}:
+        if val in {"off", "disabled"}:
             return "none"
-        if val == "hf":
-            return "local"
         return val
 
-    backend_env = _norm_backend(backend_env_raw)
+    mode = _norm_mode(mode_raw)
     now = time.time()
     try:
         info = get_reranker_info()
     except Exception:
         info = {}
-    explicit = bool(backend_env)
+    explicit = bool(mode)
     mtime = float(info.get("model_dir_mtime") or 0.0)
     recent = (now - mtime) <= (7 * 24 * 3600) if mtime > 0 else False
-    # COHERE_API_KEY is a secret, keep os.getenv
-    cohere = bool((os.getenv("COHERE_API_KEY", "") or "").strip())
-    path = info.get("resolved_path") or info.get("path") or registry.get_str("AGRO_RERANKER_MODEL_PATH", "models/cross-encoder-agro")
+    
+    cloud_key_present = False
+    if provider_raw:
+        api_key_env = f"{provider_raw.upper()}_API_KEY"
+        cloud_key_present = bool((os.getenv(api_key_env, "") or "").strip())
+    
+    path = info.get("resolved_path") or info.get("path") or registry.get_str("RERANKER_LOCAL_MODEL", "models/cross-encoder-agro")
     local_present = bool(str(path)) and os.path.exists(str(path))
+    
     if explicit:
-        return {"backend": backend_env, "reason": "explicit_env"}
+        return {"reranker_mode": mode, "reranker_cloud_provider": provider_raw if mode == "cloud" else "", "reranker_cloud_model": cloud_model, "reason": "explicit_env"}
     if recent:
-        return {"backend": "local", "reason": "recent_local_model"}
-    if cohere:
-        return {"backend": "cohere", "reason": "cohere_key_present"}
+        return {"reranker_mode": "learning", "reranker_cloud_provider": "", "reranker_cloud_model": "", "reason": "recent_local_model"}
+    if cloud_key_present and provider_raw:
+        return {"reranker_mode": "cloud", "reranker_cloud_provider": provider_raw, "reranker_cloud_model": cloud_model, "reason": "cloud_key_present"}
     if local_present:
-        return {"backend": "local", "reason": "local_model_present"}
-    return {"backend": "none", "reason": "no_reranker_available"}
+        return {"reranker_mode": "local", "reranker_cloud_provider": "", "reranker_cloud_model": "", "reason": "local_model_present"}
+    return {"reranker_mode": "none", "reranker_cloud_provider": "", "reranker_cloud_model": "", "reason": "no_reranker_available"}
 
 
 def get_config(unmask: bool = False) -> Dict[str, Any]:
@@ -187,7 +205,7 @@ def get_config(unmask: bool = False) -> Dict[str, Any]:
     payload so the API does not 500.
     """
     try:
-        cfg = load_repos() or {}
+        cfg = _load_repos_raw() or {}
     except Exception:
         cfg = {"default_repo": None, "repos": []}
 
@@ -238,9 +256,9 @@ def get_config(unmask: bool = False) -> Dict[str, Any]:
 
     hints: Dict[str, Any] = {}
     try:
-        hints["rerank_backend"] = _effective_rerank_backend()
+        hints["reranker_mode"] = _effective_rerank_mode()
     except Exception:
-        hints["rerank_backend"] = {"backend": "none", "reason": "probe_failed"}
+        hints["reranker_mode"] = {"reranker_mode": "none", "reranker_cloud_provider": "", "reranker_cloud_model": "", "reason": "probe_failed"}
 
     # Add config source metadata for debugging/UI
     try:
@@ -271,9 +289,11 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
     env_updates: Dict[str, Any] = dict(payload.get("env") or {})
     repos_updates: List[Dict[str, Any]] = list(payload.get("repos") or [])
 
-    # Split env_updates into agro_config and .env based on AGRO_CONFIG_KEYS
+    # ALL config updates go to agro_config.json - NEVER write to .env
+    # .env is for secrets ONLY and must be manually edited by user
     agro_config_updates = {k: v for k, v in env_updates.items() if k in AGRO_CONFIG_KEYS}
-    env_file_updates = {k: v for k, v in env_updates.items() if k not in AGRO_CONFIG_KEYS}
+    # Non-AGRO keys go to os.environ for runtime only, NOT persisted to .env
+    runtime_only_updates = {k: v for k, v in env_updates.items() if k not in AGRO_CONFIG_KEYS}
     validation_error: Optional[str] = None
 
     # Update agro_config.json if there are relevant updates
@@ -298,45 +318,25 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
             "repos_count": 0
         }
 
-    # Backup .env
-    env_path = root / ".env"
-    if env_path.exists() and env_file_updates:
-        from datetime import datetime
-        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        backup_path = root / f".env.backup-{timestamp}"
-        try:
-            import shutil
-            shutil.copy2(env_path, backup_path)
-        except Exception as e:
-            logger.warning(".env backup failed: %s", e)
-
-    # Upsert .env in memory copy (only for non-AGRO keys)
-    existing: Dict[str, str] = {}
-    if env_path.exists():
-        for line in env_path.read_text().splitlines():
-            if not line.strip() or line.strip().startswith("#") or "=" not in line:
-                continue
-            k, v = line.split("=", 1)
-            existing[k.strip()] = v.strip()
-    for k, v in env_file_updates.items():
-        if v is None:
-            existing.pop(k, None)
-        else:
-            existing[k] = str(v)
-        # also apply to process env
+    # NEVER WRITE TO .env - it is for secrets only and must be manually edited
+    # Apply runtime-only updates to os.environ (NOT persisted)
+    for k, v in runtime_only_updates.items():
+        # Skip masked values entirely
+        if v == '••••••••••••••••' or str(v).startswith('••••'):
+            continue
         if v is None:
             os.environ.pop(k, None)
         else:
             os.environ[k] = str(v)
-
-    # Write .env if there were updates
-    if env_file_updates:
-        _atomic_write_text(env_path, "\n".join(f"{k}={existing[k]}" for k in sorted(existing.keys())) + "\n")
+    
+    # Log what we did NOT persist
+    if runtime_only_updates:
+        logger.info(f"Applied {len(runtime_only_updates)} runtime-only updates (NOT persisted to .env)")
 
     # Upsert repos.json
     repos_path = root / "repos.json"
     cfg = _read_json(repos_path, {"default_repo": None, "repos": []})
-    default_repo = env_file_updates.get("REPO") or cfg.get("default_repo")
+    default_repo = runtime_only_updates.get("REPO") or cfg.get("default_repo")
     by_name: Dict[str, Dict[str, Any]] = {str(r.get("name")): r for r in cfg.get("repos", []) if r.get("name")}
     for r in repos_updates:
         name = str(r.get("name") or "").strip()
@@ -362,7 +362,7 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     return {
         "status": "success",
-        "applied_env_keys": sorted(existing.keys()),
+        "applied_runtime_keys": sorted(runtime_only_updates.keys()),  # NOT persisted to .env
         "applied_agro_config_keys": sorted(agro_config_updates.keys()),
         "repos_count": len(new_cfg.get("repos", []))
     }
@@ -370,18 +370,24 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 def repos_all() -> Dict[str, Any]:
     try:
-        cfg = load_repos()
+        cfg = _load_repos_raw()
         return {"default_repo": cfg.get("default_repo"), "repos": cfg.get("repos", [])}
     except Exception:
         return {"default_repo": None, "repos": []}
 
 
 def repos_get(repo_name: str) -> Optional[Dict[str, Any]]:
-    cfg = load_repos()
+    cfg = _load_repos_raw()
     for repo in cfg.get("repos", []):
         if str(repo.get("name", "")).lower() == repo_name.lower():
             return repo
     return None
+
+
+def _get_repo_indexing_allowed_keys() -> set:
+    """Get allowed keys for per-repo indexing config from Pydantic model."""
+    from server.models.repo_model import RepoIndexingConfig
+    return set(RepoIndexingConfig.model_fields.keys())
 
 
 def repos_patch(repo_name: str, payload: Dict[str, Any]) -> bool:
@@ -400,6 +406,15 @@ def repos_patch(repo_name: str, payload: Dict[str, Any]) -> bool:
                 repo["layer_bonuses"] = payload["layer_bonuses"]
             if "exclude_paths" in payload and isinstance(payload["exclude_paths"], list):
                 repo["exclude_paths"] = [str(x) for x in payload["exclude_paths"]]
+            # Per-repo indexing config overrides - keys validated against Pydantic models
+            if "indexing" in payload and isinstance(payload["indexing"], dict):
+                indexing_update = payload["indexing"]
+                existing_indexing = repo.get("indexing", {})
+                # Merge update into existing (don't replace wholesale)
+                merged_indexing = {**existing_indexing, **indexing_update}
+                # Filter to only Pydantic-defined keys
+                allowed_keys = _get_repo_indexing_allowed_keys()
+                repo["indexing"] = {k: v for k, v in merged_indexing.items() if k in allowed_keys}
             _write_json(repos_path, cfg)
             return True
     return False
@@ -455,7 +470,7 @@ def _classify_components(m: Dict[str, Any]) -> list[str]:
     return sorted(list(set(comps)))
 
 
-def _normalize_prices(data: Dict[str, Any]) -> Dict[str, Any]:
+def _normalize_models(data: Dict[str, Any]) -> Dict[str, Any]:
     try:
         models = list(data.get("models", [])) if isinstance(data, dict) else []
         out: list[Dict[str, Any]] = []
@@ -474,18 +489,18 @@ def _normalize_prices(data: Dict[str, Any]) -> Dict[str, Any]:
         new["models"] = out
         return new
     except Exception:
-        return _default_prices()
+        return _default_models()
 
 
-def prices_get() -> Dict[str, Any]:
-    raw = _read_json(gui_dir() / "prices.json", {"models": []})
-    data = raw if (raw and isinstance(raw, dict) and raw.get("models")) else _default_prices()
-    return _normalize_prices(data)
+def models_get() -> Dict[str, Any]:
+    raw = _read_json(gui_dir() / "models.json", {"models": []})
+    data = raw if (raw and isinstance(raw, dict) and raw.get("models")) else _default_models()
+    return _normalize_models(data)
 
 
-def prices_upsert(item: Dict[str, Any]) -> Dict[str, Any]:
-    prices_path = gui_dir() / "prices.json"
-    data = _read_json(prices_path, {"models": []})
+def models_upsert(item: Dict[str, Any]) -> Dict[str, Any]:
+    models_path = gui_dir() / "models.json"
+    data = _read_json(models_path, {"models": []})
     models: List[Dict[str, Any]] = list(data.get("models", []))
     key = (str(item.get("provider")), str(item.get("model")))
     idx = next((i for i, m in enumerate(models) if (str(m.get("provider")), str(m.get("model"))) == key), None)
@@ -499,11 +514,11 @@ def prices_upsert(item: Dict[str, Any]) -> Dict[str, Any]:
             models[i]["components"] = _classify_components(models[i])
     data["models"] = models
     data["last_updated"] = __import__('datetime').datetime.now().strftime('%Y-%m-%d')
-    _write_json(prices_path, data)
+    _write_json(models_path, data)
     return {"ok": True, "count": len(models)}
 
 
-def _default_prices() -> Dict[str, Any]:
+def _default_models() -> Dict[str, Any]:
     return {
         "last_updated": "2025-10-10",
         "currency": "USD",
@@ -548,7 +563,7 @@ def config_schema() -> Dict[str, Any]:
             pass
         return data
 
-    repos_cfg = load_repos()
+    repos_cfg = _load_repos_raw()
     default_repo = repos_cfg.get("default_repo")
 
     schema: Dict[str, Any] = {
@@ -573,6 +588,7 @@ def config_schema() -> Dict[str, Any]:
                 "properties": {
                     "FINAL_K": {"type": "integer", "title": "Top-K", "minimum": 1},
                     "LANGGRAPH_FINAL_K": {"type": "integer", "title": "LangGraph Top-K", "minimum": 1},
+                    "LANGGRAPH_MAX_QUERY_REWRITES": {"type": "integer", "title": "LangGraph Max Rewrites", "minimum": 1, "maximum": 10},
                     "MQ_REWRITES": {"type": "integer", "title": "Multi-Query Rewrites", "minimum": 1, "maximum": 10},
                     "SKIP_DENSE": {"type": "boolean", "title": "Skip Dense Embeddings"},
                 },
@@ -580,11 +596,10 @@ def config_schema() -> Dict[str, Any]:
             "reranker": {
                 "type": "object",
                 "properties": {
-                    "AGRO_RERANKER_ENABLED": {"type": "boolean", "title": "Enable Reranker"},
-                    "RERANK_BACKEND": {"type": "string", "enum": ["", "cloud", "hf", "local", "learning"], "title": "Backend"},
-                    "RERANK_MODEL": {"type": "string", "title": "Local HF Model (when hf/local)"},
-                    "COHERE_RERANK_MODEL": {"type": "string", "title": "Cohere Model (when cloud)"},
-                    "VOYAGE_RERANK_MODEL": {"type": "string", "title": "Voyage Model (when cloud)"},
+                    "RERANKER_MODE": {"type": "string", "enum": ["cloud", "local", "learning", "none"], "title": "Mode"},
+                    "RERANKER_CLOUD_PROVIDER": {"type": "string", "enum": ["", "cohere", "voyage", "jina"], "title": "Cloud Provider"},
+                    "RERANKER_CLOUD_MODEL": {"type": "string", "title": "Cloud Model"},
+                    "RERANKER_LOCAL_MODEL": {"type": "string", "title": "Local Model"},
                     "RERANK_TOP_K": {"type": "integer", "title": "Rerank Top-K", "minimum": 1},
                 },
             },
@@ -627,11 +642,23 @@ def config_schema() -> Dict[str, Any]:
                     "default_repo": {"type": "string", "title": "Default Repo"},
                 },
             },
+            "docker": {
+                "type": "object",
+                "properties": {
+                    "DOCKER_STATUS_TIMEOUT": {"type": "integer", "title": "Status Check Timeout (s)", "minimum": 1, "maximum": 30},
+                    "DOCKER_CONTAINER_LIST_TIMEOUT": {"type": "integer", "title": "Container List Timeout (s)", "minimum": 1, "maximum": 60},
+                    "DOCKER_CONTAINER_ACTION_TIMEOUT": {"type": "integer", "title": "Container Action Timeout (s)", "minimum": 5, "maximum": 120},
+                    "DOCKER_INFRA_UP_TIMEOUT": {"type": "integer", "title": "Infra Up Timeout (s)", "minimum": 30, "maximum": 300},
+                    "DOCKER_INFRA_DOWN_TIMEOUT": {"type": "integer", "title": "Infra Down Timeout (s)", "minimum": 10, "maximum": 120},
+                    "DOCKER_LOGS_TAIL": {"type": "integer", "title": "Log Lines to Tail", "minimum": 10, "maximum": 1000},
+                    "DOCKER_LOGS_TIMESTAMPS": {"type": "integer", "title": "Include Log Timestamps (0/1)", "minimum": 0, "maximum": 1},
+                },
+            },
         },
     }
 
     ui: Dict[str, Any] = {
-        "order": ["generation", "retrieval", "reranker", "enrichment", "repo", "vscode", "grafana"],
+        "order": ["generation", "retrieval", "reranker", "enrichment", "repo", "vscode", "grafana", "docker"],
         "titles": {
             "generation": {"title": "Generation"},
             "retrieval": {"title": "Retrieval"},
@@ -640,16 +667,11 @@ def config_schema() -> Dict[str, Any]:
             "repo": {"title": "Repository"},
             "vscode": {"title": "VSCode"},
             "grafana": {"title": "Grafana"},
+            "docker": {"title": "Docker"},
         },
     }
 
-    SECRET_FIELDS = {
-        'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GOOGLE_API_KEY',
-        'COHERE_API_KEY', 'VOYAGE_API_KEY', 'LANGSMITH_API_KEY',
-        'LANGCHAIN_API_KEY', 'LANGTRACE_API_KEY', 'NETLIFY_API_KEY',
-        'OAUTH_TOKEN', 'GRAFANA_API_KEY', 'GRAFANA_AUTH_TOKEN',
-        'MCP_API_KEY'
-    }
+    # Use global SECRET_FIELDS (defined at module top)
 
     ed = _read_editor_settings()
     registry = get_config_registry()
@@ -666,15 +688,18 @@ def config_schema() -> Dict[str, Any]:
         "retrieval": {
             "FINAL_K": registry.get_int("FINAL_K", registry.get_int("LANGGRAPH_FINAL_K", 10)),
             "LANGGRAPH_FINAL_K": registry.get_int("LANGGRAPH_FINAL_K", registry.get_int("FINAL_K", 10)),
+            "LANGGRAPH_MAX_QUERY_REWRITES": registry.get_int(
+                "LANGGRAPH_MAX_QUERY_REWRITES",
+                registry.get_int("MAX_QUERY_REWRITES", 2)
+            ),
             "MQ_REWRITES": registry.get_int("MQ_REWRITES", 2),
             "SKIP_DENSE": registry.get_bool("SKIP_DENSE", False),
         },
         "reranker": {
-            "AGRO_RERANKER_ENABLED": registry.get_bool("AGRO_RERANKER_ENABLED", False),
-            "RERANK_BACKEND": registry.get_str("RERANK_BACKEND", ""),
-            "RERANK_MODEL": registry.get_str("RERANK_MODEL", ""),
-            "COHERE_RERANK_MODEL": registry.get_str("COHERE_RERANK_MODEL", ""),
-            "VOYAGE_RERANK_MODEL": registry.get_str("VOYAGE_RERANK_MODEL", ""),
+            "RERANKER_MODE": registry.get_str("RERANKER_MODE", "none"),
+            "RERANKER_CLOUD_PROVIDER": registry.get_str("RERANKER_CLOUD_PROVIDER", ""),
+            "RERANKER_CLOUD_MODEL": registry.get_str("RERANKER_CLOUD_MODEL", ""),
+            "RERANKER_LOCAL_MODEL": registry.get_str("RERANKER_LOCAL_MODEL", ""),
             "RERANK_TOP_K": registry.get_int("RERANK_TOP_K", 0) or None,
         },
         "enrichment": {
@@ -703,6 +728,15 @@ def config_schema() -> Dict[str, Any]:
             "REPO": registry.get_str("REPO", default_repo or "agro"),
             "GIT_BRANCH": registry.get_str("GIT_BRANCH", ""),
             "default_repo": default_repo,
+        },
+        "docker": {
+            "DOCKER_STATUS_TIMEOUT": registry.get_int("DOCKER_STATUS_TIMEOUT", 5),
+            "DOCKER_CONTAINER_LIST_TIMEOUT": registry.get_int("DOCKER_CONTAINER_LIST_TIMEOUT", 10),
+            "DOCKER_CONTAINER_ACTION_TIMEOUT": registry.get_int("DOCKER_CONTAINER_ACTION_TIMEOUT", 30),
+            "DOCKER_INFRA_UP_TIMEOUT": registry.get_int("DOCKER_INFRA_UP_TIMEOUT", 60),
+            "DOCKER_INFRA_DOWN_TIMEOUT": registry.get_int("DOCKER_INFRA_DOWN_TIMEOUT", 30),
+            "DOCKER_LOGS_TAIL": registry.get_int("DOCKER_LOGS_TAIL", 100),
+            "DOCKER_LOGS_TIMESTAMPS": registry.get_int("DOCKER_LOGS_TIMESTAMPS", 1),
         },
     }
 

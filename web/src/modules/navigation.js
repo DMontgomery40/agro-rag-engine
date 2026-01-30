@@ -187,6 +187,19 @@
     /**
      * Resolve old tab ID to new structure
      */
+    /**
+     * ---agentspec
+     * what: |
+     *   Resolves tab IDs in compatibility mode by stripping 'tab-' prefix. Returns normalized ID string.
+     *
+     * why: |
+     *   Handles legacy tab ID formats when compatibility mode is enabled.
+     *
+     * guardrails:
+     *   - DO NOT strip prefix if compatibilityMode is false; return oldId unchanged
+     *   - NOTE: Assumes oldId is string; no type validation
+     * ---/agentspec
+     */
     function resolveTabId(oldId) {
         if (!navState.compatibilityMode) {
             return oldId;
@@ -218,6 +231,20 @@
 
     /**
      * Navigate to a tab (with compatibility)
+     */
+    /**
+     * ---agentspec
+     * what: |
+     *   Navigates between tabs by resolving tab ID, unmounting previous view if it exists, and calling its unmount lifecycle hook. Inputs: tabId, optional subtabId. Outputs: side effects (unmount calls, console logs).
+     *
+     * why: |
+     *   Explicit lifecycle management prevents memory leaks and stale state when switching views.
+     *
+     * guardrails:
+     *   - DO NOT assume window.NavigationViews[tabId] exists; check before access
+     *   - NOTE: unmount is optional; guard with if (previousView.unmount)
+     *   - ASK USER: What happens after unmount? (mount new view, state sync, etc.)
+     * ---/agentspec
      */
     function navigateTo(tabId, subtabId = null) {
         const resolvedTab = resolveTabId(tabId);
@@ -295,6 +322,20 @@
     /**
      * Update DOM in compatibility mode (works with existing HTML)
      * NOTE: Do NOT call window.Tabs.switchTab() or window.switchTab() - that causes infinite recursion
+     */
+    /**
+     * ---agentspec
+     * what: |
+     *   Updates DOM visibility by hiding all tab content, then showing the target tab+subtab. Takes tabId and subtabId; performs direct DOM manipulation without delegation.
+     *
+     * why: |
+     *   Avoids recursion by handling DOM updates locally instead of delegating to tabs.js.
+     *
+     * guardrails:
+     *   - DO NOT delegate to tabs.js; causes infinite recursion
+     *   - NOTE: Assumes all tab divs use direct IDs (no mapping layer)
+     *   - ASK USER: Confirm tabId/subtabId format before refactoring
+     * ---/agentspec
      */
     function updateDOMCompatibility(tabId, subtabId) {
         console.log(`[navigation.js] updateDOMCompatibility called: tab=${tabId}, subtab=${subtabId}`);
@@ -457,6 +498,19 @@
     /**
      * Update DOM in new navigation mode (future)
      */
+    /**
+     * ---agentspec
+     * what: |
+     *   Updates breadcrumb trail with array of items. Renders navigation path in DOM.
+     *
+     * why: |
+     *   Centralizes breadcrumb rendering logic for consistent UX across tab navigation.
+     *
+     * guardrails:
+     *   - NOTE: updateDOMNew() stub logs but does not implement; breadcrumb update blocked until HTML structure finalized
+     *   - DO NOT call updateBreadcrumb() before DOM ready; items array must be non-empty
+     * ---/agentspec
+     */
     function updateDOMNew(tabId, subtabId) {
         // This will be implemented when we create the new HTML structure
         console.log(`[Navigation] New mode navigation to ${tabId}/${subtabId} (not yet implemented)`);
@@ -464,6 +518,19 @@
 
     /**
      * Update breadcrumb trail
+     */
+    /**
+     * ---agentspec
+     * what: |
+     *   Updates breadcrumb UI with item titles. Maps item IDs to titles via NEW_TABS or TAB_REGISTRY, joins with ' › ' separator.
+     *
+     * why: |
+     *   Centralizes breadcrumb rendering logic; reuses existing tab registries to avoid duplication.
+     *
+     * guardrails:
+     *   - DO NOT proceed if #nav-breadcrumb missing; early return prevents errors
+     *   - NOTE: Falls back to item ID if no title found in either registry
+     * ---/agentspec
      */
     function updateBreadcrumb(items) {
         const breadcrumb = $('#nav-breadcrumb');
@@ -479,6 +546,20 @@
 
     /**
      * Register a view (for modules to register themselves)
+     */
+    /**
+     * ---agentspec
+     * what: |
+     *   Registers a view config (id, handlers, etc.) into global window.NavigationViews object. Logs registration event.
+     *
+     * why: |
+     *   Centralizes view metadata for runtime lookup and navigation routing.
+     *
+     * guardrails:
+     *   - DO NOT rely on window.NavigationViews for security; it's client-side mutable
+     *   - NOTE: Creates window.NavigationViews if undefined; idempotent on subsequent calls
+     *   - ASK USER: Should duplicate config.id overwrite or throw?
+     * ---/agentspec
      */
     function registerView(config) {
         console.log('[Navigation] View registered:', config.id);
@@ -502,6 +583,20 @@
     /**
      * Show/hide special panels (VS Code, Grafana)
      */
+    /**
+     * ---agentspec
+     * what: |
+     *   showPanel() routes panelId ('vscode' or 'grafana') to navigateTo(). hidePanel() is declared but empty.
+     *
+     * why: |
+     *   Conditional routing centralizes panel navigation logic.
+     *
+     * guardrails:
+     *   - DO NOT call hidePanel(); unimplemented, will no-op silently
+     *   - NOTE: showPanel() ignores unknown panelIds; add validation or default case
+     *   - ASK USER: Is hidePanel() intentional stub or incomplete?
+     * ---/agentspec
+     */
     function showPanel(panelId) {
         if (panelId === 'vscode') {
             navigateTo('vscode');
@@ -510,6 +605,19 @@
         }
     }
 
+    /**
+     * ---agentspec
+     * what: |
+     *   Hides panel by ID. If panel is active, navigates to 'dashboard'. Returns void.
+     *
+     * why: |
+     *   Prevents orphaned UI state when closing active panels.
+     *
+     * guardrails:
+     *   - DO NOT hide without checking currentTab; may leave stale state
+     *   - NOTE: Hard-coded 'dashboard' fallback; ASK USER if different default needed
+     * ---/agentspec
+     */
     function hidePanel(panelId) {
         // Navigate away from the panel
         if (navState.currentTab === panelId) {
@@ -520,16 +628,56 @@
     /**
      * Get current navigation state
      */
+    /**
+     * ---agentspec
+     * what: |
+     *   Returns current active tab and subtab from navState. Inputs: none. Outputs: string identifiers for UI navigation state.
+     *
+     * why: |
+     *   Centralizes nav state queries to prevent scattered direct access to navState object.
+     *
+     * guardrails:
+     *   - DO NOT mutate navState; these are read-only accessors
+     *   - NOTE: Returns undefined if tabs not initialized; caller must handle
+     * ---/agentspec
+     */
     function getCurrentTab() {
         return navState.currentTab;
     }
 
+    /**
+     * ---agentspec
+     * what: |
+     *   Initializes navigation system. Logs startup message to console.
+     *
+     * why: |
+     *   Centralized entry point for nav setup; enables future state initialization.
+     *
+     * guardrails:
+     *   - NOTE: Currently logs only; no actual initialization logic present
+     *   - ASK USER: What state should init() set up? (currentSubtab, listeners, etc.)
+     * ---/agentspec
+     */
     function getCurrentSubtab() {
         return navState.currentSubtab;
     }
 
     /**
      * Initialize navigation system
+     */
+    /**
+     * ---agentspec
+     * what: |
+     *   Initializes navigation system. Reads feature flags from localStorage (AGRO_NEW_IA), sets navState.featureFlags.NEW_NAVIGATION and compatibilityMode booleans.
+     *
+     * why: |
+     *   Centralizes startup logic for feature-gated navigation behavior.
+     *
+     * guardrails:
+     *   - DO NOT assume localStorage is always available; wrap in try-catch for private/incognito modes
+     *   - NOTE: compatibilityMode is inverse of NEW_NAVIGATION; keep in sync
+     *   - ASK USER: Should last tab restoration happen here or deferred?
+     * ---/agentspec
      */
     function init() {
         console.log('[Navigation] Initializing navigation system');

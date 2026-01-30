@@ -14,7 +14,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from server.utils import atomic_write_json, read_json
 from server.services.config_registry import get_config_registry
-from eval.eval_rag import capture_eval_config
+from eval.eval_rag import capture_eval_config, stamp_eval_runtime_config, hit, reciprocal_rank
 
 router = APIRouter()
 _config = get_config_registry()
@@ -26,6 +26,29 @@ _EVAL_STATUS: Dict[str, Any] = {
     "total": 0,
     "results": None
 }
+
+
+def _hydrate_config_with_runtime(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Ensure eval results include the actual runtime params even if older runs missed stamping."""
+    cfg = dict(data.get("config") or {})
+    # Prefer recorded values, otherwise fall back to config snapshot
+    use_multi_val = data.get("use_multi")
+    if use_multi_val is None:
+        use_multi_val = cfg.get("use_multi", cfg.get("eval_multi"))
+    final_k_val = data.get("final_k")
+    if final_k_val is None:
+        final_k_val = cfg.get("final_k", cfg.get("eval_final_k", _config.get_int("EVAL_FINAL_K", 5)))
+    multi_m_val = cfg.get("eval_multi_m") or cfg.get("multi_m") or _config.get_int("EVAL_MULTI_M", 10)
+
+    cfg = stamp_eval_runtime_config(
+        cfg,
+        use_multi_val=bool(use_multi_val),
+        final_k_val=int(final_k_val),
+        multi_m_val=int(multi_m_val) if multi_m_val is not None else None,
+    )
+    data = dict(data)
+    data["config"] = cfg
+    return data
 
 @router.post("/api/eval/run")
 def eval_run(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
@@ -95,15 +118,23 @@ def eval_run_instrumented(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
             # Generate run ID
             run_id = datetime.now().strftime('%Y%m%d_%H%M%S')
 
-            # Use centralized config capture with whitelist
-            config_snapshot = capture_eval_config()
+            # Use centralized config capture with whitelist and stamp actual run params
+            use_multi_val = _config.get_int('EVAL_MULTI', 1) == 1
+            final_k = _config.get_int('EVAL_FINAL_K', 5)
+            multi_m_val = _config.get_int('EVAL_MULTI_M', 10)
+            config_snapshot = stamp_eval_runtime_config(
+                capture_eval_config(),
+                use_multi_val=use_multi_val,
+                final_k_val=final_k,
+                multi_m_val=multi_m_val,
+            )
 
             # Run eval
             hits_top1 = 0
             hits_topk = 0
+            rr_sum = 0.0
             results = []
             t0 = time.time()
-            final_k = _config.get_int('EVAL_FINAL_K', 5)
 
             for i, row in enumerate(gold, 1):
                 q = row['q']
@@ -116,16 +147,15 @@ def eval_run_instrumented(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
 
                 paths = [d.get('file_path', '') for d in docs]
 
-                def hit(paths, expect):
-                    return any(any(exp in p for p in paths) for exp in expect)
-
                 top1_hit = hit(paths[:1], expect) if paths else False
                 topk_hit = hit(paths, expect) if paths else False
+                rr = reciprocal_rank(paths, expect) if paths else 0.0
 
                 if top1_hit:
                     hits_top1 += 1
                 if topk_hit:
                     hits_topk += 1
+                rr_sum += rr
 
                 results.append({
                     'question': q,
@@ -136,6 +166,7 @@ def eval_run_instrumented(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
                     'top1_hit': top1_hit,
                     'topk_hit': topk_hit,
                     'duration_secs': q_duration,
+                    'reciprocal_rank': round(rr, 4),
                     'docs': [{'file_path': d.get('file_path', ''), 'score': d.get('score', 0)} for d in docs[:5]]
                 })
 
@@ -152,6 +183,7 @@ def eval_run_instrumented(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
                 _EVAL_STATUS["total"] = total
 
             dt = time.time() - t0
+            mrr = rr_sum / max(1, total)
 
             # Record aggregate metrics
             record_eval_run(
@@ -174,6 +206,7 @@ def eval_run_instrumented(payload: Dict[str, Any] = {}) -> Dict[str, Any]:
                 'topk_hits': hits_topk,
                 'top1_accuracy': hits_top1 / max(1, total),
                 'topk_accuracy': hits_topk / max(1, total),
+                'mrr': round(mrr, 4),
                 'duration_secs': dt,
                 'config': config_snapshot,
                 'results': results
@@ -227,7 +260,7 @@ async def eval_run_stream(
             final_k_val = default_final_k if final_k is None else max(1, int(final_k))
 
             # Resolve golden path
-            from eval.eval_rag import _resolve_golden_path, hit, MULTI_M  # type: ignore
+            from eval.eval_rag import _resolve_golden_path, hit, reciprocal_rank, MULTI_M  # type: ignore
             from retrieval.hybrid_search import search_routed, search_routed_multi
 
             golden_path = _resolve_golden_path()
@@ -272,6 +305,7 @@ async def eval_run_stream(
 
             hits_top1 = 0
             hits_topk = 0
+            rr_sum = 0.0
             results = []
             start_time = time.time()
 
@@ -301,11 +335,13 @@ async def eval_run_stream(
                 paths = [d.get('file_path', '') for d in docs]
                 top1_hit = hit(paths[:1], expect) if paths else False
                 topk_hit = hit(paths, expect) if paths else False
+                rr = reciprocal_rank(paths, expect) if paths else 0.0
 
                 if top1_hit:
                     hits_top1 += 1
                 if topk_hit:
                     hits_topk += 1
+                rr_sum += rr
 
                 results.append({
                     "question": q,
@@ -314,7 +350,8 @@ async def eval_run_stream(
                     "top1_path": paths[:1],
                     "top1_hit": top1_hit,
                     "topk_hit": topk_hit,
-                    "top_paths": paths[:final_k_val]
+                    "top_paths": paths[:final_k_val],
+                    "reciprocal_rank": round(rr, 4)
                 })
 
                 percent = (idx / total) * 100 if total else 0
@@ -324,12 +361,19 @@ async def eval_run_stream(
             duration = time.time() - start_time
             top1_accuracy = hits_top1 / max(1, total)
             topk_accuracy = hits_topk / max(1, total)
+            mrr = rr_sum / max(1, total)
 
             # Generate run_id for persistence and traceability
             run_id = time.strftime("%Y%m%d_%H%M%S")
 
-            # Capture config using the centralized whitelist
+            # Capture config using the centralized whitelist and stamp run overrides
             eval_config = capture_eval_config()
+            eval_config = stamp_eval_runtime_config(
+                eval_config,
+                use_multi_val=use_multi_val,
+                final_k_val=final_k_val,
+                multi_m_val=MULTI_M,
+            )
 
             summary = {
                 "run_id": run_id,
@@ -338,6 +382,7 @@ async def eval_run_stream(
                 "topk_hits": hits_topk,
                 "top1_accuracy": round(top1_accuracy, 3),
                 "topk_accuracy": round(topk_accuracy, 3),
+                "mrr": round(mrr, 4),
                 "final_k": final_k_val,
                 "use_multi": use_multi_val,
                 "duration_secs": round(duration, 2),
@@ -362,7 +407,7 @@ async def eval_run_stream(
                 # Log error but don't fail the eval
                 yield f"data: {json.dumps({'type': 'log', 'message': f'Warning: Failed to save results: {e}'})}\n\n"
 
-            yield f"data: {json.dumps({'type': 'log', 'message': f'Complete: top1={hits_top1}/{total}, topk={hits_topk}/{total}, duration={round(duration, 2)}s'})}\n\n"
+            yield f"data: {json.dumps({'type': 'log', 'message': f'Complete: top1={hits_top1}/{total}, topk={hits_topk}/{total}, mrr={mrr:.4f}, duration={round(duration, 2)}s'})}\n\n"
             yield "data: {\"type\": \"complete\"}\n\n"
         finally:
             _EVAL_STATUS["running"] = False
@@ -383,7 +428,13 @@ def eval_status() -> Dict[str, Any]:
 
 @router.get("/api/eval/results")
 def eval_results() -> Dict[str, Any]:
-    return _EVAL_STATUS["results"] or {"ok": False, "message": "No results"}
+    res = _EVAL_STATUS["results"]
+    if not res:
+        return {"ok": False, "message": "No results"}
+    try:
+        return _hydrate_config_with_runtime(res)
+    except Exception:
+        return res
 
 @router.get("/api/eval/results/{run_id}")
 def eval_results_by_run(run_id: str) -> Dict[str, Any]:
@@ -395,7 +446,8 @@ def eval_results_by_run(run_id: str) -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail=f"Eval run {run_id} not found")
 
     try:
-        return read_json(eval_file, {})
+        data = read_json(eval_file, {})
+        return _hydrate_config_with_runtime(data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error reading eval: {str(e)}")
 
@@ -435,7 +487,7 @@ def eval_list_runs() -> Dict[str, Any]:
         return {"ok": True, "runs": []}
 
     runs = []
-    for eval_file in sorted(eval_dir.glob('eval_*.json'), reverse=True):
+    for eval_file in eval_dir.glob('eval_*.json'):
         # Skip special baseline file - it's not a real eval run
         if eval_file.name == 'eval_baseline.json':
             continue
@@ -452,13 +504,18 @@ def eval_list_runs() -> Dict[str, Any]:
                 'topk_accuracy': data.get('topk_accuracy', 0),
                 'total': data.get('total', 0),
                 'duration_secs': data.get('duration_secs', 0),
-                'has_config': bool(data.get('config'))  # Let UI know if config exists
+                'has_config': bool(data.get('config')),  # Let UI know if config exists
+                '_mtime': eval_file.stat().st_mtime  # File modification time for sorting
             })
         except Exception:
             continue
 
-    # Sort by run_id descending (newest first) - run_ids are timestamps like 20251125_201234
-    runs.sort(key=lambda r: r['run_id'], reverse=True)
+    # Sort by file modification time descending (newest first)
+    # This is more reliable than run_id since run_ids can have timezone issues
+    runs.sort(key=lambda r: r['_mtime'], reverse=True)
+    # Remove internal _mtime field before returning
+    for r in runs:
+        r.pop('_mtime', None)
 
     return {"ok": True, "runs": runs}
 

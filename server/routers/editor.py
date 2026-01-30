@@ -1,12 +1,18 @@
+import asyncio
 import logging
-import httpx
-from typing import Any, Dict
-from pathlib import Path
 import subprocess
+from pathlib import Path
+from typing import Any, Dict
 
+import httpx
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import JSONResponse, RedirectResponse
-from starlette.websockets import WebSocket, WebSocketDisconnect
+from starlette.websockets import WebSocket
+
+try:
+    import httpx_ws
+except ImportError:
+    httpx_ws = None
 
 from server.services import editor as editor_svc
 
@@ -14,7 +20,7 @@ logger = logging.getLogger("agro.api")
 
 router = APIRouter()
 
-@router.get("/health/editor")
+@router.get("/api/health/editor")
 def editor_health() -> Dict[str, Any]:
     return editor_svc.health()
 
@@ -28,7 +34,7 @@ def get_editor_settings() -> Dict[str, Any]:
         "embed_enabled": s.get("embed_enabled", True),
         "bind": s.get("bind", "local"),
         "host": s.get("host", "127.0.0.1"),
-        "image": s.get("image", "agro-vscode:latest"),
+        "image": s.get("image", "codercom/code-server:latest"),
     }
 
 @router.post("/api/editor/settings")
@@ -98,7 +104,8 @@ async def editor_proxy(path: str, request: Request):
     upgrade_header = request.headers.get("upgrade", "").lower()
 
     if "upgrade" in connection_header and upgrade_header == "websocket":
-        import httpx_ws
+        if httpx_ws is None:
+            return JSONResponse({"ok": False, "error": "httpx_ws not available"}, status_code=503)
 
         status = await _editor_status_async()
         base = str(status.get("direct_url") or status.get("url") or "").rstrip("/")
@@ -117,8 +124,6 @@ async def editor_proxy(path: str, request: Request):
             # Connect to upstream WebSocket
             async with httpx.AsyncClient() as client:
                 async with httpx_ws.aconnect_ws(target, client) as upstream_ws:
-                    import asyncio
-
                     async def client_to_upstream():
                         try:
                             while True:
@@ -127,7 +132,7 @@ async def editor_proxy(path: str, request: Request):
                                     await upstream_ws.send_text(message["text"])
                                 elif "bytes" in message:
                                     await upstream_ws.send_bytes(message["bytes"])
-                        except (WebSocketDisconnect, Exception):
+                        except Exception:
                             pass
 
                     async def upstream_to_client():
@@ -138,12 +143,12 @@ async def editor_proxy(path: str, request: Request):
                                         await websocket.send_text(message.data)
                                     elif message.type == httpx_ws.WSMessageType.BINARY:
                                         await websocket.send_bytes(message.data)
-                        except (WebSocketDisconnect, Exception):
+                        except Exception:
                             pass
 
                     await asyncio.gather(client_to_upstream(), upstream_to_client())
         except Exception as e:
-            print(f"[WebSocket Proxy] Error: {e}")
+            logger.error(f"[WebSocket Proxy] Error: {e}")
         finally:
             await websocket.close()
 
@@ -155,6 +160,7 @@ async def editor_proxy(path: str, request: Request):
         return JSONResponse({"ok": False, "error": "Editor disabled"}, status_code=503)
 
     # Always proxy to the direct URL (container) to avoid recursive /editor calls
+    # Don't block based on health check - let the upstream connection fail naturally
     base = str(status.get("direct_url") or status.get("url") or "").rstrip("/")
     if base.startswith("/editor"):
         # Fallback: if we somehow got the proxy URL, strip and use configured port instead
@@ -174,17 +180,28 @@ async def editor_proxy(path: str, request: Request):
                 target, 
                 headers=headers, 
                 content=await request.body(),
-                timeout=30.0
+                timeout=30.0,
+                follow_redirects=True
             )
             resp_headers = dict(upstream.headers)
             for h in [
                 "x-frame-options",
                 "content-security-policy",
                 "content-security-policy-report-only",
+                "content-encoding",  # Remove - httpx auto-decompresses
+                "content-length",    # Remove - length changes after decompression
+                "transfer-encoding", # Remove - transfer encoding is handled
             ]:
                 if h in resp_headers:
                     del resp_headers[h]
                 
             return Response(content=upstream.content, status_code=upstream.status_code, headers=resp_headers)
+        except httpx.ConnectError as e:
+            logger.error(f"[Editor Proxy] Connection failed to {target}: {e}")
+            return JSONResponse({"ok": False, "error": f"Failed to connect to editor at {target}", "reason": str(e)}, status_code=502)
+        except httpx.TimeoutException as e:
+            logger.error(f"[Editor Proxy] Timeout connecting to {target}: {e}")
+            return JSONResponse({"ok": False, "error": "Editor request timeout"}, status_code=504)
         except Exception as e:
+            logger.error(f"[Editor Proxy] Error proxying to {target}: {e}")
             return JSONResponse({"ok": False, "error": str(e)}, status_code=502)

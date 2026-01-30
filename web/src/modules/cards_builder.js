@@ -3,6 +3,19 @@
   'use strict';
   const api = (window.CoreUtils && window.CoreUtils.api) ? window.CoreUtils.api : (p=>p);
   const state = (window.CoreUtils && window.CoreUtils.state) ? window.CoreUtils.state : {};
+  /**
+   * ---agentspec
+   * what: |
+   *   Populates repo dropdown from /api/config endpoint. Fetches config, extracts repos, renders <option> elements in #cards-repo-select.
+   *
+   * why: |
+   *   Centralizes repo list at API layer; UI stays in sync with backend config.
+   *
+   * guardrails:
+   *   - DO NOT assume #cards-repo-select exists; check before populate
+   *   - NOTE: Throws silently on fetch fail; add error handler if needed
+   * ---/agentspec
+   */
   const $ = (id) => document.getElementById(id);
   let cardsJob = { id: null, timer: null, sse: null };
 
@@ -45,16 +58,56 @@
     }
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Shows/hides DOM element with id 'cards-progress-container' by toggling display style. showProgress() sets display='block'; hideProgress() sets display='none'.
+   *
+   * why: |
+   *   Minimal DOM manipulation for progress UI visibility control without external dependencies.
+   *
+   * guardrails:
+   *   - DO NOT assume element exists; both functions check null before style access
+   *   - NOTE: Uses shorthand $() selector; ensure it's defined in scope
+   * ---/agentspec
+   */
   function showProgress(){
     const cont = $('cards-progress-container');
     if (cont) cont.style.display = 'block';
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Hides/shows progress container DOM element. hideProgress() sets display:none; showCompletionStatus() displays persistent status summary.
+   *
+   * why: |
+   *   Decouples UI visibility logic from data flow; allows independent control of progress bar state.
+   *
+   * guardrails:
+   *   - DO NOT assume 'cards-progress-container' exists; check null before style mutation
+   *   - NOTE: showCompletionStatus() incomplete; data param unused, implementation cut off
+   * ---/agentspec
+   */
   function hideProgress(){
     const cont = $('cards-progress-container');
     if (cont) cont.style.display = 'none';
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Displays progress bar in DOM by selecting cards-progress-container, setting display:block and border style. Updates title text if present.
+   *
+   * why: |
+   *   Centralizes UI feedback for async card-building operations into single persistent status element.
+   *
+   * guardrails:
+   *   - DO NOT assume cont exists; null-check before style mutations
+   *   - NOTE: Relies on external CSS var(--ok); fails silently if undefined
+   *   - ASK USER: Should title update be conditional on data state?
+   * ---/agentspec
+   */
   function showCompletionStatus(data){
     // Show progress bar as a persistent status summary
     const cont = $('cards-progress-container');
@@ -71,6 +124,19 @@
     // Keep visible - don't auto-hide
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Displays error status by showing cards-progress-container, setting red border, and updating title to "✗ Cards Build Failed".
+   *
+   * why: |
+   *   Centralizes error UI feedback into single function to avoid scattered DOM mutations.
+   *
+   * guardrails:
+   *   - DO NOT assume cont exists; null checks prevent crashes
+   *   - NOTE: Uses CSS variable --err; ensure defined in stylesheet
+   * ---/agentspec
+   */
   function showErrorStatus(error){
     const cont = $('cards-progress-container');
     if (cont) {
@@ -86,6 +152,19 @@
     if (tipEl) tipEl.textContent = `❌ ${error || 'Unknown error'}`;
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Highlights active pipeline stage by ID. Sets color, border, background CSS vars on matching DOM element; resets others to default.
+   *
+   * why: |
+   *   Centralizes stage UI state to prevent inconsistent highlighting across pipeline steps.
+   *
+   * guardrails:
+   *   - DO NOT assume element exists; add null check before style assignment
+   *   - NOTE: Relies on predictable ID format 'cards-progress-stage-{stageName}'
+   * ---/agentspec
+   */
   function highlightStage(stage){
     const all = ['scan','chunk','summarize','sparse','write','finalize'];
     all.forEach(s => {
@@ -106,6 +185,20 @@
     });
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Updates progress bar UI with completion percentage, stats (done/total), and metadata (model, stage, throughput, ETA, repo). Reads data object, writes to DOM elements #cards-progress-bar (width) and #cards-progress-stats (text).
+   *
+   * why: |
+   *   Centralizes progress rendering logic; decouples data updates from DOM manipulation.
+   *
+   * guardrails:
+   *   - DO NOT assume data keys exist; all destructured values default to falsy
+   *   - NOTE: Silently skips DOM updates if elements missing (no error thrown)
+   *   - ASK USER: Should missing elements throw or warn?
+   * ---/agentspec
+   */
   function updateProgress(data){
     try {
       const { pct, total, done, tip, model, stage, throughput, eta_s, repo } = data || {};
@@ -134,6 +227,19 @@
     } catch(e){ console.error('[cards_builder] Update progress failed:', e); }
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Stops active card streams (timer + SSE). Clears cardsJob state. Inputs: none. Outputs: cardsJob.timer and cardsJob.sse set to null.
+   *
+   * why: |
+   *   Prevents resource leaks and duplicate streams before starting new build.
+   *
+   * guardrails:
+   *   - DO NOT throw on close() failure; silent catch required
+   *   - NOTE: startCardsBuild() incomplete; requires repo + enrich logic
+   * ---/agentspec
+   */
   function stopCardsStreams(){
     if (cardsJob.timer) { clearInterval(cardsJob.timer); cardsJob.timer = null; }
     if (cardsJob.sse) { try { cardsJob.sse.close(); } catch{} cardsJob.sse = null; }
@@ -186,7 +292,7 @@
           const finalData = JSON.parse(ev.data||'{}');
           showCompletionStatus(finalData);
           if (window.showStatus) window.showStatus('✓ Cards built successfully', 'success');
-          if (window.Cards?.load) await window.Cards.load();
+          window.dispatchEvent(new Event('agro:cards:refresh'));
         });
         es.addEventListener('error', (_ev) => { console.log('[cards_builder] SSE error, falling back to polling'); });
         es.addEventListener('cancelled', (_ev) => {
@@ -203,7 +309,7 @@
             if ((s.status||'')==='done'){
               stopCardsStreams();
               showCompletionStatus(s);
-              if (window.Cards?.load) await window.Cards.load();
+              window.dispatchEvent(new Event('agro:cards:refresh'));
               if (window.showStatus) window.showStatus('✓ Cards built successfully', 'success');
             }
             if ((s.status||'')==='error'){

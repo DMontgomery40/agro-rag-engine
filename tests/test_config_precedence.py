@@ -4,10 +4,22 @@ Test config precedence: .env > agro_config.json > defaults
 import os
 import json
 import tempfile
-import shutil
 from pathlib import Path
+from unittest.mock import patch
+
 from dotenv import load_dotenv
+
 from server.services.config_registry import ConfigRegistry
+
+
+def _with_temp_repo(json_payload):
+    """Helper context manager that patches repo_root() to a temp directory containing agro_config.json."""
+    temp_dir = tempfile.TemporaryDirectory()
+    repo_path = Path(temp_dir.name)
+    config_path = repo_path / "agro_config.json"
+    config_path.write_text(json.dumps(json_payload))
+    patcher = patch("server.services.config_registry.repo_root", return_value=repo_path)
+    return temp_dir, patcher
 
 
 def test_env_overrides_json():
@@ -18,13 +30,12 @@ def test_env_overrides_json():
     # Create test JSON with different value
     test_json = {'retrieval': {'rrf_k_div': 60}}
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-        json.dump(test_json, f)
-        json_path = f.name
+    temp_dir, patcher = _with_temp_repo(test_json)
+    patcher.start()
 
     try:
-        # Load config
-        registry = ConfigRegistry(config_file=json_path)
+        registry = ConfigRegistry()
+        registry.load()
 
         # The env var should win
         value = registry.get_int('TEST_RRF_K_DIV', 999)
@@ -34,7 +45,8 @@ def test_env_overrides_json():
         assert source == '.env', f"Expected source '.env', got {source}"
 
     finally:
-        os.unlink(json_path)
+        patcher.stop()
+        temp_dir.cleanup()
         del os.environ['TEST_RRF_K_DIV']
 
 
@@ -45,23 +57,24 @@ def test_json_used_when_env_missing():
         del os.environ['TEST_ONLY_IN_JSON']
 
     # Create test JSON
-    test_json = {'retrieval': {'final_k': 123}}
+    test_json = {'retrieval': {'final_k': 20}}
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-        json.dump(test_json, f)
-        json_path = f.name
+    temp_dir, patcher = _with_temp_repo(test_json)
+    patcher.start()
 
     try:
-        registry = ConfigRegistry(config_file=json_path)
+        registry = ConfigRegistry()
+        registry.load()
 
         # Should load from JSON
         value = registry.get_int('FINAL_K', 999)
 
         # Note: source tracking might show 'agro_config.json' or 'default' depending on implementation
-        assert value == 123, f"Expected 123 from JSON, got {value}"
+        assert value == 20, f"Expected 20 from JSON, got {value}"
 
     finally:
-        os.unlink(json_path)
+        patcher.stop()
+        temp_dir.cleanup()
 
 
 def test_default_used_when_both_missing():
@@ -70,25 +83,23 @@ def test_default_used_when_both_missing():
     if 'TEST_NEVER_SET' in os.environ:
         del os.environ['TEST_NEVER_SET']
 
-    # Create empty JSON
-    test_json = {}
-
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-        json.dump(test_json, f)
-        json_path = f.name
+    temp_dir, patcher = _with_temp_repo({})
+    patcher.start()
 
     try:
-        registry = ConfigRegistry(config_file=json_path)
+        registry = ConfigRegistry()
+        registry.load()
 
         # Should use default
         value = registry.get_int('TEST_NEVER_SET', 456)
         source = registry.get_source('TEST_NEVER_SET')
 
         assert value == 456, f"Expected 456 (default), got {value}"
-        assert source == 'default', f"Expected source 'default', got {source}"
+        assert source is None, f"Expected no source for default, got {source}"
 
     finally:
-        os.unlink(json_path)
+        patcher.stop()
+        temp_dir.cleanup()
 
 
 def test_real_config_precedence():

@@ -21,7 +21,7 @@ def api_env_reload() -> Dict[str, Any]:
     
     This endpoint reloads the config registry and then triggers reload_config()
     on all modules that cache configuration values. This ensures that changes
-    to REPO, embedding models, reranker backends, etc. take effect immediately.
+    to REPO, embedding models, reranker mode, etc. take effect immediately.
     """
     result = cfg.env_reload()
     
@@ -92,6 +92,27 @@ async def api_secrets_ingest(
     return cfg.secrets_ingest(text, do_persist)
 
 
+@router.get("/api/secrets/check")
+def check_secrets(keys: str = Query(default="")) -> Dict[str, bool]:
+    """Check if secret keys are configured (without exposing values).
+    
+    Args:
+        keys: Comma-separated list of key names to check (e.g., "OPENAI_API_KEY,COHERE_API_KEY")
+    
+    Returns:
+        Dict mapping key names to boolean (True if configured and non-empty)
+    """
+    import os
+    result = {}
+    for key in keys.split(","):
+        key = key.strip()
+        if key:
+            value = os.environ.get(key, "")
+            # Key is "configured" if it exists and is not empty or masked
+            result[key] = bool(value and not value.startswith("••••"))
+    return result
+
+
 @router.get("/api/config")
 def get_config(unmask: bool = Query(default=False)) -> Dict[str, Any]:
     return cfg.get_config(unmask=bool(unmask))
@@ -103,7 +124,7 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
     
     Critical settings that trigger auto-reload:
     - REPO: Active repository affects all queries
-    - RERANKER_BACKEND: Affects search result ranking
+    - RERANKER_MODE: Affects search result ranking
     - GEN_MODEL: Affects generation responses
     - EMBEDDING_TYPE: Affects vector search
     """
@@ -113,7 +134,7 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
     
     # Auto-reload if critical settings were changed
     env_updates = payload.get("env", {})
-    critical_keys = {'REPO', 'RERANKER_BACKEND', 'GEN_MODEL', 'EMBEDDING_TYPE', 'EMBEDDING_MODEL'}
+    critical_keys = {'REPO', 'RERANKER_MODE', 'GEN_MODEL', 'EMBEDDING_TYPE', 'EMBEDDING_MODEL'}
     
     if any(k in env_updates for k in critical_keys):
         changed_keys = [k for k in critical_keys if k in env_updates]
@@ -127,14 +148,14 @@ def set_config(payload: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 
-@router.get("/api/prices")
-def get_prices():
-    return cfg.prices_get()
+@router.get("/api/models")
+def get_models():
+    return cfg.models_get()
 
 
-@router.post("/api/prices/upsert")
+@router.post("/api/models/upsert")
 def upsert_price(item: Dict[str, Any]) -> Dict[str, Any]:
-    return cfg.prices_upsert(item)
+    return cfg.models_upsert(item)
 
 
 @router.post("/api/integrations/save")
@@ -211,3 +232,18 @@ async def update_runtime_mode(update: RuntimeModeUpdate) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Failed to update runtime mode: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/config/eval-key-categories")
+def get_eval_key_categories_endpoint() -> Dict[str, Any]:
+    """Return key→category mapping for eval config display.
+
+    Categories are derived from Pydantic model structure in agro_config_model.py.
+    This endpoint enables the frontend to group config keys by category without
+    hardcoding the mappings in the UI.
+
+    Returns:
+        Dict with "categories" key containing {config_key: category_name} mapping
+    """
+    from server.models.agro_config_model import get_eval_key_categories
+    return {"categories": get_eval_key_categories()}

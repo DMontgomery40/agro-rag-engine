@@ -17,9 +17,9 @@ def test_config_endpoint(page: Page):
     assert isinstance(data["repos"], list)
 
 
-def test_prices_endpoint(page: Page):
-    """Test /api/prices endpoint"""
-    response = page.request.get("http://127.0.0.1:8012/api/prices")
+def test_models_endpoint(page: Page):
+    """Test /api/models endpoint"""
+    response = page.request.get("http://127.0.0.1:8012/api/models")
     assert response.ok
     data = response.json()
     assert "models" in data

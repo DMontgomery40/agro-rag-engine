@@ -25,7 +25,7 @@ This guide helps you choose embedding and inference models based on your require
 
 ### Current API Pricing (as of October 8, 2025)
 
-**⚠️ WARNING**: Prices change frequently. Verify at:
+**⚠️ WARNING**: models change frequently. Verify at:
 - OpenAI: https://platform.openai.com/pricing
 - Google: https://ai.google.dev/pricing
 - Anthropic: https://docs.anthropic.com/pricing

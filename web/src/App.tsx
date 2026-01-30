@@ -11,12 +11,24 @@ import { Sidepanel } from './components/Sidepanel';
 
 // UI Components
 import { EmbeddingMismatchWarning } from './components/ui/EmbeddingMismatchWarning';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { SubtabErrorFallback } from '@/components/ui/SubtabErrorFallback';
 
 // Hooks
-import { useAppInit, useModuleLoader, useApplyButton } from '@/hooks';
+import { useAppInit, useModuleLoader, useApplyButton, useTheme } from '@/hooks';
+
+// Import errorHelpers to expose window.ErrorHelpers BEFORE legacy modules load
+import '@/utils/errorHelpers';
+// Import api/client to expose window.CoreUtils BEFORE legacy modules load
+// This replaces /modules/core-utils.js
+import '@/api/client';
+// Import uiHelpers to expose window.UiHelpers BEFORE legacy modules load
+// This replaces /modules/ui-helpers.js (Zustand-backed)
+import '@/utils/uiHelpers';
 
 function App() {
   const [healthDisplay, setHealthDisplay] = useState('—');
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { status, checkHealth } = useHealthStore();
   const navigate = useNavigate();
 
@@ -24,6 +36,19 @@ function App() {
   const { isInitialized, initError } = useAppInit();
   const { modulesLoaded, loadError, loadProgress } = useModuleLoader();
   const { handleApply: handleSaveAllChanges, isDirty, isSaving, saveError } = useApplyButton();
+
+  // Initialize theme - exposes window.Theme for legacy modules
+  useTheme();
+
+  // Toggle mobile navigation
+  const toggleMobileNav = () => {
+    setMobileNavOpen(prev => !prev);
+  };
+
+  // Close mobile nav when clicking outside or navigating
+  const closeMobileNav = () => {
+    setMobileNavOpen(false);
+  };
 
   useEffect(() => {
     // Initial health check
@@ -51,15 +76,12 @@ function App() {
       try {
         // Load in dependency order
         // 1. Core utilities (must load first)
-        await import('./modules/fetch-shim.js');
-        await import('./modules/core-utils.js');
-        await import('./modules/api-base-override.js');
+        // MIGRATED: fetch-shim.js removed - was no-op (Phase 2.5)
+        // MIGRATED: core-utils.js → /api/client.ts (exposes window.CoreUtils)
+        // MIGRATED: ui-helpers.js → /utils/uiHelpers.ts (Zustand-backed, exposes window.UiHelpers)
+        // MIGRATED: theme.js → /hooks/useTheme.ts (UIStore-backed, exposes window.Theme)
 
-        // 2. UI helpers and theme (needed by many modules)
-        await import('./modules/ui-helpers.js');
-        await import('./modules/theme.js');
-
-        // 3. Test instrumentation (for debugging)
+        // 2. Test instrumentation (for debugging)
         await import('./modules/test-instrumentation.js');
 
         // 4. Navigation and tabs - REMOVED, now using React Router
@@ -87,15 +109,15 @@ function App() {
           import('./modules/index_status.js'),
           import('./modules/mcp_rag.js'),
           import('./modules/mcp_server.js'),
-          import('./modules/index_profiles.js'),
-          import('./modules/indexing.js'),
-          import('./modules/simple_index.js'),
+          // REMOVED: Legacy JS indexing modules - IndexingSubtab now uses pure React/TypeScript
+          // import('./modules/index_profiles.js'),
+          // import('./modules/indexing.js'),
+          // import('./modules/simple_index.js'),
           import('./modules/docker.js'),
           import('./modules/grafana.js'),
           import('./modules/vscode.js'),
           import('./modules/onboarding.js'),
           import('./modules/index-display.js'),
-          import('./modules/cards.js'),
           import('./modules/cards_builder.js'),
           import('./modules/cost_logic.js'),
           import('./modules/storage-calculator-template.js'),
@@ -107,12 +129,10 @@ function App() {
           // import('./modules/golden_questions.js'),
           // import('./modules/eval_runner.js'),
           import('./modules/eval_history.js'),
-          // Chat is React-native now; keep legacy reranker feedback only
-          import('./modules/error-helpers.js'),
+          // MIGRATED: error-helpers.js → /utils/errorHelpers.ts (exposes window.ErrorHelpers)
           import('./modules/layout_fix.js'),
           import('./modules/live-terminal.js'),
           import('./modules/trace.js'),
-          import('./modules/alerts.js'),
           import('./modules/ux-feedback.js'),
           import('./modules/langsmith.js'),
           import('./modules/dino.js')
@@ -173,11 +193,26 @@ function App() {
     <>
       {/* Topbar */}
       <div className="topbar">
-        <button className="mobile-nav-toggle" id="mobile-nav-toggle" aria-label="Toggle navigation">
+        <button 
+          className={`mobile-nav-toggle ${mobileNavOpen ? 'active' : ''}`} 
+          id="mobile-nav-toggle" 
+          aria-label="Toggle navigation"
+          aria-expanded={mobileNavOpen}
+          onClick={toggleMobileNav}
+        >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="3" y1="6" x2="21" y2="6"></line>
-            <line x1="3" y1="12" x2="21" y2="12"></line>
-            <line x1="3" y1="18" x2="21" y2="18"></line>
+            {mobileNavOpen ? (
+              <>
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </>
+            ) : (
+              <>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </>
+            )}
           </svg>
         </button>
         <h1>
@@ -226,12 +261,40 @@ function App() {
         <div className="resize-handle"></div>
         <div className="content" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
           {/* Tab Bar - React Router navigation */}
-          <TabBar />
+          <ErrorBoundary
+            context="tab-bar"
+            fallback={({ error, reset }) => (
+              <div className="p-4">
+                <SubtabErrorFallback
+                  title="Navigation failed to render"
+                  context="The tab list crashed while initializing. Retry to re-mount navigation."
+                  error={error}
+                  onRetry={reset}
+                />
+              </div>
+            )}
+          >
+          <TabBar mobileOpen={mobileNavOpen} onNavigate={closeMobileNav} />
+          </ErrorBoundary>
 
           {/* Scrollable content wrapper */}
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {/* Routes - All tab routing */}
+            <ErrorBoundary
+              context="tab-router"
+              fallback={({ error, reset }) => (
+                <div className="p-6">
+                  <SubtabErrorFallback
+                    title="Unable to load tab content"
+                    context="The active route crashed during render. Retry to attempt a clean mount."
+                    error={error}
+                    onRetry={reset}
+                  />
+                </div>
+              )}
+            >
             <TabRouter />
+            </ErrorBoundary>
           </div>
 
           {/* Apply All Changes button - Fixed footer outside scrollable area */}
@@ -273,7 +336,19 @@ function App() {
           </div>
           <div id="sidepanel-content" style={{flex: 1, overflowY: 'auto', padding: '20px'}}>
             {/* React Sidepanel component with all widgets */}
+            <ErrorBoundary
+              context="sidepanel"
+              fallback={({ error, reset }) => (
+                <SubtabErrorFallback
+                  title="Sidepanel failed to render"
+                  context="An error inside the Settings sidepanel prevented it from mounting."
+                  error={error}
+                  onRetry={reset}
+                />
+              )}
+            >
             <Sidepanel />
+            </ErrorBoundary>
           </div>
         </div>
       </div>

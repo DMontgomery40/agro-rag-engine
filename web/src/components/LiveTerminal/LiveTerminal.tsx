@@ -47,26 +47,55 @@ export const LiveTerminal = forwardRef<LiveTerminalHandle, LiveTerminalProps>(({
   const outputRef = useRef<HTMLPreElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
 
-  // Parse ANSI color codes
-  const parseANSI = useCallback((text: string): string => {
-    const colorMap: Record<string, string> = {
-      '30': '#000', '31': '#ff5f57', '32': '#28c840', '33': '#ffbd2e',
-      '34': '#5c9fd8', '35': '#c678dd', '36': '#56b6c2', '37': '#e0e0e0',
-      '90': '#666', '91': '#ff6b6b', '92': '#5af78e', '93': '#f9f871',
-      '94': '#6baeff', '95': '#e599f7', '96': '#76e1ff', '97': '#fff'
+  // ANSI color code mapping
+  const colorMap: Record<string, string> = {
+    '30': '#000', '31': '#ff5f57', '32': '#28c840', '33': '#ffbd2e',
+    '34': '#5c9fd8', '35': '#c678dd', '36': '#56b6c2', '37': '#e0e0e0',
+    '90': '#666', '91': '#ff6b6b', '92': '#5af78e', '93': '#f9f871',
+    '94': '#6baeff', '95': '#e599f7', '96': '#76e1ff', '97': '#fff'
+  };
+
+  // Parse ANSI color codes into React elements (safe, no dangerouslySetInnerHTML)
+  const parseANSI = useCallback((text: string): React.ReactNode[] => {
+    const result: React.ReactNode[] = [];
+    let currentColor: string | null = null;
+    let buffer = '';
+    let i = 0;
+    let keyIdx = 0;
+
+    const flushBuffer = () => {
+      if (buffer) {
+        if (currentColor) {
+          result.push(<span key={keyIdx++} style={{ color: currentColor }}>{buffer}</span>);
+        } else {
+          result.push(<React.Fragment key={keyIdx++}>{buffer}</React.Fragment>);
+        }
+        buffer = '';
+      }
     };
 
-    // Replace ANSI codes with HTML
-    let parsed = text.replace(/\x1b\[([0-9;]+)m/g, (match, code) => {
-      if (code === '0') return '</span>';
-      const color = colorMap[code];
-      return color ? `<span style="color: ${color};">` : '';
-    });
+    while (i < text.length) {
+      // Check for ANSI escape sequence
+      if (text[i] === '\x1b' && text[i + 1] === '[') {
+        const match = text.slice(i).match(/^\x1b\[([0-9;]+)m/);
+        if (match) {
+          flushBuffer();
+          const code = match[1];
+          if (code === '0') {
+            currentColor = null;
+          } else if (colorMap[code]) {
+            currentColor = colorMap[code];
+          }
+          i += match[0].length;
+          continue;
+        }
+      }
+      buffer += text[i];
+      i++;
+    }
+    flushBuffer();
 
-    // Escape HTML
-    parsed = parsed.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-    return parsed;
+    return result.length > 0 ? result : [text];
   }, []);
 
   // Scroll to bottom
@@ -239,10 +268,7 @@ export const LiveTerminal = forwardRef<LiveTerminalHandle, LiveTerminalProps>(({
       >
         <pre ref={outputRef} className="terminal-output">
           {lines.map((line, i) => (
-            <div
-              key={i}
-              dangerouslySetInnerHTML={{ __html: parseANSI(line) }}
-            />
+            <div key={i}>{parseANSI(line)}</div>
           ))}
         </pre>
       </div>

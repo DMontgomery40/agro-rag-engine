@@ -4,15 +4,37 @@ import { CostLogic } from '@/modules/cost_logic';
 import { EmbeddingMismatchWarning } from './ui/EmbeddingMismatchWarning';
 
 export function Sidepanel() {
-  const { config } = useConfigStore();
+  const { config, loadConfig } = useConfigStore();
+  
+  // Track if initial load from config is done
+  const [configLoaded, setConfigLoaded] = useState(false);
 
-  // Live Cost Calculator state
+  // Live Cost Calculator state - ALWAYS from Pydantic config
   const [costProvider, setCostProvider] = useState('openai');
-  const [costModel, setCostModel] = useState('gpt-5.1-mini');
+  const [costModel, setCostModel] = useState('');
   const [costEmbeddingProvider, setCostEmbeddingProvider] = useState('openai');
-  const [costEmbeddingModel, setCostEmbeddingModel] = useState('text-embedding-3-small');
+  const [costEmbeddingModel, setCostEmbeddingModel] = useState('');
   const [costRerankProvider, setCostRerankProvider] = useState('cohere');
-  const [costRerankModel, setCostRerankModel] = useState('rerank-3.5');
+  const [costRerankModel, setCostRerankModel] = useState('');
+
+  // Load config values on mount - MUST come from Pydantic config
+  useEffect(() => {
+    if (config?.env && !configLoaded) {
+      // Sync inference model from GEN_MODEL (required by Pydantic)
+      if (config.env.GEN_MODEL) {
+        setCostModel(config.env.GEN_MODEL);
+      }
+      // Sync embedding model from EMBEDDING_MODEL (required by Pydantic)
+      if (config.env.EMBEDDING_MODEL) {
+        setCostEmbeddingModel(config.env.EMBEDDING_MODEL);
+      }
+      // Sync rerank model from RERANKER_CLOUD_MODEL
+      if (config.env.RERANKER_CLOUD_MODEL) {
+        setCostRerankModel(config.env.RERANKER_CLOUD_MODEL);
+      }
+      setConfigLoaded(true);
+    }
+  }, [config?.env, configLoaded]);
   const [tokensIn, setTokensIn] = useState(5000);
   const [tokensOut, setTokensOut] = useState(800);
   const [embeds, setEmbeds] = useState(4);
@@ -21,7 +43,7 @@ export function Sidepanel() {
   const [dailyCost, setDailyCost] = useState('--');
   const [monthlyCost, setMonthlyCost] = useState('--');
   
-  // Model lists from prices.json
+  // Model lists from models.json
   const [providers, setProviders] = useState<string[]>([]);
   const [chatModels, setChatModels] = useState<string[]>([]);
   const [embedModels, setEmbedModels] = useState<string[]>([]);
@@ -35,7 +57,7 @@ export function Sidepanel() {
   const [storageTotal, setStorageTotal] = useState(100);
   const [storagePercent, setStoragePercent] = useState(0);
 
-  // Load providers and models from prices.json
+  // Load providers and models from models.json
   useEffect(() => {
     async function loadModels() {
       try {
@@ -239,14 +261,16 @@ export function Sidepanel() {
       if (costRerankProvider) {
         const p = costRerankProvider.toLowerCase();
         if (p === 'cohere') {
-          envUpdates.RERANK_BACKEND = 'cloud';
-          envUpdates.COHERE_RERANK_MODEL = costRerankModel;
+          envUpdates.RERANKER_MODE = 'cloud';
+          envUpdates.RERANKER_CLOUD_PROVIDER = 'cohere';
+          envUpdates.RERANKER_CLOUD_MODEL = costRerankModel;
         } else if (p === 'voyage') {
-          envUpdates.RERANK_BACKEND = 'cloud';
-          envUpdates.VOYAGE_RERANK_MODEL = costRerankModel;
+          envUpdates.RERANKER_MODE = 'cloud';
+          envUpdates.RERANKER_CLOUD_PROVIDER = 'voyage';
+          envUpdates.RERANKER_CLOUD_MODEL = costRerankModel;
         } else if (['local', 'ollama', 'huggingface'].includes(p)) {
-          envUpdates.RERANK_BACKEND = 'local';
-          envUpdates.RERANK_MODEL = costRerankModel;
+          envUpdates.RERANKER_MODE = 'local';
+          envUpdates.RERANKER_LOCAL_MODEL = costRerankModel;
         }
       }
 

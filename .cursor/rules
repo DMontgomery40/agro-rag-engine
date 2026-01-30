@@ -1,45 +1,110 @@
-# Cursor AI Rules for AGRO RAG Engine
+# NEVER edit or write to .env - EVER
 
-## Bug Documentation (MANDATORY)
+# AGRO RAG Engine
 
-**When you fix a bug that the user VERIFIES as fixed, you MUST document it in `agent_docs/bug-resolution.md`**
+Local-first Enterprise-Grade RAG Engine for codebases with GUI, CLI, hybrid search, and self-learning reranker.
 
-- This prevents repeat bugs across different agents and sessions
-- ONLY add entries AFTER user confirms the fix works
-- Include: symptoms, root cause, fix applied, files changed, prevention tips
-- Follow the template in agent_docs/bug-resolution.md
-- Many bugs are repeated by different agents - documentation prevents this
+## Tech Stack
 
-### Common Repeat Bugs to Watch For
+- **Backend**: Python 3.11+, FastAPI, Pydantic
+- **Frontend**: React/Vite (`/web`), Legacy JS (`/gui`)
+- **Data**: Qdrant (vectors), Redis (cache), BM25S (sparse)
+- **Testing**: Playwright (GUI), pytest (backend)
+- **Infra**: Docker Compose (up to 12 containers in `/infra`)
 
-- **Boolean .env values**: NEVER use `True`/`true`/`False`/`false` - always use `1` or `0`
-- **Subtab navigation**: data-subtab names must match ID construction pattern
-- **Absolute paths**: Never hardcode `/Users/...` paths, use relative or env vars
-- Check `agent_docs/bug-resolution.md` for full list before starting work
+## Project Structure
 
-## No Stubs or Placeholders
+- `server/` - FastAPI backend, routers, services, MCP servers
+- `web/` - React/Vite frontend (primary GUI)
+- `retrieval/` - Hybrid search, embeddings, AST chunking
+- `indexer/` - Code indexing pipeline
+- `reranker/` - Learning reranker system
+- `tests/` - All tests (Playwright specs, pytest)
+- `scripts/` - `up.sh`, `down.sh`, `dev_up.sh`
+- `agent_docs/` - Agent-created documentation (NOT root)
 
-- NEVER add stubs, placeholders, or TODOs without explicit user approval
-- Everything must be fully wired: backend to GUI, GUI to backend
-- This is an ADA compliance and contractual requirement
+## Commands
 
-## Verification Required
+```bash
+# Start services
+./scripts/dev_up.sh          # Development
+./scripts/up.sh              # Production
 
-- GUI changes: Test with Playwright (put in `/tests`)
-- Backend changes: Create smoke test (put in `/tests`)
-- Never claim "done" without proof it works
+# Testing
+npx playwright test --config=playwright.web.config.ts        # Dev (port 5173)
+npx playwright test --config=playwright.web-static.config.ts # Prod (port 8012)
+pytest tests/                # Backend tests
 
-## File Organization
+# Git workflow
+git rev-parse --abbrev-ref HEAD  # Check branch at session start
+```
 
-- All agent-created .md files go in `/agent_docs/`
-- Don't clutter root directory
+## Configuration System (MANDATORY)
 
-## Git Workflow
+**ALL settings MUST use Pydantic configs—no exceptions:**
+1. Add to `agro_config.json`
+2. Register in `/server/models/`
+3. Add to `/server/services/config_registry.py`
+4. Add to `/server/services/config_store.py`
 
+**Frontend state: Use `useConfigStore` (Zustand), NOT local `useState` for config values.**
+
+Never use .env for configuration. .env is for secrets only and must never be edited.
+
+## Critical Rules
+
+### No Stubs or Placeholders
+- Never add stubs, TODOs, placeholders, or simulated functionality
+- All backend must be fully wired to GUI via Pydantic
+- All GUI must be fully wired to backend via Pydantic + Zustand
+- Every new setting/parameter → `agro_config.json` + Pydantic models + config registry
+
+### Verification Required
+- **GUI work**: Playwright smoke test (renders, no black screen, nav works)
+- **Backend work**: Smoke test in `/tests/` exercising endpoints
+- **Config changes**: MANDATORY config contract test after any config-related changes:
+  ```bash
+  pytest tests/test_agro_config.py::TestConfigContractEnforcement -v
+  ```
+  This validates: no `os.getenv` for config keys, JSON/Pydantic/registry parity, no hardcoded fallbacks
+- Never report "done" without proof it works
+
+### Configuration & Accessibility
+- All new settings MUST appear in GUI (accessibility requirement)
+- Ask user where GUI settings should go if unclear
+- Never remove broken GUI settings—fix them instead
+
+### Git Workflow
 - Never push to `main` directly
-- Work on `development` branch
+- Work on `development`, harden on `staging`
+- PRs: `development` → `staging` → `main`
 - Never commit without user approval
 
-## See CLAUDE.md for Full Rules
+### Code Style
+- Use relative paths, never hardcoded absolute paths
+- New UI elements must have tooltips (see `useTooltips.ts`)
+- Don't add features without asking user first
+- JetBrains IDE MCP must ALWAYS be used over Grep
 
-For complete rules and requirements, see the main `CLAUDE.md` file.
+### Security - No dangerouslySetInnerHTML
+- NEVER use `dangerouslySetInnerHTML` anywhere in the codebase
+- If pre-existing, it MUST be fixed immediately—no exceptions
+- Use safe alternatives: React components, sanitization libraries, or plain text
+
+### Legacy JS Phase-Out
+- All legacy JS modules in `/web/modules` are being phased out
+- NEVER add new `.js` modules—use TypeScript only
+- When encountering legacy JS that needs modification, refactor to TypeScript
+- Archive refactored legacy files to `/web/_archived`
+
+## Quick Reference
+
+```python
+# RAG API
+curl 'http://127.0.0.1:8012/search?q=query&repo=agro&top_k=5'
+curl 'http://127.0.0.1:8012/answer?q=query&repo=agro'
+
+# Direct code
+from retrieval.hybrid_search import search_routed_multi
+results = search_routed_multi("query", repo_override="agro", final_k=5)
+```

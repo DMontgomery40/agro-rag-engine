@@ -80,7 +80,7 @@ def _decorate_row(m: Dict[str, Any], comp_type: str, use_heuristics: bool = Fals
 
 
 def _infer_quality_score(row: Dict[str, Any], comp_type: str) -> Number:
-    """Heuristic quality when not provided in prices.json.
+    """Heuristic quality when not provided in models.json.
     Tries to be sensible for performance mode ranking.
     """
     prov = (row.get("provider") or "").lower()
@@ -148,12 +148,12 @@ def _infer_quality_score(row: Dict[str, Any], comp_type: str) -> Number:
 def _component_rows(
     comp_type: str,
     ALLOW: set,
-    prices: Dict[str, Any],
+    models: Dict[str, Any],
     include_local: bool = False,
     use_heuristics: bool = False,
 ) -> List[Dict[str, Any]]:
     rows: List[Dict[str, Any]] = []
-    models = prices.get("models") or []
+    models = models.get("models") or []
     comp = comp_type.upper()
 
     for m in models:
@@ -194,7 +194,7 @@ def _score_row(row: Dict[str, Any], wl: Dict[str, Number], comp: str) -> Number:
     return base * q
 
 
-def autoprofile(request: Dict[str, Any], prices: Dict[str, Any]) -> Tuple[Dict[str, str], Dict[str, Any]]:
+def autoprofile(request: Dict[str, Any], models: Dict[str, Any]) -> Tuple[Dict[str, str], Dict[str, Any]]:
     """Select an environment profile given workload, policy, and model pricing.
 
     Returns a tuple of (env_vars, debug_details) or ({}, reason_if_failure)
@@ -208,9 +208,9 @@ def autoprofile(request: Dict[str, Any], prices: Dict[str, Any]) -> Tuple[Dict[s
     use_heuristics = bool(request.get("use_heuristics", True))
 
     # Build candidate sets per component
-    GEN = _component_rows("GEN", ALLOW, prices, include_local, use_heuristics)
-    EMB = _component_rows("EMB", ALLOW, prices, include_local, use_heuristics)
-    RER = _component_rows("RERANK", ALLOW, prices, include_local, use_heuristics)
+    GEN = _component_rows("GEN", ALLOW, models, include_local, use_heuristics)
+    EMB = _component_rows("EMB", ALLOW, models, include_local, use_heuristics)
+    RER = _component_rows("RERANK", ALLOW, models, include_local, use_heuristics)
 
     if not GEN or not EMB or not RER:
         return {}, {"error": "No candidates for one or more components", "allow": list(ALLOW)}
@@ -243,8 +243,23 @@ def autoprofile(request: Dict[str, Any], prices: Dict[str, Any]) -> Tuple[Dict[s
     else:
         env["EMBEDDING_DIM"] = str(int(_safe_num(winner_emb.get("output_dimension"), 512)))
     prov_rer = str((winner_rer.get("provider") or "cohere")).lower()
-    env["RERANK_BACKEND"] = "cohere" if prov_rer == "cohere" else ("local" if prov_rer in {"local", "hf"} else prov_rer)
-    env["COHERE_RERANK_MODEL"] = str(winner_rer.get("model") or "")
+    
+    # Unified reranker config - mode/provider/cloud_model
+    if prov_rer in {"local", "hf"}:
+        env["RERANKER_MODE"] = "local"
+        env["RERANKER_CLOUD_PROVIDER"] = ""
+        env["RERANKER_CLOUD_MODEL"] = ""
+        env["RERANKER_LOCAL_MODEL"] = str(winner_rer.get("model") or "")
+    elif prov_rer in {"cohere", "voyage", "jina"}:
+        env["RERANKER_MODE"] = "cloud"
+        env["RERANKER_CLOUD_PROVIDER"] = prov_rer
+        env["RERANKER_CLOUD_MODEL"] = str(winner_rer.get("model") or "")
+        env["RERANKER_LOCAL_MODEL"] = ""
+    else:
+        env["RERANKER_MODE"] = "none"
+        env["RERANKER_CLOUD_PROVIDER"] = ""
+        env["RERANKER_CLOUD_MODEL"] = ""
+        env["RERANKER_LOCAL_MODEL"] = ""
 
     debug = {
         "workload": wl,

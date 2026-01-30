@@ -4,6 +4,20 @@
   const api = (window.CoreUtils && window.CoreUtils.api) ? window.CoreUtils.api : (p=>p);
   const state = (window.CoreUtils && window.CoreUtils.state) ? window.CoreUtils.state : {};
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Binds click handler to MCP RAG button. Reads query, repo, topk, local from DOM; triggers async RAG pipeline.
+   *
+   * why: |
+   *   Centralizes event binding to prevent duplicate listeners and ensure single entry point for RAG execution.
+   *
+   * guardrails:
+   *   - DO NOT rebind if already bound (check dataset.bound flag)
+   *   - NOTE: Assumes all DOM elements exist; add null checks before access
+   *   - ASK USER: What happens on missing elements? Should fail gracefully or throw?
+   * ---/agentspec
+   */
   function bind(){
     const btn = document.getElementById('btn-mcp-rag-run');
     if (!btn || btn.dataset.bound) return;

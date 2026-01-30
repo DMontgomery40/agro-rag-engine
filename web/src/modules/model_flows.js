@@ -11,10 +11,24 @@
 
   async function upsertPrice(entry){
     try{
-      await fetch(api('/api/prices/upsert'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(entry) });
+      await fetch(api('/api/models/upsert'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(entry) });
     }catch(e){ console.warn('Price upsert failed:', e); }
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Prompts user for LLM provider and model ID. Returns {provider, model} or null if cancelled.
+   *
+   * why: |
+   *   Interactive UI for selecting generation model before workflow execution.
+   *
+   * guardrails:
+   *   - DO NOT validate model against agro_config.json here; defer to addGenModelFlow caller
+   *   - NOTE: Returns null on user cancel; caller must handle
+   *   - ASK USER: Should this pre-populate from current GEN_MODEL config?
+   * ---/agentspec
+   */
   function promptStr(msg, defVal=''){
     const v = window.prompt(msg, defVal);
     return v === null ? null : v.trim();
@@ -23,7 +37,7 @@
   async function addGenModelFlow(){
     const provider = promptStr('Provider (openai, anthropic, google, local)', 'openai');
     if (!provider) return;
-    const model = promptStr('Model ID (e.g., gpt-4o-mini or qwen3-coder:14b)', 'gpt-4o-mini');
+    const model = promptStr('Model ID (from agro_config.json GEN_MODEL)', '');
     if (!model) return;
     const baseUrl = promptStr('Base URL (optional; for proxies or local, e.g., http://127.0.0.1:11434)', '');
     let apiKey = '';
@@ -40,7 +54,7 @@
     const entry = { provider, model, family:'gen', base_url: baseUrl || undefined };
     entry.unit = provider === 'local' ? 'request' : '1k_tokens';
     await upsertPrice(entry);
-    if (window.Prices?.loadPrices) await window.Prices.loadPrices();
+    if (window.models?.loadmodels) await window.models.loadmodels();
     alert('Generation model added.');
   }
 
@@ -63,41 +77,52 @@
     const entry = { provider, model: model || provider + '-embed', family:'embed', base_url: baseUrl || undefined };
     entry.unit = '1k_tokens';
     await upsertPrice(entry);
-    if (window.Prices?.loadPrices) await window.Prices.loadPrices();
+    if (window.models?.loadmodels) await window.models.loadmodels();
     alert('Embedding model added.');
   }
 
   async function addRerankModelFlow(){
-    const provider = promptStr('Rerank provider (cohere, local, hf)', 'cohere');
-    if (!provider) return;
-    let model = promptStr('Rerank model ID (e.g., rerank-3.5 or BAAI/bge-reranker-v2-m3)', provider === 'cohere' ? 'rerank-3.5' : 'BAAI/bge-reranker-v2-m3');
-    const baseUrl = promptStr('Base URL (optional)', '');
-    let apiKey = '';
-    if (provider === 'cohere') apiKey = promptStr('Cohere API Key (optional)', '') || '';
+    const mode = promptStr('Rerank mode (cloud, local, learning, none)', 'local');
+    if (!mode) return;
 
-    const env = {};
-    if (provider === 'cohere'){ env.RERANK_BACKEND = 'cohere'; env.COHERE_RERANK_MODEL = model; if (apiKey) env.COHERE_API_KEY = apiKey; }
-    else if (provider === 'local'){ env.RERANK_BACKEND = 'local'; env.RERANKER_MODEL = model; }
-    else if (provider === 'hf'){ env.RERANK_BACKEND = 'hf'; env.RERANKER_MODEL = model; }
-    await updateEnv(env);
+    const config = { reranker_mode: mode };
+
+    if (mode === 'cloud') {
+      const cloudProvider = promptStr('Cloud provider (cohere, voyage, jina)', 'cohere');
+      if (!cloudProvider) return;
+      const cloudModel = promptStr('Cloud model ID (e.g., rerank-v3.5)', 'rerank-v3.5');
+      config.reranker_cloud_provider = cloudProvider;
+      config.reranker_cloud_model = cloudModel;
+    } else if (mode === 'local') {
+      const localModel = promptStr('Local model ID', 'cross-encoder/ms-marco-MiniLM-L-12-v2');
+      config.reranker_local_model = localModel;
+    }
+    // learning and none modes don't need additional config
+
+    // Update via config API (NOT env)
+    await fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config)
+    });
     if (window.Config?.loadConfig) await window.Config.loadConfig();
 
-    const entry = { provider, model, family:'rerank', base_url: baseUrl || undefined };
-    entry.unit = provider === 'cohere' ? '1k_tokens' : 'request';
+    const entry = { provider: mode === 'cloud' ? config.reranker_cloud_provider : mode, model: config.reranker_cloud_model || config.reranker_local_model || mode, family:'rerank' };
+    entry.unit = mode === 'cloud' ? '1k_tokens' : 'request';
     await upsertPrice(entry);
-    if (window.Prices?.loadPrices) await window.Prices.loadPrices();
+    if (window.models?.loadmodels) await window.models.loadmodels();
     alert('Rerank model added.');
   }
 
   async function addCostModelFlow(){
     const provider = promptStr('Provider', 'openai');
     if (!provider) return;
-    const model = promptStr('Model ID', 'gpt-4o-mini');
+    const model = promptStr('Model ID (from config)', '');
     if (!model) return;
     const baseUrl = promptStr('Base URL (optional)', '');
     const unit = promptStr('Unit (1k_tokens or request)', provider === 'local' ? 'request' : '1k_tokens') || '1k_tokens';
     await upsertPrice({ provider, model, family:'misc', base_url: baseUrl || undefined, unit });
-    if (window.Prices?.loadPrices) await window.Prices.loadPrices();
+    if (window.models?.loadmodels) await window.models.loadmodels();
     alert('Model added to pricing catalog.');
   }
 

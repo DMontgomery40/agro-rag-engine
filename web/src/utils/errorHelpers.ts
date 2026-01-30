@@ -1,4 +1,4 @@
-import type { ErrorHelperOptions } from '@/types';
+import type { ErrorHelperOptions } from '@web/types';
 
 /**
  * Create a helpful error message with context, troubleshooting, and links
@@ -121,4 +121,15 @@ export function escapeHtml(text: string): string {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+// Expose on window for legacy JS modules (docker.js, chat.js, reranker.js, etc.)
+// This replaces /modules/error-helpers.js
+if (typeof window !== 'undefined') {
+  (window as any).ErrorHelpers = {
+    createHelpfulError,
+    createInlineError,
+    createAlertError,
+    escapeHtml
+  };
 }

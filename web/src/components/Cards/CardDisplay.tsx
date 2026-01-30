@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Card } from '@/types/cards';
+import type { Card } from '@web/types/cards';
 
 interface CardDisplayProps {
   cards: Card[];

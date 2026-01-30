@@ -4,7 +4,7 @@ tags:
 - cross-encoder
 - reranker
 - generated_from_trainer
-- dataset_size:45
+- dataset_size:100
 - loss:BinaryCrossEntropyLoss
 base_model: cross-encoder/ms-marco-MiniLM-L12-v2
 pipeline_tag: text-ranking
@@ -51,11 +51,11 @@ from sentence_transformers import CrossEncoder
 model = CrossEncoder("cross_encoder_model_id")
 # Get scores for pairs of texts
 pairs = [
-    ['Where are RAG subtabs defined?', "      ]),\n      REDIS_URL: L('Redis URL', 'Connection string for Redis, used for LangGraph checkpoints and optional session memory. The graph runs even if Redis is down (stateless mode).', [\n        ['Redis Docs', 'https://redis.io/docs/latest/']\n      ]),\n      REPO: L('Active Repository', 'Logical repository name for routing and indexing. MCP and CLI use this to scope retrieval.', [\n        ['Docs: MCP Quickstart', '/docs/QUICKSTART_MCP.md']\n      ]),\n      COLLECTION_NAME: L('Collection Name'"],
-    ['where is langgraph used in agro', '  "citations": [\n    "auth/middleware.py:45-67",\n    "server/auth.py:120-145"\n  ],\n  "repo": "agro",\n  "confidence": 0.78,\n  "retrieval_count": 5\n}\n```\n\n**Example:**\n```bash\ncurl "http://127.0.0.1:8012/answer?q=Where%20is%20OAuth%20validated&repo=agro"\n```\n\n---\n\n### GET `/search`\n\nRetrieval only (no generation). Returns ranked code chunks with rerank scores.\n\n**Query Parameters:**\n- `q` (string, required) - Search query\n- `repo` (string, optional) - Repository name\n- `top_k` (integer, optional) '],
-    ['how do i use the cli tool for agro?', '#!/usr/bin/env python3\n"""Debug GUI by opening it and printing console errors"""\nfrom __future__ import annotations\nimport time\nfrom playwright.sync_api import sync_playwright\n\nBASE = "http://127.0.0.1:8012"\n'],
-    ['whre is the .json file store that holds the grafana dashboard stuff', '"""Path configuration for AGRO RAG Engine."""\nfrom pathlib import Path\nimport os\n\nrepo_root() -> Path:\n    """Return the root directory of the repository."""\n    return Path(__file__).resolve().parent\n\ndata_dir() -> Path:\n    """Return the data directory for storing index artifacts."""\n    root = repo_root()\n    data = root / "data"\n    data.mkdir(exist_ok=True)\n    return data\n'],
-    ['feedback is IN CHAT interface now : \n\n"""\n### Conclusion\n\nBy porting the feedback mechanism from the /answer endpoint to the chat interface, you can enhance user interaction and ensure that feedback contributes to model improvements. This integration will require modifications to the chat message handling and feedback capturing logic, but it will lead to a more cohesive system.\n\n### References\n- **Chat Interface**: /Users/davidmontgomery/agro-rag-engine/gui/js/chat.js:1-128\n- **Feedback Mechanism**: /Users/davidmontgomery/agro-rag-engine/server/feedback.py:1-13`\n                \n👍 Helpful\n👎 Not Helpful\nor rate:\n⭐\n⭐⭐\n⭐⭐⭐\n⭐⭐⭐⭐\n⭐⭐⭐⭐⭐\nWhat was missing? (optional)\n✓ Feedback recorded: 2 stars\n💡 This helps train search quality (only the reranker, not the chat model)\n\n"""\n\nwhat i\'m talking about is this statement: \n💡 This helps train search quality (only the reranker, not the chat model)\n\n\nwhy can\'t the /chat endpoint be as smart as teh /answer endpoint??', "            console.log('[VSCode] URL copied to clipboard (fallback)');\n            showNotification('VS Code URL copied to clipboard');\n        } catch (e) {\n            console.error('[VSCode] Fallback copy failed:', e);\n            showNotification(`VS Code URL: ${url}`);\n        } finally {\n            document.body.removeChild(textarea);\n        }\n    }\n\n    /**\n     * Restart VS Code server\n     */\n    async function restart() {\n        console.log('[VSCode] Restarting editor...');\n       "],
+    ['How are code files split into smaller pieces for indexing?', 'main():\n    print(f"=== Clean Indexer v2 ===")\n    print(f"Repo: {REPO}")\n    print(f"Embedding: {EMBEDDING_TYPE}")\n    \n    # Get repo paths\n    try:\n        bases = get_repo_paths(REPO)\n    except:\n        bases = [str(Path(__file__).parent.parent)]\n    \n    outdir = out_dir(REPO)\n    os.makedirs(outdir, exist_ok=True)\n    os.makedirs(os.path.join(outdir, \'bm25_index\'), exist_ok=True)\n    \n    # Load repo-specific excludes\n    repo_excludes = exclude_paths(REPO)\n    print(f"Excludes: {repo_exc'],
+    ['How are code files split into smaller pieces for indexing?', 'main():\n    print(f"=== Clean Indexer v2 ===")\n    print(f"Repo: {REPO}")\n    print(f"Embedding: {EMBEDDING_TYPE}")\n    \n    # Get repo paths\n    try:\n        bases = get_repo_paths(REPO)\n    except:\n        bases = [str(Path(__file__).parent.parent)]\n    \n    outdir = out_dir(REPO)\n    os.makedirs(outdir, exist_ok=True)\n    os.makedirs(os.path.join(outdir, \'bm25_index\'), exist_ok=True)\n    \n    # Load repo-specific excludes\n    repo_excludes = exclude_paths(REPO)\n    print(f"Excludes: {repo_exc'],
+    ['Where is rrf_fusion called?', 'search(\n    query: str,\n    repo: str = None,\n    topk_bm25: int = 50,\n    topk_vector: int = 50,\n    final_k: int = 10,\n) -> List[Dict]:\n    """\n    Main search function.\n    \n    Args:\n        query: Search query\n        repo: Repository name (defaults to config)\n        topk_bm25: Number of BM25 results\n        topk_vector: Number of vector results\n        final_k: Final number of results to return\n    \n    Returns:\n        List of result dicts with file_path, start_line, end_line, code, scor'],
+    ['Where is preprocess_query defined?', 'CardsBuildJob:\n    repo: str\n    enrich: bool = True\n    exclude_dirs: List[str] = field(default_factory=list)\n    exclude_patterns: List[str] = field(default_factory=list)\n    exclude_keywords: List[str] = field(default_factory=list)\n    job_id: str = field(default_factory=lambda: str(uuid.uuid4()))\n    started_at: float = field(default_factory=time.time)\n    stage: str = "scan"\n    total: int = 0\n    done: int = 0\n    last_emit_at: float = field(default_factory=time.time)\n    last_done: int = '],
+    ['Where is the BM25 retriever loaded?', 'bm25_search(query: str, repo: str, k: int = 50) -> List[tuple]:\n    """BM25 sparse search. Returns [(chunk_id, score), ...]"""\n    idx_dir = os.path.join(out_dir(repo), \'bm25_index\')\n    \n    # Load BM25 index\n    try:\n        retriever = bm25s.BM25.load(idx_dir)\n    except Exception as e:\n        print(f"[bm25] Failed to load index: {e}")\n        return []\n    \n    # Load tokenizer with vocab\n    stemmer = Stemmer(\'english\')\n    tokenizer = Tokenizer(stemmer=stemmer, stopwords=\'en\')\n    try:\n  '],
 ]
 scores = model.predict(pairs)
 print(scores.shape)
@@ -63,13 +63,13 @@ print(scores.shape)
 
 # Or rank different texts based on similarity to a single text
 ranks = model.rank(
-    'Where are RAG subtabs defined?',
+    'How are code files split into smaller pieces for indexing?',
     [
-        "      ]),\n      REDIS_URL: L('Redis URL', 'Connection string for Redis, used for LangGraph checkpoints and optional session memory. The graph runs even if Redis is down (stateless mode).', [\n        ['Redis Docs', 'https://redis.io/docs/latest/']\n      ]),\n      REPO: L('Active Repository', 'Logical repository name for routing and indexing. MCP and CLI use this to scope retrieval.', [\n        ['Docs: MCP Quickstart', '/docs/QUICKSTART_MCP.md']\n      ]),\n      COLLECTION_NAME: L('Collection Name'",
-        '  "citations": [\n    "auth/middleware.py:45-67",\n    "server/auth.py:120-145"\n  ],\n  "repo": "agro",\n  "confidence": 0.78,\n  "retrieval_count": 5\n}\n```\n\n**Example:**\n```bash\ncurl "http://127.0.0.1:8012/answer?q=Where%20is%20OAuth%20validated&repo=agro"\n```\n\n---\n\n### GET `/search`\n\nRetrieval only (no generation). Returns ranked code chunks with rerank scores.\n\n**Query Parameters:**\n- `q` (string, required) - Search query\n- `repo` (string, optional) - Repository name\n- `top_k` (integer, optional) ',
-        '#!/usr/bin/env python3\n"""Debug GUI by opening it and printing console errors"""\nfrom __future__ import annotations\nimport time\nfrom playwright.sync_api import sync_playwright\n\nBASE = "http://127.0.0.1:8012"\n',
-        '"""Path configuration for AGRO RAG Engine."""\nfrom pathlib import Path\nimport os\n\nrepo_root() -> Path:\n    """Return the root directory of the repository."""\n    return Path(__file__).resolve().parent\n\ndata_dir() -> Path:\n    """Return the data directory for storing index artifacts."""\n    root = repo_root()\n    data = root / "data"\n    data.mkdir(exist_ok=True)\n    return data\n',
-        "            console.log('[VSCode] URL copied to clipboard (fallback)');\n            showNotification('VS Code URL copied to clipboard');\n        } catch (e) {\n            console.error('[VSCode] Fallback copy failed:', e);\n            showNotification(`VS Code URL: ${url}`);\n        } finally {\n            document.body.removeChild(textarea);\n        }\n    }\n\n    /**\n     * Restart VS Code server\n     */\n    async function restart() {\n        console.log('[VSCode] Restarting editor...');\n       ",
+        'main():\n    print(f"=== Clean Indexer v2 ===")\n    print(f"Repo: {REPO}")\n    print(f"Embedding: {EMBEDDING_TYPE}")\n    \n    # Get repo paths\n    try:\n        bases = get_repo_paths(REPO)\n    except:\n        bases = [str(Path(__file__).parent.parent)]\n    \n    outdir = out_dir(REPO)\n    os.makedirs(outdir, exist_ok=True)\n    os.makedirs(os.path.join(outdir, \'bm25_index\'), exist_ok=True)\n    \n    # Load repo-specific excludes\n    repo_excludes = exclude_paths(REPO)\n    print(f"Excludes: {repo_exc',
+        'main():\n    print(f"=== Clean Indexer v2 ===")\n    print(f"Repo: {REPO}")\n    print(f"Embedding: {EMBEDDING_TYPE}")\n    \n    # Get repo paths\n    try:\n        bases = get_repo_paths(REPO)\n    except:\n        bases = [str(Path(__file__).parent.parent)]\n    \n    outdir = out_dir(REPO)\n    os.makedirs(outdir, exist_ok=True)\n    os.makedirs(os.path.join(outdir, \'bm25_index\'), exist_ok=True)\n    \n    # Load repo-specific excludes\n    repo_excludes = exclude_paths(REPO)\n    print(f"Excludes: {repo_exc',
+        'search(\n    query: str,\n    repo: str = None,\n    topk_bm25: int = 50,\n    topk_vector: int = 50,\n    final_k: int = 10,\n) -> List[Dict]:\n    """\n    Main search function.\n    \n    Args:\n        query: Search query\n        repo: Repository name (defaults to config)\n        topk_bm25: Number of BM25 results\n        topk_vector: Number of vector results\n        final_k: Final number of results to return\n    \n    Returns:\n        List of result dicts with file_path, start_line, end_line, code, scor',
+        'CardsBuildJob:\n    repo: str\n    enrich: bool = True\n    exclude_dirs: List[str] = field(default_factory=list)\n    exclude_patterns: List[str] = field(default_factory=list)\n    exclude_keywords: List[str] = field(default_factory=list)\n    job_id: str = field(default_factory=lambda: str(uuid.uuid4()))\n    started_at: float = field(default_factory=time.time)\n    stage: str = "scan"\n    total: int = 0\n    done: int = 0\n    last_emit_at: float = field(default_factory=time.time)\n    last_done: int = ',
+        'bm25_search(query: str, repo: str, k: int = 50) -> List[tuple]:\n    """BM25 sparse search. Returns [(chunk_id, score), ...]"""\n    idx_dir = os.path.join(out_dir(repo), \'bm25_index\')\n    \n    # Load BM25 index\n    try:\n        retriever = bm25s.BM25.load(idx_dir)\n    except Exception as e:\n        print(f"[bm25] Failed to load index: {e}")\n        return []\n    \n    # Load tokenizer with vocab\n    stemmer = Stemmer(\'english\')\n    tokenizer = Tokenizer(stemmer=stemmer, stopwords=\'en\')\n    try:\n  ',
     ]
 )
 # [{'corpus_id': ..., 'score': ...}, {'corpus_id': ..., 'score': ...}, ...]
@@ -117,19 +117,19 @@ You can finetune this model on your own dataset.
 
 #### Unnamed Dataset
 
-* Size: 45 training samples
+* Size: 100 training samples
 * Columns: <code>sentence_0</code>, <code>sentence_1</code>, and <code>label</code>
-* Approximate statistics based on the first 45 samples:
-  |         | sentence_0                                                                                      | sentence_1                                                                                       | label                                                         |
-  |:--------|:------------------------------------------------------------------------------------------------|:-------------------------------------------------------------------------------------------------|:--------------------------------------------------------------|
-  | type    | string                                                                                          | string                                                                                           | float                                                         |
-  | details | <ul><li>min: 8 characters</li><li>mean: 154.56 characters</li><li>max: 962 characters</li></ul> | <ul><li>min: 70 characters</li><li>mean: 460.36 characters</li><li>max: 500 characters</li></ul> | <ul><li>min: 0.0</li><li>mean: 0.2</li><li>max: 1.0</li></ul> |
+* Approximate statistics based on the first 100 samples:
+  |         | sentence_0                                                                                    | sentence_1                                                                                        | label                                                         |
+  |:--------|:----------------------------------------------------------------------------------------------|:--------------------------------------------------------------------------------------------------|:--------------------------------------------------------------|
+  | type    | string                                                                                        | string                                                                                            | float                                                         |
+  | details | <ul><li>min: 27 characters</li><li>mean: 38.7 characters</li><li>max: 59 characters</li></ul> | <ul><li>min: 180 characters</li><li>mean: 482.63 characters</li><li>max: 500 characters</li></ul> | <ul><li>min: 0.0</li><li>mean: 0.2</li><li>max: 1.0</li></ul> |
 * Samples:
-  | sentence_0                                       | sentence_1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | label            |
-  |:-------------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-----------------|
-  | <code>Where are RAG subtabs defined?</code>      | <code>      ]),<br>      REDIS_URL: L('Redis URL', 'Connection string for Redis, used for LangGraph checkpoints and optional session memory. The graph runs even if Redis is down (stateless mode).', [<br>        ['Redis Docs', 'https://redis.io/docs/latest/']<br>      ]),<br>      REPO: L('Active Repository', 'Logical repository name for routing and indexing. MCP and CLI use this to scope retrieval.', [<br>        ['Docs: MCP Quickstart', '/docs/QUICKSTART_MCP.md']<br>      ]),<br>      COLLECTION_NAME: L('Collection Name'</code>                                                    | <code>1.0</code> |
-  | <code>where is langgraph used in agro</code>     | <code>  "citations": [<br>    "auth/middleware.py:45-67",<br>    "server/auth.py:120-145"<br>  ],<br>  "repo": "agro",<br>  "confidence": 0.78,<br>  "retrieval_count": 5<br>}<br>```<br><br>**Example:**<br>```bash<br>curl "http://127.0.0.1:8012/answer?q=Where%20is%20OAuth%20validated&repo=agro"<br>```<br><br>---<br><br>### GET `/search`<br><br>Retrieval only (no generation). Returns ranked code chunks with rerank scores.<br><br>**Query Parameters:**<br>- `q` (string, required) - Search query<br>- `repo` (string, optional) - Repository name<br>- `top_k` (integer, optional) </code> | <code>1.0</code> |
-  | <code>how do i use the cli tool for agro?</code> | <code>#!/usr/bin/env python3<br>"""Debug GUI by opening it and printing console errors"""<br>from __future__ import annotations<br>import time<br>from playwright.sync_api import sync_playwright<br><br>BASE = "http://127.0.0.1:8012"<br></code>                                                                                                                                                                                                                                                                                                                                                        | <code>0.0</code> |
+  | sentence_0                                                              | sentence_1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | label            |
+  |:------------------------------------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-----------------|
+  | <code>How are code files split into smaller pieces for indexing?</code> | <code>main():<br>    print(f"=== Clean Indexer v2 ===")<br>    print(f"Repo: {REPO}")<br>    print(f"Embedding: {EMBEDDING_TYPE}")<br>    <br>    # Get repo paths<br>    try:<br>        bases = get_repo_paths(REPO)<br>    except:<br>        bases = [str(Path(__file__).parent.parent)]<br>    <br>    outdir = out_dir(REPO)<br>    os.makedirs(outdir, exist_ok=True)<br>    os.makedirs(os.path.join(outdir, 'bm25_index'), exist_ok=True)<br>    <br>    # Load repo-specific excludes<br>    repo_excludes = exclude_paths(REPO)<br>    print(f"Excludes: {repo_exc</code>    | <code>1.0</code> |
+  | <code>How are code files split into smaller pieces for indexing?</code> | <code>main():<br>    print(f"=== Clean Indexer v2 ===")<br>    print(f"Repo: {REPO}")<br>    print(f"Embedding: {EMBEDDING_TYPE}")<br>    <br>    # Get repo paths<br>    try:<br>        bases = get_repo_paths(REPO)<br>    except:<br>        bases = [str(Path(__file__).parent.parent)]<br>    <br>    outdir = out_dir(REPO)<br>    os.makedirs(outdir, exist_ok=True)<br>    os.makedirs(os.path.join(outdir, 'bm25_index'), exist_ok=True)<br>    <br>    # Load repo-specific excludes<br>    repo_excludes = exclude_paths(REPO)<br>    print(f"Excludes: {repo_exc</code>    | <code>0.0</code> |
+  | <code>Where is rrf_fusion called?</code>                                | <code>search(<br>    query: str,<br>    repo: str = None,<br>    topk_bm25: int = 50,<br>    topk_vector: int = 50,<br>    final_k: int = 10,<br>) -> List[Dict]:<br>    """<br>    Main search function.<br>    <br>    Args:<br>        query: Search query<br>        repo: Repository name (defaults to config)<br>        topk_bm25: Number of BM25 results<br>        topk_vector: Number of vector results<br>        final_k: Final number of results to return<br>    <br>    Returns:<br>        List of result dicts with file_path, start_line, end_line, code, scor</code> | <code>0.0</code> |
 * Loss: [<code>BinaryCrossEntropyLoss</code>](https://sbert.net/docs/package_reference/cross_encoder/losses.html#binarycrossentropyloss) with these parameters:
   ```json
   {
@@ -186,6 +186,7 @@ You can finetune this model on your own dataset.
 - `seed`: 42
 - `data_seed`: None
 - `jit_mode_eval`: False
+- `use_ipex`: False
 - `bf16`: False
 - `fp16`: False
 - `fp16_opt_level`: O1
@@ -212,16 +213,13 @@ You can finetune this model on your own dataset.
 - `fsdp_config`: {'min_num_params': 0, 'xla': False, 'xla_fsdp_v2': False, 'xla_fsdp_grad_ckpt': False}
 - `fsdp_transformer_layer_cls_to_wrap`: None
 - `accelerator_config`: {'split_batches': False, 'dispatch_batches': None, 'even_batches': True, 'use_seedable_sampler': True, 'non_blocking': False, 'gradient_accumulation_kwargs': None}
-- `parallelism_config`: None
 - `deepspeed`: None
 - `label_smoothing_factor`: 0.0
-- `optim`: adamw_torch_fused
+- `optim`: adamw_torch
 - `optim_args`: None
 - `adafactor`: False
 - `group_by_length`: False
 - `length_column_name`: length
-- `project`: huggingface
-- `trackio_space_id`: trackio
 - `ddp_find_unused_parameters`: None
 - `ddp_bucket_cap_mb`: None
 - `ddp_broadcast_buffers`: False
@@ -233,9 +231,8 @@ You can finetune this model on your own dataset.
 - `resume_from_checkpoint`: None
 - `hub_model_id`: None
 - `hub_strategy`: every_save
-- `hub_private_repo`: None
+- `hub_private_repo`: False
 - `hub_always_push`: False
-- `hub_revision`: None
 - `gradient_checkpointing`: False
 - `gradient_checkpointing_kwargs`: None
 - `include_inputs_for_metrics`: False
@@ -253,16 +250,17 @@ You can finetune this model on your own dataset.
 - `torch_compile`: False
 - `torch_compile_backend`: None
 - `torch_compile_mode`: None
+- `dispatch_batches`: None
+- `split_batches`: None
 - `include_tokens_per_second`: False
-- `include_num_input_tokens_seen`: no
+- `include_num_input_tokens_seen`: False
 - `neftune_noise_alpha`: None
 - `optim_target_modules`: None
 - `batch_eval_metrics`: False
 - `eval_on_start`: False
 - `use_liger_kernel`: False
-- `liger_kernel_config`: None
 - `eval_use_gather_object`: False
-- `average_tokens_across_devices`: True
+- `average_tokens_across_devices`: False
 - `prompts`: None
 - `batch_sampler`: batch_sampler
 - `multi_dataset_batch_sampler`: proportional
@@ -274,11 +272,11 @@ You can finetune this model on your own dataset.
 ### Framework Versions
 - Python: 3.11.7
 - Sentence Transformers: 5.1.1
-- Transformers: 4.57.0
-- PyTorch: 2.8.0
+- Transformers: 4.46.3
+- PyTorch: 2.9.1
 - Accelerate: 1.10.1
 - Datasets: 4.2.0
-- Tokenizers: 0.22.1
+- Tokenizers: 0.20.3
 
 ## Citation
 

@@ -2,86 +2,80 @@
 // Grafana metrics display and alert configuration
 
 import { useState, useEffect } from 'react';
-import { useTooltips } from '@/hooks/useTooltips';
+import { useAlertThresholdsStore, useAlertThresholdField } from '@/stores/useAlertThresholdsStore';
+import { TooltipIcon } from '@/components/ui/TooltipIcon';
 
+/**
+ * ---agentspec
+ * what: |
+ *   React component that renders a monitoring configuration subtab for alert threshold management.
+ *   Accepts no props; uses Zustand hooks to access alert thresholds store (load, save, loaded, loading states) and tooltip context.
+ *   Returns JSX displaying threshold input fields (error_rate_threshold_percent via useAlertThresholdField hook) with save/loading UI states.
+ *   Manages local UI state: actionMessage (string | null) for user feedback, saving (boolean) for async save operations.
+ *   Handles edge cases: loading state prevents premature renders, thresholdsLoaded gate prevents duplicate loads, error states surfaced via actionMessage.
+ *
+ * why: |
+ *   Centralizes monitoring configuration UI in a reusable subtab component following React composition patterns.
+ *   Uses Zustand store (useAlertThresholdsStore) for shared threshold state across the application, avoiding prop drilling.
+ *   Custom hook useAlertThresholdField abstracts field binding logic, reducing boilerplate and keeping component focused on layout/UX.
+ *   Separates loading (thresholdsLoading) from loaded (thresholdsLoaded) states to handle initial fetch vs. subsequent renders correctly.
+ *
+ * guardrails:
+ *   - DO NOT convert Zustand store selectors to useState; the store is the source of truth and must remain the single state container for thresholds
+ *   - ALWAYS check thresholdsLoaded before rendering threshold values to prevent stale or undefined data from displaying
+ *   - ALWAYS call loadThresholds on mount or when thresholdsLoaded is false to ensure fresh data; use useEffect with proper dependency array
+ *   - NOTE: useAlertThresholdField is a custom hook that must return [value, setValue] tuple compatible with Pydantic model validation on save
+ *   - ASK USER: Confirm whether actionMessage should auto-clear after a timeout, or if manual dismissal is required; current implementation does not specify cleanup behavior
+ * ---/agentspec
+ */
 export function MonitoringSubtab() {
-  const [errorRateThreshold, setErrorRateThreshold] = useState('5.0');
-  const [latencyP99, setLatencyP99] = useState('5.0');
-  const [timeoutErrors, setTimeoutErrors] = useState('10');
-  const [rateLimitErrors, setRateLimitErrors] = useState('5');
-  const [endpointCallFreq, setEndpointCallFreq] = useState('10');
-  const [sustainedDuration, setSustainedDuration] = useState('2');
-  const [cohereRerankCalls, setCohereRerankCalls] = useState('30');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
-  const { tooltips } = useTooltips();
+  const [saving, setSaving] = useState(false);
+  const loadThresholds = useAlertThresholdsStore((state) => state.load);
+  const thresholdsLoaded = useAlertThresholdsStore((state) => state.loaded);
+  const thresholdsLoading = useAlertThresholdsStore((state) => state.loading && !state.loaded);
+  const saveThresholds = useAlertThresholdsStore((state) => state.save);
+  const [errorRateThreshold, setErrorRateThreshold] = useAlertThresholdField('error_rate_threshold_percent');
+  const [latencyP99, setLatencyP99] = useAlertThresholdField('request_latency_p99_seconds');
+  const [timeoutErrors, setTimeoutErrors] = useAlertThresholdField('timeout_errors_per_5min');
+  const [rateLimitErrors, setRateLimitErrors] = useAlertThresholdField('rate_limit_errors_per_5min');
+  const [endpointCallFreq, setEndpointCallFreq] = useAlertThresholdField('endpoint_call_frequency_per_minute');
+  const [sustainedDuration, setSustainedDuration] = useAlertThresholdField('endpoint_frequency_sustained_minutes');
+  const [cohereRerankCalls, setCohereRerankCalls] = useAlertThresholdField('cohere_rerank_calls_per_minute');
 
   useEffect(() => {
-    loadAlertConfig();
-  }, []);
-
-  const api = (path: string) => {
-    const base = (window as any).API_BASE_URL || '';
-    return `${base}${path}`;
-  };
-
-  async function loadAlertConfig() {
-    try {
-      const response = await fetch(api('/monitoring/alert-thresholds'));
-      const data = await response.json();
-
-      // Load values from backend
-      setErrorRateThreshold(String(data.error_rate_threshold_percent || 5.0));
-      setLatencyP99(String(data.request_latency_p99_seconds || 5.0));
-      setTimeoutErrors(String(data.timeout_errors_per_5min || 10));
-      setRateLimitErrors(String(data.rate_limit_errors_per_5min || 5));
-      setEndpointCallFreq(String(data.endpoint_call_frequency_per_minute || 10));
-      setSustainedDuration(String(data.endpoint_frequency_sustained_minutes || 2));
-      setCohereRerankCalls(String(data.cohere_rerank_calls_per_minute || 30));
-
-      setLoading(false);
-    } catch (error) {
-      console.error('Failed to load alert config:', error);
-      setLoading(false);
+    if (!thresholdsLoaded) {
+      loadThresholds();
     }
-  }
+  }, [thresholdsLoaded, loadThresholds]);
 
   async function saveAlertConfig() {
     setSaving(true);
     setActionMessage('Saving alert configuration...');
     try {
-      const config = {
-        error_rate_threshold_percent: parseFloat(errorRateThreshold),
-        request_latency_p99_seconds: parseFloat(latencyP99),
-        timeout_errors_per_5min: parseInt(timeoutErrors),
-        rate_limit_errors_per_5min: parseInt(rateLimitErrors),
-        endpoint_call_frequency_per_minute: parseInt(endpointCallFreq),
-        endpoint_frequency_sustained_minutes: parseInt(sustainedDuration),
-        cohere_rerank_calls_per_minute: parseInt(cohereRerankCalls)
-      };
-
-      const response = await fetch(api('/monitoring/alert-thresholds'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config)
-      });
-
-      const data = await response.json();
-      if (data.status === 'ok') {
-        setActionMessage(`Alert configuration saved successfully! Updated ${data.updated} threshold(s).`);
+      const { updated, status } = await saveThresholds([
+        'error_rate_threshold_percent',
+        'request_latency_p99_seconds',
+        'timeout_errors_per_5min',
+        'rate_limit_errors_per_5min',
+        'endpoint_call_frequency_per_minute',
+        'endpoint_frequency_sustained_minutes',
+        'cohere_rerank_calls_per_minute',
+      ]);
+      if (status === 'ok') {
+        setActionMessage(`Alert configuration saved successfully! Updated ${updated} threshold(s).`);
       } else {
-        setActionMessage(`Failed to save alert configuration: ${data.message || 'Unknown error'}`);
+        setActionMessage('Failed to save alert configuration: backend returned an error.');
       }
     } catch (error: any) {
-      setActionMessage(`Error saving alert configuration: ${error.message}`);
+      setActionMessage(`Error saving alert configuration: ${error.message ?? 'Unknown error'}`);
     } finally {
       setSaving(false);
       setTimeout(() => setActionMessage(null), 3000);
     }
   }
 
-  if (loading) {
+  if (thresholdsLoading) {
     return (
       <div style={{ padding: '20px', textAlign: 'center', color: 'var(--fg-muted)' }}>
         Loading alert configuration...
@@ -125,7 +119,10 @@ export function MonitoringSubtab() {
 
         <div className="input-row">
           <div className="input-group">
-            <label dangerouslySetInnerHTML={{ __html: tooltips.ERROR_RATE_THRESHOLD }} />
+            <label>
+              Error Rate Threshold (%)
+              <TooltipIcon name="ERROR_RATE_THRESHOLD" />
+            </label>
             <input
               type="number"
               value={errorRateThreshold}
@@ -147,7 +144,10 @@ export function MonitoringSubtab() {
             </p>
           </div>
           <div className="input-group">
-            <label dangerouslySetInnerHTML={{ __html: tooltips.LATENCY_P99_THRESHOLD }} />
+            <label>
+              Latency P99 Threshold (s)
+              <TooltipIcon name="LATENCY_P99_THRESHOLD" />
+            </label>
             <input
               type="number"
               value={latencyP99}
@@ -172,7 +172,10 @@ export function MonitoringSubtab() {
 
         <div className="input-row">
           <div className="input-group">
-            <label dangerouslySetInnerHTML={{ __html: tooltips.TIMEOUT_ERRORS_THRESHOLD }} />
+            <label>
+              Timeout Errors Threshold
+              <TooltipIcon name="TIMEOUT_ERRORS_THRESHOLD" />
+            </label>
             <input
               type="number"
               value={timeoutErrors}
@@ -194,7 +197,10 @@ export function MonitoringSubtab() {
             </p>
           </div>
           <div className="input-group">
-            <label dangerouslySetInnerHTML={{ __html: tooltips.RATE_LIMIT_ERRORS_THRESHOLD }} />
+            <label>
+              Rate Limit Errors Threshold
+              <TooltipIcon name="RATE_LIMIT_ERRORS_THRESHOLD" />
+            </label>
             <input
               type="number"
               value={rateLimitErrors}
@@ -235,7 +241,10 @@ export function MonitoringSubtab() {
 
         <div className="input-row">
           <div className="input-group">
-            <label dangerouslySetInnerHTML={{ __html: tooltips.ENDPOINT_CALL_FREQUENCY }} />
+            <label>
+              Endpoint Call Frequency
+              <TooltipIcon name="ENDPOINT_CALL_FREQUENCY" />
+            </label>
             <input
               type="number"
               value={endpointCallFreq}
@@ -257,7 +266,10 @@ export function MonitoringSubtab() {
             </p>
           </div>
           <div className="input-group">
-            <label dangerouslySetInnerHTML={{ __html: tooltips.ENDPOINT_SUSTAINED_DURATION }} />
+            <label>
+              Sustained Duration (min)
+              <TooltipIcon name="ENDPOINT_SUSTAINED_DURATION" />
+            </label>
             <input
               type="number"
               value={sustainedDuration}
@@ -282,7 +294,10 @@ export function MonitoringSubtab() {
 
         <div className="input-row">
           <div className="input-group">
-            <label dangerouslySetInnerHTML={{ __html: tooltips.COHERE_RERANK_CALLS }} />
+            <label>
+              Cohere Rerank Calls/min
+              <TooltipIcon name="COHERE_RERANK_CALLS" />
+            </label>
             <input
               type="number"
               value={cohereRerankCalls}

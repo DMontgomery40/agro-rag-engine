@@ -69,6 +69,28 @@ const initialState: OnboardingState = {
   isComplete: false,
 };
 
+/**
+ * ---agentspec
+ * what: |
+ *   Custom React hook that manages onboarding state with localStorage persistence.
+ *   Initializes state by attempting to restore from localStorage keys 'onboarding_step' and 'onboarding_state'; falls back to initialState if keys missing or JSON parsing fails.
+ *   Returns an object containing current onboarding state and step number (integer).
+ *   Silently catches localStorage errors (quota exceeded, access denied, parse failures) and defaults to initialState without throwing.
+ *   Merges restored state with initialState to ensure new fields added in code updates are present even for users with stale localStorage data.
+ *
+ * why: |
+ *   Provides persistent onboarding experience across page reloads by leveraging browser localStorage.
+ *   Merging with initialState prevents runtime errors when schema evolves and new required fields are added.
+ *   Silent error handling ensures graceful degradation if localStorage is unavailable (private browsing, quota exceeded, etc.).
+ *
+ * guardrails:
+ *   - DO NOT remove the try-catch block; localStorage access can throw in private browsing mode, quota-exceeded scenarios, or when disabled by browser policy
+ *   - ALWAYS merge restored state with initialState using spread operator to guarantee all required fields exist, preventing undefined reference errors
+ *   - NOTE: localStorage is synchronous and blocks the main thread; for large state objects, consider moving to IndexedDB or sessionStorage
+ *   - NOTE: JSON.parse can throw on corrupted data; current implementation silently falls back, which may hide data corruption issues
+ *   - ASK USER: Before adding sensitive data to onboarding state, confirm whether localStorage is appropriate or if sessionStorage/memory-only storage is required for security
+ * ---/agentspec
+ */
 export function useOnboarding() {
   const [state, setState] = useState<OnboardingState>(() => {
     // Try to restore from localStorage
@@ -264,10 +286,11 @@ export function useOnboarding() {
       name: projectName.trim(),
       sources: state.projectDraft,
       settings: {
-        MQ_REWRITES: speed,
+        MAX_QUERY_REWRITES: speed,
         LANGGRAPH_FINAL_K: 10 + speed * 5,
-        RERANK_BACKEND: quality === 1 ? 'none' : quality === 2 ? 'local' : 'cohere',
-        GEN_MODEL: quality === 1 ? 'local' : 'gpt-4o-mini',
+        RERANKER_MODE: quality === 1 ? 'none' : quality === 2 ? 'local' : 'cloud',
+        RERANKER_CLOUD_PROVIDER: quality === 3 ? 'cohere' : '',
+        GEN_MODEL: quality === 1 ? 'local' : 'gpt-5',
         EMBEDDING_TYPE: cloud === 1 ? 'local' : 'openai',
       },
       golden: state.questions.map((q) => q.text),

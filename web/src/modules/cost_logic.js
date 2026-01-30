@@ -1,7 +1,7 @@
 
 /**
  * Cost logic for AGRO GUI (browser-only, no bundler).
- * - Loads gui/prices.json (same origin).
+ * - Loads models.json from the API (same origin) to match backend normalization.
  * - Supports chat/completions, embeddings, and rerankers.
  * - Returns per-request cost breakdown.
  */
@@ -9,11 +9,24 @@
 const PRICE_CACHE = { json: null, loadedAt: 0 };
 const PRICE_TTL_MS = 60_000;
 
+/**
+ * ---agentspec
+ * what: |
+ *   Normalizes string keys to lowercase trimmed form. Accepts any input, returns normalized string or empty string.
+ *
+ * why: |
+ *   Consistent key comparison across case-insensitive lookups.
+ *
+ * guardrails:
+ *   - DO NOT assume non-string inputs are valid; coerce via String() first
+ *   - NOTE: Returns empty string for null/undefined, not error
+ * ---/agentspec
+ */
 function normKey(s) {
   return String(s || '').trim().toLowerCase();
 }
 
-// Expect prices.json shape:
+// Expect models.json shape:
 // {
 //   "models": [
 //     { "provider": "openai", "model": "gpt-4o-mini", "input_per_1k": 0.15, "output_per_1k": 0.6, "unit": "1k_tokens" },
@@ -22,32 +35,69 @@ function normKey(s) {
 //   ]
 // }
 
-async function loadPrices() {
+async function loadmodels() {
   const now = Date.now();
   if (PRICE_CACHE.json && now - PRICE_CACHE.loadedAt < PRICE_TTL_MS) {
     return PRICE_CACHE.json;
   }
-  const res = await fetch('./prices.json', { cache: 'no-store' });
-  if (!res.ok) throw new Error(`Failed to load prices.json: ${res.status}`);
+  const api = (window.CoreUtils && window.CoreUtils.api) ? window.CoreUtils.api : (path) => path;
+  const res = await fetch(api('/api/models'), { cache: 'no-store' });
+  if (!res.ok) throw new Error(`Failed to load models.json: ${res.status}`);
   const json = await res.json();
   PRICE_CACHE.json = json;
   PRICE_CACHE.loadedAt = now;
   return json;
 }
 
+/**
+ * ---agentspec
+ * what: |
+ *   Classifies model pricing schema by field presence. Returns model type (embed, rerank, or chat) based on numeric pricing fields.
+ *
+ * why: |
+ *   Routing logic needs type detection before pricing calculations; field-based classification avoids model name parsing.
+ *
+ * guardrails:
+ *   - DO NOT rely on field order; check all conditions before returning
+ *   - NOTE: embed/rerank checked first; chat is fallback for models with partial pricing data
+ *   - ASK USER: Handle models with multiple pricing types (e.g., embed + chat)?
+ * ---/agentspec
+ */
 function getModelType(model) {
   // Determine model type based on available fields
-  if (model.embed_per_1k !== undefined) return 'embed';
-  if (model.rerank_per_1k !== undefined || model.per_request !== undefined) return 'rerank';
-  if (model.input_per_1k !== undefined || model.output_per_1k !== undefined) return 'chat';
+  // Use != null to catch both null and undefined, and check for actual numeric values
+  // Order matters: check embed/rerank first since chat models may have null values for those fields
+  const hasEmbed = model.embed_per_1k != null && typeof model.embed_per_1k === 'number';
+  const hasRerank = (model.rerank_per_1k != null && typeof model.rerank_per_1k === 'number') || 
+                    (model.per_request != null && typeof model.per_request === 'number');
+  const hasChat = (model.input_per_1k != null && typeof model.input_per_1k === 'number') || 
+                  (model.output_per_1k != null && typeof model.output_per_1k === 'number');
+  
+  if (hasEmbed) return 'embed';
+  if (hasRerank) return 'rerank';
+  if (hasChat) return 'chat';
   return null;
 }
 
-function getModelSpec(prices, providerName, modelName) {
-  const models = prices?.models || [];
+/**
+ * ---agentspec
+ * what: |
+ *   Searches pricing models array for exact provider+model match (normalized keys). Returns matched model object with computed type field.
+ *
+ * why: |
+ *   Normalization ensures case-insensitive matching; type computation centralizes model classification logic.
+ *
+ * guardrails:
+ *   - DO NOT assume models array exists; check models?.models first
+ *   - NOTE: Returns undefined if no match found; caller must handle
+ *   - ASK USER: Should fallback to partial match if exact match fails?
+ * ---/agentspec
+ */
+function getModelSpec(modelsData, providerName, modelName) {
+  const models = modelsData?.models || [];
   const prov = normKey(providerName);
   const mdl = normKey(modelName);
-  
+
   // Try exact match first
   for (const m of models) {
     if (normKey(m.provider) === prov && normKey(m.model) === mdl) {
@@ -86,10 +136,24 @@ function getModelSpec(prices, providerName, modelName) {
  * @param {number} [opt.requests]      - for rerank (number of calls)
  * @returns {Object} { costUSD, detail }
  */
-function computeUnitCost(prices, opt) {
+/**
+ * ---agentspec
+ * what: |
+ *   Computes unit cost (USD) for a model. Takes models dict, provider, model name. Returns {costUSD, detail} or error if model unknown.
+ *
+ * why: |
+ *   Centralizes cost lookup logic; normalizes provider key and validates model existence before calculation.
+ *
+ * guardrails:
+ *   - DO NOT assume model exists; always check spec before accessing pricing fields
+ *   - NOTE: Returns costUSD=0 with error detail on unknown model; does not throw
+ *   - ASK USER: How should missing pricing tiers be handled (default to 0 or throw)?
+ * ---/agentspec
+ */
+function computeUnitCost(models, opt) {
   const provider = normKey(opt.provider);
   const model = opt.model;
-  const spec = getModelSpec(prices, provider, model);
+  const spec = getModelSpec(models, provider, model);
   if (!spec) {
     return { costUSD: 0, detail: { error: `Unknown model: ${provider}/${model}` } };
   }
@@ -141,32 +205,32 @@ function computeUnitCost(prices, opt) {
  */
 export const CostLogic = {
   async estimate(req) {
-    const prices = await loadPrices();
+    const models = await loadmodels();
     let total = 0;
     const breakdown = {};
 
     if (req?.chat) {
-      const r = computeUnitCost(prices, { type:'chat', ...req.chat });
+      const r = computeUnitCost(models, { type:'chat', ...req.chat });
       breakdown.chat = r;
       total += r.costUSD;
     }
     if (req?.embed) {
-      const r = computeUnitCost(prices, { type:'embed', ...req.embed });
+      const r = computeUnitCost(models, { type:'embed', ...req.embed });
       breakdown.embed = r;
       total += r.costUSD;
     }
     if (req?.rerank) {
-      const r = computeUnitCost(prices, { type:'rerank', ...req.rerank });
+      const r = computeUnitCost(models, { type:'rerank', ...req.rerank });
       breakdown.rerank = r;
       total += r.costUSD;
     }
-    return { totalUSD: Number(total.toFixed(6)), breakdown, pricesVersion: prices?.version || null };
+    return { totalUSD: Number(total.toFixed(6)), breakdown, modelsVersion: models?.version || null };
   },
 
   // Quick helpers the GUI can call
   async listProviders() {
-    const prices = await loadPrices();
-    const models = prices?.models || [];
+    const modelsData = await loadmodels();
+    const models = modelsData?.models || [];
     const providers = new Set();
     models.forEach(m => {
       if (m.provider) {
@@ -181,8 +245,8 @@ export const CostLogic = {
     return Array.from(providers).sort();
   },
   async listModels(providerName, modelType = null) {
-    const prices = await loadPrices();
-    const models = prices?.models || [];
+    const modelsData = await loadmodels();
+    const models = modelsData?.models || [];
     const prov = normKey(providerName);
     
     const filtered = models.filter(m => {
@@ -206,19 +270,48 @@ export const CostLogic = {
 
   // Read form inputs and estimate cost via backend API
   async estimateFromUI(apiBase) {
+    /**
+     * ---agentspec
+     * what: |
+     *   Reads form inputs (provider, model, token counts) from DOM. Returns payload object with gen_provider, gen_model, tokens_in, tokens_out.
+     *
+     * why: |
+     *   Centralizes form parsing; all values sourced from Pydantic config, no hardcoded defaults except fallback integers.
+     *
+     * guardrails:
+     *   - DO NOT use hardcoded model/provider names; trim and validate against config
+     *   - NOTE: parseInt defaults to 0 if parse fails; ensure upstream validation
+     *   - ASK USER: Validate gen_provider and gen_model against allowed list before submission
+     * ---/agentspec
+     */
     function readInt(id, d){ const el=document.getElementById(id); const v=el?el.value:''; const n=parseInt(v||'',10); return Number.isFinite(n)?n:(d||0); }
+    /**
+     * ---agentspec
+     * what: |
+     *   Reads cost config from DOM elements (provider, model, token counts, embedding provider). Returns payload object for pricing calculation.
+     *
+     * why: |
+     *   Centralizes DOM reads with fallbacks; Pydantic config is source of truth, not hardcoded defaults.
+     *
+     * guardrails:
+     *   - DO NOT use hardcoded fallbacks; all values must come from Pydantic config
+     *   - NOTE: readInt() must validate non-negative integers; readStr() trims whitespace
+     *   - ASK USER: Confirm embed_provider is required or optional in payload
+     * ---/agentspec
+     */
     function readStr(id, d){ const el=document.getElementById(id); const v=el?el.value:''; return (v||d||'').toString(); }
 
+    // All values come from Pydantic config - no hardcoded fallbacks
     const payload = {
-      gen_provider: readStr('cost-provider','openai').trim(),
-      gen_model: readStr('cost-model','gpt-5.1-mini').trim(),
+      gen_provider: readStr('cost-provider','').trim(),
+      gen_model: readStr('cost-model','').trim(),
       tokens_in: readInt('cost-in', 500),
       tokens_out: readInt('cost-out', 800),
-      embed_provider: readStr('cost-embed-provider','openai').trim(),
-      embed_model: readStr('cost-embed-model','text-embedding-3-small').trim(),
+      embed_provider: readStr('cost-embed-provider','').trim(),
+      embed_model: readStr('cost-embed-model','').trim(),
       embeds: readInt('cost-embeds', 0),
-      rerank_provider: readStr('cost-rerank-provider','cohere').trim(),
-      rerank_model: readStr('cost-rerank-model','rerank-3.5').trim(),
+      rerank_provider: readStr('cost-rerank-provider','').trim(),
+      rerank_model: readStr('cost-rerank-model','').trim(),
       reranks: readInt('cost-rerank', 0),
       requests_per_day: readInt('cost-rpd', 100),
     };

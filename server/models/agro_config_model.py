@@ -8,9 +8,9 @@ Using Pydantic provides:
 - Default values that match current hardcoded values
 - JSON schema generation for documentation
 """
+from typing import Dict, List, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
-from typing import Dict, Literal
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class RetrievalConfig(BaseModel):
@@ -35,6 +35,13 @@ class RetrievalConfig(BaseModel):
         ge=1,
         le=10,
         description="Maximum number of query rewrites for multi-query expansion"
+    )
+
+    langgraph_max_query_rewrites: int = Field(
+        default=2,
+        ge=1,
+        le=10,
+        description="Maximum number of query rewrites for LangGraph pipeline"
     )
 
     fallback_confidence: float = Field(
@@ -142,6 +149,11 @@ class RetrievalConfig(BaseModel):
         description="Enable semantic synonym expansion"
     )
 
+    agro_synonyms_path: str = Field(
+        default="",
+        description="Custom path to semantic_synonyms.json (default: data/semantic_synonyms.json)"
+    )
+
     topk_dense: int = Field(
         default=75,
         ge=10,
@@ -169,12 +181,7 @@ class RetrievalConfig(BaseModel):
         description="Max characters for result hydration"
     )
 
-    disable_rerank: int = Field(
-        default=0,
-        ge=0,
-        le=1,
-        description="Disable reranking completely"
-    )
+    # REMOVED: disable_rerank - use RERANKER_MODE='none' instead
 
     @field_validator('rrf_k_div')
     @classmethod
@@ -316,8 +323,7 @@ class EmbeddingConfig(BaseModel):
 
     embedding_type: str = Field(
         default="openai",
-        pattern="^(openai|voyage|local|mxbai)$",
-        description="Embedding provider"
+        description="Embedding provider (dynamic - validated against models.json at runtime)"
     )
     embedding_model: str = Field(
         default="text-embedding-3-large",
@@ -325,10 +331,27 @@ class EmbeddingConfig(BaseModel):
     )
     embedding_dim: int = Field(
         default=3072,
-        ge=512,
-        le=3072,
+        ge=128,
+        le=4096,
         description="Embedding dimensions"
     )
+
+    @field_validator('embedding_type', mode='before')
+    @classmethod
+    def normalize_embedding_type(cls, v: str) -> str:
+        """Normalize embedding provider aliases."""
+        if isinstance(v, str):
+            val = v.strip().lower()
+            # Map common aliases
+            if val in {'hf', 'hugging_face', 'hugging-face'}:
+                return 'huggingface'
+            if val in {'sentence_transformers', 'sentence-transformers', 'st'}:
+                return 'local'
+            if val in {'mxbai', 'mixedbread'}:
+                return 'local'  # mxbai models run under local provider
+            return val
+        return v
+
     voyage_model: str = Field(
         default="voyage-code-3",
         description="Voyage embedding model"
@@ -372,8 +395,9 @@ class EmbeddingConfig(BaseModel):
     @classmethod
     def validate_dim_matches_model(cls, v):
         """Ensure dimensions match typical model output."""
-        if v not in [128, 256, 384, 512, 768, 1024, 1536, 3072]:
-            raise ValueError(f'Uncommon embedding dimension: {v}. Expected one of [128, 256, 384, 512, 768, 1024, 1536, 3072]')
+        common_dims = [128, 256, 384, 512, 768, 1024, 1536, 2048, 3072, 4096]
+        if v not in common_dims:
+            raise ValueError(f'Uncommon embedding dimension: {v}. Expected one of {common_dims}')
         return v
 
 
@@ -398,11 +422,17 @@ class ChunkingConfig(BaseModel):
         le=100,
         description="Overlap lines for AST chunking"
     )
-    max_chunk_size: int = Field(
+    max_indexable_file_size: int = Field(
         default=2000000,
         ge=10000,
         le=10000000,
-        description="Max file size to chunk (bytes)"
+        description="Max file size to index (bytes) - files larger than this are skipped"
+    )
+    max_chunk_tokens: int = Field(
+        default=8000,
+        ge=100,
+        le=32000,
+        description="Maximum tokens per chunk - chunks exceeding this are split recursively"
     )
     min_chunk_chars: int = Field(
         default=50,
@@ -480,6 +510,10 @@ class IndexingConfig(BaseModel):
         default="english",
         description="Stemmer language"
     )
+    bm25_stopwords_lang: str = Field(
+        default="en",
+        description="Stopwords language code"
+    )
     index_excluded_exts: str = Field(
         default=".png,.jpg,.gif,.ico,.svg,.woff,.ttf",
         description="Excluded file extensions (comma-separated)"
@@ -513,31 +547,25 @@ class IndexingConfig(BaseModel):
 class RerankingConfig(BaseModel):
     """Reranking configuration for result refinement."""
 
-    reranker_active: str = Field(
+    reranker_mode: str = Field(
         default="local",
-        description="Active reranker choice (local/learning/HF vs cloud provider)"
+        pattern="^(cloud|local|learning|none)$",
+        description="Reranker mode: 'cloud' (Cohere/Voyage API), 'local' (HuggingFace cross-encoder), 'learning' (AGRO cross-encoder-agro), 'none' (disabled)"
     )
 
-    reranker_provider: str = Field(
-        default="",
-        description="Cloud reranker provider when using external API"
+    reranker_cloud_provider: str = Field(
+        default="cohere",
+        description="Cloud reranker provider when mode=cloud (cohere, voyage, jina)"
     )
 
     reranker_cloud_model: str = Field(
-        default="rerank-3.5",
-        description="Selected cloud reranker model for the chosen provider"
+        default="rerank-v3.5",
+        description="Cloud reranker model name when mode=cloud (Cohere: rerank-v3.5)"
     )
 
-    reranker_model: str = Field(
+    reranker_local_model: str = Field(
         default="cross-encoder/ms-marco-MiniLM-L-12-v2",
-        description="Reranker model path"
-    )
-
-    agro_reranker_enabled: int = Field(
-        default=1,
-        ge=0,
-        le=1,
-        description="Enable reranking"
+        description="Local HuggingFace cross-encoder model when mode=local"
     )
 
     agro_reranker_alpha: float = Field(
@@ -551,7 +579,14 @@ class RerankingConfig(BaseModel):
         default=50,
         ge=10,
         le=200,
-        description="Number of candidates to rerank"
+        description="Number of candidates to rerank (local/learning mode)"
+    )
+
+    reranker_cloud_top_n: int = Field(
+        default=50,
+        ge=1,
+        le=200,
+        description="Number of candidates to rerank (cloud mode)"
     )
 
     agro_reranker_batch: int = Field(
@@ -582,21 +617,6 @@ class RerankingConfig(BaseModel):
         description="Reload check period (seconds)"
     )
 
-    cohere_rerank_model: str = Field(
-        default="rerank-3.5",
-        description="Cohere reranker model"
-    )
-
-    voyage_rerank_model: str = Field(
-        default="rerank-2",
-        description="Voyage reranker model"
-    )
-
-    reranker_backend: str = Field(
-        default="local",
-        description="Reranker backend (local/hf/learning for on-host models, provider id for cloud, none/off to disable)"
-    )
-
     reranker_timeout: int = Field(
         default=10,
         ge=5,
@@ -618,40 +638,30 @@ class RerankingConfig(BaseModel):
         description="Allow transformers remote code for HF rerankers that require it"
     )
 
-    @field_validator('reranker_backend', mode='before')
+    @field_validator('reranker_mode', mode='before')
     @classmethod
-    def normalize_backend(cls, v: str) -> str:
-        """Normalize backend aliases."""
+    def normalize_mode(cls, v: str) -> str:
+        """Normalize reranker mode aliases."""
         if isinstance(v, str):
             val = v.strip().lower()
-            if val in {'off', 'none', 'disabled'}:
-                return 'none'
-            if val == 'hf':
-                return 'hf'
-            return val
-        return v
-
-    @field_validator('reranker_active', mode='before')
-    @classmethod
-    def normalize_active(cls, v: str) -> str:
-        if isinstance(v, str):
-            val = v.strip().lower()
-            if val in {'off', 'none', 'disabled'}:
+            if val in {'off', 'disabled'}:
                 return 'none'
             if val == 'hf':
                 return 'local'
-            if val == 'learning':
-                return 'local'
+            # Map old 'cohere', 'voyage', 'jina' values to 'cloud'
+            if val in {'cohere', 'voyage', 'jina'}:
+                return 'cloud'
             return val
         return v
 
-    @field_validator('reranker_provider', mode='before')
+    @field_validator('reranker_cloud_provider', mode='before')
     @classmethod
-    def normalize_provider(cls, v: str) -> str:
+    def normalize_cloud_provider(cls, v: str) -> str:
+        """Normalize cloud provider aliases."""
         if isinstance(v, str):
             val = v.strip().lower()
-            if val in {'off', 'none', 'disabled'}:
-                return 'none'
+            if val in {'off', 'none', 'disabled', ''}:
+                return ''
             return val
         return v
 
@@ -734,6 +744,31 @@ class GenerationConfig(BaseModel):
         description="Ollama generation model"
     )
 
+    gen_model_http: str = Field(
+        default="",
+        description="HTTP transport generation model override"
+    )
+
+    gen_model_mcp: str = Field(
+        default="",
+        description="MCP transport generation model override"
+    )
+
+    enrich_model_ollama: str = Field(
+        default="",
+        description="Ollama enrichment model"
+    )
+
+    ollama_url: str = Field(
+        default="http://127.0.0.1:11434/api",
+        description="Ollama API URL"
+    )
+
+    openai_base_url: str = Field(
+        default="",
+        description="OpenAI API base URL override (for proxies)"
+    )
+
     # Local (Ollama) HTTP timeouts — clear, user-friendly naming
     ollama_request_timeout: int = Field(
         default=300,
@@ -793,6 +828,82 @@ class EnrichmentConfig(BaseModel):
         le=120,
         description="Enrichment timeout (seconds)"
     )
+
+
+class CardsConfig(BaseModel):
+    """Cards builder filtering configuration."""
+
+    exclude_dirs: List[str] = Field(
+        default_factory=lambda: [
+            "docs", "agent_docs", "website", "tests", "assets",
+            "internal_docs.md", "out", "checkpoints", "models",
+            "data", "telemetry", "node_mcp", "public", "examples",
+            "bin", "reports", "screenshots", "web/dist", "gui"
+        ],
+        description="Directories to skip when building cards"
+    )
+
+    exclude_patterns: List[str] = Field(
+        default_factory=list,
+        description="File patterns/extensions to skip"
+    )
+
+    exclude_keywords: List[str] = Field(
+        default_factory=list,
+        description="Keywords that, when present in code, skip the chunk"
+    )
+
+    code_snippet_length: int = Field(
+        default=2000,
+        ge=500,
+        le=10000,
+        description="Max code snippet length in semantic cards"
+    )
+
+    max_symbols: int = Field(
+        default=5,
+        ge=1,
+        le=20,
+        description="Max symbols to include per card"
+    )
+
+    max_routes: int = Field(
+        default=5,
+        ge=1,
+        le=20,
+        description="Max API routes to include per card"
+    )
+
+    purpose_max_length: int = Field(
+        default=240,
+        ge=50,
+        le=500,
+        description="Max length for purpose field in cards"
+    )
+
+    quick_tips: List[str] = Field(
+        default_factory=list,
+        description="Quick tips shown in cards builder UI"
+    )
+
+    @field_validator('exclude_dirs', 'exclude_patterns', 'exclude_keywords', 'quick_tips', mode='before')
+    @classmethod
+    def _parse_list(cls, v):
+        if v is None:
+            return []
+        if isinstance(v, str):
+            return [item.strip() for item in v.replace('\n', ',').split(',') if item.strip()]
+        if isinstance(v, (list, tuple, set)):
+            cleaned = []
+            for item in v:
+                if item is None:
+                    continue
+                text = str(item).strip()
+                if text:
+                    cleaned.append(text)
+            return cleaned
+        text = str(v).strip()
+        return [text] if text else []
 
 
 class KeywordsConfig(BaseModel):
@@ -915,6 +1026,33 @@ class TracingConfig(BaseModel):
         description="Alert severities to notify"
     )
 
+    langchain_endpoint: str = Field(
+        default="https://api.smith.langchain.com",
+        description="LangChain/LangSmith API endpoint"
+    )
+
+    langchain_project: str = Field(
+        default="agro",
+        description="LangChain project name"
+    )
+
+    langchain_tracing_v2: int = Field(
+        default=0,
+        ge=0,
+        le=1,
+        description="Enable LangChain v2 tracing"
+    )
+
+    langtrace_api_host: str = Field(
+        default="",
+        description="LangTrace API host"
+    )
+
+    langtrace_project_id: str = Field(
+        default="",
+        description="LangTrace project ID"
+    )
+
     @field_validator('tracing_mode', mode='before')
     @classmethod
     def normalize_tracing_mode(cls, v: str) -> str:
@@ -1019,6 +1157,27 @@ class UIConfig(BaseModel):
         description="Include reasoning/thinking in streamed responses when supported by model"
     )
 
+    chat_show_confidence: int = Field(
+        default=0,
+        ge=0,
+        le=1,
+        description="Show confidence badge on chat answers"
+    )
+
+    chat_show_citations: int = Field(
+        default=1,
+        ge=0,
+        le=1,
+        description="Show citations list on chat answers"
+    )
+
+    chat_show_trace: int = Field(
+        default=0,
+        ge=0,
+        le=1,
+        description="Show routing trace panel by default"
+    )
+
     chat_default_model: str = Field(
         default="gpt-4o-mini",
         description="Default model for chat if not specified in request"
@@ -1107,7 +1266,7 @@ class UIConfig(BaseModel):
     )
 
     editor_image: str = Field(
-        default="agro-vscode:latest",
+        default="codercom/code-server:latest",
         description="Editor Docker image"
     )
 
@@ -1278,6 +1437,90 @@ Format your response with clear sections using markdown headers.''',
         description="Analyze eval regressions with skeptical approach - avoid false explanations"
     )
 
+    lightweight_cards: str = Field(
+        default='''Extract key information from this code: symbols (function/class names), purpose (one sentence), keywords (technical terms). Return JSON only.''',
+        description="Lightweight card generation prompt for faster indexing"
+    )
+
+
+class DockerConfig(BaseModel):
+    """Docker infrastructure configuration."""
+
+    docker_host: str = Field(
+        default="",
+        description="Docker socket URL (e.g., unix:///var/run/docker.sock). Leave empty for auto-detection."
+    )
+
+    docker_status_timeout: int = Field(
+        default=5,
+        ge=1,
+        le=30,
+        description="Timeout for Docker status check (seconds)"
+    )
+
+    docker_container_list_timeout: int = Field(
+        default=10,
+        ge=1,
+        le=60,
+        description="Timeout for Docker container list (seconds)"
+    )
+
+    docker_container_action_timeout: int = Field(
+        default=30,
+        ge=5,
+        le=120,
+        description="Timeout for Docker container actions (start/stop/restart)"
+    )
+
+    docker_infra_up_timeout: int = Field(
+        default=60,
+        ge=30,
+        le=300,
+        description="Timeout for Docker infrastructure up command (seconds)"
+    )
+
+    docker_infra_down_timeout: int = Field(
+        default=30,
+        ge=10,
+        le=120,
+        description="Timeout for Docker infrastructure down command (seconds)"
+    )
+
+    docker_logs_tail: int = Field(
+        default=100,
+        ge=10,
+        le=1000,
+        description="Default number of log lines to tail from containers"
+    )
+
+    docker_logs_timestamps: int = Field(
+        default=1,
+        ge=0,
+        le=1,
+        description="Include timestamps in Docker logs (1=yes, 0=no)"
+    )
+
+    dev_frontend_port: int = Field(
+        default=5173,
+        ge=1024,
+        le=65535,
+        description="Port for dev frontend (Vite)"
+    )
+
+    dev_backend_port: int = Field(
+        default=8012,
+        ge=1024,
+        le=65535,
+        description="Port for dev backend (Uvicorn)"
+    )
+
+    dev_stack_restart_timeout: int = Field(
+        default=30,
+        ge=5,
+        le=120,
+        description="Timeout for dev stack restart operations (seconds)"
+    )
+
 
 class AgroConfigRoot(BaseModel):
     """Root configuration model for agro_config.json.
@@ -1295,6 +1538,7 @@ class AgroConfigRoot(BaseModel):
     reranking: RerankingConfig = Field(default_factory=RerankingConfig)
     generation: GenerationConfig = Field(default_factory=GenerationConfig)
     enrichment: EnrichmentConfig = Field(default_factory=EnrichmentConfig)
+    cards: CardsConfig = Field(default_factory=CardsConfig)
     keywords: KeywordsConfig = Field(default_factory=KeywordsConfig)
     tracing: TracingConfig = Field(default_factory=TracingConfig)
     training: TrainingConfig = Field(default_factory=TrainingConfig)
@@ -1302,15 +1546,15 @@ class AgroConfigRoot(BaseModel):
     hydration: HydrationConfig = Field(default_factory=HydrationConfig)
     evaluation: EvaluationConfig = Field(default_factory=EvaluationConfig)
     system_prompts: SystemPromptsConfig = Field(default_factory=SystemPromptsConfig)
+    docker: DockerConfig = Field(default_factory=DockerConfig)
 
-    class Config:
-        # Allow extra fields for forward compatibility
-        extra = 'allow'
-        # Use nested JSON structure
-        json_schema_extra = {
+    model_config = ConfigDict(
+        extra="allow",
+        json_schema_extra={
             "description": "AGRO RAG Engine tunable configuration parameters",
-            "title": "AGRO Config"
-        }
+            "title": "AGRO Config",
+        },
+    )
 
     def to_flat_dict(self) -> dict[str, any]:
         """Convert nested config to flat dict with env-style keys.
@@ -1332,6 +1576,8 @@ class AgroConfigRoot(BaseModel):
             'RRF_K_DIV': self.retrieval.rrf_k_div,
             'LANGGRAPH_FINAL_K': self.retrieval.langgraph_final_k,
             'MAX_QUERY_REWRITES': self.retrieval.max_query_rewrites,
+            'LANGGRAPH_MAX_QUERY_REWRITES': self.retrieval.langgraph_max_query_rewrites,
+            'MQ_REWRITES': self.retrieval.max_query_rewrites,  # Legacy alias
             'FALLBACK_CONFIDENCE': self.retrieval.fallback_confidence,
             'FINAL_K': self.retrieval.final_k,
             'EVAL_FINAL_K': self.retrieval.eval_final_k,
@@ -1347,9 +1593,10 @@ class AgroConfigRoot(BaseModel):
             'CARD_SEARCH_ENABLED': self.retrieval.card_search_enabled,
             'MULTI_QUERY_M': self.retrieval.multi_query_m,
             'USE_SEMANTIC_SYNONYMS': self.retrieval.use_semantic_synonyms,
+            'AGRO_SYNONYMS_PATH': self.retrieval.agro_synonyms_path,
             'TOPK_DENSE': self.retrieval.topk_dense,
             'TOPK_SPARSE': self.retrieval.topk_sparse,
-            'DISABLE_RERANK': self.retrieval.disable_rerank,
+            # REMOVED: DISABLE_RERANK - use RERANKER_MODE='none' instead
             # Scoring params
             'CARD_BONUS': self.scoring.card_bonus,
             'FILENAME_BOOST_EXACT': self.scoring.filename_boost_exact,
@@ -1374,11 +1621,12 @@ class AgroConfigRoot(BaseModel):
             'EMBEDDING_CACHE_ENABLED': self.embedding.embedding_cache_enabled,
             'EMBEDDING_TIMEOUT': self.embedding.embedding_timeout,
             'EMBEDDING_RETRY_MAX': self.embedding.embedding_retry_max,
-            # Chunking params (8 new)
+            # Chunking params (9 new)
             'CHUNK_SIZE': self.chunking.chunk_size,
             'CHUNK_OVERLAP': self.chunking.chunk_overlap,
             'AST_OVERLAP_LINES': self.chunking.ast_overlap_lines,
-            'MAX_CHUNK_SIZE': self.chunking.max_chunk_size,
+            'MAX_INDEXABLE_FILE_SIZE': self.chunking.max_indexable_file_size,
+            'MAX_CHUNK_TOKENS': self.chunking.max_chunk_tokens,
             'MIN_CHUNK_CHARS': self.chunking.min_chunk_chars,
             'GREEDY_FALLBACK_TARGET': self.chunking.greedy_fallback_target,
             'CHUNKING_STRATEGY': self.chunking.chunking_strategy,
@@ -1393,27 +1641,25 @@ class AgroConfigRoot(BaseModel):
             'INDEXING_WORKERS': self.indexing.indexing_workers,
             'BM25_TOKENIZER': self.indexing.bm25_tokenizer,
             'BM25_STEMMER_LANG': self.indexing.bm25_stemmer_lang,
+            'BM25_STOPWORDS_LANG': self.indexing.bm25_stopwords_lang,
             'INDEX_EXCLUDED_EXTS': self.indexing.index_excluded_exts,
             'INDEX_MAX_FILE_SIZE_MB': self.indexing.index_max_file_size_mb,
             'SKIP_DENSE': self.indexing.skip_dense,
             'OUT_DIR_BASE': self.indexing.out_dir_base,
             'RAG_OUT_BASE': self.indexing.rag_out_base,
             'REPOS_FILE': self.indexing.repos_file,
-    # Reranking params (13)
-            'RERANKER_MODEL': self.reranking.reranker_model,
-            'AGRO_RERANKER_ENABLED': self.reranking.agro_reranker_enabled,
+    # Reranking params (14) - unified with RERANKER_MODE
+            'RERANKER_MODE': self.reranking.reranker_mode,
+            'RERANKER_CLOUD_PROVIDER': self.reranking.reranker_cloud_provider,
+            'RERANKER_CLOUD_MODEL': self.reranking.reranker_cloud_model,
+            'RERANKER_LOCAL_MODEL': self.reranking.reranker_local_model,
             'AGRO_RERANKER_ALPHA': self.reranking.agro_reranker_alpha,
             'AGRO_RERANKER_TOPN': self.reranking.agro_reranker_topn,
+            'RERANKER_CLOUD_TOP_N': self.reranking.reranker_cloud_top_n,
             'AGRO_RERANKER_BATCH': self.reranking.agro_reranker_batch,
             'AGRO_RERANKER_MAXLEN': self.reranking.agro_reranker_maxlen,
             'AGRO_RERANKER_RELOAD_ON_CHANGE': self.reranking.agro_reranker_reload_on_change,
             'AGRO_RERANKER_RELOAD_PERIOD_SEC': self.reranking.agro_reranker_reload_period_sec,
-            'COHERE_RERANK_MODEL': self.reranking.cohere_rerank_model,
-            'VOYAGE_RERANK_MODEL': self.reranking.voyage_rerank_model,
-            'RERANKER_ACTIVE': self.reranking.reranker_active,
-            'RERANKER_PROVIDER': self.reranking.reranker_provider,
-            'RERANKER_CLOUD_MODEL': self.reranking.reranker_cloud_model,
-            'RERANKER_BACKEND': self.reranking.reranker_backend,
             'RERANKER_TIMEOUT': self.reranking.reranker_timeout,
             'RERANK_INPUT_SNIPPET_CHARS': self.reranking.rerank_input_snippet_chars,
             'TRANSFORMERS_TRUST_REMOTE_CODE': self.reranking.transformers_trust_remote_code,
@@ -1432,6 +1678,11 @@ class AgroConfigRoot(BaseModel):
             'OLLAMA_STREAM_IDLE_TIMEOUT': self.generation.ollama_stream_idle_timeout,
             'GEN_MODEL_CLI': self.generation.gen_model_cli,
             'GEN_MODEL_OLLAMA': self.generation.gen_model_ollama,
+            'GEN_MODEL_HTTP': self.generation.gen_model_http,
+            'GEN_MODEL_MCP': self.generation.gen_model_mcp,
+            'ENRICH_MODEL_OLLAMA': self.generation.enrich_model_ollama,
+            'OLLAMA_URL': self.generation.ollama_url,
+            'OPENAI_BASE_URL': self.generation.openai_base_url,
             # Enrichment params (6)
             'CARDS_ENRICH_DEFAULT': self.enrichment.cards_enrich_default,
             'CARDS_MAX': self.enrichment.cards_max,
@@ -1439,6 +1690,15 @@ class AgroConfigRoot(BaseModel):
             'ENRICH_MIN_CHARS': self.enrichment.enrich_min_chars,
             'ENRICH_MAX_CHARS': self.enrichment.enrich_max_chars,
             'ENRICH_TIMEOUT': self.enrichment.enrich_timeout,
+            # Cards filter params (8)
+            'CARDS_EXCLUDE_DIRS': ', '.join(self.cards.exclude_dirs),
+            'CARDS_EXCLUDE_PATTERNS': ', '.join(self.cards.exclude_patterns),
+            'CARDS_EXCLUDE_KEYWORDS': ', '.join(self.cards.exclude_keywords),
+            'CARDS_CODE_SNIPPET_LENGTH': self.cards.code_snippet_length,
+            'CARDS_MAX_SYMBOLS': self.cards.max_symbols,
+            'CARDS_MAX_ROUTES': self.cards.max_routes,
+            'CARDS_PURPOSE_MAX_LENGTH': self.cards.purpose_max_length,
+            'CARDS_QUICK_TIPS': ', '.join(self.cards.quick_tips),
             # Keywords params (5)
             'KEYWORDS_MAX_PER_REPO': self.keywords.keywords_max_per_repo,
             'KEYWORDS_MIN_FREQ': self.keywords.keywords_min_freq,
@@ -1458,6 +1718,11 @@ class AgroConfigRoot(BaseModel):
             'TRACE_RETENTION': self.tracing.trace_retention,
             'AGRO_LOG_PATH': self.tracing.agro_log_path,
             'ALERT_NOTIFY_SEVERITIES': self.tracing.alert_notify_severities,
+            'LANGCHAIN_ENDPOINT': self.tracing.langchain_endpoint,
+            'LANGCHAIN_PROJECT': self.tracing.langchain_project,
+            'LANGCHAIN_TRACING_V2': self.tracing.langchain_tracing_v2,
+            'LANGTRACE_API_HOST': self.tracing.langtrace_api_host,
+            'LANGTRACE_PROJECT_ID': self.tracing.langtrace_project_id,
     # Training params (10)
             'RERANKER_TRAIN_EPOCHS': self.training.reranker_train_epochs,
             'RERANKER_TRAIN_BATCH': self.training.reranker_train_batch,
@@ -1469,10 +1734,13 @@ class AgroConfigRoot(BaseModel):
             'AGRO_RERANKER_MINE_MODE': self.training.agro_reranker_mine_mode,
             'AGRO_RERANKER_MINE_RESET': self.training.agro_reranker_mine_reset,
             'AGRO_TRIPLETS_PATH': self.training.agro_triplets_path,
-    # UI params (21)
+            # UI params (21)
             'CHAT_STREAMING_ENABLED': self.ui.chat_streaming_enabled,
             'CHAT_HISTORY_MAX': self.ui.chat_history_max,
             'CHAT_STREAM_INCLUDE_THINKING': self.ui.chat_stream_include_thinking,
+            'CHAT_SHOW_CONFIDENCE': self.ui.chat_show_confidence,
+            'CHAT_SHOW_CITATIONS': self.ui.chat_show_citations,
+            'CHAT_SHOW_TRACE': self.ui.chat_show_trace,
             'CHAT_DEFAULT_MODEL': self.ui.chat_default_model,
             'CHAT_STREAM_TIMEOUT': self.ui.chat_stream_timeout,
             'CHAT_THINKING_BUDGET_TOKENS': self.ui.chat_thinking_budget_tokens,
@@ -1506,6 +1774,19 @@ class AgroConfigRoot(BaseModel):
             'PROMPT_SEMANTIC_CARDS': self.system_prompts.semantic_cards,
             'PROMPT_CODE_ENRICHMENT': self.system_prompts.code_enrichment,
             'PROMPT_EVAL_ANALYSIS': self.system_prompts.eval_analysis,
+            'PROMPT_LIGHTWEIGHT_CARDS': self.system_prompts.lightweight_cards,
+            # Docker params (11)
+            'DOCKER_HOST': self.docker.docker_host,
+            'DOCKER_STATUS_TIMEOUT': self.docker.docker_status_timeout,
+            'DOCKER_CONTAINER_LIST_TIMEOUT': self.docker.docker_container_list_timeout,
+            'DOCKER_CONTAINER_ACTION_TIMEOUT': self.docker.docker_container_action_timeout,
+            'DOCKER_INFRA_UP_TIMEOUT': self.docker.docker_infra_up_timeout,
+            'DOCKER_INFRA_DOWN_TIMEOUT': self.docker.docker_infra_down_timeout,
+            'DOCKER_LOGS_TAIL': self.docker.docker_logs_tail,
+            'DOCKER_LOGS_TIMESTAMPS': self.docker.docker_logs_timestamps,
+            'DEV_FRONTEND_PORT': self.docker.dev_frontend_port,
+            'DEV_BACKEND_PORT': self.docker.dev_backend_port,
+            'DEV_STACK_RESTART_TIMEOUT': self.docker.dev_stack_restart_timeout,
         }
 
     @classmethod
@@ -1525,7 +1806,11 @@ class AgroConfigRoot(BaseModel):
             retrieval=RetrievalConfig(
                 rrf_k_div=data.get('RRF_K_DIV', 60),
                 langgraph_final_k=data.get('LANGGRAPH_FINAL_K', 20),
-                max_query_rewrites=data.get('MAX_QUERY_REWRITES', 2),
+                max_query_rewrites=data.get('MAX_QUERY_REWRITES', data.get('MQ_REWRITES', 2)),
+                langgraph_max_query_rewrites=data.get(
+                    'LANGGRAPH_MAX_QUERY_REWRITES',
+                    data.get('MAX_QUERY_REWRITES', data.get('MQ_REWRITES', 2))
+                ),
                 fallback_confidence=data.get('FALLBACK_CONFIDENCE', 0.55),
                 final_k=data.get('FINAL_K', 10),
                 eval_final_k=data.get('EVAL_FINAL_K', 5),
@@ -1541,11 +1826,12 @@ class AgroConfigRoot(BaseModel):
                 card_search_enabled=data.get('CARD_SEARCH_ENABLED', 1),
                 multi_query_m=data.get('MULTI_QUERY_M', 4),
                 use_semantic_synonyms=data.get('USE_SEMANTIC_SYNONYMS', 1),
+                agro_synonyms_path=data.get('AGRO_SYNONYMS_PATH', ''),
                 topk_dense=data.get('TOPK_DENSE', 75),
                 topk_sparse=data.get('TOPK_SPARSE', 75),
                 hydration_mode=data.get('HYDRATION_MODE', 'lazy'),
                 hydration_max_chars=data.get('HYDRATION_MAX_CHARS', 2000),
-                disable_rerank=data.get('DISABLE_RERANK', 0),
+                # REMOVED: disable_rerank - use RERANKER_MODE='none' instead
             ),
             scoring=ScoringConfig(
                 card_bonus=data.get('CARD_BONUS', 0.08),
@@ -1578,7 +1864,8 @@ class AgroConfigRoot(BaseModel):
                 chunk_size=data.get('CHUNK_SIZE', 1000),
                 chunk_overlap=data.get('CHUNK_OVERLAP', 200),
                 ast_overlap_lines=data.get('AST_OVERLAP_LINES', 20),
-                max_chunk_size=data.get('MAX_CHUNK_SIZE', 2000000),
+                max_indexable_file_size=data.get('MAX_INDEXABLE_FILE_SIZE', 2000000),
+                max_chunk_tokens=data.get('MAX_CHUNK_TOKENS', 8000),
                 min_chunk_chars=data.get('MIN_CHUNK_CHARS', 50),
                 greedy_fallback_target=data.get('GREEDY_FALLBACK_TARGET', 800),
                 chunking_strategy=data.get('CHUNKING_STRATEGY', 'ast'),
@@ -1594,6 +1881,7 @@ class AgroConfigRoot(BaseModel):
                 indexing_workers=data.get('INDEXING_WORKERS', 4),
                 bm25_tokenizer=data.get('BM25_TOKENIZER', 'stemmer'),
                 bm25_stemmer_lang=data.get('BM25_STEMMER_LANG', 'english'),
+                bm25_stopwords_lang=data.get('BM25_STOPWORDS_LANG', 'en'),
                 index_excluded_exts=data.get('INDEX_EXCLUDED_EXTS', '.png,.jpg,.gif,.ico,.svg,.woff,.ttf'),
                 index_max_file_size_mb=data.get('INDEX_MAX_FILE_SIZE_MB', 10),
                 skip_dense=data.get('SKIP_DENSE', 0),
@@ -1602,24 +1890,22 @@ class AgroConfigRoot(BaseModel):
                 repos_file=data.get('REPOS_FILE', './repos.json'),
             ),
             reranking=RerankingConfig(
-            reranker_model=data.get('RERANKER_MODEL', 'cross-encoder/ms-marco-MiniLM-L-12-v2'),
-            agro_reranker_enabled=data.get('AGRO_RERANKER_ENABLED', 1),
-            agro_reranker_alpha=data.get('AGRO_RERANKER_ALPHA', 0.7),
-            agro_reranker_topn=data.get('AGRO_RERANKER_TOPN', 50),
-            agro_reranker_batch=data.get('AGRO_RERANKER_BATCH', 16),
-            agro_reranker_maxlen=data.get('AGRO_RERANKER_MAXLEN', 512),
-            agro_reranker_reload_on_change=data.get('AGRO_RERANKER_RELOAD_ON_CHANGE', 0),
-            agro_reranker_reload_period_sec=data.get('AGRO_RERANKER_RELOAD_PERIOD_SEC', 60),
-            cohere_rerank_model=data.get('COHERE_RERANK_MODEL', 'rerank-3.5'),
-            voyage_rerank_model=data.get('VOYAGE_RERANK_MODEL', 'rerank-2'),
-            reranker_active=data.get('RERANKER_ACTIVE', data.get('RERANKER_BACKEND', 'local')),
-            reranker_provider=data.get('RERANKER_PROVIDER', data.get('RERANKER_BACKEND', data.get('RERANK_BACKEND', ''))),
-            reranker_cloud_model=data.get('RERANKER_CLOUD_MODEL') or data.get('COHERE_RERANK_MODEL') or data.get('VOYAGE_RERANK_MODEL') or 'rerank-3.5',
-            reranker_backend=data.get('RERANKER_BACKEND', data.get('RERANK_BACKEND', 'local')),
-            reranker_timeout=data.get('RERANKER_TIMEOUT', 10),
-            rerank_input_snippet_chars=data.get('RERANK_INPUT_SNIPPET_CHARS', 700),
-            transformers_trust_remote_code=data.get('TRANSFORMERS_TRUST_REMOTE_CODE', 1),
-        ),
+                # Unified RERANKER_MODE with backwards compat fallback to old keys
+                reranker_mode=data.get('RERANKER_MODE') or data.get('RERANKER_ACTIVE') or data.get('RERANKER_BACKEND') or 'local',
+                reranker_cloud_provider=data.get('RERANKER_CLOUD_PROVIDER') or data.get('RERANKER_PROVIDER') or 'cohere',
+                reranker_cloud_model=data.get('RERANKER_CLOUD_MODEL') or data.get('COHERE_RERANK_MODEL') or 'rerank-v3.5',
+                reranker_local_model=data.get('RERANKER_LOCAL_MODEL') or data.get('RERANKER_MODEL') or 'cross-encoder/ms-marco-MiniLM-L-12-v2',
+                agro_reranker_alpha=data.get('AGRO_RERANKER_ALPHA', 0.7),
+                agro_reranker_topn=data.get('AGRO_RERANKER_TOPN', 50),
+                reranker_cloud_top_n=data.get('RERANKER_CLOUD_TOP_N', 50),
+                agro_reranker_batch=data.get('AGRO_RERANKER_BATCH', 16),
+                agro_reranker_maxlen=data.get('AGRO_RERANKER_MAXLEN', 512),
+                agro_reranker_reload_on_change=data.get('AGRO_RERANKER_RELOAD_ON_CHANGE', 0),
+                agro_reranker_reload_period_sec=data.get('AGRO_RERANKER_RELOAD_PERIOD_SEC', 60),
+                reranker_timeout=data.get('RERANKER_TIMEOUT', 10),
+                rerank_input_snippet_chars=data.get('RERANK_INPUT_SNIPPET_CHARS', 700),
+                transformers_trust_remote_code=data.get('TRANSFORMERS_TRUST_REMOTE_CODE', 1),
+            ),
             generation=GenerationConfig(
                 gen_model=data.get('GEN_MODEL', 'gpt-4o-mini'),
                 gen_temperature=data.get('GEN_TEMPERATURE', 0.0),
@@ -1635,6 +1921,11 @@ class AgroConfigRoot(BaseModel):
                 ollama_stream_idle_timeout=data.get('OLLAMA_STREAM_IDLE_TIMEOUT', 60),
                 gen_model_cli=data.get('GEN_MODEL_CLI', 'qwen3-coder:14b'),
                 gen_model_ollama=data.get('GEN_MODEL_OLLAMA', 'qwen3-coder:30b'),
+                gen_model_http=data.get('GEN_MODEL_HTTP', ''),
+                gen_model_mcp=data.get('GEN_MODEL_MCP', ''),
+                enrich_model_ollama=data.get('ENRICH_MODEL_OLLAMA', ''),
+                ollama_url=data.get('OLLAMA_URL', 'http://127.0.0.1:11434/api'),
+                openai_base_url=data.get('OPENAI_BASE_URL', ''),
             ),
             enrichment=EnrichmentConfig(
                 cards_enrich_default=data.get('CARDS_ENRICH_DEFAULT', 1),
@@ -1643,6 +1934,16 @@ class AgroConfigRoot(BaseModel):
                 enrich_min_chars=data.get('ENRICH_MIN_CHARS', 50),
                 enrich_max_chars=data.get('ENRICH_MAX_CHARS', 1000),
                 enrich_timeout=data.get('ENRICH_TIMEOUT', 30),
+            ),
+            cards=CardsConfig(
+                exclude_dirs=data.get('CARDS_EXCLUDE_DIRS', CardsConfig().exclude_dirs),
+                exclude_patterns=data.get('CARDS_EXCLUDE_PATTERNS', []),
+                exclude_keywords=data.get('CARDS_EXCLUDE_KEYWORDS', []),
+                code_snippet_length=data.get('CARDS_CODE_SNIPPET_LENGTH', 2000),
+                max_symbols=data.get('CARDS_MAX_SYMBOLS', 5),
+                max_routes=data.get('CARDS_MAX_ROUTES', 5),
+                purpose_max_length=data.get('CARDS_PURPOSE_MAX_LENGTH', 240),
+                quick_tips=data.get('CARDS_QUICK_TIPS', []),
             ),
             keywords=KeywordsConfig(
                 keywords_max_per_repo=data.get('KEYWORDS_MAX_PER_REPO', 50),
@@ -1664,6 +1965,11 @@ class AgroConfigRoot(BaseModel):
                 trace_retention=data.get('TRACE_RETENTION', 50),
                 agro_log_path=data.get('AGRO_LOG_PATH', 'data/logs/queries.jsonl'),
                 alert_notify_severities=data.get('ALERT_NOTIFY_SEVERITIES', 'critical,warning'),
+                langchain_endpoint=data.get('LANGCHAIN_ENDPOINT', 'https://api.smith.langchain.com'),
+                langchain_project=data.get('LANGCHAIN_PROJECT', 'agro'),
+                langchain_tracing_v2=data.get('LANGCHAIN_TRACING_V2', 0),
+                langtrace_api_host=data.get('LANGTRACE_API_HOST', ''),
+                langtrace_project_id=data.get('LANGTRACE_PROJECT_ID', ''),
             ),
             training=TrainingConfig(
                 reranker_train_epochs=data.get('RERANKER_TRAIN_EPOCHS', 2),
@@ -1681,6 +1987,9 @@ class AgroConfigRoot(BaseModel):
                 chat_streaming_enabled=data.get('CHAT_STREAMING_ENABLED', 1),
                 chat_history_max=data.get('CHAT_HISTORY_MAX', 50),
                 chat_stream_include_thinking=data.get('CHAT_STREAM_INCLUDE_THINKING', 1),
+                chat_show_confidence=data.get('CHAT_SHOW_CONFIDENCE', 0),
+                chat_show_citations=data.get('CHAT_SHOW_CITATIONS', 1),
+                chat_show_trace=data.get('CHAT_SHOW_TRACE', 0),
                 chat_default_model=data.get('CHAT_DEFAULT_MODEL', 'gpt-4o-mini'),
                 chat_stream_timeout=data.get('CHAT_STREAM_TIMEOUT', 120),
                 chat_thinking_budget_tokens=data.get('CHAT_THINKING_BUDGET_TOKENS', 10000),
@@ -1696,7 +2005,7 @@ class AgroConfigRoot(BaseModel):
                 editor_bind=data.get('EDITOR_BIND', 'local'),
                 editor_embed_enabled=data.get('EDITOR_EMBED_ENABLED', 1),
                 editor_enabled=data.get('EDITOR_ENABLED', 1),
-                editor_image=data.get('EDITOR_IMAGE', 'agro-vscode:latest'),
+                editor_image=data.get('EDITOR_IMAGE', 'codercom/code-server:latest'),
                 theme_mode=data.get('THEME_MODE', 'dark'),
                 open_browser=data.get('OPEN_BROWSER', 1),
                 runtime_mode=data.get('RUNTIME_MODE', 'development'),
@@ -1717,6 +2026,20 @@ class AgroConfigRoot(BaseModel):
                 semantic_cards=data.get('PROMPT_SEMANTIC_CARDS', SystemPromptsConfig().semantic_cards),
                 code_enrichment=data.get('PROMPT_CODE_ENRICHMENT', SystemPromptsConfig().code_enrichment),
                 eval_analysis=data.get('PROMPT_EVAL_ANALYSIS', SystemPromptsConfig().eval_analysis),
+                lightweight_cards=data.get('PROMPT_LIGHTWEIGHT_CARDS', SystemPromptsConfig().lightweight_cards),
+            ),
+            docker=DockerConfig(
+                docker_host=data.get('DOCKER_HOST', ''),
+                docker_status_timeout=data.get('DOCKER_STATUS_TIMEOUT', 5),
+                docker_container_list_timeout=data.get('DOCKER_CONTAINER_LIST_TIMEOUT', 10),
+                docker_container_action_timeout=data.get('DOCKER_CONTAINER_ACTION_TIMEOUT', 30),
+                docker_infra_up_timeout=data.get('DOCKER_INFRA_UP_TIMEOUT', 60),
+                docker_infra_down_timeout=data.get('DOCKER_INFRA_DOWN_TIMEOUT', 30),
+                docker_logs_tail=data.get('DOCKER_LOGS_TAIL', 100),
+                docker_logs_timestamps=data.get('DOCKER_LOGS_TIMESTAMPS', 1),
+                dev_frontend_port=data.get('DEV_FRONTEND_PORT', 5173),
+                dev_backend_port=data.get('DEV_BACKEND_PORT', 8012),
+                dev_stack_restart_timeout=data.get('DEV_STACK_RESTART_TIMEOUT', 30),
             ),
         )
 
@@ -1726,10 +2049,12 @@ DEFAULT_CONFIG = AgroConfigRoot()
 
 # Set of keys that belong in agro_config.json (not .env)
 AGRO_CONFIG_KEYS = {
-    # Retrieval params (21 - added 6 new)
+    # Retrieval params (22 - including MQ_REWRITES alias)
     'RRF_K_DIV',
     'LANGGRAPH_FINAL_K',
+    'LANGGRAPH_MAX_QUERY_REWRITES',
     'MAX_QUERY_REWRITES',
+    'MQ_REWRITES',  # Legacy alias for MAX_QUERY_REWRITES
     'FALLBACK_CONFIDENCE',
     'FINAL_K',
     'EVAL_FINAL_K',
@@ -1745,11 +2070,12 @@ AGRO_CONFIG_KEYS = {
     'CARD_SEARCH_ENABLED',
     'MULTI_QUERY_M',
     'USE_SEMANTIC_SYNONYMS',
+    'AGRO_SYNONYMS_PATH',
     'TOPK_DENSE',
     'TOPK_SPARSE',
     'HYDRATION_MODE',
     'HYDRATION_MAX_CHARS',
-    'DISABLE_RERANK',
+    # REMOVED: DISABLE_RERANK - use RERANKER_MODE='none' instead
     # Scoring params (5 - added 2 new)
     'CARD_BONUS',
     'FILENAME_BOOST_EXACT',
@@ -1774,11 +2100,12 @@ AGRO_CONFIG_KEYS = {
     'EMBEDDING_CACHE_ENABLED',
     'EMBEDDING_TIMEOUT',
     'EMBEDDING_RETRY_MAX',
-    # Chunking params (8)
+    # Chunking params (9)
     'CHUNK_SIZE',
     'CHUNK_OVERLAP',
     'AST_OVERLAP_LINES',
-    'MAX_CHUNK_SIZE',
+    'MAX_INDEXABLE_FILE_SIZE',
+    'MAX_CHUNK_TOKENS',
     'MIN_CHUNK_CHARS',
     'GREEDY_FALLBACK_TARGET',
     'CHUNKING_STRATEGY',
@@ -1793,27 +2120,25 @@ AGRO_CONFIG_KEYS = {
     'INDEXING_WORKERS',
     'BM25_TOKENIZER',
     'BM25_STEMMER_LANG',
+    'BM25_STOPWORDS_LANG',
     'INDEX_EXCLUDED_EXTS',
     'INDEX_MAX_FILE_SIZE_MB',
     'SKIP_DENSE',
     'OUT_DIR_BASE',
     'RAG_OUT_BASE',
     'REPOS_FILE',
-    # Reranking params (13)
-    'RERANKER_MODEL',
-    'AGRO_RERANKER_ENABLED',
+    # Reranking params (14) - unified with RERANKER_MODE
+    'RERANKER_MODE',
+    'RERANKER_CLOUD_PROVIDER',
+    'RERANKER_CLOUD_MODEL',
+    'RERANKER_LOCAL_MODEL',
     'AGRO_RERANKER_ALPHA',
     'AGRO_RERANKER_TOPN',
+    'RERANKER_CLOUD_TOP_N',
     'AGRO_RERANKER_BATCH',
     'AGRO_RERANKER_MAXLEN',
     'AGRO_RERANKER_RELOAD_ON_CHANGE',
     'AGRO_RERANKER_RELOAD_PERIOD_SEC',
-    'COHERE_RERANK_MODEL',
-    'VOYAGE_RERANK_MODEL',
-    'RERANKER_ACTIVE',
-    'RERANKER_PROVIDER',
-    'RERANKER_CLOUD_MODEL',
-    'RERANKER_BACKEND',
     'RERANKER_TIMEOUT',
     'RERANK_INPUT_SNIPPET_CHARS',
     'TRANSFORMERS_TRUST_REMOTE_CODE',
@@ -1844,6 +2169,15 @@ AGRO_CONFIG_KEYS = {
     'ENRICH_MIN_CHARS',
     'ENRICH_MAX_CHARS',
     'ENRICH_TIMEOUT',
+    # Cards filter params (8)
+    'CARDS_EXCLUDE_DIRS',
+    'CARDS_EXCLUDE_PATTERNS',
+    'CARDS_EXCLUDE_KEYWORDS',
+    'CARDS_CODE_SNIPPET_LENGTH',
+    'CARDS_MAX_SYMBOLS',
+    'CARDS_MAX_ROUTES',
+    'CARDS_PURPOSE_MAX_LENGTH',
+    'CARDS_QUICK_TIPS',
     # Keywords params (5)
     'KEYWORDS_MAX_PER_REPO',
     'KEYWORDS_MIN_FREQ',
@@ -1879,10 +2213,13 @@ AGRO_CONFIG_KEYS = {
     'AGRO_RERANKER_MINE_MODE',
     'AGRO_RERANKER_MINE_RESET',
     'AGRO_TRIPLETS_PATH',
-    # UI params (22)
+    # UI params (25)
     'CHAT_STREAMING_ENABLED',
     'CHAT_HISTORY_MAX',
     'CHAT_STREAM_INCLUDE_THINKING',
+    'CHAT_SHOW_CONFIDENCE',
+    'CHAT_SHOW_CITATIONS',
+    'CHAT_SHOW_TRACE',
     'CHAT_DEFAULT_MODEL',
     'CHAT_STREAM_TIMEOUT',
     'CHAT_THINKING_BUDGET_TOKENS',
@@ -1917,47 +2254,145 @@ AGRO_CONFIG_KEYS = {
     'PROMPT_LIGHTWEIGHT_CARDS',
     'PROMPT_CODE_ENRICHMENT',
     'PROMPT_EVAL_ANALYSIS',
+    # Docker params (11)
+    'DOCKER_HOST',
+    'DOCKER_STATUS_TIMEOUT',
+    'DOCKER_CONTAINER_LIST_TIMEOUT',
+    'DOCKER_CONTAINER_ACTION_TIMEOUT',
+    'DOCKER_INFRA_UP_TIMEOUT',
+    'DOCKER_INFRA_DOWN_TIMEOUT',
+    'DOCKER_LOGS_TAIL',
+    'DOCKER_LOGS_TIMESTAMPS',
+    'DEV_FRONTEND_PORT',
+    'DEV_BACKEND_PORT',
+    'DEV_STACK_RESTART_TIMEOUT',
 }
 
 
-# Keys that affect RAG retrieval accuracy - shown in EvalAnalysis
-# Filtered from AGRO_CONFIG_KEYS to exclude UI/infrastructure settings
-RAG_EVAL_CONFIG_KEYS = {
-    # Retrieval params (24 keys) - CORE RAG behavior
-    'RRF_K_DIV', 'LANGGRAPH_FINAL_K', 'MAX_QUERY_REWRITES', 'FALLBACK_CONFIDENCE',
-    'FINAL_K', 'EVAL_FINAL_K', 'CONF_TOP1', 'CONF_AVG5', 'CONF_ANY', 'EVAL_MULTI',
-    'QUERY_EXPANSION_ENABLED', 'BM25_WEIGHT', 'BM25_K1', 'BM25_B', 'VECTOR_WEIGHT',
-    'CARD_SEARCH_ENABLED', 'MULTI_QUERY_M', 'USE_SEMANTIC_SYNONYMS',
-    'TOPK_DENSE', 'TOPK_SPARSE', 'HYDRATION_MODE', 'HYDRATION_MAX_CHARS', 'DISABLE_RERANK',
-
-    # Scoring params (5 keys) - affect result ranking
-    'CARD_BONUS', 'FILENAME_BOOST_EXACT', 'FILENAME_BOOST_PARTIAL', 'VENDOR_MODE', 'PATH_BOOSTS',
-
-    # Layer bonus params (6 keys)
+# RAG-relevant config keys for eval tracking
+# Only keys that affect retrieval accuracy - NOT post-retrieval prompts, hydration, or eval paths
+RAG_EVAL_CONFIG_KEYS: set[str] = {
+    # BM25 Search
+    'BM25_TOKENIZER', 'BM25_STEMMER_LANG', 'BM25_STOPWORDS_LANG',
+    'BM25_K1', 'BM25_B', 'BM25_WEIGHT',
+    # Embedding
+    'EMBEDDING_TYPE', 'EMBEDDING_MODEL', 'EMBEDDING_DIM',
+    'EMBEDDING_MODEL_LOCAL', 'EMBEDDING_BATCH_SIZE', 'VOYAGE_MODEL',
+    # Retrieval
+    'RRF_K_DIV', 'LANGGRAPH_FINAL_K', 'FINAL_K', 'EVAL_FINAL_K',
+    'TOPK_DENSE', 'TOPK_SPARSE', 'VECTOR_WEIGHT',
+    'CONF_TOP1', 'CONF_AVG5', 'CONF_ANY', 'FALLBACK_CONFIDENCE',
+    'CARD_SEARCH_ENABLED', 'MULTI_QUERY_M', 'EVAL_MULTI',
+    # Query Expansion (prompts that modify query BEFORE search)
+    'QUERY_EXPANSION_ENABLED', 'LANGGRAPH_MAX_QUERY_REWRITES', 'MAX_QUERY_REWRITES', 'USE_SEMANTIC_SYNONYMS',
+    'PROMPT_QUERY_EXPANSION', 'PROMPT_QUERY_REWRITE', 'PROMPT_SEMANTIC_CARDS',
+    # Reranking
+    'RERANKER_MODE', 'RERANKER_CLOUD_PROVIDER', 'RERANKER_CLOUD_MODEL',
+    'RERANKER_LOCAL_MODEL', 'AGRO_RERANKER_ALPHA', 'AGRO_RERANKER_TOPN',
+    'AGRO_RERANKER_BATCH', 'AGRO_RERANKER_MAXLEN', 'RERANK_INPUT_SNIPPET_CHARS',
+    # Chunking
+    'CHUNK_SIZE', 'CHUNK_OVERLAP', 'AST_OVERLAP_LINES', 'MAX_INDEXABLE_FILE_SIZE',
+    'MAX_CHUNK_TOKENS', 'MIN_CHUNK_CHARS', 'GREEDY_FALLBACK_TARGET',
+    'CHUNKING_STRATEGY', 'PRESERVE_IMPORTS',
+    # Scoring
+    'CARD_BONUS', 'FILENAME_BOOST_EXACT', 'FILENAME_BOOST_PARTIAL',
+    'VENDOR_MODE', 'PATH_BOOSTS',
+    # Layer Bonuses
     'LAYER_BONUS_GUI', 'LAYER_BONUS_RETRIEVAL', 'LAYER_BONUS_INDEXER',
     'VENDOR_PENALTY', 'FRESHNESS_BONUS', 'LAYER_INTENT_MATRIX',
-
-    # Embedding params (6 keys) - model selection affects accuracy
-    'EMBEDDING_TYPE', 'EMBEDDING_MODEL', 'EMBEDDING_DIM', 'VOYAGE_MODEL',
-    'EMBEDDING_MODEL_LOCAL', 'EMBEDDING_BATCH_SIZE',
-
-    # Chunking params (8 keys) - affects how code is split for retrieval
-    'CHUNK_SIZE', 'CHUNK_OVERLAP', 'AST_OVERLAP_LINES', 'MAX_CHUNK_SIZE',
-    'MIN_CHUNK_CHARS', 'GREEDY_FALLBACK_TARGET', 'CHUNKING_STRATEGY', 'PRESERVE_IMPORTS',
-
-    # Reranking params (10 keys) - directly affects result quality
-    'RERANKER_MODEL', 'AGRO_RERANKER_ENABLED', 'AGRO_RERANKER_ALPHA', 'AGRO_RERANKER_TOPN',
-    'AGRO_RERANKER_BATCH', 'AGRO_RERANKER_MAXLEN', 'COHERE_RERANK_MODEL',
-    'VOYAGE_RERANK_MODEL', 'RERANKER_BACKEND', 'RERANK_INPUT_SNIPPET_CHARS',
-
-    # Keywords params (3 keys) - affects keyword boosting
+    # Keywords
     'KEYWORDS_BOOST', 'KEYWORDS_MAX_PER_REPO', 'KEYWORDS_MIN_FREQ',
-
-    # Eval params (3 keys)
-    'GOLDEN_PATH', 'BASELINE_PATH', 'EVAL_MULTI_M',
-
-    # System prompts (7 keys) - LLM behavior
-    'PROMPT_MAIN_RAG_CHAT', 'PROMPT_QUERY_EXPANSION', 'PROMPT_QUERY_REWRITE',
-    'PROMPT_SEMANTIC_CARDS', 'PROMPT_LIGHTWEIGHT_CARDS', 'PROMPT_CODE_ENRICHMENT',
-    'PROMPT_EVAL_ANALYSIS',
+    # NOTE: Excluded (don't affect retrieval):
+    # - PROMPT_MAIN_RAG_CHAT, PROMPT_CODE_ENRICHMENT, PROMPT_LIGHTWEIGHT_CARDS, PROMPT_EVAL_ANALYSIS (post-retrieval)
+    # - HYDRATION_MODE, HYDRATION_MAX_CHARS (post-retrieval)
+    # - GOLDEN_PATH, BASELINE_PATH, EVAL_MULTI_M (eval metadata)
 }
+
+
+def get_eval_key_categories() -> dict[str, str]:
+    """Return mapping of config keys to their category names.
+
+    Categories are derived from the existing Pydantic model structure and
+    the documented groupings in RAG_EVAL_CONFIG_KEYS.
+    """
+    # Define categories based on the existing comments in RAG_EVAL_CONFIG_KEYS
+    # Each key maps to its display category name
+    _EVAL_KEY_CATEGORY_MAP: dict[str, str] = {
+        # BM25 Search
+        'BM25_TOKENIZER': 'BM25 Search',
+        'BM25_STEMMER_LANG': 'BM25 Search',
+        'BM25_STOPWORDS_LANG': 'BM25 Search',
+        'BM25_K1': 'BM25 Search',
+        'BM25_B': 'BM25 Search',
+        'BM25_WEIGHT': 'BM25 Search',
+        # Embedding
+        'EMBEDDING_TYPE': 'Embedding',
+        'EMBEDDING_MODEL': 'Embedding',
+        'EMBEDDING_DIM': 'Embedding',
+        'EMBEDDING_MODEL_LOCAL': 'Embedding',
+        'EMBEDDING_BATCH_SIZE': 'Embedding',
+        'VOYAGE_MODEL': 'Embedding',
+        # Retrieval
+        'RRF_K_DIV': 'Retrieval',
+        'LANGGRAPH_FINAL_K': 'Retrieval',
+        'FINAL_K': 'Retrieval',
+        'EVAL_FINAL_K': 'Retrieval',
+        'TOPK_DENSE': 'Retrieval',
+        'TOPK_SPARSE': 'Retrieval',
+        'VECTOR_WEIGHT': 'Retrieval',
+        'CONF_TOP1': 'Retrieval',
+        'CONF_AVG5': 'Retrieval',
+        'CONF_ANY': 'Retrieval',
+        'FALLBACK_CONFIDENCE': 'Retrieval',
+        'CARD_SEARCH_ENABLED': 'Retrieval',
+        'MULTI_QUERY_M': 'Retrieval',
+        'EVAL_MULTI': 'Retrieval',
+        # Query Expansion
+        'QUERY_EXPANSION_ENABLED': 'Query Expansion',
+        'LANGGRAPH_MAX_QUERY_REWRITES': 'Query Expansion',
+        'MAX_QUERY_REWRITES': 'Query Expansion',
+        'USE_SEMANTIC_SYNONYMS': 'Query Expansion',
+        'AGRO_SYNONYMS_PATH': 'Query Expansion',
+        'PROMPT_QUERY_EXPANSION': 'Query Expansion',
+        'PROMPT_QUERY_REWRITE': 'Query Expansion',
+        'PROMPT_SEMANTIC_CARDS': 'Query Expansion',
+        # Reranking
+        'RERANKER_MODE': 'Reranking',
+        'RERANKER_CLOUD_PROVIDER': 'Reranking',
+        'RERANKER_CLOUD_MODEL': 'Reranking',
+        'RERANKER_LOCAL_MODEL': 'Reranking',
+        'AGRO_RERANKER_ALPHA': 'Reranking',
+        'AGRO_RERANKER_TOPN': 'Reranking',
+        'RERANKER_CLOUD_TOP_N': 'Reranking',
+        'AGRO_RERANKER_BATCH': 'Reranking',
+        'AGRO_RERANKER_MAXLEN': 'Reranking',
+        'RERANK_INPUT_SNIPPET_CHARS': 'Reranking',
+        # Chunking
+        'CHUNK_SIZE': 'Chunking',
+        'CHUNK_OVERLAP': 'Chunking',
+        'AST_OVERLAP_LINES': 'Chunking',
+        'MAX_INDEXABLE_FILE_SIZE': 'Chunking',
+        'MAX_CHUNK_TOKENS': 'Chunking',
+        'MIN_CHUNK_CHARS': 'Chunking',
+        'GREEDY_FALLBACK_TARGET': 'Chunking',
+        'CHUNKING_STRATEGY': 'Chunking',
+        'PRESERVE_IMPORTS': 'Chunking',
+        # Scoring
+        'CARD_BONUS': 'Scoring',
+        'FILENAME_BOOST_EXACT': 'Scoring',
+        'FILENAME_BOOST_PARTIAL': 'Scoring',
+        'VENDOR_MODE': 'Scoring',
+        'PATH_BOOSTS': 'Scoring',
+        # Layer Bonuses
+        'LAYER_BONUS_GUI': 'Layer Bonuses',
+        'LAYER_BONUS_RETRIEVAL': 'Layer Bonuses',
+        'LAYER_BONUS_INDEXER': 'Layer Bonuses',
+        'VENDOR_PENALTY': 'Layer Bonuses',
+        'FRESHNESS_BONUS': 'Layer Bonuses',
+        'LAYER_INTENT_MATRIX': 'Layer Bonuses',
+        # Keywords
+        'KEYWORDS_BOOST': 'Keywords',
+        'KEYWORDS_MAX_PER_REPO': 'Keywords',
+        'KEYWORDS_MIN_FREQ': 'Keywords',
+    }
+    return _EVAL_KEY_CATEGORY_MAP

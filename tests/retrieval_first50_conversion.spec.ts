@@ -42,7 +42,7 @@ test.describe('RetrievalSubtab - First 50% TSX Conversion', () => {
     await expect(retrievalHeading).toBeVisible();
 
     // Verify critical inputs are present
-    await expect(page.locator('input[name="MQ_REWRITES"]')).toBeVisible();
+    await expect(page.locator('input[name="MAX_QUERY_REWRITES"]')).toBeVisible();
     await expect(page.locator('input[name="FINAL_K"]')).toBeVisible();
     await expect(page.locator('select[name="USE_SEMANTIC_SYNONYMS"]')).toBeVisible();
     await expect(page.locator('input[name="TOPK_DENSE"]')).toBeVisible();
@@ -88,7 +88,7 @@ test.describe('RetrievalSubtab - First 50% TSX Conversion', () => {
   });
 
   test('Retrieval Parameters - Multi-Query Rewrites input works', async ({ page }) => {
-    const mqInput = page.locator('input[name="MQ_REWRITES"]');
+    const mqInput = page.locator('input[name="MAX_QUERY_REWRITES"]');
 
     // Clear and set new value
     await mqInput.fill('3');

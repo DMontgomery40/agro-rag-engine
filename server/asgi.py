@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from common.paths import repo_root, gui_dir, docs_dir, files_root
-from common.config_loader import load_repos
+from common.config_loader import _load_repos_raw
 from server.api_interceptor import setup_interceptor
 from server.frequency_limiter import FrequencyAnomalyMiddleware
 from server.metrics import init_metrics_fastapi
@@ -106,8 +106,7 @@ def create_app() -> FastAPI:
             pass
         return response
 
-    # Tracing middleware: start/end trace around /api/chat
-    # Note: /answer is deprecated - all new integrations should use /api/chat
+    # Tracing middleware: start/end trace around /answer and /api/chat
     @app.middleware("http")
     async def tracing_middleware(request: Request, call_next):  # type: ignore[unused-ignore]
         try:
@@ -125,9 +124,7 @@ def create_app() -> FastAPI:
                     return await call_next(request)
 
             path = request.url.path or ""
-            # Only trace /api/chat - the unified chat endpoint
-            # /answer is deprecated and will be removed in future version
-            if path not in {"/api/chat"}:
+            if path not in {"/answer", "/api/chat"}:
                 return await call_next(request)
 
             # Import lazily to avoid cycles at import time
@@ -138,6 +135,25 @@ def create_app() -> FastAPI:
 
             repo = _config_registry.get_str("REPO", "agro")
             question = ""
+
+            if path == "/answer":
+                try:
+                    question = request.query_params.get("q") or ""
+                    repo = request.query_params.get("repo") or repo
+                except Exception:
+                    pass
+                try:
+                    start_trace(repo=repo, question=question)
+                except Exception:
+                    pass
+                try:
+                    response = await call_next(request)
+                finally:
+                    try:
+                        end_trace()
+                    except Exception:
+                        pass
+                return response
 
             # /api/chat: we need to read and re-inject the body for downstream
             try:
@@ -308,11 +324,11 @@ def create_app() -> FastAPI:
         import socket
         import requests
 
-        repo_cfg = load_repos()
-        repo_name = os.getenv("REPO") or repo_cfg.get("default_repo") or "local"
+        repo_cfg = _load_repos_raw()
+        repo_name = _config_registry.get_str("REPO", "") or repo_cfg.get("default_repo") or "local"
         repo_mode = "repo" if repo_name and repo_name != "local" else "local"
 
-        branch = os.getenv("GIT_BRANCH") or None
+        branch = _config_registry.get_str("GIT_BRANCH", "") or None
         if not branch:
             try:
                 out = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=str(ROOT))
@@ -328,20 +344,19 @@ def create_app() -> FastAPI:
         if top_k == 10:  # Check if we got the default
             top_k = _config_registry.get_int("LANGGRAPH_FINAL_K", 10)
 
-        rr_enabled = _config_registry.get_bool("AGRO_RERANKER_ENABLED", False)
-        rr_backend = _config_registry.get_str("RERANKER_BACKEND", "").strip().lower() or None
+        rr_mode = _config_registry.get_str("RERANKER_MODE", "none").strip().lower()
         rr_provider = None
         rr_model = None
-        if rr_backend:
-            if rr_backend in {"cohere", "voyage"}:
-                rr_provider = rr_backend
-                rr_model = _config_registry.get_str("COHERE_RERANK_MODEL", "") if rr_backend == "cohere" else _config_registry.get_str("VOYAGE_RERANK_MODEL", "")
-            elif rr_backend in {"hf", "local"}:
-                rr_provider = rr_backend
-                rr_model = _config_registry.get_str("RERANKER_MODEL", "")
-            elif rr_backend == "learning":
-                rr_provider = "learning"
-                rr_model = os.getenv("AGRO_LEARNING_RERANKER_MODEL", "cross-encoder-agro")
+        
+        if rr_mode == "cloud":
+            rr_provider = _config_registry.get_str("RERANKER_CLOUD_PROVIDER", "").strip().lower()
+            rr_model = _config_registry.get_str("RERANKER_CLOUD_MODEL", "")
+        elif rr_mode in {"local", "hf"}:
+            rr_provider = "local"
+            rr_model = _config_registry.get_str("RERANKER_LOCAL_MODEL", "")
+        elif rr_mode == "learning":
+            rr_provider = "learning"
+            rr_model = "cross-encoder-agro"
 
         enrich_enabled = _config_registry.get_bool("ENRICH_CODE_CHUNKS", False)
         enrich_backend = _config_registry.get_str("ENRICH_BACKEND", "").strip().lower() or None
@@ -380,7 +395,7 @@ def create_app() -> FastAPI:
             return "unknown"
 
         def _llm_health() -> str:
-            base = (os.getenv("OLLAMA_URL") or "").rstrip("/")
+            base = _config_registry.get_str("OLLAMA_URL", "").rstrip("/")
             if base:
                 try:
                     r = requests.get(f"{base}/api/tags", timeout=1.5)
@@ -393,18 +408,27 @@ def create_app() -> FastAPI:
             return {
                 "repo": {"name": repo_name, "mode": repo_mode, "branch": branch},
                 "retrieval": {"mode": retrieval_mode, "top_k": top_k},
-                "reranker": {"enabled": rr_enabled, "backend": rr_backend, "provider": rr_provider, "model": rr_model},
+                "reranker": {
+                    "reranker_mode": rr_mode,
+                    "reranker_cloud_provider": rr_provider if rr_mode == "cloud" else "",
+                    "reranker_cloud_model": rr_model if rr_mode == "cloud" else "",
+                    "reranker_local_model": rr_model if rr_mode in {"local", "learning"} else "",
+                },
                 "enrichment": {"enabled": enrich_enabled, "backend": enrich_backend, "model": enrich_model},
                 "generation": {"provider": gen_provider, "model": gen_model},
                 "health": {"qdrant": _qdrant_health(), "redis": _redis_health(), "llm": _llm_health()},
             }
         except Exception as e:
             logging.getLogger("agro.api").warning("pipeline_summary failed: %s", e)
-            # Return a safe minimal structure rather than 500 to keep UI healthy
             return {
                 "repo": {"name": repo_name or "local", "mode": repo_mode or "local", "branch": branch},
                 "retrieval": {"mode": retrieval_mode or "hybrid", "top_k": top_k if isinstance(top_k, int) else 10},
-                "reranker": {"enabled": bool(rr_enabled), "backend": rr_backend or None, "provider": rr_provider or None, "model": rr_model},
+                "reranker": {
+                    "reranker_mode": rr_mode or "none",
+                    "reranker_cloud_provider": "",
+                    "reranker_cloud_model": "",
+                    "reranker_local_model": "",
+                },
                 "enrichment": {"enabled": bool(enrich_enabled), "backend": enrich_backend or None, "model": enrich_model or None},
                 "generation": {"provider": gen_provider or None, "model": gen_model or None},
                 "health": {"qdrant": "unknown", "redis": "unknown", "llm": "unknown"},

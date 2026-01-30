@@ -34,6 +34,19 @@ async function loadGoldenQuestions() {
 }
 
 // Render questions list
+/**
+ * ---agentspec
+ * what: |
+ *   Renders golden questions list to DOM. If empty, displays centered empty state with icon and muted text.
+ *
+ * why: |
+ *   Conditional rendering prevents blank containers; empty state provides visual feedback.
+ *
+ * guardrails:
+ *   - DO NOT mutate goldenQuestions array; read-only check
+ *   - NOTE: Assumes container ID 'golden-questions-content' exists in DOM
+ * ---/agentspec
+ */
 function renderGoldenQuestions() {
     const container = document.getElementById('golden-questions-content');
 
@@ -186,6 +199,20 @@ async function testQuestion(index) {
 }
 
 // Edit question (inline)
+/**
+ * ---agentspec
+ * what: |
+ *   Replaces question list item with inline edit form. Inputs: index. Outputs: DOM mutation (innerHTML swap).
+ *
+ * why: |
+ *   Inline editing avoids modal overhead; direct DOM replacement keeps state in goldenQuestions array.
+ *
+ * guardrails:
+ *   - DO NOT use innerHTML with unsanitized user input; XSS risk
+ *   - NOTE: Form submission must sync back to goldenQuestions[index] before re-render
+ *   - ASK USER: Confirm undo/cancel behavior on form close
+ * ---/agentspec
+ */
 function editQuestion(index) {
     const q = goldenQuestions[index];
     const item = document.querySelector(`[data-index="${index}"]`);
@@ -273,6 +300,19 @@ async function deleteQuestion(index) {
 }
 
 // Export questions as JSON
+/**
+ * ---agentspec
+ * what: |
+ *   Exports goldenQuestions array to JSON file. Creates blob, generates download link, triggers browser download, cleans up object URL.
+ *
+ * why: |
+ *   Standard browser pattern for client-side file export without server round-trip.
+ *
+ * guardrails:
+ *   - DO NOT call without user interaction; may be blocked by popup filters
+ *   - NOTE: URL.revokeObjectURL must execute after click to prevent premature cleanup
+ * ---/agentspec
+ */
 function exportGoldenQuestions() {
     const dataStr = JSON.stringify(goldenQuestions, null, 2);
     const blob = new Blob([dataStr], { type: 'application/json' });
@@ -286,6 +326,19 @@ function exportGoldenQuestions() {
 }
 
 // Helper: escape HTML
+/**
+ * ---agentspec
+ * what: |
+ *   Escapes HTML special characters by setting textContent on a DOM element, then reading innerHTML. Returns sanitized string safe for HTML insertion.
+ *
+ * why: |
+ *   Leverages browser's native HTML parsing to avoid manual character mapping; showToast is stub for notification UI.
+ *
+ * guardrails:
+ *   - DO NOT use for user-generated content in security-critical contexts; this is DOM-based escaping, not cryptographic sanitization
+ *   - NOTE: showToast lacks implementation; add toast container and styling before production
+ * ---/agentspec
+ */
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
@@ -293,6 +346,20 @@ function escapeHtml(text) {
 }
 
 // Helper: show toast notification
+/**
+ * ---agentspec
+ * what: |
+ *   Creates and displays a toast notification. Accepts message string and type ('info'|'success'|'error'). Renders fixed-position div with color mapped to type.
+ *
+ * why: |
+ *   Centralizes toast UI logic; reusable across app for user feedback.
+ *
+ * guardrails:
+ *   - DO NOT hardcode colors; use CSS vars (--accent, --err, --link, --panel)
+ *   - NOTE: Fixed positioning may overlap; consider z-index and queue management
+ *   - ASK USER: Should toasts auto-dismiss? Current code doesn't remove element.
+ * ---/agentspec
+ */
 function showToast(message, type = 'info') {
     // Simple toast - you can enhance this
     const color = type === 'success' ? 'var(--accent)' : type === 'error' ? 'var(--err)' : 'var(--link)';

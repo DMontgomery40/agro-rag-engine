@@ -1,5 +1,5 @@
 import { apiClient, api } from './client';
-import type { DockerStatus, DockerContainer } from '@/types';
+import type { DockerStatus, DockerContainer } from '@web/types';
 
 export const dockerApi = {
   /**
@@ -80,5 +80,67 @@ export const dockerApi = {
       api('/loki/status')
     );
     return data;
-  }
+  },
+
+  // ============================================================================
+  // Dev Stack API (Frontend/Backend restart)
+  // ============================================================================
+
+  /**
+   * Get dev stack status (frontend/backend running state)
+   */
+  async getDevStackStatus(): Promise<DevStackStatus> {
+    const { data } = await apiClient.get<DevStackStatus>(api('/dev/status'));
+    return data;
+  },
+
+  /**
+   * Restart the dev frontend (Vite)
+   */
+  async restartFrontend(): Promise<DevStackRestartResult> {
+    const { data } = await apiClient.post<DevStackRestartResult>(api('/dev/frontend/restart'));
+    return data;
+  },
+
+  /**
+   * Restart the dev backend (Uvicorn)
+   */
+  async restartBackend(): Promise<DevStackRestartResult> {
+    const { data } = await apiClient.post<DevStackRestartResult>(api('/dev/backend/restart'));
+    return data;
+  },
+
+  /**
+   * Restart both frontend and backend
+   */
+  async restartStack(): Promise<DevStackRestartResult> {
+    const { data } = await apiClient.post<DevStackRestartResult>(api('/dev/stack/restart'));
+    return data;
+  },
+
+  /**
+   * Clear Python bytecode cache and restart the backend.
+   * Use this when code changes aren't being picked up by normal restarts.
+   */
+  async clearCacheAndRestart(): Promise<DevStackRestartResult> {
+    const { data } = await apiClient.post<DevStackRestartResult>(api('/dev/backend/clear-cache-restart'));
+    return data;
+  },
 };
+
+// Dev Stack Types
+export interface DevStackStatus {
+  frontend_running: boolean;
+  backend_running: boolean;
+  frontend_port: number;
+  backend_port: number;
+}
+
+export interface DevStackRestartResult {
+  success: boolean;
+  message?: string;
+  error?: string;
+  port?: number;
+  frontend_port?: number;
+  backend_port?: number;
+}

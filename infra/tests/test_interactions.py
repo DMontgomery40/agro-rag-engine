@@ -68,7 +68,7 @@ def test_retrieval_parameters_editable(page: Page):
     page.click("button:has-text('Retrieval')")
     
     # Change Multi-Query Rewrites
-    mq_input = page.locator("input[name='MQ_REWRITES']")
+    mq_input = page.locator("input[name='MAX_QUERY_REWRITES']")
     expect(mq_input).to_be_visible()
     mq_input.fill("5")
     expect(mq_input).to_have_value("5")

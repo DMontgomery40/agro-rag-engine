@@ -2,6 +2,19 @@
 // This file contains all the calculation logic for the storage calculator
 
 // Improved formatBytes function with consistent formatting
+/**
+ * ---agentspec
+ * what: |
+ *   Converts byte count to human-readable string (B, KB, MB, GB, TB). Returns formatted string with up to 3 decimals.
+ *
+ * why: |
+ *   Intl.NumberFormat ensures locale-aware formatting; early returns handle edge cases (non-finite, zero).
+ *
+ * guardrails:
+ *   - DO NOT use for negative bytes; abs() masks sign
+ *   - NOTE: Returns '0 B' for zero and non-finite values
+ * ---/agentspec
+ */
 function formatBytes(bytes) {
     if (!isFinite(bytes) || bytes === 0) return '0 B';
     const abs = Math.abs(bytes);
@@ -18,11 +31,37 @@ function formatBytes(bytes) {
     return `${nf.format(bytes / TB)} TiB`;
 }
 
+/**
+ * ---agentspec
+ * what: |
+ *   Formats numbers using Intl.NumberFormat. Accepts number, returns locale-formatted string (e.g., 1000 → "1,000").
+ *
+ * why: |
+ *   Centralizes locale-aware formatting to avoid repeated Intl instantiation.
+ *
+ * guardrails:
+ *   - NOTE: Hardcoded to 'en-US'; parameterize locale if multi-region needed
+ *   - DO NOT use for currency/percent without explicit formatter type
+ * ---/agentspec
+ */
 function formatNumber(num) {
     return new Intl.NumberFormat('en-US').format(num);
 }
 
 // Calculator 1: Full Storage Requirements
+/**
+ * ---agentspec
+ * what: |
+ *   Calculates storage chunks from repo size and chunk size inputs. Multiplies parsed values by unit scalars, returns numeric result.
+ *
+ * why: |
+ *   Centralizes storage math with unit conversion; guards against zero/invalid chunk sizes.
+ *
+ * guardrails:
+ *   - DO NOT proceed if chunk size ≤ 0; warn and halt
+ *   - NOTE: Assumes unit selectors contain valid numeric multipliers
+ * ---/agentspec
+ */
 function calculateStorage1() {
     const R = parseFloat(document.getElementById('calc1-repoSize').value) *
              parseFloat(document.getElementById('calc1-repoUnit').value);
@@ -72,6 +111,20 @@ function calculateStorage1() {
 }
 
 // Calculator 2: Optimization & Fitting (corrected version)
+/**
+ * ---agentspec
+ * what: |
+ *   Reads repo size, target size, chunk size from DOM inputs with unit multipliers. Converts all to bytes. Returns numeric storage calculation inputs.
+ *
+ * why: |
+ *   Centralizes unit conversion logic before downstream storage math.
+ *
+ * guardrails:
+ *   - DO NOT assume DOM values are valid; add parseFloat guards + NaN checks
+ *   - NOTE: Unit multipliers must be pre-populated in select elements or calculation silently fails
+ *   - ASK USER: Is chunk size calculation complete? Function appears truncated
+ * ---/agentspec
+ */
 function calculateStorage2() {
     // Read base values (uses same unit semantics as calc1)
     const R = parseFloat(document.getElementById('calc2-repoSize').value) *
@@ -169,6 +222,19 @@ function calculateStorage2() {
 }
 
 // Initialize event listeners when DOM is loaded
+/**
+ * ---agentspec
+ * what: |
+ *   Attaches input event listeners to 10 storage calculator form fields. Triggers calculateStorage1() on any field change.
+ *
+ * why: |
+ *   Real-time UI updates require reactive listeners on all input elements.
+ *
+ * guardrails:
+ *   - DO NOT assume all elements exist; check getElementById null before attach
+ *   - NOTE: calculateStorage1() must be defined; listener will fail silently if missing
+ * ---/agentspec
+ */
 function initStorageCalculator() {
     // Event listeners for Calculator 1
     ['calc1-repoSize', 'calc1-repoUnit', 'calc1-chunkSize', 'calc1-chunkUnit',

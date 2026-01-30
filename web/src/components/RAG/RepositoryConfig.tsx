@@ -1,164 +1,152 @@
 // AGRO - Repository Configuration Component
-// React port of legacy JS populateReposSection - EXACT UI match
-// Fully wired to repos.json via PATCH /api/repos/{repo_name}
+// Refactored to use Zustand stores per CLAUDE.md requirements
+// Uses useRepoStore for repo list/selection, useConfigStore.updateRepo() for persistence
 
-import { useState, useEffect, useCallback } from 'react';
-import { useAPI } from '@/hooks';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRepoStore } from '@/stores/useRepoStore';
+import { useConfigStore } from '@/stores/useConfigStore';
 import { KeywordManager } from '@/components/KeywordManager';
 
-interface RepoData {
-  name: string;
-  slug?: string;
-  path?: string;
-  exclude_paths?: string[];
-  keywords?: string[];
-  path_boosts?: string[];
-  layer_bonuses?: Record<string, Record<string, number>>;
-}
-
 interface RepositoryConfigProps {
-  repos: string[];
-  selectedRepo: string;
-  onRepoChange: (repo: string) => void;
+  // Only keep the callback that parent needs for syncing UI state
   onExcludePathsChange?: (paths: string[]) => void;
 }
 
-export function RepositoryConfig({ repos, selectedRepo, onRepoChange, onExcludePathsChange }: RepositoryConfigProps) {
-  const { api } = useAPI();
-  const [repoData, setRepoData] = useState<RepoData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-
-  // Form state
-  const [repoPath, setRepoPath] = useState('');
-  const [excludePaths, setExcludePaths] = useState<string[]>([]);
+/**
+ * ---agentspec
+ * what: |
+ *   Repository config using Zustand stores. Gets repos/activeRepo from useRepoStore,
+ *   persists changes via useConfigStore.updateRepo(). Local state ONLY for debounced text inputs.
+ *
+ * why: |
+ *   Single source of truth via Zustand; no duplicate state, fetch logic, or event listeners.
+ *
+ * guardrails:
+ *   - DO NOT use local useState for config values - derive from store
+ *   - NOTE: Local state ONLY for text input fields that need debouncing before save
+ *   - DO NOT duplicate API calls - use store actions exclusively
+ * ---/agentspec
+ */
+export function RepositoryConfig({ onExcludePathsChange }: RepositoryConfigProps) {
+  // Get repos and active repo from Zustand store
+  const { repos, activeRepo, loading: reposLoading, getRepoByName, loadRepos, initialized } = useRepoStore();
+  const { updateRepo, saving } = useConfigStore();
+  
+  // Get current repo data from store (reactive to store changes)
+  const repoData = getRepoByName(activeRepo);
+  
+  // Local state ONLY for text inputs that need debouncing before save
+  const [repoPathInput, setRepoPathInput] = useState('');
   const [excludePathInput, setExcludePathInput] = useState('');
-  const [keywords, setKeywords] = useState('');
-  const [pathBoosts, setPathBoosts] = useState('');
-  const [layerBonuses, setLayerBonuses] = useState('');
+  const [keywordsInput, setKeywordsInput] = useState('');
+  const [pathBoostsInput, setPathBoostsInput] = useState('');
+  const [layerBonusesInput, setLayerBonusesInput] = useState('');
+  
+  // Ref to track if we're initializing from store (prevent save on mount)
+  const isInitializing = useRef(true);
 
-  // Load repo data when selectedRepo changes
+  // Load repos once on mount if not yet initialized
   useEffect(() => {
-    if (!selectedRepo) {
-      setRepoData(null);
-      setLoading(false);
-      return;
+    if (!initialized && !reposLoading) {
+      loadRepos();
     }
+  }, [initialized, reposLoading, loadRepos]);
 
-    const loadRepoData = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch(api(`repos/${selectedRepo}`));
-        const data = await response.json();
-        if (data.ok && data.repo) {
-          setRepoData(data.repo);
-          setRepoPath(data.repo.path || '');
-          setExcludePaths(data.repo.exclude_paths || []);
-          setExcludePathInput('');
-          setKeywords((data.repo.keywords || []).join(','));
-          setPathBoosts((data.repo.path_boosts || []).join(','));
-          setLayerBonuses(
-            data.repo.layer_bonuses
-              ? JSON.stringify(data.repo.layer_bonuses, null, 2)
-              : ''
-          );
-        }
-      } catch (e) {
-        console.error('Failed to load repo data:', e);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadRepoData();
-
-    // Listen for repo updates from KeywordManager
-    const handleRepoUpdate = () => {
-      loadRepoData();
-    };
-    window.addEventListener('repo-updated', handleRepoUpdate);
-    return () => window.removeEventListener('repo-updated', handleRepoUpdate);
-  }, [selectedRepo, api]);
-
-  // Save to repos.json (debounced for text fields)
-  const saveRepoData = useCallback(
-    async (updates: Partial<RepoData>) => {
-      if (!selectedRepo || saving) return;
-
-      setSaving(true);
-      try {
-        const response = await fetch(api(`repos/${selectedRepo}`), {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updates)
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.ok) {
-            console.log('[RepositoryConfig] Updated repos.json');
-            setRepoData((prev) => (prev ? { ...prev, ...updates } : null));
-            if (updates.exclude_paths) {
-              onExcludePathsChange?.(updates.exclude_paths);
-            }
-          }
-        }
-      } catch (e) {
-        console.error('Failed to update repos.json:', e);
-      } finally {
-        setSaving(false);
-      }
-    },
-    [selectedRepo, api, saving, onExcludePathsChange]
-  );
-
-  // Debounced save handlers
+  // Sync local inputs from store when repo changes
   useEffect(() => {
-    if (!repoData || loading) return;
-    const timeoutId = setTimeout(() => {
-      if (repoData.path !== repoPath) {
-        saveRepoData({ path: repoPath });
-      }
-    }, 1000);
-    return () => clearTimeout(timeoutId);
-  }, [repoPath, repoData, loading, saveRepoData]);
+    if (!repoData) return;
+    isInitializing.current = true;
+    
+    setRepoPathInput(repoData.path || '');
+    setKeywordsInput((repoData.keywords || []).join(', '));
+    setPathBoostsInput((repoData.path_boosts || []).join(', '));
+    setLayerBonusesInput(
+      repoData.layer_bonuses ? JSON.stringify(repoData.layer_bonuses, null, 2) : ''
+    );
+    
+    // Allow saves after initial sync
+    setTimeout(() => { isInitializing.current = false; }, 100);
+  }, [repoData?.name]); // Only re-sync when repo changes
 
+  // NOTE: Path auto-save removed to prevent overwriting relative paths with absolute paths.
+  // Path changes now require explicit save. See: Pydantic migration for repos.json
+
+  /**
+   * ---agentspec
+   * what: |
+   *   Debounced save for keywords. Parses comma-separated, sorts, compares to store.
+   *
+   * why: |
+   *   Sort + compare prevents redundant saves for reordered input.
+   *
+   * guardrails:
+   *   - DO NOT save if keywords unchanged after normalization
+   * ---/agentspec
+   */
   useEffect(() => {
-    if (!repoData || loading) return;
+    if (!repoData || isInitializing.current) return;
+    
     const timeoutId = setTimeout(() => {
-      const keywordsArray = keywords.split(',').map(s => s.trim()).filter(Boolean);
+      const keywordsArray = keywordsInput.split(',').map(s => s.trim()).filter(Boolean);
       const currentKeywords = (repoData.keywords || []).sort().join(',');
       const newKeywords = keywordsArray.sort().join(',');
       if (currentKeywords !== newKeywords) {
-        saveRepoData({ keywords: keywordsArray });
+        updateRepo(activeRepo, { keywords: keywordsArray });
       }
     }, 1000);
     return () => clearTimeout(timeoutId);
-  }, [keywords, repoData, loading, saveRepoData]);
+  }, [keywordsInput, repoData, activeRepo, updateRepo]);
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Debounced save for path_boosts. Parses comma-separated, sorts, compares to store.
+   *
+   * why: |
+   *   Sort + compare prevents redundant saves for reordered input.
+   *
+   * guardrails:
+   *   - DO NOT save if boosts unchanged after normalization
+   * ---/agentspec
+   */
   useEffect(() => {
-    if (!repoData || loading) return;
+    if (!repoData || isInitializing.current) return;
+    
     const timeoutId = setTimeout(() => {
-      const pathBoostsArray = pathBoosts.split(',').map(s => s.trim()).filter(Boolean);
+      const pathBoostsArray = pathBoostsInput.split(',').map(s => s.trim()).filter(Boolean);
       const currentBoosts = (repoData.path_boosts || []).sort().join(',');
       const newBoosts = pathBoostsArray.sort().join(',');
       if (currentBoosts !== newBoosts) {
-        saveRepoData({ path_boosts: pathBoostsArray });
+        updateRepo(activeRepo, { path_boosts: pathBoostsArray });
       }
     }, 1000);
     return () => clearTimeout(timeoutId);
-  }, [pathBoosts, repoData, loading, saveRepoData]);
+  }, [pathBoostsInput, repoData, activeRepo, updateRepo]);
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Debounced save for layer_bonuses JSON. Parses, validates, compares stringified.
+   *
+   * why: |
+   *   JSON parse validation prevents saving invalid data; stringify compare catches changes.
+   *
+   * guardrails:
+   *   - DO NOT save if JSON parse fails (silent skip)
+   *   - NOTE: Order-dependent equality check via stringify
+   * ---/agentspec
+   */
   useEffect(() => {
-    if (!repoData || loading) return;
+    if (!repoData || isInitializing.current) return;
+    
     const timeoutId = setTimeout(() => {
       try {
-        const parsed = JSON.parse(layerBonuses || '{}');
+        const parsed = JSON.parse(layerBonusesInput || '{}');
         if (typeof parsed === 'object' && parsed !== null) {
           const currentBonuses = JSON.stringify(repoData.layer_bonuses || {});
           const newBonuses = JSON.stringify(parsed);
           if (currentBonuses !== newBonuses) {
-            saveRepoData({ layer_bonuses: parsed });
+            updateRepo(activeRepo, { layer_bonuses: parsed });
           }
         }
       } catch {
@@ -166,23 +154,50 @@ export function RepositoryConfig({ repos, selectedRepo, onRepoChange, onExcludeP
       }
     }, 1000);
     return () => clearTimeout(timeoutId);
-  }, [layerBonuses, repoData, loading, saveRepoData]);
+  }, [layerBonusesInput, repoData, activeRepo, updateRepo]);
 
-  const handleAddExcludePath = () => {
-    if (!excludePathInput.trim()) return;
+  // Exclude paths - derive from store, save via store
+  const excludePaths = repoData?.exclude_paths || [];
+
+  /**
+   * ---agentspec
+   * what: |
+   *   Adds exclude path to repo config via store. Clears input, calls parent callback.
+   *
+   * why: |
+   *   Centralized save through Zustand store; callback notifies parent for UI sync.
+   *
+   * guardrails:
+   *   - DO NOT add empty strings; trim + validate before save
+   * ---/agentspec
+   */
+  const handleAddExcludePath = useCallback(() => {
+    if (!excludePathInput.trim() || !activeRepo) return;
     const newPaths = [...excludePaths, excludePathInput.trim()];
-    setExcludePaths(newPaths);
     setExcludePathInput('');
-    saveRepoData({ exclude_paths: newPaths });
-  };
+    updateRepo(activeRepo, { exclude_paths: newPaths });
+    onExcludePathsChange?.(newPaths);
+  }, [excludePathInput, excludePaths, activeRepo, updateRepo, onExcludePathsChange]);
 
-  const handleRemoveExcludePath = (path: string) => {
+  /**
+   * ---agentspec
+   * what: |
+   *   Removes exclude path from repo config via store. Calls parent callback.
+   *
+   * why: |
+   *   Centralized save through Zustand store; callback notifies parent for UI sync.
+   *
+   * guardrails:
+   *   - DO NOT mutate excludePaths directly; use filter to create new array
+   * ---/agentspec
+   */
+  const handleRemoveExcludePath = useCallback((path: string) => {
     const newPaths = excludePaths.filter(p => p !== path);
-    setExcludePaths(newPaths);
-    saveRepoData({ exclude_paths: newPaths });
-  };
+    updateRepo(activeRepo, { exclude_paths: newPaths });
+    onExcludePathsChange?.(newPaths);
+  }, [excludePaths, activeRepo, updateRepo, onExcludePathsChange]);
 
-  if (loading) {
+  if (reposLoading) {
     return (
       <div style={{ padding: '16px', textAlign: 'center', color: 'var(--fg-muted)' }}>
         Loading repository configuration...
@@ -190,7 +205,7 @@ export function RepositoryConfig({ repos, selectedRepo, onRepoChange, onExcludeP
     );
   }
 
-  if (!selectedRepo || !repoData) {
+  if (!activeRepo || !repoData) {
     return (
       <div style={{ padding: '16px', textAlign: 'center', color: 'var(--fg-muted)' }}>
         Select a repository to configure
@@ -207,8 +222,8 @@ export function RepositoryConfig({ repos, selectedRepo, onRepoChange, onExcludeP
         <label>Path</label>
         <input
           type="text"
-          value={repoPath}
-          onChange={(e) => setRepoPath(e.target.value)}
+          value={repoPathInput}
+          onChange={(e) => setRepoPathInput(e.target.value)}
         />
       </div>
 
@@ -294,8 +309,8 @@ export function RepositoryConfig({ repos, selectedRepo, onRepoChange, onExcludeP
         <label>Keywords (comma-separated)</label>
         <input
           type="text"
-          value={keywords}
-          onChange={(e) => setKeywords(e.target.value)}
+          value={keywordsInput}
+          onChange={(e) => setKeywordsInput(e.target.value)}
           list="keywords-list"
           placeholder="search or type to add"
         />
@@ -306,8 +321,8 @@ export function RepositoryConfig({ repos, selectedRepo, onRepoChange, onExcludeP
         <label>Path Boosts (comma-separated)</label>
         <input
           type="text"
-          value={pathBoosts}
-          onChange={(e) => setPathBoosts(e.target.value)}
+          value={pathBoostsInput}
+          onChange={(e) => setPathBoostsInput(e.target.value)}
         />
       </div>
 
@@ -315,26 +330,24 @@ export function RepositoryConfig({ repos, selectedRepo, onRepoChange, onExcludeP
       <div className="input-group">
         <label>Layer Bonuses (JSON)</label>
         <textarea
-          value={layerBonuses}
-          onChange={(e) => setLayerBonuses(e.target.value)}
+          value={layerBonusesInput}
+          onChange={(e) => setLayerBonusesInput(e.target.value)}
           rows={3}
         />
       </div>
 
       {/* Keyword Manager */}
-      {repoData && (
-        <div className="input-group full-width" style={{ marginTop: '12px' }}>
-          <KeywordManager
-            repo={{
-              name: repoData.name,
-              path: repoData.path || '',
-              keywords: repoData.keywords || [],
-              path_boosts: repoData.path_boosts || [],
-              layer_bonuses: repoData.layer_bonuses || {}
-            }}
-          />
-        </div>
-      )}
+      <div className="input-group full-width" style={{ marginTop: '12px' }}>
+        <KeywordManager
+          repo={{
+            name: repoData.name,
+            path: repoData.path || '',
+            keywords: repoData.keywords || [],
+            path_boosts: repoData.path_boosts || [],
+            layer_bonuses: repoData.layer_bonuses || {}
+          }}
+        />
+      </div>
 
       {saving && (
         <div
@@ -354,5 +367,3 @@ export function RepositoryConfig({ repos, selectedRepo, onRepoChange, onExcludeP
     </div>
   );
 }
-
-

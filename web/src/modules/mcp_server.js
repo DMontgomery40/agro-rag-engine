@@ -186,6 +186,20 @@
     /**
      * Initialize MCP server management UI
      */
+    /**
+     * ---agentspec
+     * what: |
+     *   Binds click handlers to MCP HTTP server UI buttons (start, stop, restart, check). Attaches event listeners to DOM elements via jQuery selectors.
+     *
+     * why: |
+     *   Centralizes UI initialization; decouples button binding from handler definitions.
+     *
+     * guardrails:
+     *   - DO NOT assume buttons exist; check truthiness before addEventListener
+     *   - NOTE: Missing restart and check button bindings; incomplete implementation
+     *   - ASK USER: Should restart/check handlers be added?
+     * ---/agentspec
+     */
     function initMCPServerUI() {
         // Bind HTTP server buttons
         const btnHTTPStart = $('#btn-mcp-http-start');
@@ -205,13 +219,13 @@
         // Initial status check
         updateHTTPStatus();
 
-        // Auto-refresh status every 10 seconds if on infrastructure tab
+        // Auto-refresh status every 30 seconds if on infrastructure tab
         setInterval(() => {
             const infraTab = $('#tab-infrastructure');
             if (infraTab && infraTab.classList.contains('active')) {
                 updateHTTPStatus();
             }
-        }, 10000);
+        }, 30000);
     }
 
     // Export to window

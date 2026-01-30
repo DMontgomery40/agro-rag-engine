@@ -79,7 +79,7 @@
   - Outside-click dropdown close
 - **API Calls:**
   - `POST /api/chat` - Send message
-  - `GET /api/prices` - Get available models
+  - `GET /api/models` - Get available models
 - **Global State (4):**
   - `window.chatMessages[]` - Message array
   - `window.chatSettings{}` - User settings
@@ -132,12 +132,12 @@
   - `POST /api/env/reload` - Reload environment
   - `POST /api/keywords/add` - Add new keyword
   - `POST /api/repos/{name}/validate-path` - Validate repo path
-  - `GET /api/prices` - Get model pricing
+  - `GET /api/models` - Get model pricing
 - **Global State:**
   - `window.Config` - Module namespace
   - `window.state.config` - Config cache
   - `window.state.keywordsCatalog` - Keywords
-  - `window.state.prices` - Pricing data
+  - `window.state.models` - Pricing data
 - **Dependencies:** CoreUtils, ErrorHelpers, Tooltips, UXFeedback, Theme
 - **Conflict Level:** CRITICAL - Massive form with complex state
 - **Notes:** Dynamic element creation, lots of callbacks, keyword manager is complex

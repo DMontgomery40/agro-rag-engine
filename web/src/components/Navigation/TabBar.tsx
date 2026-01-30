@@ -3,12 +3,26 @@
 
 import { NavLink } from 'react-router-dom';
 
-export function TabBar() {
+interface TabBarProps {
+  mobileOpen?: boolean;
+  onNavigate?: () => void;
+}
+
+export function TabBar({ mobileOpen = false, onNavigate }: TabBarProps) {
+  const handleClick = () => {
+    // Close mobile menu after navigation
+    if (onNavigate) onNavigate();
+  };
+
   return (
-    <div className="tab-bar" style={{ display: 'flex', gap: '8px', padding: '12px 24px', overflowX: 'auto' }}>
+    <div 
+      className={`tab-bar ${mobileOpen ? 'mobile-open' : ''}`} 
+      style={{ display: 'flex', gap: '8px', padding: '12px 24px', overflowX: 'auto' }}
+    >
       <NavLink
         to="/start"
         className={({ isActive }) => isActive ? 'active' : ''}
+        onClick={handleClick}
         style={{
           background: 'var(--bg-elev2)',
           color: 'var(--fg-muted)',
@@ -33,6 +47,7 @@ export function TabBar() {
       <NavLink
         to="/dashboard"
         className={({ isActive }) => isActive ? 'active' : ''}
+        onClick={handleClick}
         style={{
           background: 'var(--bg-elev2)',
           color: 'var(--fg-muted)',
@@ -57,6 +72,7 @@ export function TabBar() {
       <NavLink
         to="/chat"
         className={({ isActive }) => isActive ? 'active' : ''}
+        onClick={handleClick}
         style={{
           background: 'var(--bg-elev2)',
           color: 'var(--fg-muted)',
@@ -81,6 +97,7 @@ export function TabBar() {
       <NavLink
         to="/vscode"
         className={({ isActive }) => `${isActive ? 'active' : ''} promoted-tab`}
+        onClick={handleClick}
         style={{
           background: 'var(--bg-elev2)',
           color: 'var(--fg-muted)',
@@ -105,6 +122,7 @@ export function TabBar() {
       <NavLink
         to="/grafana"
         className={({ isActive }) => `${isActive ? 'active' : ''} promoted-tab`}
+        onClick={handleClick}
         style={{
           background: 'var(--bg-elev2)',
           color: 'var(--fg-muted)',
@@ -129,6 +147,7 @@ export function TabBar() {
       <NavLink
         to="/rag"
         className={({ isActive }) => isActive ? 'active' : ''}
+        onClick={handleClick}
         style={{
           background: 'var(--bg-elev2)',
           color: 'var(--fg-muted)',
@@ -153,6 +172,7 @@ export function TabBar() {
       <NavLink
         to="/eval"
         className={({ isActive }) => `${isActive ? 'active' : ''} keystone-tab`}
+        onClick={handleClick}
         style={{
           background: 'var(--bg-elev2)',
           color: 'var(--fg-muted)',
@@ -178,6 +198,7 @@ export function TabBar() {
       <NavLink
         to="/profiles"
         className={({ isActive }) => isActive ? 'active' : ''}
+        onClick={handleClick}
         style={{
           background: 'var(--bg-elev2)',
           color: 'var(--fg-muted)',
@@ -202,6 +223,7 @@ export function TabBar() {
       <NavLink
         to="/infrastructure"
         className={({ isActive }) => isActive ? 'active' : ''}
+        onClick={handleClick}
         style={{
           background: 'var(--bg-elev2)',
           color: 'var(--fg-muted)',
@@ -226,6 +248,7 @@ export function TabBar() {
       <NavLink
         to="/admin"
         className={({ isActive }) => isActive ? 'active' : ''}
+        onClick={handleClick}
         style={{
           background: 'var(--bg-elev2)',
           color: 'var(--fg-muted)',

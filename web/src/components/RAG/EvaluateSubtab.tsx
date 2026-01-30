@@ -39,6 +39,7 @@ interface TestResult {
 interface EvalResults {
   top1_accuracy: number;
   topk_accuracy: number;
+  mrr?: number;
   duration_secs: number;
   results?: Array<{
     question: string;
@@ -47,9 +48,23 @@ interface EvalResults {
     top1_hit: boolean;
     topk_hit: boolean;
     top_paths: string[];
+    reciprocal_rank?: number;
   }>;
 }
 
+/**
+ * ---agentspec
+ * what: |
+ *   React component for evaluation subtab. Manages golden questions, runs test suite, tracks progress, displays results.
+ *
+ * why: |
+ *   Centralizes eval UI state and API calls in single component for cohesion.
+ *
+ * guardrails:
+ *   - DO NOT block UI during evalRunning; use async/await with setEvalRunning gates
+ *   - NOTE: testResults keyed by question ID; ensure ID stability across re-renders
+ * ---/agentspec
+ */
 export function EvaluateSubtab() {
   const { api } = useAPI();
   const [goldenQuestions, setGoldenQuestions] = useState<GoldenQuestion[]>([]);
@@ -67,7 +82,7 @@ export function EvaluateSubtab() {
     goldenPath: 'data/golden.json',
     baselinePath: 'data/evals/eval_baseline.json'
   });
-  const [availableRuns, setAvailableRuns] = useState<Array<{run_id: string, top1_accuracy: number, topk_accuracy: number}>>([]);
+  const [availableRuns, setAvailableRuns] = useState<Array<{run_id: string, top1_accuracy: number, topk_accuracy: number, mrr?: number}>>([]);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [compareRunId, setCompareRunId] = useState<string | null>(null);
   const [latestRunId, setLatestRunId] = useState<string | null>(null);
@@ -75,10 +90,36 @@ export function EvaluateSubtab() {
   const [terminalVisible, setTerminalVisible] = useState(false);
   const terminalRef = useRef<LiveTerminalHandle>(null);
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Retrieves terminal instance from ref or global fallback. Resets terminal state (show, clear) with optional title.
+   *
+   * why: |
+   *   Centralizes terminal access pattern; handles both React ref and global window.terminal_eval_terminal.
+   *
+   * guardrails:
+   *   - DO NOT assume terminal exists; check before calling methods
+   *   - NOTE: Fallback to window.terminal_eval_terminal only if ref is null
+   * ---/agentspec
+   */
   const getTerminal = useCallback(() => {
     return terminalRef.current || (window as any).terminal_eval_terminal;
   }, []);
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Resets VS Code terminal: shows, clears, sets title. Takes optional title string; no return.
+   *
+   * why: |
+   *   Centralizes terminal state reset to avoid repeated null checks across codebase.
+   *
+   * guardrails:
+   *   - DO NOT assume terminal exists; all methods are optional chained
+   *   - NOTE: Title defaults to 'RAG Evaluation Logs' if omitted
+   * ---/agentspec
+   */
   const resetTerminal = useCallback((title = 'RAG Evaluation Logs') => {
     const terminal = getTerminal();
     if (terminal) {
@@ -88,16 +129,56 @@ export function EvaluateSubtab() {
     }
   }, [getTerminal]);
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Appends text lines to terminal and updates progress bar. Takes string or (percent, message) → calls terminal methods.
+   *
+   * why: |
+   *   Wraps terminal ref access with useCallback to prevent unnecessary re-renders and provide stable function identity.
+   *
+   * guardrails:
+   *   - DO NOT call if terminal is undefined; methods are optional chained
+   *   - NOTE: Progress updates require terminal.updateProgress support; verify before use
+   * ---/agentspec
+   */
   const appendTerminalLine = useCallback((line: string) => {
     const terminal = getTerminal();
     terminal?.appendLine?.(line);
   }, [getTerminal]);
 
+  /**
+   * ---agentspec
+   * what: |
+   *   updateTerminalProgress: Updates terminal UI progress bar with percent + optional message. fetchJson: Fetches JSON from API endpoint with default headers, merges custom options.
+   *
+   * why: |
+   *   Encapsulates terminal updates and API calls for reuse across components; consistent header injection.
+   *
+   * guardrails:
+   *   - DO NOT call updateTerminalProgress if terminal is undefined; guard with optional chaining
+   *   - NOTE: fetchJson assumes api() helper exists; will fail silently if missing
+   *   - ASK USER: Should fetchJson handle non-200 responses or throw?
+   * ---/agentspec
+   */
   const updateTerminalProgress = useCallback((percent: number, message?: string) => {
     const terminal = getTerminal();
     terminal?.updateProgress?.(percent, message);
   }, [getTerminal]);
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Wraps fetch() with JSON headers and error handling. Takes path + RequestInit options, returns parsed response or throws on non-2xx status.
+   *
+   * why: |
+   *   Centralizes API request logic to avoid repeating headers and error parsing across components.
+   *
+   * guardrails:
+   *   - DO NOT assume res.json() succeeds; caller must handle parse errors
+   *   - NOTE: Throws on any non-2xx; no retry logic
+   * ---/agentspec
+   */
   const fetchJson = useCallback(async (path: string, options: RequestInit = {}) => {
     const res = await fetch(api(path), {
       headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
@@ -117,6 +198,19 @@ export function EvaluateSubtab() {
   }, []);
 
   // Load eval settings from backend config
+  /**
+   * ---agentspec
+   * what: |
+   *   Fetches config from /api/config endpoint. Extracts env vars, sets goldenPath to GOLDEN_PATH or defaults to 'data/golden.json'.
+   *
+   * why: |
+   *   Centralizes config loading at app startup; avoids hardcoding paths.
+   *
+   * guardrails:
+   *   - DO NOT assume /api/config always returns env object; add fallback
+   *   - NOTE: No error handling; fetch failures will silently fail
+   * ---/agentspec
+   */
   const loadConfig = async () => {
     try {
       const response = await fetch('/api/config');
@@ -139,6 +233,19 @@ export function EvaluateSubtab() {
 
   // Load available eval runs on mount
   useEffect(() => {
+    /**
+     * ---agentspec
+     * what: |
+     *   Fetches eval runs from /eval/runs endpoint. Populates availableRuns state; auto-selects most recent run if none selected.
+     *
+     * why: |
+     *   Centralizes run loading logic with auto-selection to reduce boilerplate in UI initialization.
+     *
+     * guardrails:
+     *   - DO NOT assume data.runs exists; check data.ok first
+     *   - NOTE: Auto-select only fires if selectedRunId is falsy; prevents override on re-fetch
+     * ---/agentspec
+     */
     const loadRuns = async () => {
       try {
         const data = await fetchJson('eval/runs');
@@ -160,6 +267,19 @@ export function EvaluateSubtab() {
     loadRuns();
   }, [fetchJson, selectedRunId]);
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Fetches golden questions from 'golden' endpoint. Sets state: questions array, loading flag, error message.
+   *
+   * why: |
+   *   Centralizes async data load with error handling and loading state for UI feedback.
+   *
+   * guardrails:
+   *   - DO NOT retry on failure; let caller handle retry logic
+   *   - NOTE: Clears error only on success; preserves error state on fetch failure
+   * ---/agentspec
+   */
   const loadGoldenQuestions = async () => {
     try {
       setLoading(true);
@@ -174,12 +294,39 @@ export function EvaluateSubtab() {
     }
   };
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Validates non-empty question input, parses comma-separated paths, submits to backend. Returns success/error state.
+   *
+   * why: |
+   *   Client-side validation prevents malformed submissions; path parsing normalizes user input before API call.
+   *
+   * guardrails:
+   *   - DO NOT submit if question.q is empty or whitespace-only
+   *   - NOTE: paths are optional; empty array is valid
+   *   - ASK USER: What happens on backend failure? (retry, toast, state rollback?)
+   * ---/agentspec
+   */
   const addGoldenQuestion = async () => {
     if (!newQuestion.q.trim()) {
       alert('Please enter a question');
       return;
     }
 
+    /**
+     * ---agentspec
+     * what: |
+     *   Parses comma-separated paths from newQuestion.paths, trims whitespace, filters empty strings. POSTs to 'golden' endpoint with query, repo, and expect_paths array.
+     *
+     * why: |
+     *   Normalizes user input (paths) before API submission to ensure clean, validated array format.
+     *
+     * guardrails:
+     *   - DO NOT assume fetchJson succeeds; add error handling for network/API failures
+     *   - NOTE: Empty strings filtered; silent skip may hide malformed input
+     * ---/agentspec
+     */
     const expect_paths = newQuestion.paths.split(',').map(p => p.trim()).filter(p => p);
 
     try {
@@ -198,6 +345,19 @@ export function EvaluateSubtab() {
     }
   };
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Tests golden question at index against /golden/test endpoint. POSTs question, repo, expected paths; returns JSON result.
+   *
+   * why: |
+   *   Validates agent responses against known-good outputs for regression detection.
+   *
+   * guardrails:
+   *   - DO NOT assume endpoint availability; wrap in try-catch
+   *   - NOTE: expect_paths must match actual file structure or test fails silently
+   * ---/agentspec
+   */
   const testQuestion = async (index: number) => {
     const q = goldenQuestions[index];
     try {
@@ -218,6 +378,19 @@ export function EvaluateSubtab() {
     }
   };
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Deletes a golden question by index via DELETE request. Confirms user intent, then reloads list.
+   *
+   * why: |
+   *   Confirmation prevents accidental deletions; reload ensures UI stays in sync with backend state.
+   *
+   * guardrails:
+   *   - DO NOT skip confirmation; user must explicitly approve
+   *   - NOTE: Silently fails if loadGoldenQuestions() throws; add error recovery
+   * ---/agentspec
+   */
   const deleteQuestion = async (index: number) => {
     if (!confirm('Delete this question?')) return;
 
@@ -229,6 +402,20 @@ export function EvaluateSubtab() {
     }
   };
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Loads recommended questions from RECOMMENDED_GOLDEN array via POST to 'golden' endpoint. Tracks successful additions; silently skips failures per question.
+   *
+   * why: |
+   *   Batch seeding of golden questions with graceful per-item error handling to avoid total failure on single bad record.
+   *
+   * guardrails:
+   *   - DO NOT throw on individual POST failures; continue loop
+   *   - NOTE: Silent skip means failed questions go unlogged; add error tracking if audit needed
+   *   - ASK USER: Should failed questions be logged or retried?
+   * ---/agentspec
+   */
   const loadRecommendedQuestions = async () => {
     try {
       let added = 0;
@@ -250,6 +437,19 @@ export function EvaluateSubtab() {
     }
   };
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Executes evaluation suite against all golden questions. Updates progress state (current, total, status) and sets running flag.
+   *
+   * why: |
+   *   Centralizes test orchestration; guards against empty dataset before batch execution.
+   *
+   * guardrails:
+   *   - DO NOT run if goldenQuestions.length === 0; alert user instead
+   *   - NOTE: setEvalRunning(true) must precede async work to prevent duplicate runs
+   * ---/agentspec
+   */
   const runAllTests = async () => {
     if (goldenQuestions.length === 0) {
       alert('No questions to test');
@@ -293,6 +493,19 @@ export function EvaluateSubtab() {
     }
   };
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Initiates full RAG evaluation pipeline. Sets UI state (running, progress, terminal), resets logs, applies sample limit from settings.
+   *
+   * why: |
+   *   Centralizes evaluation startup logic with consistent state management and user feedback.
+   *
+   * guardrails:
+   *   - DO NOT run concurrent evaluations; check evalRunning flag first
+   *   - NOTE: sampleLimit parsed from string; validate parseInt result before use
+   * ---/agentspec
+   */
   const runFullEvaluation = async () => {
     if (evalRunning) return;
 
@@ -349,6 +562,19 @@ export function EvaluateSubtab() {
     }
   };
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Exports goldenQuestions array as JSON file. Creates blob, generates download link, triggers browser download, cleans up object URL.
+   *
+   * why: |
+   *   Standard browser file export pattern using Blob API and temporary anchor element.
+   *
+   * guardrails:
+   *   - DO NOT call revokeObjectURL before download completes; timing may fail on slow networks
+   *   - NOTE: Filename hardcoded; consider parameterizing for reuse
+   * ---/agentspec
+   */
   const exportQuestions = () => {
     const dataStr = JSON.stringify(goldenQuestions, null, 2);
     const blob = new Blob([dataStr], { type: 'application/json' });
@@ -635,7 +861,7 @@ export function EvaluateSubtab() {
         {/* Results Display */}
         {evalResults && (
           <div style={{ marginTop: '16px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '12px', marginBottom: '16px' }}>
               <div style={{ background: 'var(--card-bg)', border: '1px solid var(--line)', borderRadius: '6px', padding: '12px', textAlign: 'center' }}>
                 <div style={{ fontSize: '11px', color: 'var(--fg-muted)', marginBottom: '4px' }}>Top-1 Accuracy</div>
                 <div style={{ fontSize: '24px', color: 'var(--accent)', fontWeight: 700 }}>
@@ -646,6 +872,12 @@ export function EvaluateSubtab() {
                 <div style={{ fontSize: '11px', color: 'var(--fg-muted)', marginBottom: '4px' }}>Top-K Accuracy</div>
                 <div style={{ fontSize: '24px', color: 'var(--accent)', fontWeight: 700 }}>
                   {(evalResults.topk_accuracy * 100).toFixed(1)}%
+                </div>
+              </div>
+              <div style={{ background: 'var(--card-bg)', border: '1px solid var(--line)', borderRadius: '6px', padding: '12px', textAlign: 'center' }}>
+                <div style={{ fontSize: '11px', color: 'var(--fg-muted)', marginBottom: '4px' }}>MRR</div>
+                <div style={{ fontSize: '24px', color: 'var(--warn)', fontWeight: 700 }}>
+                  {(evalResults.mrr ?? 0).toFixed(4)}
                 </div>
               </div>
               <div style={{ background: 'var(--card-bg)', border: '1px solid var(--line)', borderRadius: '6px', padding: '12px', textAlign: 'center' }}>

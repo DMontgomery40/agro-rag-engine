@@ -2,11 +2,27 @@
 
 **Date:** 2025-11-28
 **Priority:** CRITICAL
-**Status:** Planning Complete, Implementation Required
+**Status:** ⚠️ SUPERSEDED BY IMPLEMENTATION PLAN
 
 ---
 
-## Executive Summary
+## ⚠️ CRITICAL: USE THE CORRECTED PLAN
+
+**This document has been research-validated and corrected.**
+
+**👉 SEE: `ENTERPRISE_INDEXING_IMPLEMENTATION_PLAN.md` for the corrected implementation plan.**
+
+Key corrections from research:
+- Overlap should be 10-20% (NOT 6.7%)
+- tiktoken ONLY works for OpenAI (use provider-specific tokenizers)
+- Voyage limit is 32,000 (NOT 16,000)
+- Cohere/mxbai/bge limits are 512 (NOT 8,192)
+- Qdrant has NO rollback (points persist on failure)
+- Both BM25 AND Qdrant should index sub-chunks
+
+---
+
+## Executive Summary (Original - See Corrected Plan)
 
 The current indexing system fails when any code chunk exceeds OpenAI's 8192 token limit. This happened during a real indexing run with error:
 
@@ -19,7 +35,7 @@ A quick truncation fix was rejected by the user as it loses data. The system nee
 - Token-aware chunk splitting
 - Checkpointed batch processing
 - Resume capability after failure
-- Pre-flight cost estimation using prices.json
+- Pre-flight cost estimation using models.json
 - Progress reporting via SSE
 
 ---
@@ -28,7 +44,7 @@ A quick truncation fix was rejected by the user as it loses data. The system nee
 
 The next agent MUST:
 
-1. **Verify tiktoken compatibility** with the embedding models in prices.json
+1. **Verify tiktoken compatibility** with the embedding models in models.json
 2. **Check if tree-sitter chunking already has size limits** that should be adjusted
 3. **Review the SSE streaming pattern** used by eval runner for progress reporting
 4. **Confirm Qdrant transaction semantics** - can we rollback partial batch inserts?
@@ -42,9 +58,9 @@ The next agent MUST:
 
 | Component | Location | Purpose |
 |-----------|----------|---------|
-| `prices.json` | `web/public/prices.json` | Has `embed_per_1k` for ALL providers |
-| `/api/cost/estimate` | `server/routers/cost.py` | Backend cost calculation using prices.json |
-| `_find_price_kind()` | `server/routers/cost.py:8` | Finds embed pricing from prices.json |
+| `models.json` | `web/public/models.json` | Has `embed_per_1k` for ALL providers |
+| `/api/cost/estimate` | `server/routers/cost.py` | Backend cost calculation using models.json |
+| `_find_price_kind()` | `server/routers/cost.py:8` | Finds embed pricing from models.json |
 | `CostLogic.estimate()` | `web/src/modules/cost_logic.js` | Frontend cost API |
 | `last_index.json` | `out/{repo}/` | Stores embedding_type, dim, chunk_count |
 | Sidepanel calculator | `web/src/components/Sidepanel.tsx` | Live cost widget (DON'T add new confirmation dialogs) |
@@ -95,7 +111,7 @@ embeddings = embed_func(texts)  # ← Sends ALL texts at once, fails if ANY > 81
 │                                                                         │
 │ 4. NEW: PRE-FLIGHT (but NO user confirmation popup - sidepanel shows it)│
 │    - Call /api/cost/estimate with embed_tokens=total_tokens             │
-│    - Log: "Estimated cost: $X.XX for Y tokens (via prices.json)"        │
+│    - Log: "Estimated cost: $X.XX for Y tokens (via models.json)"        │
 │    - Return estimate in SSE stream for GUI to display                   │
 │                                                                         │
 │ 5. BM25 index (no changes)                                              │
@@ -379,7 +395,7 @@ from indexer.embed_with_retry import embed_with_retry
         print(f"   Split {split_count} oversized chunks into {len(chunks) - (original_count - split_count)} sub-chunks")
     
     # NEW: Pre-flight cost estimate (for GUI display)
-    # Cost is calculated by GUI using prices.json - just emit token count
+    # Cost is calculated by GUI using models.json - just emit token count
     print(f"COST_ESTIMATE:{total_tokens}")
 ```
 
@@ -610,7 +626,7 @@ New config keys needed:
 - ❌ Don't add user confirmation popups - sidepanel shows costs
 - ❌ Don't recreate cost calculation - use existing `/api/cost/estimate`
 - ❌ Don't modify BM25 logic - it works fine
-- ❌ Don't hardcode prices - use `prices.json`
+- ❌ Don't hardcode models - use `models.json`
 - ❌ Don't create new UI for cost display - use sidepanel
 
 ---

@@ -1,17 +1,27 @@
-import os
 from typing import Optional, Dict, Any, Tuple
+from importlib import import_module
+from packaging.version import Version
+
+# Enforce modern OpenAI SDK (>=1.x) because Responses API requires it
+OpenAI = None  # type: ignore
+_OPENAI_SDK: Optional[Any] = None
+_OPENAI_VERSION: Optional[Version] = None
 
 try:
-    from openai import OpenAI
+    _OPENAI_SDK = import_module("openai")
+    _OPENAI_VERSION = Version(getattr(_OPENAI_SDK, "__version__", "0.0.0"))
+    if _OPENAI_VERSION < Version("1.0.0"):
+        raise RuntimeError(f"openai>={Version('1.0.0')} is required; found { _OPENAI_VERSION}")
+    OpenAI = getattr(_OPENAI_SDK, "OpenAI", None)
+    if OpenAI is None:
+        raise RuntimeError("openai>=1.x is required for Responses API (OpenAI client missing)")
 except Exception as e:
+    # Fail fast with a clear error; UI should surface this
     raise RuntimeError("openai>=1.x is required for Responses API") from e
 
-# Module-level cached configuration
-try:
-    from server.services.config_registry import get_config_registry
-    _config_registry = get_config_registry()
-except ImportError:
-    _config_registry = None
+# Module-level cached configuration - requires config registry
+from server.services.config_registry import get_config_registry
+_config_registry = get_config_registry()
 
 # Cached generation parameters
 _GEN_MODEL = None
@@ -28,38 +38,23 @@ _OLLAMA_REQUEST_TIMEOUT = None
 _OLLAMA_STREAM_IDLE_TIMEOUT = None
 
 def _load_cached_config():
-    """Load all generation config values into module-level cache."""
+    """Load all generation config values into module-level cache from config registry."""
     global _GEN_MODEL, _GEN_TEMPERATURE, _GEN_MAX_TOKENS, _GEN_TOP_P, _GEN_TIMEOUT
     global _GEN_RETRY_MAX, _ENRICH_MODEL, _ENRICH_BACKEND, _ENRICH_DISABLED, _OLLAMA_NUM_CTX
     global _OLLAMA_REQUEST_TIMEOUT, _OLLAMA_STREAM_IDLE_TIMEOUT
 
-    if _config_registry is None:
-        # Fallback to env vars
-        _GEN_MODEL = os.getenv('GEN_MODEL', 'gpt-4o-mini')
-        _GEN_TEMPERATURE = float(os.getenv('GEN_TEMPERATURE', '0.0') or '0.0')
-        _GEN_MAX_TOKENS = int(os.getenv('GEN_MAX_TOKENS', '2048') or '2048')
-        _GEN_TOP_P = float(os.getenv('GEN_TOP_P', '1.0') or '1.0')
-        _GEN_TIMEOUT = int(os.getenv('GEN_TIMEOUT', '60') or '60')
-        _GEN_RETRY_MAX = int(os.getenv('GEN_RETRY_MAX', '2') or '2')
-        _ENRICH_MODEL = os.getenv('ENRICH_MODEL', 'gpt-4o-mini')
-        _ENRICH_BACKEND = os.getenv('ENRICH_BACKEND', 'openai')
-        _ENRICH_DISABLED = int(os.getenv('ENRICH_DISABLED', '0') or '0')
-        _OLLAMA_NUM_CTX = int(os.getenv('OLLAMA_NUM_CTX', '8192') or '8192')
-        _OLLAMA_REQUEST_TIMEOUT = int(os.getenv('OLLAMA_REQUEST_TIMEOUT', '300') or '300')
-        _OLLAMA_STREAM_IDLE_TIMEOUT = int(os.getenv('OLLAMA_STREAM_IDLE_TIMEOUT', '60') or '60')
-    else:
-        _GEN_MODEL = _config_registry.get_str('GEN_MODEL', 'gpt-4o-mini')
-        _GEN_TEMPERATURE = _config_registry.get_float('GEN_TEMPERATURE', 0.0)
-        _GEN_MAX_TOKENS = _config_registry.get_int('GEN_MAX_TOKENS', 2048)
-        _GEN_TOP_P = _config_registry.get_float('GEN_TOP_P', 1.0)
-        _GEN_TIMEOUT = _config_registry.get_int('GEN_TIMEOUT', 60)
-        _GEN_RETRY_MAX = _config_registry.get_int('GEN_RETRY_MAX', 2)
-        _ENRICH_MODEL = _config_registry.get_str('ENRICH_MODEL', 'gpt-4o-mini')
-        _ENRICH_BACKEND = _config_registry.get_str('ENRICH_BACKEND', 'openai')
-        _ENRICH_DISABLED = _config_registry.get_int('ENRICH_DISABLED', 0)
-        _OLLAMA_NUM_CTX = _config_registry.get_int('OLLAMA_NUM_CTX', 8192)
-        _OLLAMA_REQUEST_TIMEOUT = _config_registry.get_int('OLLAMA_REQUEST_TIMEOUT', 300)
-        _OLLAMA_STREAM_IDLE_TIMEOUT = _config_registry.get_int('OLLAMA_STREAM_IDLE_TIMEOUT', 60)
+    _GEN_MODEL = _config_registry.get_str('GEN_MODEL', 'gpt-4o-mini')
+    _GEN_TEMPERATURE = _config_registry.get_float('GEN_TEMPERATURE', 0.0)
+    _GEN_MAX_TOKENS = _config_registry.get_int('GEN_MAX_TOKENS', 2048)
+    _GEN_TOP_P = _config_registry.get_float('GEN_TOP_P', 1.0)
+    _GEN_TIMEOUT = _config_registry.get_int('GEN_TIMEOUT', 60)
+    _GEN_RETRY_MAX = _config_registry.get_int('GEN_RETRY_MAX', 2)
+    _ENRICH_MODEL = _config_registry.get_str('ENRICH_MODEL', 'gpt-4o-mini')
+    _ENRICH_BACKEND = _config_registry.get_str('ENRICH_BACKEND', 'openai')
+    _ENRICH_DISABLED = _config_registry.get_int('ENRICH_DISABLED', 0)
+    _OLLAMA_NUM_CTX = _config_registry.get_int('OLLAMA_NUM_CTX', 8192)
+    _OLLAMA_REQUEST_TIMEOUT = _config_registry.get_int('OLLAMA_REQUEST_TIMEOUT', 300)
+    _OLLAMA_STREAM_IDLE_TIMEOUT = _config_registry.get_int('OLLAMA_STREAM_IDLE_TIMEOUT', 60)
 
 def reload_config():
     """Reload all cached config values from registry."""
@@ -87,6 +82,8 @@ def _get_mlx_model():
 def client() -> OpenAI:
     global _client
     if _client is None:
+        if OpenAI is None:
+            raise RuntimeError("openai>=1.x client not available; install openai>=1.0.0")
         _client = OpenAI()
     return _client
 
@@ -123,9 +120,23 @@ def generate_text(
         "input": user_input,
         "store": store,
     }
+
     # Use cached temperature value
     temp = _GEN_TEMPERATURE
-    kwargs["temperature"] = temp
+
+    # Some models (o1-series, gpt-5) don't support custom temperature
+    # They only accept temperature=1 or omit it entirely
+    reasoning_models = {"o1-preview", "o1-mini", "o1", "gpt-5", "gpt-5.1", "gpt-5-mini", "gpt-5.1-mini"}
+    is_reasoning_model = (
+        mdl in reasoning_models or
+        (mdl and (mdl.startswith("o1-") or mdl.startswith("o1 ") or "gpt-5" in mdl))
+    )
+
+    if is_reasoning_model:
+        # Reasoning models only support temperature=1, so omit it (defaults to 1)
+        pass
+    else:
+        kwargs["temperature"] = temp
     if system_instructions:
         kwargs["instructions"] = system_instructions
     if reasoning_effort:
@@ -193,7 +204,7 @@ def generate_text(
             pass
         return False
 
-    OLLAMA_URL = os.getenv("OLLAMA_URL")
+    OLLAMA_URL = _config_registry.get_str("OLLAMA_URL", "")
     _ollama_present = bool(OLLAMA_URL)
     _ollama_has = _ollama_has_model(OLLAMA_URL, str(mdl)) if _ollama_present else False
     prefer_ollama = _ollama_present and _ollama_has
@@ -289,7 +300,10 @@ def generate_text(
     from server.api_tracker import track_api_call, APIProvider
 
     try:
-        # OpenAI Responses API (supports temperature)
+        # OpenAI Responses API - Primary path
+        if _OPENAI_SDK is None or not hasattr(_OPENAI_SDK, "OpenAI"):
+            raise RuntimeError("OpenAI client not available")
+
         start = timer.time()
         resp = client().responses.create(**kwargs)
         duration_ms = (timer.time() - start) * 1000
@@ -330,40 +344,7 @@ def generate_text(
             pass
 
         return text, meta
-    except Exception:
-        try:
-            messages = []
-            if system_instructions:
-                messages.append({"role": "system", "content": system_instructions})
-            messages.append({"role": "user", "content": user_input})
-            # Chat Completions fallback (supports temperature as well)
-            ckwargs: Dict[str, Any] = {"model": mdl, "messages": messages, "temperature": temp}
-            if response_format and isinstance(response_format, dict):
-                ckwargs["response_format"] = response_format
-
-            start = timer.time()
-            cc = client().chat.completions.create(**ckwargs)
-            duration_ms = (timer.time() - start) * 1000
-
-            text = (cc.choices[0].message.content if getattr(cc, "choices", []) else "") or ""
-
-            # Track API call
-            tokens_used = getattr(getattr(cc, 'usage', None), 'total_tokens', 0) or 0
-            prompt_tokens = getattr(getattr(cc, 'usage', None), 'prompt_tokens', 0) or tokens_used // 2
-            completion_tokens = getattr(getattr(cc, 'usage', None), 'completion_tokens', 0) or tokens_used // 2
-            # gpt-4o-mini pricing: ~$0.15 per 1M input tokens, $0.60 per 1M output tokens
-            cost_usd = (prompt_tokens / 1_000_000) * 0.15 + (completion_tokens / 1_000_000) * 0.60
-
-            track_api_call(
-                provider=APIProvider.OPENAI,
-                endpoint="https://api.openai.com/v1/chat/completions",
-                method="POST",
-                duration_ms=duration_ms,
-                status_code=200,
-                tokens_estimated=tokens_used,
-                cost_usd=cost_usd
-            )
-
-            return text, cc
-        except Exception as e:
-            raise RuntimeError(f"Generation failed for model={mdl}: {e}")
+    except Exception as e:
+        # No fallback - Chat Completions API is deprecated
+        # Only use Responses API (https://platform.openai.com/docs/api-reference/responses/create)
+        raise RuntimeError(f"Generation failed for model={mdl}: {e}")

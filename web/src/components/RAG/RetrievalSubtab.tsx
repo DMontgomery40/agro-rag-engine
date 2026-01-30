@@ -1,946 +1,347 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { EmbeddingMismatchWarning } from '@/components/ui/EmbeddingMismatchWarning';
+import { LiveTerminal, LiveTerminalHandle } from '@/components/LiveTerminal/LiveTerminal';
+import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
+import { IntentMatrixEditor } from '@/components/RAG/IntentMatrixEditor';
+import { PromptLink } from '@/components/ui/PromptLink';
+import { ApiKeyStatus } from '@/components/ui/ApiKeyStatus';
+import { createAlertError, createInlineError } from '@/utils/errorHelpers';
+import { useConfig, useConfigField } from '@/hooks';
 
-// RetrievalSubtab: Main retrieval and RAG configuration component
-// Converted from legacy HTML to proper TypeScript React
+// Types for the trace preview helpers
+interface TraceEvent {
+  kind?: string;
+  data?: Record<string, any>;
+  msg?: string;
+  ts?: string | number;
+}
+
+interface TracePayload {
+  trace?: {
+    events?: TraceEvent[];
+  };
+  repo?: string;
+}
+
 export function RetrievalSubtab() {
-
-  // ============================================================================
-  // STATE - First 50% (Generation Models + Retrieval Parameters sections)
-  // ============================================================================
-
-  // Generation Models section
-  const [genModel, setGenModel] = useState<string>('');
-  const [openaiApiKey, setOpenaiApiKey] = useState<string>('');
-  const [genTemperature, setGenTemperature] = useState<number>(0.0);
-  const [enrichModel, setEnrichModel] = useState<string>('');
-  const [enrichModelOllama, setEnrichModelOllama] = useState<string>('');
-  const [anthropicApiKey, setAnthropicApiKey] = useState<string>('');
-  const [googleApiKey, setGoogleApiKey] = useState<string>('');
-  const [ollamaUrl, setOllamaUrl] = useState<string>('http://127.0.0.1:11434');
-  const [openaiBaseUrl, setOpenaiBaseUrl] = useState<string>('');
-  const [genModelHttp, setGenModelHttp] = useState<string>('');
-  const [genModelMcp, setGenModelMcp] = useState<string>('');
-  const [genModelCli, setGenModelCli] = useState<string>('');
-  const [enrichBackend, setEnrichBackend] = useState<string>('');
-  const [genMaxTokens, setGenMaxTokens] = useState<number>(2048);
-  const [genTopP, setGenTopP] = useState<number>(1.0);
-  const [genTimeout, setGenTimeout] = useState<number>(60);
-  const [genRetryMax, setGenRetryMax] = useState<number>(2);
-  const [enrichDisabled, setEnrichDisabled] = useState<string>('0');
-
-  // Retrieval Parameters section
-  const [multiQueryRewrites, setMultiQueryRewrites] = useState<number>(2);
-  const [finalK, setFinalK] = useState<number>(10);
-  const [useSemanticSynonyms, setUseSemanticSynonyms] = useState<string>('1');
-  const [topkDense, setTopkDense] = useState<number>(75);
-  const [vectorBackend, setVectorBackend] = useState<string>('qdrant');
-  const [topkSparse, setTopkSparse] = useState<number>(75);
-  const [hydrationMode, setHydrationMode] = useState<string>('lazy');
-  const [hydrationMaxChars, setHydrationMaxChars] = useState<number>(2000);
-  const [vendorMode, setVendorMode] = useState<string>('prefer_first_party');
-  const [bm25Weight, setBm25Weight] = useState<number>(0.3);
-  const [bm25K1, setBm25K1] = useState<number>(1.2);
-  const [bm25B, setBm25B] = useState<number>(0.4);
-  const [vectorWeight, setVectorWeight] = useState<number>(0.7);
-  const [cardSearchEnabled, setCardSearchEnabled] = useState<string>('1');
-  const [multiQueryM, setMultiQueryM] = useState<number>(4);
-  const [confTop1, setConfTop1] = useState<number>(0.62);
-  const [confAvg5, setConfAvg5] = useState<number>(0.55);
-
-  // ============================================================================
-  // STATE - Last 50% (Advanced RAG Tuning + Routing Trace sections)
-  // ============================================================================
-
-  // Advanced RAG Tuning section
-  const [rrfKDiv, setRrfKDiv] = useState<number>(60);
-  const [cardBonus, setCardBonus] = useState<number>(0.08);
-  const [filenameBoostExact, setFilenameBoostExact] = useState<number>(1.5);
-  const [filenameBoostPartial, setFilenameBoostPartial] = useState<number>(1.2);
-  const [langgraphFinalK, setLanggraphFinalK] = useState<number>(20);
-  const [maxQueryRewrites, setMaxQueryRewrites] = useState<number>(3);
-  const [fallbackConfidence, setFallbackConfidence] = useState<number>(0.55);
-  const [layerBonusGui, setLayerBonusGui] = useState<number>(0.15);
-  const [layerBonusRetrieval, setLayerBonusRetrieval] = useState<number>(0.15);
-  const [vendorPenalty, setVendorPenalty] = useState<number>(-0.1);
-  const [freshnessBonus, setFreshnessBonus] = useState<number>(0.05);
-
-  // Routing Trace section
-  const [tracingMode, setTracingMode] = useState<string>('off');
-  const [traceAutoLs, setTraceAutoLs] = useState<string>('0');
-  const [traceRetention, setTraceRetention] = useState<number>(50);
-  const [langchainTracingV2, setLangchainTracingV2] = useState<string>('0');
-  const [langchainEndpoint, setLangchainEndpoint] = useState<string>('');
-  const [langchainApiKey, setLangchainApiKey] = useState<string>('');
-  const [langsmithApiKey, setLangsmithApiKey] = useState<string>('');
-  const [langchainProject, setLangchainProject] = useState<string>('');
-  const [langtraceApiHost, setLangtraceApiHost] = useState<string>('');
-  const [langtraceProjectId, setLangtraceProjectId] = useState<string>('');
-  const [langtraceApiKey, setLangtraceApiKey] = useState<string>('');
-
+  // --- Shared UI state -----------------------------------------------------
   const [availableModels, setAvailableModels] = useState<string[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [hydrating, setHydrating] = useState(true);
+  const [traceLoading, setTraceLoading] = useState(false);
+  const [traceStatus, setTraceStatus] = useState<{ type: 'info' | 'error'; message: string } | null>(null);
+  const traceTerminalRef = useRef<LiveTerminalHandle>(null);
 
-  // ============================================================================
-  // LOAD CONFIG ON MOUNT
-  // ============================================================================
+  // --- Generation Models ---------------------------------------------------
+  const [genModel, setGenModel] = useConfigField<string>('GEN_MODEL', '');
+  const [genTemperature, setGenTemperature] = useConfigField<number>('GEN_TEMPERATURE', 0.0);
+  const [enrichModel, setEnrichModel] = useConfigField<string>('ENRICH_MODEL', '');
+  const [enrichModelOllama, setEnrichModelOllama] = useConfigField<string>('ENRICH_MODEL_OLLAMA', '');
+  const [ollamaUrl, setOllamaUrl] = useConfigField<string>('OLLAMA_URL', 'http://127.0.0.1:11434');
+  const [openaiBaseUrl, setOpenaiBaseUrl] = useConfigField<string>('OPENAI_BASE_URL', '');
+  const [genModelHttp, setGenModelHttp] = useConfigField<string>('GEN_MODEL_HTTP', '');
+  const [genModelMcp, setGenModelMcp] = useConfigField<string>('GEN_MODEL_MCP', '');
+  const [genModelCli, setGenModelCli] = useConfigField<string>('GEN_MODEL_CLI', '');
+  const [enrichBackend, setEnrichBackend] = useConfigField<string>('ENRICH_BACKEND', '');
+  const [genMaxTokens, setGenMaxTokens] = useConfigField<number>('GEN_MAX_TOKENS', 2048);
+  const [genTopP, setGenTopP] = useConfigField<number>('GEN_TOP_P', 1.0);
+  const [genTimeout, setGenTimeout] = useConfigField<number>('GEN_TIMEOUT', 60);
+  const [genRetryMax, setGenRetryMax] = useConfigField<number>('GEN_RETRY_MAX', 2);
+  const [enrichDisabled, setEnrichDisabled] = useConfigField<string>('ENRICH_DISABLED', '0');
 
-  useEffect(() => {
-    loadConfig();
-    loadModels();
+  // --- Retrieval Parameters ------------------------------------------------
+  const [multiQueryRewrites, setMultiQueryRewrites] = useConfigField<number>('MAX_QUERY_REWRITES', 2);
+  const [finalK, setFinalK] = useConfigField<number>('FINAL_K', 10);
+  const [useSemanticSynonyms, setUseSemanticSynonyms] = useConfigField<string>('USE_SEMANTIC_SYNONYMS', '1');
+  const [synonymsPath, setSynonymsPath] = useConfigField<string>('AGRO_SYNONYMS_PATH', '');
+  const [topkDense, setTopkDense] = useConfigField<number>('TOPK_DENSE', 75);
+  const [vectorBackend, setVectorBackend] = useConfigField<string>('VECTOR_BACKEND', 'qdrant');
+  const [topkSparse, setTopkSparse] = useConfigField<number>('TOPK_SPARSE', 75);
+  const [hydrationMode, setHydrationMode] = useConfigField<string>('HYDRATION_MODE', 'lazy');
+  const [hydrationMaxChars, setHydrationMaxChars] = useConfigField<number>('HYDRATION_MAX_CHARS', 2000);
+  const [vendorMode, setVendorMode] = useConfigField<string>('VENDOR_MODE', 'prefer_first_party');
+  const [bm25Weight, setBm25Weight] = useConfigField<number>('BM25_WEIGHT', 0.3);
+  const [bm25K1, setBm25K1] = useConfigField<number>('BM25_K1', 1.2);
+  const [bm25B, setBm25B] = useConfigField<number>('BM25_B', 0.4);
+  const [vectorWeight, setVectorWeight] = useConfigField<number>('VECTOR_WEIGHT', 0.7);
+  const [cardSearchEnabled, setCardSearchEnabled] = useConfigField<string>('CARD_SEARCH_ENABLED', '1');
+  const [multiQueryM, setMultiQueryM] = useConfigField<number>('MULTI_QUERY_M', 4);
+  const [confTop1, setConfTop1] = useConfigField<number>('CONF_TOP1', 0.62);
+  const [confAvg5, setConfAvg5] = useConfigField<number>('CONF_AVG5', 0.55);
+
+  // --- Advanced / Routing ---------------------------------------------------
+  const [rrfKDiv, setRrfKDiv] = useConfigField<number>('RRF_K_DIV', 60);
+  const [cardBonus, setCardBonus] = useConfigField<number>('CARD_BONUS', 0.08);
+  const [filenameBoostExact, setFilenameBoostExact] = useConfigField<number>('FILENAME_BOOST_EXACT', 1.5);
+  const [filenameBoostPartial, setFilenameBoostPartial] = useConfigField<number>('FILENAME_BOOST_PARTIAL', 1.2);
+  const [langgraphFinalK, setLanggraphFinalK] = useConfigField<number>('LANGGRAPH_FINAL_K', 20);
+  const [langgraphMaxQueryRewrites, setLanggraphMaxQueryRewrites] =
+    useConfigField<number>('LANGGRAPH_MAX_QUERY_REWRITES', 3);
+  const [fallbackConfidence, setFallbackConfidence] = useConfigField<number>('FALLBACK_CONFIDENCE', 0.55);
+  const [layerBonusGui, setLayerBonusGui] = useConfigField<number>('LAYER_BONUS_GUI', 0.15);
+  const [layerBonusRetrieval, setLayerBonusRetrieval] = useConfigField<number>('LAYER_BONUS_RETRIEVAL', 0.15);
+  const [vendorPenalty, setVendorPenalty] = useConfigField<number>('VENDOR_PENALTY', -0.1);
+  const [freshnessBonus, setFreshnessBonus] = useConfigField<number>('FRESHNESS_BONUS', 0.05);
+  const [tracingMode, setTracingMode] = useConfigField<string>('TRACING_MODE', 'off');
+  const [traceAutoLs, setTraceAutoLs] = useConfigField<string>('TRACE_AUTO_LS', '0');
+  const [traceRetention, setTraceRetention] = useConfigField<number>('TRACE_RETENTION', 50);
+  const [langchainTracingV2, setLangchainTracingV2] = useConfigField<string>('LANGCHAIN_TRACING_V2', '0');
+  const [langchainEndpoint, setLangchainEndpoint] = useConfigField<string>('LANGCHAIN_ENDPOINT', '');
+  const [langchainProject, setLangchainProject] = useConfigField<string>('LANGCHAIN_PROJECT', '');
+  const [langtraceApiHost, setLangtraceApiHost] = useConfigField<string>('LANGTRACE_API_HOST', '');
+  const [langtraceProjectId, setLangtraceProjectId] = useConfigField<string>('LANGTRACE_PROJECT_ID', '');
+
+  const {
+    config,
+    loading: configLoading,
+    error: configError,
+    reload,
+    clearError,
+  } = useConfig();
+
+  // --- Derived helpers -----------------------------------------------------
+  const loadModels = useCallback(async () => {
+    try {
+      const response = await fetch('/api/models');
+      const data = await response.json();
+      const models = Array.isArray(data?.models) ? data.models.map((m: any) => m.model) : [];
+      if (models.length) {
+        setAvailableModels(models);
+      }
+    } catch (error) {
+      console.error('Failed to load models from /api/models:', error);
+    }
   }, []);
 
-  const loadModels = async () => {
-    try {
-      const response = await fetch('/api/prices');
-      const data = await response.json();
-      const models = data.models.map((m: any) => m.model);
-      setAvailableModels(models);
-    } catch (error) {
-      console.error('Failed to load models from /api/prices:', error);
+  const syncConfigSnapshot = useCallback(() => {
+    if (!config) {
+      return;
     }
-  };
 
-  const loadConfig = async () => {
-    try {
-      const response = await fetch('/api/config');
-      const data = await response.json();
-      const env = data.env || {};
+    const configAny = config as Record<string, any>;
+    const configModels = Array.isArray(configAny?.available_models) ? configAny.available_models : null;
+    const hintModels = Array.isArray(configAny?.hints?.available_models)
+      ? configAny.hints.available_models
+      : null;
+    const derivedModels = configModels && configModels.length
+      ? configModels
+      : hintModels && hintModels.length
+        ? hintModels
+        : null;
 
-      // Generation Models section
-      setGenModel(env.GEN_MODEL || '');
-      setOpenaiApiKey(env.OPENAI_API_KEY === '••••••••••••••••' ? '' : (env.OPENAI_API_KEY || ''));
-      setGenTemperature(parseFloat(env.GEN_TEMPERATURE || '0.0'));
-      setEnrichModel(env.ENRICH_MODEL || '');
-      setEnrichModelOllama(env.ENRICH_MODEL_OLLAMA || '');
-      setAnthropicApiKey(env.ANTHROPIC_API_KEY === '••••••••••••••••' ? '' : (env.ANTHROPIC_API_KEY || ''));
-      setGoogleApiKey(env.GOOGLE_API_KEY === '••••••••••••••••' ? '' : (env.GOOGLE_API_KEY || ''));
-      setOllamaUrl(env.OLLAMA_URL || 'http://127.0.0.1:11434');
-      setOpenaiBaseUrl(env.OPENAI_BASE_URL || '');
-      setGenModelHttp(env.GEN_MODEL_HTTP || '');
-      setGenModelMcp(env.GEN_MODEL_MCP || '');
-      setGenModelCli(env.GEN_MODEL_CLI || '');
-      setEnrichBackend(env.ENRICH_BACKEND || '');
-      setGenMaxTokens(parseInt(env.GEN_MAX_TOKENS || '2048', 10));
-      setGenTopP(parseFloat(env.GEN_TOP_P || '1.0'));
-      setGenTimeout(parseInt(env.GEN_TIMEOUT || '60', 10));
-      setGenRetryMax(parseInt(env.GEN_RETRY_MAX || '2', 10));
-      setEnrichDisabled(env.ENRICH_DISABLED || '0');
-
-      // Retrieval Parameters section
-      setMultiQueryRewrites(parseInt(env.MAX_QUERY_REWRITES || '2', 10));
-      setFinalK(parseInt(env.FINAL_K || '10', 10));
-      setUseSemanticSynonyms(env.USE_SEMANTIC_SYNONYMS || '1');
-      setTopkDense(parseInt(env.TOPK_DENSE || '75', 10));
-      setVectorBackend(env.VECTOR_BACKEND || 'qdrant');
-      setTopkSparse(parseInt(env.TOPK_SPARSE || '75', 10));
-      setHydrationMode(env.HYDRATION_MODE || 'lazy');
-      setHydrationMaxChars(parseInt(env.HYDRATION_MAX_CHARS || '2000', 10));
-      setVendorMode(env.VENDOR_MODE || 'prefer_first_party');
-      setBm25Weight(parseFloat(env.BM25_WEIGHT || '0.3'));
-      setBm25K1(parseFloat(env.BM25_K1 || '1.2'));
-      setBm25B(parseFloat(env.BM25_B || '0.4'));
-      setVectorWeight(parseFloat(env.VECTOR_WEIGHT || '0.7'));
-      setCardSearchEnabled(env.CARD_SEARCH_ENABLED || '1');
-      setMultiQueryM(parseInt(env.MULTI_QUERY_M || '4', 10));
-      setConfTop1(parseFloat(env.CONF_TOP1 || '0.62'));
-      setConfAvg5(parseFloat(env.CONF_AVG5 || '0.55'));
-
-      // Advanced RAG Tuning
-      setRrfKDiv(parseFloat(env.RRF_K_DIV || '60'));
-      setCardBonus(parseFloat(env.CARD_BONUS || '0.08'));
-      setFilenameBoostExact(parseFloat(env.FILENAME_BOOST_EXACT || '1.5'));
-      setFilenameBoostPartial(parseFloat(env.FILENAME_BOOST_PARTIAL || '1.2'));
-      setLanggraphFinalK(parseInt(env.LANGGRAPH_FINAL_K || '20', 10));
-      setMaxQueryRewrites(parseInt(env.MAX_QUERY_REWRITES || '3', 10));
-      setFallbackConfidence(parseFloat(env.FALLBACK_CONFIDENCE || '0.55'));
-      setLayerBonusGui(parseFloat(env.LAYER_BONUS_GUI || '0.15'));
-      setLayerBonusRetrieval(parseFloat(env.LAYER_BONUS_RETRIEVAL || '0.15'));
-      setVendorPenalty(parseFloat(env.VENDOR_PENALTY || '-0.1'));
-      setFreshnessBonus(parseFloat(env.FRESHNESS_BONUS || '0.05'));
-
-      // Routing Trace
-      setTracingMode(env.TRACING_MODE || 'off');
-      setTraceAutoLs(env.TRACE_AUTO_LS || '0');
-      setTraceRetention(parseInt(env.TRACE_RETENTION || '50', 10));
-      setLangchainTracingV2(env.LANGCHAIN_TRACING_V2 || '0');
-      setLangchainEndpoint(env.LANGCHAIN_ENDPOINT || '');
-      setLangchainApiKey(env.LANGCHAIN_API_KEY === '••••••••••••••••' ? '' : (env.LANGCHAIN_API_KEY || ''));
-      setLangsmithApiKey(env.LANGSMITH_API_KEY === '••••••••••••••••' ? '' : (env.LANGSMITH_API_KEY || ''));
-      setLangchainProject(env.LANGCHAIN_PROJECT || '');
-      setLangtraceApiHost(env.LANGTRACE_API_HOST || '');
-      setLangtraceProjectId(env.LANGTRACE_PROJECT_ID || '');
-      setLangtraceApiKey(env.LANGTRACE_API_KEY === '••••••••••••••••' ? '' : (env.LANGTRACE_API_KEY || ''));
-
-      // Load available models
-      if (data.available_models) {
-        setAvailableModels(data.available_models);
-      }
-
-      setLoading(false);
-    } catch (error) {
-      console.error('Failed to load config:', error);
-      setLoading(false);
+    if (derivedModels) {
+      setAvailableModels(derivedModels);
     }
-  };
 
-  // ============================================================================
-  // UPDATE CONFIG HELPERS
-  // ============================================================================
+    setHydrating(false);
+  }, [config]);
 
-  const updateConfig = async (key: string, value: any) => {
+  useEffect(() => {
+    loadModels();
+  }, [loadModels]);
+
+  useEffect(() => {
+    syncConfigSnapshot();
+  }, [syncConfigSnapshot]);
+
+  useEffect(() => {
+    if (!configLoading && !config) {
+      setHydrating(false);
+    }
+  }, [configLoading, config]);
+
+  useEffect(() => {
+    if (configError) {
+      setHydrating(false);
+    }
+  }, [configError]);
+
+  const handleReload = useCallback(async () => {
     try {
-      const response = await fetch('/api/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ env: { [key]: value } })
-      });
+      setHydrating(true);
+      clearError();
+      await reload();
+    } catch (error) {
+      console.error('Failed to reload configuration:', error);
+      alert(error instanceof Error ? error.message : 'Failed to reload configuration');
+      setHydrating(false);
+    }
+  }, [reload, clearError]);
 
-      const payload = await response.json().catch(() => ({}));
-
+  const handleLoadTrace = useCallback(async () => {
+    setTraceLoading(true);
+    setTraceStatus(null);
+    try {
+      const repo = (config as any)?.env?.REPO ? `?repo=${encodeURIComponent((config as any).env.REPO)}` : '';
+      const response = await fetch(`/api/traces/latest${repo}`);
       if (!response.ok) {
-        const detail = (payload && (payload.detail || payload.error)) || `Failed to update ${key}`;
-        throw new Error(detail);
+        throw new Error(`Trace request failed (${response.status})`);
       }
-
-      if (payload?.status === 'error') {
-        const detail = payload.error || `Failed to update ${key}`;
-        throw new Error(detail);
-      }
-
-      // Reload config to ensure backend picks up changes
-      await fetch('/api/env/reload', { method: 'POST' });
-      await loadConfig();
+      const data: TracePayload = await response.json();
+      const formatted = formatTracePayload(data, vectorBackend || 'qdrant').split('\n');
+      traceTerminalRef.current?.setTitle(`Routing Trace • ${new Date().toLocaleTimeString()}`);
+      traceTerminalRef.current?.setContent(formatted);
+      setTraceStatus({
+        type: 'info',
+        message: `Trace refreshed at ${new Date().toLocaleTimeString()}`,
+      });
     } catch (error) {
-      console.error(`Error updating ${key}:`, error);
-      const message = error instanceof Error ? error.message : `Failed to update ${key}`;
-      alert(message);
+      const message = error instanceof Error ? error.message : 'Unable to load routing trace';
+      const alertText = createAlertError('Routing trace failed', { message });
+      traceTerminalRef.current?.setTitle('Routing Trace • Error');
+      traceTerminalRef.current?.setContent(alertText.split('\n'));
+      setTraceStatus({
+        type: 'error',
+        message: createInlineError('Failed to load trace'),
+      });
+    } finally {
+      setTraceLoading(false);
     }
-  };
+  }, [config, vectorBackend]);
 
-  if (loading) {
+  const handleOpenLangSmith = useCallback(async () => {
+    try {
+      const project = (config as any)?.env?.LANGCHAIN_PROJECT || 'agro';
+      const qs = new URLSearchParams({ project, share: 'true' }).toString();
+      const response = await fetch(`/api/langsmith/latest?${qs}`);
+      if (!response.ok) {
+        throw new Error('LangSmith lookup failed');
+      }
+      const payload = await response.json();
+      if (payload?.url) {
+        window.open(payload.url, '_blank', 'noopener,noreferrer');
+      } else {
+        alert('No recent LangSmith run found. Ask a question first.');
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Unable to open LangSmith');
+    }
+  }, [config]);
+
+  if (hydrating) {
     return <div style={{ padding: '24px' }}>Loading configuration...</div>;
   }
 
   return (
     <>
-      {/* Embedding Mismatch Warning - Critical for retrieval config */}
-      <EmbeddingMismatchWarning variant="inline" showActions={true} />
+      <EmbeddingMismatchWarning variant="inline" showActions />
 
-      {/* Generation Models and Retrieval Parameters */}
+      {configError && (
+        <div className="settings-section" style={{ borderColor: 'var(--err)' }}>
+          <h3>Configuration Error</h3>
+          <p className="small">{configError}</p>
+          <div className="input-row">
+            <div className="input-group">
+              <button className="small-button" onClick={handleReload}>
+                Retry Load
+              </button>
+            </div>
+            <div className="input-group">
+              <button className="small-button" onClick={clearError}>
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-      <div className="settings-section">
-        <h3>Generation Models</h3>
-
+      <CollapsibleSection
+        title="Generation Models"
+        description="Primary answer model plus overrides for HTTP, MCP, CLI, and enrichment pipelines."
+        storageKey="retrieval-generation"
+        defaultExpanded={true}
+      >
         <div className="input-row">
           <div className="input-group">
             <label>
               Primary Model (GEN_MODEL)
               <span className="help-icon" data-tooltip="GEN_MODEL">?</span>
             </label>
-            <select
-              name="GEN_MODEL"
-              id="gen-model-select"
-              value={genModel}
-              onChange={(e) => {
-                setGenModel(e.target.value);
-                updateConfig('GEN_MODEL', e.target.value);
-              }}
-            >
+            <select value={genModel} onChange={(e) => setGenModel(e.target.value)}>
               <option value="">Select a model...</option>
               {availableModels.map((model) => (
-                <option key={model} value={model}>{model}</option>
+                <option key={model} value={model}>
+                  {model}
+                </option>
               ))}
             </select>
           </div>
-
-    <div className="input-group">
-      <label>
-        OpenAI API Key
-        <span className="help-icon" data-tooltip="OPENAI_API_KEY">?</span>
-      </label>
-      <input
-        type="password"
-        name="OPENAI_API_KEY"
-        value={openaiApiKey}
-        onChange={(e) => setOpenaiApiKey(e.target.value)}
-        onBlur={() => { if (openaiApiKey) updateConfig('OPENAI_API_KEY', openaiApiKey); }}
-        placeholder="sk-..."
-      />
-    </div>
-  </div>
-
-  <div className="input-row">
-    <div className="input-group">
-      <label>
-        Default Temperature (GEN_TEMPERATURE)
-        <span className="help-icon" data-tooltip="GEN_TEMPERATURE">?</span>
-      </label>
-      <input
-        type="number"
-        name="GEN_TEMPERATURE"
-        value={genTemperature}
-        onChange={(e) => setGenTemperature(parseFloat(e.target.value) || 0.0)}
-        onBlur={() => updateConfig('GEN_TEMPERATURE', genTemperature)}
-        min={0}
-        max={2}
-        step={0.01}
-      />
-    </div>
-  </div>
-
-  <div className="input-row">
-    <div className="input-group">
-      <label>
-        Enrich Model (ENRICH_MODEL)
-        <span className="help-icon" data-tooltip="ENRICH_MODEL">?</span>
-      </label>
-      <select
-        name="ENRICH_MODEL"
-        value={enrichModel}
-        onChange={(e) => {
-          setEnrichModel(e.target.value);
-          updateConfig('ENRICH_MODEL', e.target.value);
-        }}
-      >
-        <option value="">Select a model...</option>
-        {availableModels.map((model) => (
-          <option key={model} value={model}>{model}</option>
-        ))}
-      </select>
-    </div>
-
-    <div className="input-group">
-      <label>
-        Enrich Model (Ollama)
-        <span className="help-icon" data-tooltip="ENRICH_MODEL_OLLAMA">?</span>
-      </label>
-      <select
-        name="ENRICH_MODEL_OLLAMA"
-        id="enrich-model-ollama-select"
-        className="model-select"
-        value={enrichModelOllama}
-        onChange={(e) => {
-          setEnrichModelOllama(e.target.value);
-          updateConfig('ENRICH_MODEL_OLLAMA', e.target.value);
-        }}
-      >
-        <option value="">Select a model...</option>
-        {/* Ollama models would be populated from backend */}
-      </select>
-    </div>
-  </div>
-
-  <div className="input-row">
-    <div className="input-group">
-      <label>
-        Anthropic API Key
-        <span className="help-icon" data-tooltip="ANTHROPIC_API_KEY">?</span>
-      </label>
-      <input
-        type="password"
-        name="ANTHROPIC_API_KEY"
-        value={anthropicApiKey}
-        onChange={(e) => setAnthropicApiKey(e.target.value)}
-        onBlur={() => { if (anthropicApiKey) updateConfig('ANTHROPIC_API_KEY', anthropicApiKey); }}
-        placeholder="sk-ant-..."
-      />
-    </div>
-
-    <div className="input-group">
-      <label>
-        Google API Key
-        <span className="help-icon" data-tooltip="GOOGLE_API_KEY">?</span>
-      </label>
-      <input
-        type="password"
-        name="GOOGLE_API_KEY"
-        value={googleApiKey}
-        onChange={(e) => setGoogleApiKey(e.target.value)}
-        onBlur={() => { if (googleApiKey) updateConfig('GOOGLE_API_KEY', googleApiKey); }}
-        placeholder="..."
-      />
-    </div>
-  </div>
-
-  <div className="input-row">
-    <div className="input-group">
-      <label>
-        Ollama URL
-        <span className="help-icon" data-tooltip="OLLAMA_URL">?</span>
-      </label>
-      <input
-        type="text"
-        name="OLLAMA_URL"
-        value={ollamaUrl}
-        onChange={(e) => setOllamaUrl(e.target.value)}
-        onBlur={() => updateConfig('OLLAMA_URL', ollamaUrl)}
-        placeholder="http://127.0.0.1:11434"
-      />
-    </div>
-
-    <div className="input-group">
-      <label>
-        OpenAI Base URL (optional)
-        <span className="help-icon" data-tooltip="OPENAI_BASE_URL">?</span>
-      </label>
-      <input
-        type="text"
-        name="OPENAI_BASE_URL"
-        value={openaiBaseUrl}
-        onChange={(e) => setOpenaiBaseUrl(e.target.value)}
-        onBlur={() => updateConfig('OPENAI_BASE_URL', openaiBaseUrl)}
-        placeholder="For vLLM proxy"
-      />
-    </div>
-  </div>
-
-  <div className="input-row">
-    <div className="input-group">
-      <label>
-        HTTP Override Model
-        <span className="help-icon" data-tooltip="GEN_MODEL_HTTP">?</span>
-      </label>
-      <select
-        name="GEN_MODEL_HTTP"
-        value={genModelHttp}
-        onChange={(e) => {
-          setGenModelHttp(e.target.value);
-          updateConfig('GEN_MODEL_HTTP', e.target.value);
-        }}
-      >
-        <option value="">Select a model...</option>
-        {availableModels.map((model) => (
-          <option key={model} value={model}>{model}</option>
-        ))}
-      </select>
-    </div>
-
-    <div className="input-group">
-      <label>
-        MCP Override Model
-        <span className="help-icon" data-tooltip="GEN_MODEL_MCP">?</span>
-      </label>
-      <select
-        name="GEN_MODEL_MCP"
-        value={genModelMcp}
-        onChange={(e) => {
-          setGenModelMcp(e.target.value);
-          updateConfig('GEN_MODEL_MCP', e.target.value);
-        }}
-      >
-        <option value="">Select a model...</option>
-        {availableModels.map((model) => (
-          <option key={model} value={model}>{model}</option>
-        ))}
-      </select>
-    </div>
-  </div>
-
-  <div className="input-row">
-    <div className="input-group">
-      <label>
-        CLI Override Model
-        <span className="help-icon" data-tooltip="GEN_MODEL_CLI">?</span>
-      </label>
-      <select
-        name="GEN_MODEL_CLI"
-        id="cli-override-model-select"
-        value={genModelCli}
-        onChange={(e) => {
-          setGenModelCli(e.target.value);
-          updateConfig('GEN_MODEL_CLI', e.target.value);
-        }}
-      >
-        <option value="">Select a model...</option>
-        {availableModels.map((model) => (
-          <option key={model} value={model}>{model}</option>
-        ))}
-      </select>
-    </div>
-
-    <div className="input-group">
-      <label>
-        Enrich Backend
-        <span className="help-icon" data-tooltip="ENRICH_BACKEND">?</span>
-      </label>
-      <select
-        name="ENRICH_BACKEND"
-        id="enrich-backend-select"
-        value={enrichBackend}
-        onChange={(e) => {
-          setEnrichBackend(e.target.value);
-          updateConfig('ENRICH_BACKEND', e.target.value);
-        }}
-      >
-        <option value="">Default</option>
-        <option value="openai">OpenAI</option>
-        <option value="anthropic">Anthropic</option>
-        <option value="google">Google</option>
-        <option value="cohere">Cohere</option>
-        <option value="ollama">Ollama</option>
-        <option value="local">Local</option>
-        <option value="mlx">MLX (Apple)</option>
-      </select>
-    </div>
-  </div>
-
-  <div className="input-row">
-    <div className="input-group">
-      <label>
-        Max Tokens
-        <span className="help-icon" data-tooltip="GEN_MAX_TOKENS">?</span>
-      </label>
-      <input
-        type="number"
-        id="GEN_MAX_TOKENS"
-        name="GEN_MAX_TOKENS"
-        value={genMaxTokens}
-        onChange={(e) => setGenMaxTokens(parseInt(e.target.value, 10) || 2048)}
-        onBlur={() => updateConfig('GEN_MAX_TOKENS', genMaxTokens)}
-        min={100}
-        max={8192}
-        step={128}
-      />
-    </div>
-
-    <div className="input-group">
-      <label>
-        Top-P (Nucleus Sampling)
-        <span className="help-icon" data-tooltip="GEN_TOP_P">?</span>
-      </label>
-      <input
-        type="number"
-        id="GEN_TOP_P"
-        name="GEN_TOP_P"
-        value={genTopP}
-        onChange={(e) => setGenTopP(parseFloat(e.target.value) || 1.0)}
-        onBlur={() => updateConfig('GEN_TOP_P', genTopP)}
-        min={0.0}
-        max={1.0}
-        step={0.05}
-      />
-    </div>
-  </div>
-
-  <div className="input-row">
-    <div className="input-group">
-      <label>
-        Timeout (seconds)
-        <span className="help-icon" data-tooltip="GEN_TIMEOUT">?</span>
-      </label>
-      <input
-        type="number"
-        id="GEN_TIMEOUT"
-        name="GEN_TIMEOUT"
-        value={genTimeout}
-        onChange={(e) => setGenTimeout(parseInt(e.target.value, 10) || 60)}
-        onBlur={() => updateConfig('GEN_TIMEOUT', genTimeout)}
-        min={10}
-        max={300}
-        step={5}
-      />
-    </div>
-
-    <div className="input-group">
-      <label>
-        Retry Max
-        <span className="help-icon" data-tooltip="GEN_RETRY_MAX">?</span>
-      </label>
-      <input
-        type="number"
-        id="GEN_RETRY_MAX"
-        name="GEN_RETRY_MAX"
-        value={genRetryMax}
-        onChange={(e) => setGenRetryMax(parseInt(e.target.value, 10) || 2)}
-        onBlur={() => updateConfig('GEN_RETRY_MAX', genRetryMax)}
-        min={1}
-        max={5}
-        step={1}
-      />
-    </div>
-  </div>
-
-  <div className="input-row">
-    <div className="input-group">
-      <label>
-        Enrich Disabled
-        <span className="help-icon" data-tooltip="ENRICH_DISABLED">?</span>
-      </label>
-      <select
-        id="ENRICH_DISABLED"
-        name="ENRICH_DISABLED"
-        value={enrichDisabled}
-        onChange={(e) => {
-          setEnrichDisabled(e.target.value);
-          updateConfig('ENRICH_DISABLED', e.target.value);
-        }}
-      >
-        <option value="0">No (Enable Enrichment)</option>
-        <option value="1">Yes (Disable Enrichment)</option>
-      </select>
-    </div>
-  </div>
-</div>
-
-{/* ========================================================================== */}
-{/* SECTION: Retrieval Parameters */}
-{/* ========================================================================== */}
-
-<div className="settings-section">
-  <h3>Retrieval Parameters</h3>
-  <p className="small">
-    Hybrid search fuses sparse (BM25) + dense (vectors). These knobs tune candidate counts and hydration behavior.
-  </p>
-
-  <div className="input-row">
-    <div className="input-group">
-      <label>
-        Multi-Query Rewrites
-        <span className="help-icon" data-tooltip="MAX_QUERY_REWRITES">?</span>
-      </label>
-      <input
-        type="number"
-        name="MAX_QUERY_REWRITES"
-        value={multiQueryRewrites}
-        onChange={(e) => setMultiQueryRewrites(parseInt(e.target.value, 10) || 2)}
-        onBlur={() => updateConfig('MAX_QUERY_REWRITES', multiQueryRewrites)}
-        min={1}
-      />
-    </div>
-
-    <div className="input-group">
-      <label>
-        Final K
-        <span className="help-icon" data-tooltip="FINAL_K">?</span>
-      </label>
-      <input
-        type="number"
-        name="FINAL_K"
-        value={finalK}
-        onChange={(e) => setFinalK(parseInt(e.target.value, 10) || 10)}
-        onBlur={() => updateConfig('FINAL_K', finalK)}
-        min={1}
-      />
-    </div>
-
-    <div className="input-group">
-      <label>
-        Use Semantic Synonyms
-        <span className="help-icon" data-tooltip="USE_SEMANTIC_SYNONYMS">?</span>
-      </label>
-      <select
-        name="USE_SEMANTIC_SYNONYMS"
-        value={useSemanticSynonyms}
-        onChange={(e) => {
-          setUseSemanticSynonyms(e.target.value);
-          updateConfig('USE_SEMANTIC_SYNONYMS', e.target.value);
-        }}
-      >
-        <option value="1">ON</option>
-        <option value="0">OFF</option>
-      </select>
-    </div>
-  </div>
-
-  <div className="input-row">
-    <div className="input-group">
-      <label>
-        Top-K Dense (Qdrant)
-        <span className="help-icon" data-tooltip="TOPK_DENSE">?</span>
-      </label>
-      <input
-        type="number"
-        name="TOPK_DENSE"
-        value={topkDense}
-        onChange={(e) => setTopkDense(parseInt(e.target.value, 10) || 75)}
-        onBlur={() => updateConfig('TOPK_DENSE', topkDense)}
-        min={1}
-      />
-    </div>
-
-    <div className="input-group">
-      <label>
-        Vector Backend
-        <span className="help-icon" data-tooltip="VECTOR_BACKEND">?</span>
-      </label>
-      <select
-        name="VECTOR_BACKEND"
-        value={vectorBackend}
-        onChange={(e) => {
-          setVectorBackend(e.target.value);
-          updateConfig('VECTOR_BACKEND', e.target.value);
-        }}
-      >
-        <option value="qdrant">Qdrant</option>
-        <option value="faiss">FAISS (experimental)</option>
-      </select>
-    </div>
-
-    <div className="input-group">
-      <label>
-        Top-K Sparse (BM25)
-        <span className="help-icon" data-tooltip="TOPK_SPARSE">?</span>
-      </label>
-      <input
-        type="number"
-        name="TOPK_SPARSE"
-        value={topkSparse}
-        onChange={(e) => setTopkSparse(parseInt(e.target.value, 10) || 75)}
-        onBlur={() => updateConfig('TOPK_SPARSE', topkSparse)}
-        min={1}
-      />
-    </div>
-  </div>
-
-  <div className="input-row">
-    <div className="input-group">
-      <label>
-        Hydration Mode
-        <span className="help-icon" data-tooltip="HYDRATION_MODE">?</span>
-      </label>
-      <select
-        name="HYDRATION_MODE"
-        value={hydrationMode}
-        onChange={(e) => {
-          setHydrationMode(e.target.value);
-          updateConfig('HYDRATION_MODE', e.target.value);
-        }}
-      >
-        <option value="lazy">Lazy</option>
-        <option value="none">None</option>
-      </select>
-    </div>
-
-    <div className="input-group">
-      <label>
-        Hydration Max Chars
-        <span className="help-icon" data-tooltip="HYDRATION_MAX_CHARS">?</span>
-      </label>
-      <input
-        type="number"
-        name="HYDRATION_MAX_CHARS"
-        value={hydrationMaxChars}
-        onChange={(e) => setHydrationMaxChars(parseInt(e.target.value, 10) || 2000)}
-        onBlur={() => updateConfig('HYDRATION_MAX_CHARS', hydrationMaxChars)}
-      />
-    </div>
-  </div>
-
-  <div className="input-row">
-    <div className="input-group">
-      <label>
-        Vendor Mode
-        <span className="help-icon" data-tooltip="VENDOR_MODE">?</span>
-      </label>
-      <select
-        name="VENDOR_MODE"
-        value={vendorMode}
-        onChange={(e) => {
-          setVendorMode(e.target.value);
-          updateConfig('VENDOR_MODE', e.target.value);
-        }}
-      >
-        <option value="prefer_first_party">Prefer First Party</option>
-        <option value="prefer_vendor">Prefer Vendor</option>
-      </select>
-    </div>
-  </div>
-
-  <div className="input-row">
-    <div className="input-group">
-      <label>
-        BM25 Weight
-        <span className="help-icon" data-tooltip="BM25_WEIGHT">?</span>
-      </label>
-      <input
-        type="number"
-        id="BM25_WEIGHT"
-        name="BM25_WEIGHT"
-        value={bm25Weight}
-        onChange={(e) => setBm25Weight(parseFloat(e.target.value) || 0.3)}
-        onBlur={() => updateConfig('BM25_WEIGHT', bm25Weight)}
-        min={0.0}
-        max={1.0}
-        step={0.1}
-      />
-    </div>
-
-    <div className="input-group">
-      <label>
-        Vector Weight
-        <span className="help-icon" data-tooltip="VECTOR_WEIGHT">?</span>
-      </label>
-      <input
-        type="number"
-        id="VECTOR_WEIGHT"
-        name="VECTOR_WEIGHT"
-        value={vectorWeight}
-        onChange={(e) => setVectorWeight(parseFloat(e.target.value) || 0.7)}
-        onBlur={() => updateConfig('VECTOR_WEIGHT', vectorWeight)}
-        min={0.0}
-        max={1.0}
-        step={0.1}
-      />
-    </div>
-  </div>
-
-  <div className="input-row">
-    <div className="input-group">
-      <label>
-        BM25 K1 (Term Frequency)
-        <span className="help-icon" data-tooltip="BM25_K1">?</span>
-      </label>
-      <input
-        type="number"
-        id="BM25_K1"
-        name="BM25_K1"
-        value={bm25K1}
-        onChange={(e) => setBm25K1(parseFloat(e.target.value) || 1.2)}
-        onBlur={() => updateConfig('BM25_K1', bm25K1)}
-        min={0.5}
-        max={3.0}
-        step={0.1}
-      />
-    </div>
-
-    <div className="input-group">
-      <label>
-        BM25 B (Length Penalty)
-        <span className="help-icon" data-tooltip="BM25_B">?</span>
-      </label>
-      <input
-        type="number"
-        id="BM25_B"
-        name="BM25_B"
-        value={bm25B}
-        onChange={(e) => setBm25B(parseFloat(e.target.value) || 0.4)}
-        onBlur={() => updateConfig('BM25_B', bm25B)}
-        min={0.0}
-        max={1.0}
-        step={0.05}
-      />
-    </div>
-  </div>
-
-  <div className="input-row">
-    <div className="input-group">
-      <label>
-        Card Search Enabled
-        <span className="help-icon" data-tooltip="CARD_SEARCH_ENABLED">?</span>
-      </label>
-      <select
-        id="CARD_SEARCH_ENABLED"
-        name="CARD_SEARCH_ENABLED"
-        value={cardSearchEnabled}
-        onChange={(e) => {
-          setCardSearchEnabled(e.target.value);
-          updateConfig('CARD_SEARCH_ENABLED', e.target.value);
-        }}
-      >
-        <option value="1">Enabled</option>
-        <option value="0">Disabled</option>
-      </select>
-    </div>
-
-    <div className="input-group">
-      <label>
-        Multi-Query M
-        <span className="help-icon" data-tooltip="MULTI_QUERY_M">?</span>
-      </label>
-      <input
-        type="number"
-        id="MULTI_QUERY_M"
-        name="MULTI_QUERY_M"
-        value={multiQueryM}
-        onChange={(e) => setMultiQueryM(parseInt(e.target.value, 10) || 4)}
-        onBlur={() => updateConfig('MULTI_QUERY_M', multiQueryM)}
-        min={1}
-        max={10}
-        step={1}
-      />
-    </div>
-  </div>
-
-  <div className="input-row">
-    <div className="input-group">
-      <label>
-        Confidence Top-1 Threshold
-        <span className="help-icon" data-tooltip="CONF_TOP1">?</span>
-      </label>
-      <input
-        type="number"
-        id="CONF_TOP1"
-        name="CONF_TOP1"
-        value={confTop1}
-        onChange={(e) => setConfTop1(parseFloat(e.target.value) || 0.62)}
-        onBlur={() => updateConfig('CONF_TOP1', confTop1)}
-        min={0.0}
-        max={1.0}
-        step={0.01}
-      />
-    </div>
-
-    <div className="input-group">
-      <label>
-        Confidence Avg-5 Threshold
-        <span className="help-icon" data-tooltip="CONF_AVG5">?</span>
-      </label>
-      <input
-        type="number"
-        id="CONF_AVG5"
-        name="CONF_AVG5"
-        value={confAvg5}
-        onChange={(e) => setConfAvg5(parseFloat(e.target.value) || 0.55)}
-        onBlur={() => updateConfig('CONF_AVG5', confAvg5)}
-        min={0.0}
-        max={1.0}
-        step={0.01}
-      />
-    </div>
-  </div>
-</div>
-      {/* SECTION DIVIDER: Advanced RAG Tuning */}
-      {/* ========================================================================== */}
-
-      <div className="settings-section" style={{ borderLeft: '3px solid var(--warn)', marginTop: '24px' }}>
-        <h3>
-          <span className="accent-orange">●</span> Advanced RAG Tuning
-          <span className="help-icon" data-tooltip="ADVANCED_RAG_TUNING">?</span>
-        </h3>
-        <p className="small">Expert-level controls for fusion weighting, score bonuses, and LangGraph iteration behavior. Changes take effect immediately without re-indexing.</p>
+          <div className="input-group">
+            <label>
+              OpenAI API Key
+              <span className="help-icon" data-tooltip="OPENAI_API_KEY">?</span>
+            </label>
+            <ApiKeyStatus keyName="OPENAI_API_KEY" label="OpenAI API Key" />
+          </div>
+        </div>
 
         <div className="input-row">
           <div className="input-group">
             <label>
-              RRF K Divisor
-              <span className="help-icon" data-tooltip="RRF_K_DIV">?</span>
+              Default Temperature
+              <span className="help-icon" data-tooltip="GEN_TEMPERATURE">?</span>
             </label>
             <input
               type="number"
-              name="RRF_K_DIV"
-              value={rrfKDiv}
-              onChange={(e) => setRrfKDiv(parseFloat(e.target.value))}
-              onBlur={() => updateConfig('RRF_K_DIV', rrfKDiv)}
-              min={10}
-              max={100}
-              step={5}
+              min={0}
+              max={2}
+              step={0.01}
+              value={genTemperature}
+              onChange={(e) => setGenTemperature(snapNumber(e.target.value, 0.0))}
             />
           </div>
           <div className="input-group">
             <label>
-              Card Multiplicative Bonus
-              <span className="help-icon" data-tooltip="CARD_BONUS">?</span>
+              Enrich Model
+              <span className="help-icon" data-tooltip="ENRICH_MODEL">?</span>
+            </label>
+            <select value={enrichModel} onChange={(e) => setEnrichModel(e.target.value)}>
+              <option value="">Select a model...</option>
+              {availableModels.map((model) => (
+                <option key={model} value={model}>
+                  {model}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>
+              Enrich Model (Ollama)
+              <span className="help-icon" data-tooltip="ENRICH_MODEL_OLLAMA">?</span>
+            </label>
+            <select value={enrichModelOllama} onChange={(e) => setEnrichModelOllama(e.target.value)}>
+              <option value="">Select a model...</option>
+            </select>
+          </div>
+          <div className="input-group">
+            <label>
+              Anthropic API Key
+              <span className="help-icon" data-tooltip="ANTHROPIC_API_KEY">?</span>
+            </label>
+            <ApiKeyStatus keyName="ANTHROPIC_API_KEY" label="Anthropic API Key" />
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>
+              Google API Key
+              <span className="help-icon" data-tooltip="GOOGLE_API_KEY">?</span>
+            </label>
+            <ApiKeyStatus keyName="GOOGLE_API_KEY" label="Google API Key" />
+          </div>
+          <div className="input-group">
+            <label>
+              Ollama URL
+              <span className="help-icon" data-tooltip="OLLAMA_URL">?</span>
             </label>
             <input
-              type="number"
-              name="CARD_BONUS"
-              value={cardBonus}
-              onChange={(e) => setCardBonus(parseFloat(e.target.value))}
-              onBlur={() => updateConfig('CARD_BONUS', cardBonus)}
-              min={0}
-              max={0.2}
-              step={0.01}
+              type="text"
+              placeholder="http://127.0.0.1:11434"
+              value={ollamaUrl}
+              onChange={(e) => setOllamaUrl(e.target.value)}
             />
           </div>
         </div>
@@ -948,34 +349,480 @@ export function RetrievalSubtab() {
         <div className="input-row">
           <div className="input-group">
             <label>
-              Filename Multiplicative Boost (Exact)
-              <span className="help-icon" data-tooltip="FILENAME_BOOST_EXACT">?</span>
+              OpenAI Base URL
+              <span className="help-icon" data-tooltip="OPENAI_BASE_URL">?</span>
             </label>
             <input
-              type="number"
-              name="FILENAME_BOOST_EXACT"
-              value={filenameBoostExact}
-              onChange={(e) => setFilenameBoostExact(parseFloat(e.target.value))}
-              onBlur={() => updateConfig('FILENAME_BOOST_EXACT', filenameBoostExact)}
-              min={1.0}
-              max={3.0}
-              step={0.1}
+              type="text"
+              placeholder="Proxy override"
+              value={openaiBaseUrl}
+              onChange={(e) => setOpenaiBaseUrl(e.target.value)}
             />
           </div>
           <div className="input-group">
             <label>
-              Filename Multiplicative Boost (Partial)
+              HTTP Override Model
+              <span className="help-icon" data-tooltip="GEN_MODEL_HTTP">?</span>
+            </label>
+            <select value={genModelHttp} onChange={(e) => setGenModelHttp(e.target.value)}>
+              <option value="">Select a model...</option>
+              {availableModels.map((model) => (
+                <option key={model} value={model}>
+                  {model}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>
+              MCP Override Model
+              <span className="help-icon" data-tooltip="GEN_MODEL_MCP">?</span>
+            </label>
+            <select value={genModelMcp} onChange={(e) => setGenModelMcp(e.target.value)}>
+              <option value="">Select a model...</option>
+              {availableModels.map((model) => (
+                <option key={model} value={model}>
+                  {model}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="input-group">
+            <label>
+              CLI Override Model
+              <span className="help-icon" data-tooltip="GEN_MODEL_CLI">?</span>
+            </label>
+            <select value={genModelCli} onChange={(e) => setGenModelCli(e.target.value)}>
+              <option value="">Select a model...</option>
+              {availableModels.map((model) => (
+                <option key={model} value={model}>
+                  {model}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>
+              Enrichment Backend
+              <span className="help-icon" data-tooltip="ENRICH_BACKEND">?</span>
+            </label>
+            <input
+              type="text"
+              placeholder="grpc://..."
+              value={enrichBackend}
+              onChange={(e) => setEnrichBackend(e.target.value)}
+            />
+          </div>
+          <div className="input-group">
+            <label>
+              Disable Enrichment
+              <span className="help-icon" data-tooltip="ENRICH_DISABLED">?</span>
+            </label>
+            <select value={enrichDisabled} onChange={(e) => setEnrichDisabled(e.target.value)}>
+              <option value="0">Enabled</option>
+              <option value="1">Disabled</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>
+              Max Tokens
+              <span className="help-icon" data-tooltip="GEN_MAX_TOKENS">?</span>
+            </label>
+            <input
+              type="number"
+              min={100}
+              max={8192}
+              step={128}
+              value={genMaxTokens}
+              onChange={(e) => setGenMaxTokens(snapNumber(e.target.value, 2048))}
+            />
+          </div>
+          <div className="input-group">
+            <label>
+              Top-P (Nucleus Sampling)
+              <span className="help-icon" data-tooltip="GEN_TOP_P">?</span>
+            </label>
+            <input
+              type="number"
+              min={0}
+              max={1}
+              step={0.01}
+              value={genTopP}
+              onChange={(e) => setGenTopP(snapNumber(e.target.value, 1.0))}
+            />
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>
+              Generation Timeout (seconds)
+              <span className="help-icon" data-tooltip="GEN_TIMEOUT">?</span>
+            </label>
+            <input
+              type="number"
+              min={10}
+              max={300}
+              step={5}
+              value={genTimeout}
+              onChange={(e) => setGenTimeout(snapNumber(e.target.value, 60))}
+            />
+          </div>
+          <div className="input-group">
+            <label>
+              Retry Attempts
+              <span className="help-icon" data-tooltip="GEN_RETRY_MAX">?</span>
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={5}
+              value={genRetryMax}
+              onChange={(e) => setGenRetryMax(snapNumber(e.target.value, 2))}
+            />
+          </div>
+        </div>
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        title="Retrieval Parameters"
+        description="Hybrid search blends BM25 and dense embeddings. Tune candidate counts and weights."
+        storageKey="retrieval-params"
+        defaultExpanded={true}
+      >
+        <div className="input-row">
+          <div className="input-group">
+            <label>
+              Multi-Query Rewrites
+              <span className="help-icon" data-tooltip="MAX_QUERY_REWRITES">?</span>
+            </label>
+            <input
+              type="number"
+              min={0}
+              max={10}
+              value={multiQueryRewrites}
+              onChange={(e) => setMultiQueryRewrites(snapNumber(e.target.value, 2))}
+            />
+          </div>
+          <div className="input-group">
+            <label>
+              Final K
+              <span className="help-icon" data-tooltip="FINAL_K">?</span>
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={100}
+              value={finalK}
+              onChange={(e) => setFinalK(snapNumber(e.target.value, 10))}
+            />
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>
+              Semantic Synonyms
+              <span className="help-icon" data-tooltip="USE_SEMANTIC_SYNONYMS">?</span>
+            </label>
+            <select value={useSemanticSynonyms} onChange={(e) => setUseSemanticSynonyms(e.target.value)}>
+              <option value="1">On</option>
+              <option value="0">Off</option>
+            </select>
+          </div>
+          <div className="input-group">
+            <label>
+              Synonyms File Path
+              <span className="help-icon" data-tooltip="AGRO_SYNONYMS_PATH">?</span>
+            </label>
+            <input
+              type="text"
+              placeholder="data/semantic_synonyms.json"
+              value={synonymsPath}
+              onChange={(e) => setSynonymsPath(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>
+              Dense Top-K
+              <span className="help-icon" data-tooltip="TOPK_DENSE">?</span>
+            </label>
+            <input
+              type="number"
+              min={10}
+              max={400}
+              value={topkDense}
+              onChange={(e) => setTopkDense(snapNumber(e.target.value, 75))}
+            />
+          </div>
+          <div className="input-group">
+            <label>
+              Sparse Top-K
+              <span className="help-icon" data-tooltip="TOPK_SPARSE">?</span>
+            </label>
+            <input
+              type="number"
+              min={10}
+              max={400}
+              value={topkSparse}
+              onChange={(e) => setTopkSparse(snapNumber(e.target.value, 75))}
+            />
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>
+              Vector Backend
+              <span className="help-icon" data-tooltip="VECTOR_BACKEND">?</span>
+            </label>
+            <select value={vectorBackend} onChange={(e) => setVectorBackend(e.target.value)}>
+              <option value="qdrant">Qdrant</option>
+              <option value="pinecone">Pinecone</option>
+              <option value="weaviate">Weaviate</option>
+              <option value="redis">Redis</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>
+              Hydration Mode
+              <span className="help-icon" data-tooltip="HYDRATION_MODE">?</span>
+            </label>
+            <select value={hydrationMode} onChange={(e) => setHydrationMode(e.target.value)}>
+              <option value="lazy">Lazy</option>
+              <option value="aggressive">Aggressive</option>
+              <option value="off">Off</option>
+            </select>
+          </div>
+          <div className="input-group">
+            <label>
+              Hydration Max Chars
+              <span className="help-icon" data-tooltip="HYDRATION_MAX_CHARS">?</span>
+            </label>
+            <input
+              type="number"
+              min={200}
+              max={20000}
+              step={100}
+              value={hydrationMaxChars}
+              onChange={(e) => setHydrationMaxChars(snapNumber(e.target.value, 2000))}
+            />
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>
+              Vendor Mode
+              <span className="help-icon" data-tooltip="VENDOR_MODE">?</span>
+            </label>
+            <select value={vendorMode} onChange={(e) => setVendorMode(e.target.value)}>
+              <option value="prefer_first_party">Prefer first party</option>
+              <option value="prefer_third_party">Prefer third party</option>
+              <option value="off">Off</option>
+            </select>
+          </div>
+          <div className="input-group">
+            <label>
+              BM25 Weight
+              <span className="help-icon" data-tooltip="BM25_WEIGHT">?</span>
+            </label>
+            <input
+              type="number"
+              min={0}
+              max={1}
+              step={0.05}
+              value={bm25Weight}
+              onChange={(e) => setBm25Weight(snapNumber(e.target.value, 0.3))}
+            />
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>
+              Vector Weight
+              <span className="help-icon" data-tooltip="VECTOR_WEIGHT">?</span>
+            </label>
+            <input
+              type="number"
+              min={0}
+              max={1}
+              step={0.05}
+              value={vectorWeight}
+              onChange={(e) => setVectorWeight(snapNumber(e.target.value, 0.7))}
+            />
+          </div>
+          <div className="input-group">
+            <label>
+              BM25 k1
+              <span className="help-icon" data-tooltip="BM25_K1">?</span>
+            </label>
+            <input
+              type="number"
+              min={0.2}
+              max={3}
+              step={0.1}
+              value={bm25K1}
+              onChange={(e) => setBm25K1(snapNumber(e.target.value, 1.2))}
+            />
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>
+              BM25 b
+              <span className="help-icon" data-tooltip="BM25_B">?</span>
+            </label>
+            <input
+              type="number"
+              min={0}
+              max={1}
+              step={0.05}
+              value={bm25B}
+              onChange={(e) => setBm25B(snapNumber(e.target.value, 0.4))}
+            />
+          </div>
+          <div className="input-group">
+            <label>
+              Card Search
+              <span className="help-icon" data-tooltip="CARD_SEARCH_ENABLED">?</span>
+            </label>
+            <select value={cardSearchEnabled} onChange={(e) => setCardSearchEnabled(e.target.value)}>
+              <option value="1">Enabled</option>
+              <option value="0">Disabled</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>
+              Multi-Query M
+              <span className="help-icon" data-tooltip="MULTI_QUERY_M">?</span>
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={10}
+              value={multiQueryM}
+              onChange={(e) => setMultiQueryM(snapNumber(e.target.value, 4))}
+            />
+          </div>
+          <div className="input-group">
+            <label>
+              Confidence Top1
+              <span className="help-icon" data-tooltip="CONF_TOP1">?</span>
+            </label>
+            <input
+              type="number"
+              min={0}
+              max={1}
+              step={0.01}
+              value={confTop1}
+              onChange={(e) => setConfTop1(snapNumber(e.target.value, 0.62))}
+            />
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>
+              Confidence AVG5
+              <span className="help-icon" data-tooltip="CONF_AVG5">?</span>
+            </label>
+            <input
+              type="number"
+              min={0}
+              max={1}
+              step={0.01}
+              value={confAvg5}
+              onChange={(e) => setConfAvg5(snapNumber(e.target.value, 0.55))}
+            />
+          </div>
+          <div className="input-group" />
+        </div>
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        title="Advanced RAG Tuning"
+        description="Fine-tune reranker settings, LangGraph bonuses, and freshness tuning."
+        storageKey="retrieval-advanced"
+        defaultExpanded={false}
+      >
+        <div className="input-row">
+          <div className="input-group">
+            <label>
+              RRF K Div
+              <span className="help-icon" data-tooltip="RRF_K_DIV">?</span>
+            </label>
+            <input
+              type="number"
+              min={10}
+              max={200}
+              value={rrfKDiv}
+              onChange={(e) => setRrfKDiv(snapNumber(e.target.value, 60))}
+            />
+          </div>
+          <div className="input-group">
+            <label>
+              Card Bonus
+              <span className="help-icon" data-tooltip="CARD_BONUS">?</span>
+            </label>
+            <input
+              type="number"
+              min={0}
+              max={1}
+              step={0.01}
+              value={cardBonus}
+              onChange={(e) => setCardBonus(snapNumber(e.target.value, 0.08))}
+            />
+          </div>
+        </div>
+
+        <div className="input-row">
+          <div className="input-group">
+            <label>
+              Filename Boost (Exact)
+              <span className="help-icon" data-tooltip="FILENAME_BOOST_EXACT">?</span>
+            </label>
+            <input
+              type="number"
+              min={0}
+              max={5}
+              step={0.1}
+              value={filenameBoostExact}
+              onChange={(e) => setFilenameBoostExact(snapNumber(e.target.value, 1.5))}
+            />
+          </div>
+          <div className="input-group">
+            <label>
+              Filename Boost (Partial)
               <span className="help-icon" data-tooltip="FILENAME_BOOST_PARTIAL">?</span>
             </label>
             <input
               type="number"
-              name="FILENAME_BOOST_PARTIAL"
-              value={filenameBoostPartial}
-              onChange={(e) => setFilenameBoostPartial(parseFloat(e.target.value))}
-              onBlur={() => updateConfig('FILENAME_BOOST_PARTIAL', filenameBoostPartial)}
-              min={1.0}
-              max={2.0}
+              min={0}
+              max={5}
               step={0.1}
+              value={filenameBoostPartial}
+              onChange={(e) => setFilenameBoostPartial(snapNumber(e.target.value, 1.2))}
             />
           </div>
         </div>
@@ -988,48 +835,23 @@ export function RetrievalSubtab() {
             </label>
             <input
               type="number"
-              name="LANGGRAPH_FINAL_K"
-              value={langgraphFinalK}
-              onChange={(e) => setLanggraphFinalK(parseInt(e.target.value, 10))}
-              onBlur={() => updateConfig('LANGGRAPH_FINAL_K', langgraphFinalK)}
-              min={5}
-              max={50}
-              step={1}
-            />
-          </div>
-          <div className="input-group">
-            <label>
-              Max Query Rewrites
-              <span className="help-icon" data-tooltip="MAX_QUERY_REWRITES">?</span>
-            </label>
-            <input
-              type="number"
-              name="MAX_QUERY_REWRITES"
-              value={maxQueryRewrites}
-              onChange={(e) => setMaxQueryRewrites(parseInt(e.target.value, 10))}
-              onBlur={() => updateConfig('MAX_QUERY_REWRITES', maxQueryRewrites)}
               min={1}
-              max={5}
-              step={1}
+              max={100}
+              value={langgraphFinalK}
+              onChange={(e) => setLanggraphFinalK(snapNumber(e.target.value, 20))}
             />
           </div>
-        </div>
-
-        <div className="input-row">
           <div className="input-group">
             <label>
-              Fallback Confidence Threshold
-              <span className="help-icon" data-tooltip="CONF_FALLBACK">?</span>
+              Max Query Rewrites (LangGraph)
+              <span className="help-icon" data-tooltip="LANGGRAPH_MAX_QUERY_REWRITES">?</span>
             </label>
             <input
               type="number"
-              name="FALLBACK_CONFIDENCE"
-              value={fallbackConfidence}
-              onChange={(e) => setFallbackConfidence(parseFloat(e.target.value))}
-              onBlur={() => updateConfig('FALLBACK_CONFIDENCE', fallbackConfidence)}
-              min={0.3}
-              max={0.8}
-              step={0.05}
+              min={0}
+              max={10}
+              value={langgraphMaxQueryRewrites}
+              onChange={(e) => setLanggraphMaxQueryRewrites(snapNumber(e.target.value, 3))}
             />
           </div>
         </div>
@@ -1037,41 +859,49 @@ export function RetrievalSubtab() {
         <div className="input-row">
           <div className="input-group">
             <label>
-              Layer Multiplicative Bonus (GUI)
+              Fallback Confidence
+              <span className="help-icon" data-tooltip="FALLBACK_CONFIDENCE">?</span>
+            </label>
+            <input
+              type="number"
+              min={0}
+              max={1}
+              step={0.01}
+              value={fallbackConfidence}
+              onChange={(e) => setFallbackConfidence(snapNumber(e.target.value, 0.55))}
+            />
+          </div>
+          <div className="input-group">
+            <label>
+              Layer Bonus (GUI)
               <span className="help-icon" data-tooltip="LAYER_BONUS_GUI">?</span>
             </label>
             <input
               type="number"
-              id="LAYER_BONUS_GUI"
-              name="LAYER_BONUS_GUI"
+              min={0}
+              max={1}
+              step={0.01}
               value={layerBonusGui}
-              onChange={(e) => setLayerBonusGui(parseFloat(e.target.value))}
-              onBlur={() => updateConfig('LAYER_BONUS_GUI', layerBonusGui)}
-              min={0.0}
-              max={0.5}
-              step={0.05}
-            />
-          </div>
-          <div className="input-group">
-            <label>
-              Layer Multiplicative Bonus (Retrieval)
-              <span className="help-icon" data-tooltip="LAYER_BONUS_RETRIEVAL">?</span>
-            </label>
-            <input
-              type="number"
-              id="LAYER_BONUS_RETRIEVAL"
-              name="LAYER_BONUS_RETRIEVAL"
-              value={layerBonusRetrieval}
-              onChange={(e) => setLayerBonusRetrieval(parseFloat(e.target.value))}
-              onBlur={() => updateConfig('LAYER_BONUS_RETRIEVAL', layerBonusRetrieval)}
-              min={0.0}
-              max={0.5}
-              step={0.05}
+              onChange={(e) => setLayerBonusGui(snapNumber(e.target.value, 0.15))}
             />
           </div>
         </div>
 
         <div className="input-row">
+          <div className="input-group">
+            <label>
+              Layer Bonus (Retrieval)
+              <span className="help-icon" data-tooltip="LAYER_BONUS_RETRIEVAL">?</span>
+            </label>
+            <input
+              type="number"
+              min={0}
+              max={1}
+              step={0.01}
+              value={layerBonusRetrieval}
+              onChange={(e) => setLayerBonusRetrieval(snapNumber(e.target.value, 0.15))}
+            />
+          </div>
           <div className="input-group">
             <label>
               Vendor Penalty
@@ -1079,61 +909,89 @@ export function RetrievalSubtab() {
             </label>
             <input
               type="number"
-              id="VENDOR_PENALTY"
-              name="VENDOR_PENALTY"
-              value={vendorPenalty}
-              onChange={(e) => setVendorPenalty(parseFloat(e.target.value))}
-              onBlur={() => updateConfig('VENDOR_PENALTY', vendorPenalty)}
-              min={-0.5}
-              max={0.0}
+              min={-1}
+              max={0}
               step={0.05}
+              value={vendorPenalty}
+              onChange={(e) => setVendorPenalty(snapNumber(e.target.value, -0.1))}
             />
           </div>
+        </div>
+
+        <div className="input-row">
           <div className="input-group">
             <label>
-              Freshness Multiplicative Bonus
+              Freshness Bonus
               <span className="help-icon" data-tooltip="FRESHNESS_BONUS">?</span>
             </label>
             <input
               type="number"
-              id="FRESHNESS_BONUS"
-              name="FRESHNESS_BONUS"
+              min={0}
+              max={0.5}
+              step={0.01}
               value={freshnessBonus}
-              onChange={(e) => setFreshnessBonus(parseFloat(e.target.value))}
-              onBlur={() => updateConfig('FRESHNESS_BONUS', freshnessBonus)}
-              min={0.0}
-              max={0.3}
-              step={0.05}
+              onChange={(e) => setFreshnessBonus(snapNumber(e.target.value, 0.05))}
             />
           </div>
+          <div className="input-group" />
         </div>
-      </div>
 
-      {/* ========================================================================== */}
-      {/* SECTION DIVIDER: Routing Trace */}
-      {/* ========================================================================== */}
+        {/* Intent Matrix JSON Editor */}
+        <IntentMatrixEditor />
 
-      <div className="settings-section" style={{ marginTop: '16px', borderLeft: '3px solid var(--link)' }}>
-        <h3>Routing Trace</h3>
+        {/* Quick links to edit related system prompts */}
+        <div className="related-prompts">
+          <span className="related-prompts-label">Related Prompts:</span>
+          <PromptLink promptKey="main_rag_chat">System Prompt</PromptLink>
+          <PromptLink promptKey="query_expansion">Query Expansion</PromptLink>
+          <PromptLink promptKey="query_rewrite">Query Rewrite</PromptLink>
+        </div>
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        title="Routing Trace & LangSmith"
+        description="Inspect LangGraph traces and jump directly into LangSmith for debugging."
+        storageKey="retrieval-tracing"
+        defaultExpanded={false}
+      >
         <div className="input-row">
           <div className="input-group">
-            <label>Load Latest Trace</label>
-            <button className="small-button" id="btn-trace-latest">Open</button>
+            <button className="small-button" onClick={handleLoadTrace} disabled={traceLoading}>
+              {traceLoading ? 'Loading trace…' : 'Load Latest Trace'}
+            </button>
           </div>
           <div className="input-group">
-            <label>Open in LangSmith</label>
-            <button className="small-button" id="btn-trace-open-ls">Open</button>
+            <button className="small-button" onClick={handleOpenLangSmith}>
+              Open in LangSmith
+            </button>
           </div>
+        </div>
+
+        {traceStatus ? (
+          <div
+            className="result-display"
+            style={{ color: traceStatus.type === 'error' ? 'var(--err)' : 'var(--fg-muted)' }}
+          >
+            {traceStatus.message}
+          </div>
+        ) : null}
+
+        <div style={{ marginTop: 16 }}>
+          <LiveTerminal
+            id="retrieval_trace_terminal"
+            title="Routing Trace Preview"
+            initialContent={['Trigger "Load Latest Trace" to preview router telemetry.']}
+            ref={traceTerminalRef}
+          />
+        </div>
+
+        <div className="input-row" style={{ marginTop: 24 }}>
           <div className="input-group">
             <label>
               Tracing Mode
               <span className="help-icon" data-tooltip="TRACING_MODE">?</span>
             </label>
-            <select
-              name="TRACING_MODE"
-              value={tracingMode}
-              onChange={(e) => { setTracingMode(e.target.value); updateConfig('TRACING_MODE', e.target.value); }}
-            >
+            <select value={tracingMode} onChange={(e) => setTracingMode(e.target.value)}>
               <option value="off">Off</option>
               <option value="local">Local</option>
               <option value="langsmith">LangSmith</option>
@@ -1141,18 +999,17 @@ export function RetrievalSubtab() {
           </div>
           <div className="input-group">
             <label>
-              Auto-open in LangSmith
+              Auto-open LangSmith
               <span className="help-icon" data-tooltip="TRACE_AUTO_LS">?</span>
             </label>
-            <select
-              name="TRACE_AUTO_LS"
-              value={traceAutoLs}
-              onChange={(e) => { setTraceAutoLs(e.target.value); updateConfig('TRACE_AUTO_LS', e.target.value); }}
-            >
+            <select value={traceAutoLs} onChange={(e) => setTraceAutoLs(e.target.value)}>
               <option value="0">No</option>
               <option value="1">Yes</option>
             </select>
           </div>
+        </div>
+
+        <div className="input-row">
           <div className="input-group">
             <label>
               Trace Retention
@@ -1160,147 +1017,187 @@ export function RetrievalSubtab() {
             </label>
             <input
               type="number"
-              name="TRACE_RETENTION"
-              value={traceRetention}
-              onChange={(e) => setTraceRetention(parseInt(e.target.value, 10))}
-              onBlur={() => updateConfig('TRACE_RETENTION', traceRetention)}
               min={1}
               max={500}
+              value={traceRetention}
+              onChange={(e) => setTraceRetention(snapNumber(e.target.value, 50))}
             />
           </div>
-        </div>
-
-        {/* LangSmith / LangChain Tracing Settings */}
-        <div className="input-row">
           <div className="input-group">
             <label>
-              LangChain Tracing V2 (LANGCHAIN_TRACING_V2)
+              LangChain Tracing v2
               <span className="help-icon" data-tooltip="LANGCHAIN_TRACING_V2">?</span>
             </label>
-            <select
-              name="LANGCHAIN_TRACING_V2"
-              value={langchainTracingV2}
-              onChange={(e) => { setLangchainTracingV2(e.target.value); updateConfig('LANGCHAIN_TRACING_V2', e.target.value); }}
-            >
+            <select value={langchainTracingV2} onChange={(e) => setLangchainTracingV2(e.target.value)}>
               <option value="0">Off</option>
               <option value="1">On</option>
             </select>
           </div>
+        </div>
+
+        <div className="input-row">
           <div className="input-group">
             <label>
-              LangSmith Endpoint (LANGCHAIN_ENDPOINT)
+              LangSmith Endpoint
               <span className="help-icon" data-tooltip="LANGCHAIN_ENDPOINT">?</span>
             </label>
             <input
               type="text"
-              name="LANGCHAIN_ENDPOINT"
               placeholder="https://api.smith.langchain.com"
               value={langchainEndpoint}
               onChange={(e) => setLangchainEndpoint(e.target.value)}
-              onBlur={() => updateConfig('LANGCHAIN_ENDPOINT', langchainEndpoint)}
             />
           </div>
-        </div>
-
-        <div className="input-row">
           <div className="input-group">
             <label>
-              LangSmith API Key (LANGCHAIN_API_KEY)
+              LangSmith API Key
               <span className="help-icon" data-tooltip="LANGCHAIN_API_KEY">?</span>
             </label>
-            <input
-              type="password"
-              name="LANGCHAIN_API_KEY"
-              placeholder="sk-..."
-              value={langchainApiKey}
-              onChange={(e) => setLangchainApiKey(e.target.value)}
-              onBlur={() => { if (langchainApiKey) updateConfig('LANGCHAIN_API_KEY', langchainApiKey); }}
-            />
-          </div>
-          <div className="input-group">
-            <label>
-              LangSmith API Key (alias) (LANGSMITH_API_KEY)
-              <span className="help-icon" data-tooltip="LANGSMITH_API_KEY">?</span>
-            </label>
-            <input
-              type="password"
-              name="LANGSMITH_API_KEY"
-              placeholder="ls_..."
-              value={langsmithApiKey}
-              onChange={(e) => setLangsmithApiKey(e.target.value)}
-              onBlur={() => { if (langsmithApiKey) updateConfig('LANGSMITH_API_KEY', langsmithApiKey); }}
-            />
+            <ApiKeyStatus keyName="LANGCHAIN_API_KEY" label="LangChain API Key" />
           </div>
         </div>
 
         <div className="input-row">
           <div className="input-group">
             <label>
-              LangSmith Project (LANGCHAIN_PROJECT)
+              LangSmith Project
               <span className="help-icon" data-tooltip="LANGCHAIN_PROJECT">?</span>
             </label>
             <input
               type="text"
-              name="LANGCHAIN_PROJECT"
               placeholder="agro"
               value={langchainProject}
               onChange={(e) => setLangchainProject(e.target.value)}
-              onBlur={() => updateConfig('LANGCHAIN_PROJECT', langchainProject)}
             />
+          </div>
+          <div className="input-group">
+            <label>
+              LangSmith User Key
+              <span className="help-icon" data-tooltip="LANGSMITH_API_KEY">?</span>
+            </label>
+            <ApiKeyStatus keyName="LANGSMITH_API_KEY" label="LangSmith API Key" />
           </div>
         </div>
 
-        {/* LangTrace Settings */}
         <div className="input-row">
           <div className="input-group">
             <label>
-              LangTrace API Host (LANGTRACE_API_HOST)
+              LangTrace API Host
               <span className="help-icon" data-tooltip="LANGTRACE_API_HOST">?</span>
             </label>
             <input
               type="text"
-              name="LANGTRACE_API_HOST"
-              placeholder="https://app.langtrace.ai/project/.../traces"
+              placeholder="https://api.langtrace.dev"
               value={langtraceApiHost}
               onChange={(e) => setLangtraceApiHost(e.target.value)}
-              onBlur={() => updateConfig('LANGTRACE_API_HOST', langtraceApiHost)}
             />
           </div>
           <div className="input-group">
             <label>
-              LangTrace Project ID (LANGTRACE_PROJECT_ID)
+              LangTrace Project ID
               <span className="help-icon" data-tooltip="LANGTRACE_PROJECT_ID">?</span>
             </label>
             <input
               type="text"
-              name="LANGTRACE_PROJECT_ID"
-              placeholder="cmg..."
               value={langtraceProjectId}
               onChange={(e) => setLangtraceProjectId(e.target.value)}
-              onBlur={() => updateConfig('LANGTRACE_PROJECT_ID', langtraceProjectId)}
             />
           </div>
         </div>
 
         <div className="input-row">
-          <div className="input-group full-width">
+          <div className="input-group">
             <label>
-              LangTrace API Key (LANGTRACE_API_KEY)
+              LangTrace API Key
               <span className="help-icon" data-tooltip="LANGTRACE_API_KEY">?</span>
             </label>
-            <input
-              type="password"
-              name="LANGTRACE_API_KEY"
-              placeholder="..."
-              value={langtraceApiKey}
-              onChange={(e) => setLangtraceApiKey(e.target.value)}
-              onBlur={() => { if (langtraceApiKey) updateConfig('LANGTRACE_API_KEY', langtraceApiKey); }}
-            />
+            <ApiKeyStatus keyName="LANGTRACE_API_KEY" label="LangTrace API Key" />
           </div>
+          <div className="input-group" />
         </div>
-
-        <div id="trace-output" className="result-display" style={{ minHeight: '120px', whiteSpace: 'pre-wrap' }}></div>
-      </div>
+      </CollapsibleSection>
     </>
   );
+}
+
+function snapNumber(value: string, fallback: number) {
+  if (value === '') return fallback;
+  const next = Number(value);
+  return Number.isFinite(next) ? next : fallback;
+}
+
+function formatTracePayload(payload: TracePayload, vectorBackend: string): string {
+  if (!payload?.trace) {
+    return 'No traces yet. Enable LangChain tracing and run a query.';
+  }
+  const events = Array.isArray(payload.trace.events) ? payload.trace.events : [];
+  const parts: string[] = [];
+
+  const findEvent = (kind: string) => events.find((ev) => ev.kind === kind);
+  const decide = findEvent('router.decide');
+  const rerank = findEvent('reranker.rank');
+  const gate = findEvent('gating.outcome');
+
+  const header = [
+    `Policy: ${decide?.data?.policy ?? '—'}`,
+    `Intent: ${decide?.data?.intent ?? '—'}`,
+    `Final K: ${rerank?.data?.output_topK ?? '—'}`,
+    `Vector: ${vectorBackend}`,
+  ];
+
+  parts.push(header.join('  •  '));
+  parts.push('');
+
+  const retrieval = findEvent('retriever.retrieve');
+  if (retrieval && Array.isArray(retrieval.data?.candidates)) {
+    const rows = retrieval.data.candidates.slice(0, 10).map((candidate: any) => [
+      (candidate.path || '').split('/').slice(-2).join('/'),
+      candidate.bm25_rank ?? '',
+      candidate.dense_rank ?? '',
+    ]);
+    parts.push('Pre-rerank candidates (top 10):');
+    parts.push(formatTraceTable(rows, ['path', 'bm25', 'dense']));
+    parts.push('');
+  }
+
+  if (rerank && Array.isArray(rerank.data?.scores)) {
+    const rows = rerank.data.scores.slice(0, 10).map((score: any) => [
+      (score.path || '').split('/').slice(-2).join('/'),
+      score.score?.toFixed?.(3) ?? score.score ?? '',
+    ]);
+    parts.push('Rerank top-10:');
+    parts.push(formatTraceTable(rows, ['path', 'score']));
+    parts.push('');
+  }
+
+  if (gate) {
+    parts.push(`Gate: top1>=${gate.data?.top1_thresh} avg5>=${gate.data?.avg5_thresh} → ${gate.data?.outcome}`);
+    parts.push('');
+  }
+
+  const recentEvents = events.slice(-10);
+  if (recentEvents.length) {
+    parts.push('Events:');
+    recentEvents.forEach((event) => {
+      const when = new Date(event.ts ?? Date.now()).toLocaleTimeString();
+      const name = (event.kind ?? '').padEnd(18);
+      parts.push(`  ${when}  ${name}  ${event.msg ?? ''}`);
+    });
+  }
+
+  return parts.join('\n');
+}
+
+function formatTraceTable(rows: Array<Array<string | number>>, headers: string[]): string {
+  const all = [headers, ...rows];
+  const widths = headers.map((_, col) => Math.max(...all.map((row) => String(row[col] ?? '').length)));
+  const formatLine = (row: Array<string | number>) =>
+    row
+      .map((cell, idx) => String(cell ?? '').padEnd(widths[idx]))
+      .join('  ')
+      .trimEnd();
+
+  return ['```', formatLine(headers), formatLine(widths.map((w) => '-'.repeat(w))), ...rows.map(formatLine), '```']
+    .filter(Boolean)
+    .join('\n');
 }

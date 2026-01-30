@@ -75,7 +75,7 @@ Lines 3001-4500 contain **7 major RAG subtabs** with approximately **85 form con
 - COLLECTION_NAME (line 3960): text
 - CHUNK_SIZE (line 3968): number
 - CHUNK_OVERLAP (line 3972): number
-- INDEX_MAX_WORKERS (line 3976): number
+- INDEXING_WORKERS (line 4733): number
 
 **Backend Mapping:** ChunkingConfig (2/8), IndexingConfig (1/9), EmbeddingConfig (1/10)
 

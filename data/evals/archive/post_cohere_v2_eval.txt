@@ -1,0 +1,70 @@
+Config registry accessed before load(), loading now
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [rerank] Failed (cohere): 404 Client Error: Not Found for url: https://api.cohere.com/v2/rerank, returning unranked
+[1/50] repo=agro q=How does RRF (Reciprocal Rank Fusion) combine BM25 and vector results?
+  top1=['web/src/components/RAG/ExternalRerankersSubtab.tsx']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [rerank] Failed (cohere): 404 Client Error: Not Found for url: https://api.cohere.com/v2/rerank, returning unranked
+[2/50] repo=agro q=Where is the tokenizer vocab loaded for BM25 queries?
+  top1=['web/src/components/RAG/_RetrievalSubtab_First50_TSX.tsx']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [rerank] Failed (cohere): 404 Client Error: Not Found for url: https://api.cohere.com/v2/rerank, returning unranked
+[3/50] repo=agro q=How are chunk IDs mapped to BM25 index positions?
+  top1=['indexer/index_repo_v2.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [rerank] Failed (cohere): 404 Client Error: Not Found for url: https://api.cohere.com/v2/rerank, returning unranked
+[4/50] repo=agro q=Where does query expansion happen in the retrieval pipeline?
+  top1=['retrieval/hybrid_search.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [rerank] Failed (cohere): 404 Client Error: Not Found for url: https://api.cohere.com/v2/rerank, returning unranked
+[5/50] repo=agro q=How is the BM25 index saved and what files does it create?
+  top1=['indexer/index_repo.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [rerank] Failed (cohere): 404 Client Error: Not Found for url: https://api.cohere.com/v2/rerank, returning unranked
+[6/50] repo=agro q=Where are code language detection functions implemented?
+  top1=['retrieval/ast_chunker.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [rerank] Failed (cohere): 404 Client Error: Not Found for url: https://api.cohere.com/v2/rerank, returning unranked
+[7/50] repo=agro q=How does the system handle tree-sitter parsing errors?
+  top1=['retrieval/ast_chunker.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [rerank] Failed (cohere): 404 Client Error: Not Found for url: https://api.cohere.com/v2/rerank, returning unranked
+[8/50] repo=agro q=Where is the Redis checkpoint system configured for LangGraph?
+  top1=['server/langgraph_app.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [rerank] Failed (cohere): 404 Client Error: Not Found for url: https://api.cohere.com/v2/rerank, returning unranked
+[9/50] repo=agro q=How does multi-query retrieval generate query variants?
+  top1=['web/src/components/RAG/_RetrievalSubtab_First50_TSX.tsx']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [rerank] Failed (cohere): 404 Client Error: Not Found for url: https://api.cohere.com/v2/rerank, returning unranked
+[10/50] repo=agro q=Where are path bonuses calculated for scoring?
+  top1=['web/src/components/RAG/RetrievalSubtab.tsx']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [rerank] Failed (cohere): 404 Client Error: Not Found for url: https://api.cohere.com/v2/rerank, returning unranked
+[11/50] repo=agro q=How does layer bonus scoring work for different code layers?
+  top1=['web/src/components/RAG/RetrievalSubtab.tsx']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [rerank] Failed (cohere): 404 Client Error: Not Found for url: https://api.cohere.com/v2/rerank, returning unranked
+[12/50] repo=agro q=Where is the filename boost multiplier applied?
+  top1=['web/src/components/RAG/RetrievalSubtab.tsx']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [rerank] Failed (cohere): 404 Client Error: Not Found for url: https://api.cohere.com/v2/rerank, returning unranked
+[13/50] repo=agro q=How are vendor/third-party code penalties calculated?
+  top1=['web/src/components/RAG/RetrievalSubtab.tsx']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [rerank] Failed (cohere): 404 Client Error: Not Found for url: https://api.cohere.com/v2/rerank, returning unranked
+[14/50] repo=agro q=Where is streaming eval output implemented with SSE?
+  top1=['web/src/components/RAG/EvaluateSubtab.tsx']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [rerank] Failed (cohere): 404 Client Error: Not Found for url: https://api.cohere.com/v2/rerank, returning unranked
+[15/50] repo=agro q=How does the eval compare current results to baseline?
+  top1=['web/src/modules/eval_history.js']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [rerank] Failed (cohere): 404 Client Error: Not Found for url: https://api.cohere.com/v2/rerank, returning unranked
+[16/50] repo=agro q=Where are eval results stored and how are they timestamped?
+  top1=['web/src/modules/eval_history.js']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [rerank] Failed (cohere): 404 Client Error: Not Found for url: https://api.cohere.com/v2/rerank, returning unranked
+[17/50] repo=agro q=How does the frequency limiter middleware detect anomalies?
+  top1=['server/frequency_limiter.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     

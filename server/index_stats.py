@@ -1,8 +1,9 @@
-import os
 import json
+import subprocess
 from pathlib import Path
 from typing import Any, Dict, List
 from common.paths import repo_root, data_dir
+from server.services.config_registry import get_config_registry
 
 
 def _read_json(path: Path, default: Any) -> Any:
@@ -93,6 +94,46 @@ def _get_index_embedding_metadata(repo_name: str) -> Dict[str, Any] | None:
     return best_meta
 
 
+def _get_redis_memory_usage() -> int:
+    """Get actual Redis memory usage in bytes by querying the Redis container.
+    
+    Returns 0 if Redis is not available.
+    """
+    try:
+        # Find Redis container
+        find_result = subprocess.run(
+            ["docker", "ps", "--format", "{{.Names}}", "--filter", "name=redis"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if find_result.returncode != 0 or not find_result.stdout.strip():
+            return 0  # Redis not running
+
+        container_name = find_result.stdout.strip().split("\n")[0]
+        
+        # Get memory info from Redis
+        info_result = subprocess.run(
+            ["docker", "exec", container_name, "redis-cli", "INFO", "memory"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if info_result.returncode != 0:
+            return 0
+
+        # Parse used_memory from the output
+        for line in info_result.stdout.split("\n"):
+            if line.startswith("used_memory:"):
+                try:
+                    return int(line.split(":")[1].strip())
+                except (ValueError, IndexError):
+                    pass
+        return 0
+    except Exception:
+        return 0
+
+
 def get_index_stats() -> Dict[str, Any]:
     """Gather comprehensive indexing statistics with storage calculator integration.
 
@@ -102,9 +143,11 @@ def get_index_stats() -> Dict[str, Any]:
     import subprocess
     from datetime import datetime
 
-    # Get embedding configuration
-    embedding_type = os.getenv("EMBEDDING_TYPE", "openai").lower()
-    embedding_dim = int(os.getenv("EMBEDDING_DIM", "3072" if embedding_type == "openai" else "512"))
+    # Get embedding configuration from config registry
+    registry = get_config_registry()
+    embedding_type = registry.get_str("EMBEDDING_TYPE", "openai").lower()
+    default_dim = 3072 if embedding_type == "openai" else 512
+    embedding_dim = registry.get_int("EMBEDDING_DIM", default_dim)
 
     stats: Dict[str, Any] = {
         "timestamp": datetime.now().isoformat(),  # may be replaced below
@@ -124,7 +167,7 @@ def get_index_stats() -> Dict[str, Any]:
             "embeddings_raw": 0,
             "qdrant_overhead": 0,
             "reranker_cache": 0,
-            "redis": 419430400,  # 400 MiB default
+            "redis": _get_redis_memory_usage(),  # actual Redis memory
         },
         "costs": {
             "total_tokens": 0,
@@ -134,9 +177,9 @@ def get_index_stats() -> Dict[str, Any]:
 
     # Current repo + branch
     try:
-        repo = os.getenv("REPO", "agro")
-        # Try env var first (for Docker containers where git isn't available)
-        branch = os.getenv("GIT_BRANCH", "").strip()
+        repo = registry.get_str("REPO", "agro")
+        # Try config first, then env var (for Docker containers where git isn't available)
+        branch = registry.get_str("GIT_BRANCH", "").strip()
         if not branch:
             # Fallback to git command (for local development)
             branch_result = subprocess.run(["git", "branch", "--show-current"], capture_output=True, text=True, cwd=str(repo_root()))
@@ -144,8 +187,8 @@ def get_index_stats() -> Dict[str, Any]:
         stats["current_repo"] = repo
         stats["current_branch"] = branch if branch else "unknown"
     except Exception:
-        stats["current_repo"] = os.getenv("REPO", "agro")
-        stats["current_branch"] = os.getenv("GIT_BRANCH", "unknown")
+        stats["current_repo"] = registry.get_str("REPO", "agro")
+        stats["current_branch"] = registry.get_str("GIT_BRANCH", "unknown")
 
     total_chunks = 0
 
@@ -203,12 +246,15 @@ def get_index_stats() -> Dict[str, Any]:
                 stats["total_storage"] += card_size
                 stats["storage_breakdown"]["cards"] += card_size
 
-            stats["repos"].append(repo_stats)
+            # Only append repos that have actual index data (chunks file or bm25 index)
+            # This excludes non-index directories like out/editor (VS Code server data)
+            if chunks_file.exists() or bm25_dir.exists():
+                stats["repos"].append(repo_stats)
 
-            # Try to resolve a last-index timestamp for this repo under this profile
-            ts = _last_index_timestamp_for_repo(base_path, repo_name)
-            if ts:
-                discovered_ts.append(ts)
+                # Try to resolve a last-index timestamp for this repo under this profile
+                ts = _last_index_timestamp_for_repo(base_path, repo_name)
+                if ts:
+                    discovered_ts.append(ts)
 
     # Embedding storage + rough costs when we have chunks
     if total_chunks > 0:
@@ -229,12 +275,18 @@ def get_index_stats() -> Dict[str, Any]:
             stats["costs"]["total_tokens"] = total_tokens
             stats["costs"]["embedding_cost"] = round(embedding_cost, 4)
 
-    # Try to get keywords count
-    keywords_file = data_dir() / f"keywords_{stats.get('current_repo','agro')}.json"
-    if keywords_file.exists():
+    # Try to get keywords count from repos.json
+    current_repo = stats.get('current_repo', 'agro')
+    repos_json_path = repo_root() / "repos.json"
+    if repos_json_path.exists():
         try:
-            kw_data = json.loads(keywords_file.read_text())
-            stats["keywords_count"] = len(kw_data) if isinstance(kw_data, list) else len(kw_data.get("keywords", []))
+            repos_data = json.loads(repos_json_path.read_text())
+            repos_list = repos_data.get("repos", [])
+            for repo_entry in repos_list:
+                if repo_entry.get("name") == current_repo:
+                    keywords = repo_entry.get("keywords", [])
+                    stats["keywords_count"] = len(keywords) if isinstance(keywords, list) else 0
+                    break
         except Exception:
             pass
 

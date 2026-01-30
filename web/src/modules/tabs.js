@@ -18,6 +18,20 @@
     /**
      * Lazy load storage calculator when analytics tab is opened
      */
+    /**
+     * ---agentspec
+     * what: |
+     *   Loads storage calculator widget into DOM container. Calls getStorageCalculatorHTML() to fetch template, injects into #storage-calculator-container element.
+     *
+     * why: |
+     *   Lazy-loads UI component only when needed; guards against duplicate initialization with storageCalculatorLoaded flag.
+     *
+     * guardrails:
+     *   - DO NOT proceed if container missing; silently return to avoid errors
+     *   - NOTE: Depends on getStorageCalculatorHTML() function existing; no fallback defined
+     *   - ASK USER: Add error handling for missing function or container
+     * ---/agentspec
+     */
     function loadStorageCalculator() {
         if (storageCalculatorLoaded) return;
         const container = document.getElementById('storage-calculator-container');
@@ -76,6 +90,20 @@
     /**
      * Switch to a main tab and its default subtabs
      * @param {string} tabName - Main tab identifier (e.g., 'config', 'data', 'analytics')
+     */
+    /**
+     * ---agentspec
+     * what: |
+     *   Switches active tab by name. Resolves aliases via TAB_ALIASES, routes via Navigation API if available, falls back to direct ID lookup.
+     *
+     * why: |
+     *   Centralizes tab routing logic with graceful degradation for older browsers.
+     *
+     * guardrails:
+     *   - DO NOT assume Navigation API exists; check window.Navigation first
+     *   - NOTE: TAB_ALIASES must be defined globally before switchTab() call
+     *   - DO NOT proceed if target div #tab-{newTabId} missing; add validation
+     * ---/agentspec
      */
     function switchTab(tabName) {
         console.log(`[tabs.js] switchTab called with: ${tabName}`);
@@ -148,6 +176,19 @@
     /**
      * Bind click handlers to main tab buttons
      */
+    /**
+     * ---agentspec
+     * what: |
+     *   Binds click handlers to tab-bar buttons. On click, extracts data-tab attribute and calls switchTab(). Optionally references trace button.
+     *
+     * why: |
+     *   Centralizes tab navigation setup; decouples button markup from event logic.
+     *
+     * guardrails:
+     *   - DO NOT assume switchTab() exists; will throw if undefined
+     *   - NOTE: traceBtn reference unused; remove if not needed
+     * ---/agentspec
+     */
     function bindTabs() {
         $$('.tab-bar button').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -167,6 +208,20 @@
 
     /**
      * Bind click handlers to RAG subtab buttons
+     */
+    /**
+     * ---agentspec
+     * what: |
+     *   Binds click handlers to RAG subtab buttons. On click, retrieves data-subtab attribute and triggers subtab switch (implementation incomplete).
+     *
+     * why: |
+     *   Centralizes event delegation for subtab navigation in RAG UI.
+     *
+     * guardrails:
+     *   - NOTE: Handler retrieves subtabId but does not show/hide content; implementation incomplete
+     *   - ASK USER: What should happen after subtabId is retrieved? (show panel, fetch data, etc.)
+     *   - DO NOT assume querySelectorAll finds all buttons; verify selector matches intended buttons
+     * ---/agentspec
      */
     function bindRagSubtabs() {
         const ragSubtabsBar = document.getElementById('rag-subtabs');
@@ -198,6 +253,20 @@
 
     /**
      * Bind click handlers to subtab buttons
+     */
+    /**
+     * ---agentspec
+     * what: |
+     *   Binds click handlers to subtab buttons with data-parent attribute. On click, retrieves subtab ID and parent context; stops editor health check when leaving editor subtab.
+     *
+     * why: |
+     *   Centralizes subtab navigation logic; excludes RAG subtabs (handled separately) to avoid duplicate binding.
+     *
+     * guardrails:
+     *   - DO NOT bind RAG subtabs here; bindRagSubtabs() handles those separately
+     *   - NOTE: Editor health check cleanup required on subtab exit
+     *   - ASK USER: Is editor health check stop logic complete? (code snippet truncated)
+     * ---/agentspec
      */
     function bindSubtabs() {
         // Only bind generic subtabs that declare a parent context.
@@ -255,6 +324,19 @@
     };
 
     // Auto-initialize when DOM is ready
+    /**
+     * ---agentspec
+     * what: |
+     *   Initializes tab UI bindings on page load. Calls bindTabs(), bindSubtabs(), bindRagSubtabs(). Logs readiness.
+     *
+     * why: |
+     *   Defers initialization until DOM is ready to ensure elements exist.
+     *
+     * guardrails:
+     *   - DO NOT call initTabs() before DOMContentLoaded; binding will fail on missing elements
+     *   - NOTE: Assumes bindTabs, bindSubtabs, bindRagSubtabs are defined globally
+     * ---/agentspec
+     */
     function initTabs() {
         bindTabs();
         bindSubtabs();

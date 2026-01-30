@@ -298,3 +298,122 @@
 }
 
 .storage-calc-footer a { color: var(--accent); text-decoration: none; }
+
+/* ========== RESPONSIVE BREAKPOINTS ========== */
+
+/* Large tablets and small desktops */
+@media (max-width: 1200px) {
+    .calculators-grid {
+        gap: 24px;
+    }
+    .calculator {
+        padding: 20px;
+    }
+}
+
+/* Tablets - stack calculators vertically */
+@media (max-width: 1024px) {
+    .calculators-grid {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+    .storage-calc-header h1 {
+        font-size: 26px;
+    }
+}
+
+/* Small tablets and large phones */
+@media (max-width: 768px) {
+    .storage-calc-wrapper {
+        padding: 12px;
+    }
+    .storage-calc-header {
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+    }
+    .storage-calc-header h1 {
+        font-size: 22px;
+    }
+    .storage-calc-header .subtitle {
+        font-size: 11px;
+        letter-spacing: 1px;
+    }
+    .storage-calc-header .info-box {
+        padding: 12px;
+    }
+    .calculator {
+        padding: 16px;
+    }
+    .calculator-title {
+        font-size: 16px;
+        flex-wrap: wrap;
+    }
+    .calculator .input-row {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    .calculator .input-group.full-width {
+        grid-column: span 1;
+    }
+    .result-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    .plan-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    .total-row .result-value {
+        font-size: 16px;
+    }
+}
+
+/* Phones */
+@media (max-width: 480px) {
+    .storage-calc-wrapper {
+        padding: 8px;
+    }
+    .storage-calc-header h1 {
+        font-size: 18px;
+    }
+    .storage-calc-header .subtitle {
+        font-size: 10px;
+    }
+    .calculator {
+        padding: 12px;
+        border-radius: 6px;
+    }
+    .calculator-title {
+        font-size: 14px;
+        gap: 8px;
+    }
+    .calculator-badge {
+        font-size: 9px;
+        padding: 2px 6px;
+    }
+    .calculator label {
+        font-size: 10px;
+    }
+    .calculator .result-label {
+        font-size: 11px;
+    }
+    .calculator .result-value {
+        font-size: 13px;
+    }
+    .unit-input {
+        flex-direction: column;
+        gap: 6px;
+    }
+    .unit-input select {
+        width: 100%;
+    }
+    .plan-card {
+        padding: 10px;
+    }
+    .plan-name {
+        font-size: 13px;
+    }
+    .plan-details {
+        font-size: 10px;
+    }
+}

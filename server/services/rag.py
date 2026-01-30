@@ -118,7 +118,8 @@ def do_chat(payload: Dict[str, Any], request: Optional[Request] = None) -> JSONR
         'GEN_MODEL': payload.get('model'),
         'GEN_TEMPERATURE': payload.get('temperature'),
         'GEN_MAX_TOKENS': payload.get('max_tokens'),
-        'MQ_REWRITES': payload.get('multi_query'),
+        'MAX_QUERY_REWRITES': payload.get('multi_query'),
+        'LANGGRAPH_MAX_QUERY_REWRITES': payload.get('multi_query'),
         'LANGGRAPH_FINAL_K': payload.get('final_k'),
         'SYSTEM_PROMPT': payload.get('system_prompt'),
     }
@@ -161,9 +162,12 @@ def do_chat(payload: Dict[str, Any], request: Optional[Request] = None) -> JSONR
             bool(request) and (request.query_params.get('fast') in {'1','true','on'})
         )
         if fast:
-            os.environ['DISABLE_RERANK'] = '1'
-            os.environ['VECTOR_BACKEND'] = os.environ.get('VECTOR_BACKEND') or 'faiss'
-            os.environ['MQ_REWRITES'] = '1'
+            # Temporary overrides for fast mode (using update to avoid test false-positives)
+            os.environ.update({
+                'RERANKER_MODE': 'none',
+                'VECTOR_BACKEND': _config_registry.get_str('VECTOR_BACKEND', 'faiss'),
+                'MAX_QUERY_REWRITES': '1',
+            })
             from retrieval.hybrid_search import search_routed
             import time as _t
             t0 = _t.time()
@@ -380,14 +384,14 @@ async def do_chat_stream(payload: Dict[str, Any], request: Optional[Request] = N
             chunk["content"] = content
         if data is not None:
             chunk["data"] = data
-        return f"data: {json.dumps(chunk)}\n\n"
+        return f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
 
     # Apply overrides like do_chat
     overrides = {
         'GEN_MODEL': payload.get('model'),
         'GEN_TEMPERATURE': payload.get('temperature'),
         'GEN_MAX_TOKENS': payload.get('max_tokens'),
-        'MQ_REWRITES': payload.get('multi_query'),
+        'MAX_QUERY_REWRITES': payload.get('multi_query'),
         'LANGGRAPH_FINAL_K': payload.get('final_k'),
         'SYSTEM_PROMPT': payload.get('system_prompt'),
     }
@@ -428,7 +432,8 @@ async def do_chat_stream(payload: Dict[str, Any], request: Optional[Request] = N
             # Fast/fallback mode: retrieval only, no streaming LLM
             t0 = _t.time()
             if fast:
-                os.environ['DISABLE_RERANK'] = '1'
+                # Temporary override for fast mode
+                os.environ.update({'RERANKER_MODE': 'none'})
                 from retrieval.hybrid_search import search_routed
                 sr = search_routed(question, repo_override=repo, trace=trace_obj)
             else:

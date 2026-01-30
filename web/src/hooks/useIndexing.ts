@@ -15,6 +15,28 @@ export interface IndexStatus {
   error?: string;
 }
 
+/**
+ * ---agentspec
+ * what: |
+ *   React hook that manages code repository indexing state and progress tracking.
+ *   Takes no parameters; uses useAPI() hook to access the API client.
+ *   Returns an object containing: isIndexing (boolean), progress (0-100 number), currentRepo (string), statusMessage (string), and indexStatus (Record mapping repo names to IndexStatus objects).
+ *   Maintains local state for indexing operations and provides real-time progress updates during repository scanning/indexing.
+ *   Handles multiple repositories with individual status tracking; progress represents overall indexing completion percentage.
+ *
+ * why: |
+ *   Centralizes indexing state management to avoid prop-drilling through component tree.
+ *   Separates indexing logic from UI components, allowing multiple components to subscribe to the same indexing state.
+ *   Tracks per-repository status independently while maintaining aggregate progress, enabling granular error handling and user feedback.
+ *
+ * guardrails:
+ *   - DO NOT call this hook outside of React functional components; it depends on React hooks context
+ *   - ALWAYS initialize indexStatus as empty object to prevent undefined errors when accessing repo entries
+ *   - NOTE: This hook does not trigger indexing itself; it only manages state—caller must invoke API methods to start indexing
+ *   - NOTE: Progress state is not automatically reset; caller must explicitly call setProgress(0) when starting new indexing session
+ *   - ASK USER: Confirm whether indexStatus should persist across component remounts or reset on unmount before adding useEffect cleanup logic
+ * ---/agentspec
+ */
 export function useIndexing() {
   const { api } = useAPI();
   const [isIndexing, setIsIndexing] = useState(false);

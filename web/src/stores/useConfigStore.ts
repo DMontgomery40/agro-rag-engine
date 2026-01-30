@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { configApi } from '@/api';
-import type { AppConfig, EnvConfig, ConfigUpdate, KeywordCatalog, Repository } from '@/types';
+import { configApi } from '@/api/config';
+import type { AppConfig, EnvConfig, ConfigUpdate, KeywordCatalog, Repository } from '@web/types';
 
 interface ConfigStore {
   config: AppConfig | null;
@@ -9,6 +9,8 @@ interface ConfigStore {
   saving: boolean;
   keywordsCatalog: KeywordCatalog | null;
   keywordsLoading: boolean;
+  evalKeyCategories: Record<string, string> | null;
+  evalKeyCategoriesLoading: boolean;
 
   // Actions
   loadConfig: () => Promise<void>;
@@ -23,6 +25,9 @@ interface ConfigStore {
   addKeyword: (keyword: string, category?: string) => Promise<void>;
   deleteKeyword: (keyword: string) => Promise<void>;
 
+  // Eval key categories (for eval config display)
+  loadEvalKeyCategories: () => Promise<void>;
+
   reset: () => void;
 }
 
@@ -33,15 +38,20 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   saving: false,
   keywordsCatalog: null,
   keywordsLoading: false,
+  evalKeyCategories: null,
+  evalKeyCategoriesLoading: false,
 
   loadConfig: async () => {
+    console.log('[useConfigStore] loadConfig called');
     set({ loading: true, error: null });
     try {
-      // Reload env first
-      await configApi.reloadEnv().catch(() => {});
+      // Reload from agro_config.json first
+      await configApi.reloadConfig().catch(() => {});
       const config = await configApi.load();
+      console.log('[useConfigStore] loadConfig success, env keys:', Object.keys(config?.env || {}));
       set({ config, loading: false, error: null });
     } catch (error) {
+      console.error('[useConfigStore] loadConfig error:', error);
       set({
         loading: false,
         error: error instanceof Error ? error.message : 'Failed to load configuration'
@@ -80,20 +90,25 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   },
 
   reloadEnv: async () => {
+    // DEPRECATED: Use loadConfig() instead. This exists for backwards compatibility.
     try {
-      await configApi.reloadEnv();
+      await configApi.reloadConfig();
       await get().loadConfig();
     } catch (error) {
       set({
-        error: error instanceof Error ? error.message : 'Failed to reload environment'
+        error: error instanceof Error ? error.message : 'Failed to reload configuration'
       });
     }
   },
 
   updateEnv: (key: string, value: string | number | boolean) => {
     const { config } = get();
-    if (!config) return;
+    if (!config) {
+      console.warn('[useConfigStore] updateEnv called but config is null, key:', key);
+      return;
+    }
 
+    console.log('[useConfigStore] updateEnv:', key, '=', value);
     set({
       config: {
         ...config,
@@ -218,6 +233,35 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     }
   },
 
+  loadEvalKeyCategories: async () => {
+    // Skip if already loaded
+    if (get().evalKeyCategories) return;
+
+    set({ evalKeyCategoriesLoading: true });
+    try {
+      // Determine API base URL (same pattern as updateRepo)
+      let apiBase = '/api';
+      try {
+        const u = new URL(window.location.href);
+        if (u.port === '5173') apiBase = 'http://127.0.0.1:8012/api';
+        else if (u.protocol.startsWith('http')) apiBase = u.origin + '/api';
+      } catch { /* ignore */ }
+
+      const response = await fetch(`${apiBase}/config/eval-key-categories`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch eval key categories: ${response.status}`);
+      }
+      const data = await response.json();
+      set({ evalKeyCategories: data.categories, evalKeyCategoriesLoading: false });
+    } catch (error) {
+      console.error('[useConfigStore] loadEvalKeyCategories error:', error);
+      set({
+        evalKeyCategoriesLoading: false,
+        error: error instanceof Error ? error.message : 'Failed to load eval key categories'
+      });
+    }
+  },
+
   reset: () => set({
     config: null,
     loading: false,
@@ -225,5 +269,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     saving: false,
     keywordsCatalog: null,
     keywordsLoading: false,
+    evalKeyCategories: null,
+    evalKeyCategoriesLoading: false,
   }),
 }));

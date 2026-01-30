@@ -2,7 +2,7 @@
 """Filter noisy keywords from generated keyword files.
 
 Reads discriminative_keywords.json, semantic_keywords.json, and llm_keywords.json
-from repo root and writes filtered versions in place.
+from data/keywords/ and writes filtered versions in place.
 
 Heuristics:
 - Drop generic test/infra/UI terms (e.g., 'test', 'playwright', 'spec', 'health', 'css', 'html', 'style')
@@ -19,7 +19,8 @@ import re
 from pathlib import Path
 from typing import Any, List, Dict
 
-ROOT = Path(os.getcwd())
+ROOT = Path(__file__).resolve().parents[1]
+KEYWORDS_DIR = ROOT / "data" / "keywords"
 
 NOISY_PATTERNS = [
     r"^test(s)?$",
@@ -93,7 +94,8 @@ def save_json(path: Path, data: Any) -> None:
 
 def main() -> None:
     # discriminative_keywords.json
-    disc_p = ROOT / "discriminative_keywords.json"
+    KEYWORDS_DIR.mkdir(parents=True, exist_ok=True)
+    disc_p = KEYWORDS_DIR / "discriminative_keywords.json"
     disc = load_json(disc_p)
     if isinstance(disc, dict):
         key = next(iter(disc.keys()), None)
@@ -102,7 +104,7 @@ def main() -> None:
             save_json(disc_p, disc)
 
     # semantic_keywords.json
-    sem_p = ROOT / "semantic_keywords.json"
+    sem_p = KEYWORDS_DIR / "semantic_keywords.json"
     sem = load_json(sem_p)
     if isinstance(sem, dict):
         key = next(iter(sem.keys()), None)
@@ -111,7 +113,7 @@ def main() -> None:
             save_json(sem_p, sem)
 
     # llm_keywords.json (only sanitize very short/numeric)
-    llm_p = ROOT / "llm_keywords.json"
+    llm_p = KEYWORDS_DIR / "llm_keywords.json"
     llm = load_json(llm_p)
     if isinstance(llm, dict):
         key = next(iter(llm.keys()), None)

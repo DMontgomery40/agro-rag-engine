@@ -3,23 +3,28 @@
 // Main RAG configuration tab with subtab navigation
 // Structure matches /gui/index.html exactly with all subtabs rendered and visibility controlled by className
 
-import { useEffect, useState } from 'react';
+import { useEffect, useCallback } from 'react';
 import { RAGSubtabs } from '@/components/RAG/RAGSubtabs';
 import { DataQualitySubtab } from '@/components/RAG/DataQualitySubtab';
 import { RetrievalSubtab } from '@/components/RAG/RetrievalSubtab';
-import { ExternalRerankersSubtab } from '@/components/RAG/ExternalRerankersSubtab';
+import { RerankerConfigSubtab } from '@/components/RAG/RerankerConfigSubtab';
 import { LearningRankerSubtab } from '@/components/RAG/LearningRankerSubtab';
 import { IndexingSubtab } from '@/components/RAG/IndexingSubtab';
 import { EvaluateSubtab } from '@/components/RAG/EvaluateSubtab';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { useUIStore } from '@/stores/useUIStore';
 
 export default function RAGTab() {
-  const [activeSubtab, setActiveSubtab] = useState('data-quality');
+  const activeSubtab = useUIStore((state) => state.activeSubtab['rag'] || 'data-quality');
+  const setActiveSubtab = useUIStore((state) => state.setActiveSubtab);
+  const handleSubtabChange = useCallback((subtab: string) => {
+    setActiveSubtab('rag', subtab);
+  }, [setActiveSubtab]);
 
   // Bridge legacy modules when subtabs mount
   useEffect(() => {
     const initDataQuality = () => {
       try { (window as any).Config?.loadConfig?.(); } catch {}
-      try { (window as any).initCards?.(); } catch {}
       try { (window as any).initCardsBuilder?.(); } catch {}
       try { (window as any).initKeywords?.(); } catch {}
     };
@@ -31,22 +36,7 @@ export default function RAGTab() {
       // Allow DOM to paint then initialize
       setTimeout(initDataQuality, 0);
     }
-    if (activeSubtab === 'indexing') {
-      const initIndexing = () => {
-        try { (window as any).Config?.loadConfig?.(); } catch {}
-        try { (window as any).Indexing?.initIndexing?.(); } catch {}
-        try { (window as any).initIndexProfiles?.(); } catch {}
-        try { (window as any).SimpleIndex?.loadRepos?.(); } catch {}
-        try {
-          const btn = document.getElementById('simple-index-btn') as HTMLButtonElement | null;
-          if (btn && !btn.dataset.bound) {
-            btn.dataset.bound = '1';
-            btn.addEventListener('click', () => (window as any).SimpleIndex?.runRealIndex?.());
-          }
-        } catch {}
-      };
-      setTimeout(initIndexing, 0);
-    }
+    // IndexingSubtab is fully React - no legacy init needed
     if (activeSubtab === 'learning-ranker') {
       setTimeout(initLearningRanker, 0);
     }
@@ -55,31 +45,43 @@ export default function RAGTab() {
   return (
     <div id="tab-rag" className="tab-content">
       {/* Subtab navigation */}
-      <RAGSubtabs activeSubtab={activeSubtab} onSubtabChange={setActiveSubtab} />
+      <RAGSubtabs activeSubtab={activeSubtab} onSubtabChange={handleSubtabChange} />
 
       {/* All subtabs rendered with visibility controlled by className */}
       <div id="tab-rag-data-quality" className={`rag-subtab-content ${activeSubtab === 'data-quality' ? 'active' : ''}`}>
-        <DataQualitySubtab />
+        <ErrorBoundary context="DataQualitySubtab">
+          <DataQualitySubtab />
+        </ErrorBoundary>
       </div>
 
       <div id="tab-rag-retrieval" className={`rag-subtab-content ${activeSubtab === 'retrieval' ? 'active' : ''}`}>
-        <RetrievalSubtab />
+        <ErrorBoundary context="RetrievalSubtab">
+          <RetrievalSubtab />
+        </ErrorBoundary>
       </div>
 
-      <div id="tab-rag-external-rerankers" className={`rag-subtab-content ${activeSubtab === 'external-rerankers' ? 'active' : ''}`}>
-        <ExternalRerankersSubtab />
+      <div id="tab-rag-reranker-config" className={`rag-subtab-content ${activeSubtab === 'reranker-config' ? 'active' : ''}`}>
+        <ErrorBoundary context="RerankerConfigSubtab">
+          <RerankerConfigSubtab />
+        </ErrorBoundary>
       </div>
 
       <div id="tab-rag-learning-ranker" className={`rag-subtab-content ${activeSubtab === 'learning-ranker' ? 'active' : ''}`}>
-        <LearningRankerSubtab />
+        <ErrorBoundary context="LearningRankerSubtab">
+          <LearningRankerSubtab />
+        </ErrorBoundary>
       </div>
 
       <div id="tab-rag-indexing" className={`rag-subtab-content ${activeSubtab === 'indexing' ? 'active' : ''}`}>
-        <IndexingSubtab />
+        <ErrorBoundary context="IndexingSubtab">
+          <IndexingSubtab />
+        </ErrorBoundary>
       </div>
 
       <div id="tab-rag-evaluate" className={`rag-subtab-content ${activeSubtab === 'evaluate' ? 'active' : ''}`}>
-        <EvaluateSubtab />
+        <ErrorBoundary context="EvaluateSubtab">
+          <EvaluateSubtab />
+        </ErrorBoundary>
       </div>
     </div>
   );

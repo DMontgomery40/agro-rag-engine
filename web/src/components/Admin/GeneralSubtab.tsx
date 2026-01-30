@@ -1,49 +1,40 @@
 import { useState, useEffect } from 'react';
-import { configApi } from '@/api/config';
 import { apiClient, api } from '@/api/client';
-import { useTooltips } from '@/hooks/useTooltips';
-import type { AppConfig, EnvConfig } from '@/types';
+import { TooltipIcon } from '@/components/ui/TooltipIcon';
+import { ApiKeyStatus } from '@/components/ui/ApiKeyStatus';
+import { useConfig, useConfigField } from '@/hooks';
 
 export function GeneralSubtab() {
+  const { loading: configLoading, saveNow } = useConfig();
+
   // Theme & Appearance
-  const [themeMode, setThemeMode] = useState<'auto' | 'dark' | 'light'>('auto');
+  const [themeMode, setThemeMode] = useConfigField<string>('THEME_MODE', 'auto');
 
   // Server Settings
-  const [agroEdition, setAgroEdition] = useState('');
-  const [threadId, setThreadId] = useState('');
-  const [host, setHost] = useState('127.0.0.1');
-  const [port, setPort] = useState(8012);
-  const [openBrowser, setOpenBrowser] = useState(1);
-  const [agroPath, setAgroPath] = useState('');
-  const [netlifyApiKey, setNetlifyApiKey] = useState('');
-  const [netlifyDomains, setNetlifyDomains] = useState('');
-  const [chatStreamingEnabled, setChatStreamingEnabled] = useState(1);
+  const [agroEdition, setAgroEdition] = useConfigField<string>('AGRO_EDITION', '');
+  const [threadId, setThreadId] = useConfigField<string>('THREAD_ID', '');
+  const [host, setHost] = useConfigField<string>('HOST', '127.0.0.1');
+  const [port, setPort] = useConfigField<number>('PORT', 8012);
+  const [openBrowser, setOpenBrowser] = useConfigField<number>('OPEN_BROWSER', 1);
+  const [agroPath, setAgroPath] = useConfigField<string>('AGRO_PATH', '');
+  const [netlifyDomains, setNetlifyDomains] = useConfigField<string>('NETLIFY_DOMAINS', '');
+  const [chatStreamingEnabled, setChatStreamingEnabled] = useConfigField<number>('CHAT_STREAMING_ENABLED', 1);
 
   // Tracing & Observability
-  const [tracingEnabled, setTracingEnabled] = useState(1);
-  const [traceSamplingRate, setTraceSamplingRate] = useState(1.0);
-  const [prometheusPort, setPrometheusPort] = useState(9090);
-  const [metricsEnabled, setMetricsEnabled] = useState(1);
-  const [logLevel, setLogLevel] = useState('INFO');
-  const [alertWebhookTimeout, setAlertWebhookTimeout] = useState(5);
+  const [tracingEnabled, setTracingEnabled] = useConfigField<number>('TRACING_ENABLED', 1);
+  const [traceSamplingRate, setTraceSamplingRate] = useConfigField<number>('TRACE_SAMPLING_RATE', 1.0);
+  const [prometheusPort, setPrometheusPort] = useConfigField<number>('PROMETHEUS_PORT', 9090);
+  const [metricsEnabled, setMetricsEnabled] = useConfigField<number>('METRICS_ENABLED', 1);
+  const [logLevel, setLogLevel] = useConfigField<string>('LOG_LEVEL', 'INFO');
+  const [alertWebhookTimeout, setAlertWebhookTimeout] = useConfigField<number>('ALERT_WEBHOOK_TIMEOUT', 5);
 
   // Editor Settings
-  const [editorEnabled, setEditorEnabled] = useState(false);
-  const [editorEmbedEnabled, setEditorEmbedEnabled] = useState(true);
-  const [editorPort, setEditorPort] = useState(4440);
-  const [editorBind, setEditorBind] = useState('local');
-
-  // MCP Channels
-  const [httpModel, setHttpModel] = useState('');
-  const [mcpModel, setMcpModel] = useState('');
-  const [cliModel, setCliModel] = useState('');
-  const [mcpHttpHost, setMcpHttpHost] = useState('0.0.0.0');
-  const [mcpHttpPort, setMcpHttpPort] = useState(8013);
-  const [mcpHttpPath, setMcpHttpPath] = useState('/mcp');
+  const [editorEnabled, setEditorEnabled] = useConfigField<number>('EDITOR_ENABLED', 1);
+  const [editorEmbedEnabled, setEditorEmbedEnabled] = useConfigField<number>('EDITOR_EMBED_ENABLED', 1);
+  const [editorPort, setEditorPort] = useConfigField<number>('EDITOR_PORT', 4440);
+  const [editorBind, setEditorBind] = useConfigField<string>('EDITOR_BIND', 'local');
 
   // Webhooks
-  const [slackWebhookUrl, setSlackWebhookUrl] = useState('');
-  const [discordWebhookUrl, setDiscordWebhookUrl] = useState('');
   const [webhookEnabled, setWebhookEnabled] = useState(true);
   const [webhookSevCritical, setWebhookSevCritical] = useState(true);
   const [webhookSevWarning, setWebhookSevWarning] = useState(true);
@@ -59,68 +50,17 @@ export function GeneralSubtab() {
   const [mcpRagResults, setMcpRagResults] = useState('');
 
   // Loading states
-  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
-  const { tooltips } = useTooltips();
 
-  // Load initial config
+  // Load webhook config (non-env config) on mount
   useEffect(() => {
-    loadConfig();
     loadWebhookConfig();
   }, []);
 
-  async function loadConfig() {
-    try {
-      setLoading(true);
-      const config: AppConfig = await configApi.load();
-      const env = config.env;
-
-      // Theme
-      setThemeMode((env.THEME_MODE as 'auto' | 'dark' | 'light') || 'auto');
-
-      // Server
-      setAgroEdition(String(env.AGRO_EDITION || ''));
-      setThreadId(String(env.THREAD_ID || ''));
-      setHost(String(env.HOST || '127.0.0.1'));
-      setPort(Number(env.PORT) || 8012);
-      setOpenBrowser(Number(env.OPEN_BROWSER) || 1);
-      setAgroPath(String(env.AGRO_PATH || ''));
-      setNetlifyApiKey(String(env.NETLIFY_API_KEY || ''));
-      setNetlifyDomains(String(env.NETLIFY_DOMAINS || ''));
-      setChatStreamingEnabled(Number(env.CHAT_STREAMING_ENABLED) || 1);
-
-      // Tracing
-      setTracingEnabled(Number(env.TRACING_ENABLED) || 1);
-      setTraceSamplingRate(Number(env.TRACE_SAMPLING_RATE) || 1.0);
-      setPrometheusPort(Number(env.PROMETHEUS_PORT) || 9090);
-      setMetricsEnabled(Number(env.METRICS_ENABLED) || 1);
-      setLogLevel(String(env.LOG_LEVEL || 'INFO'));
-      setAlertWebhookTimeout(Number(env.ALERT_WEBHOOK_TIMEOUT) || 5);
-
-      // Editor
-      setEditorEnabled(env.EDITOR_ENABLED === 1 || env.EDITOR_ENABLED === '1');
-      setEditorEmbedEnabled(env.EDITOR_EMBED_ENABLED !== 0 && env.EDITOR_EMBED_ENABLED !== '0');
-      setEditorPort(Number(env.EDITOR_PORT) || 4440);
-      setEditorBind(String(env.EDITOR_BIND || 'local'));
-
-      // MCP
-      setHttpModel(String(env.GEN_MODEL_HTTP || ''));
-      setMcpModel(String(env.GEN_MODEL_MCP || ''));
-      setCliModel(String(env.GEN_MODEL_CLI || ''));
-      setMcpHttpHost(String(env.MCP_HTTP_HOST || '0.0.0.0'));
-      setMcpHttpPort(Number(env.MCP_HTTP_PORT) || 8013);
-      setMcpHttpPath(String(env.MCP_HTTP_PATH || '/mcp'));
-    } catch (err) {
-      console.error('Failed to load config:', err);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   async function loadWebhookConfig() {
     try {
-      const { data } = await apiClient.get(api('/api/monitoring/webhooks/config'));
+      const { data } = await apiClient.get(api('/monitoring/webhooks/config'));
       if (data) {
         setWebhookEnabled(data.alert_notify_enabled !== false);
         const severities = (data.alert_notify_severities || 'critical,warning').split(',');
@@ -138,7 +78,7 @@ export function GeneralSubtab() {
     try {
       setSaving(true);
       setActionMessage('Saving general settings...');
-      const envUpdate: Partial<EnvConfig> = {
+      const envUpdate = {
         THEME_MODE: themeMode,
         AGRO_EDITION: agroEdition,
         THREAD_ID: threadId,
@@ -146,7 +86,6 @@ export function GeneralSubtab() {
         PORT: port,
         OPEN_BROWSER: openBrowser,
         AGRO_PATH: agroPath,
-        NETLIFY_API_KEY: netlifyApiKey,
         NETLIFY_DOMAINS: netlifyDomains,
         CHAT_STREAMING_ENABLED: chatStreamingEnabled,
         TRACING_ENABLED: tracingEnabled,
@@ -155,19 +94,13 @@ export function GeneralSubtab() {
         METRICS_ENABLED: metricsEnabled,
         LOG_LEVEL: logLevel,
         ALERT_WEBHOOK_TIMEOUT: alertWebhookTimeout,
-        EDITOR_ENABLED: editorEnabled ? 1 : 0,
-        EDITOR_EMBED_ENABLED: editorEmbedEnabled ? 1 : 0,
+        EDITOR_ENABLED: editorEnabled,
+        EDITOR_EMBED_ENABLED: editorEmbedEnabled,
         EDITOR_PORT: editorPort,
         EDITOR_BIND: editorBind,
-        GEN_MODEL_HTTP: httpModel,
-        GEN_MODEL_MCP: mcpModel,
-        GEN_MODEL_CLI: cliModel,
-        MCP_HTTP_HOST: mcpHttpHost,
-        MCP_HTTP_PORT: mcpHttpPort,
-        MCP_HTTP_PATH: mcpHttpPath,
       };
 
-      await configApi.saveConfig({ env: envUpdate });
+      await saveNow(envUpdate);
       setActionMessage('General settings saved successfully!');
     } catch (err) {
       console.error('Failed to save settings:', err);
@@ -186,17 +119,16 @@ export function GeneralSubtab() {
       if (webhookSevWarning) severities.push('warning');
       if (webhookSevInfo) severities.push('info');
 
-      const payload = {
-        slack_webhook_url: slackWebhookUrl,
-        discord_webhook_url: discordWebhookUrl,
+      const payload: Record<string, any> = {
         alert_notify_enabled: webhookEnabled,
-        alert_notify_severities: severities.join(','),
+        alert_notify_severities: (severities.length ? severities : ['critical']).join(','),
         alert_include_resolved: webhookIncludeResolved,
         alert_webhook_timeout_seconds: alertWebhookTimeout,
       };
 
-      await apiClient.post(api('/api/monitoring/webhooks/config'), payload);
+      await apiClient.post(api('/monitoring/webhooks/config'), payload);
       setWebhookSaveStatus('Saved successfully!');
+      await loadWebhookConfig();
       setTimeout(() => setWebhookSaveStatus(''), 3000);
     } catch (err) {
       console.error('Failed to save webhook config:', err);
@@ -213,14 +145,14 @@ export function GeneralSubtab() {
         top_k: String(mcpRagTopK),
         force_local: String(mcpRagForceLocal),
       });
-      const { data } = await apiClient.get(api(`/api/mcp/rag_search?${params}`));
+      const { data } = await apiClient.get(api(`/mcp/rag_search?${params}`));
       setMcpRagResults(JSON.stringify(data, null, 2));
     } catch (err) {
       setMcpRagResults('Error: ' + (err as Error).message);
     }
   }
 
-  if (loading) {
+  if (configLoading) {
     return <div style={{ padding: '20px' }}>Loading configuration...</div>;
   }
 
@@ -262,7 +194,10 @@ export function GeneralSubtab() {
         <h3>Server Settings</h3>
         <div className="input-row">
           <div className="input-group">
-            <label dangerouslySetInnerHTML={{ __html: tooltips.AGRO_EDITION }} />
+            <label>
+              Agro Edition
+              <TooltipIcon name="AGRO_EDITION" />
+            </label>
             <input type="text" value={agroEdition} onChange={(e) => setAgroEdition(e.target.value)} placeholder="oss | pro | enterprise" />
           </div>
           <div className="input-group">
@@ -295,8 +230,7 @@ export function GeneralSubtab() {
         </div>
         <div className="input-row">
           <div className="input-group">
-            <label>Netlify API Key</label>
-            <input type="password" value={netlifyApiKey} onChange={(e) => setNetlifyApiKey(e.target.value)} />
+            <ApiKeyStatus keyName="NETLIFY_API_KEY" label="Netlify API Key" />
           </div>
           <div className="input-group">
             <label>Netlify Domains</label>
@@ -305,7 +239,10 @@ export function GeneralSubtab() {
         </div>
         <div className="input-row">
           <div className="input-group">
-            <label dangerouslySetInnerHTML={{ __html: tooltips.CHAT_STREAMING_ENABLED }} />
+            <label>
+              Chat Streaming
+              <TooltipIcon name="CHAT_STREAMING_ENABLED" />
+            </label>
             <select value={chatStreamingEnabled} onChange={(e) => setChatStreamingEnabled(Number(e.target.value))}>
               <option value="1">Enabled</option>
               <option value="0">Disabled</option>
@@ -320,14 +257,20 @@ export function GeneralSubtab() {
         <p className="small">Configure distributed tracing, metrics collection, and monitoring.</p>
         <div className="input-row">
           <div className="input-group">
-            <label dangerouslySetInnerHTML={{ __html: tooltips.TRACING_ENABLED }} />
+            <label>
+              Tracing Enabled
+              <TooltipIcon name="TRACING_ENABLED" />
+            </label>
             <select value={tracingEnabled} onChange={(e) => setTracingEnabled(Number(e.target.value))}>
               <option value="1">Enabled</option>
               <option value="0">Disabled</option>
             </select>
           </div>
           <div className="input-group">
-            <label dangerouslySetInnerHTML={{ __html: tooltips.TRACE_SAMPLING_RATE }} />
+            <label>
+              Trace Sampling Rate
+              <TooltipIcon name="TRACE_SAMPLING_RATE" />
+            </label>
             <input
               type="number"
               value={traceSamplingRate}
@@ -359,7 +302,10 @@ export function GeneralSubtab() {
         </div>
         <div className="input-row">
           <div className="input-group">
-            <label dangerouslySetInnerHTML={{ __html: tooltips.LOG_LEVEL }} />
+            <label>
+              Log Level
+              <TooltipIcon name="LOG_LEVEL" />
+            </label>
             <select value={logLevel} onChange={(e) => setLogLevel(e.target.value)}>
               <option value="DEBUG">DEBUG</option>
               <option value="INFO">INFO</option>
@@ -388,21 +334,35 @@ export function GeneralSubtab() {
         <div className="input-row">
           <div className="input-group">
             <label className="toggle">
-              <input type="checkbox" checked={editorEnabled} onChange={(e) => setEditorEnabled(e.target.checked)} />
+              <input
+                type="checkbox"
+                checked={editorEnabled === 1}
+                onChange={(e) => setEditorEnabled(e.target.checked ? 1 : 0)}
+              />
               <span className="toggle-track" aria-hidden="true">
                 <span className="toggle-thumb"></span>
               </span>
-              <span className="toggle-label" dangerouslySetInnerHTML={{ __html: tooltips.EDITOR_ENABLED }} />
+              <span className="toggle-label">
+                Enable Editor
+                <TooltipIcon name="EDITOR_ENABLED" />
+              </span>
             </label>
             <p className="small">Start OpenVSCode Server container on up.sh</p>
           </div>
           <div className="input-group">
             <label className="toggle">
-              <input type="checkbox" checked={editorEmbedEnabled} onChange={(e) => setEditorEmbedEnabled(e.target.checked)} />
+              <input
+                type="checkbox"
+                checked={editorEmbedEnabled === 1}
+                onChange={(e) => setEditorEmbedEnabled(e.target.checked ? 1 : 0)}
+              />
               <span className="toggle-track" aria-hidden="true">
                 <span className="toggle-thumb"></span>
               </span>
-              <span className="toggle-label" dangerouslySetInnerHTML={{ __html: tooltips.EDITOR_EMBED_ENABLED }} />
+              <span className="toggle-label">
+                Embed in GUI
+                <TooltipIcon name="EDITOR_EMBED_ENABLED" />
+              </span>
             </label>
             <p className="small">Show the editor inline in the GUI (hides automatically in CI)</p>
           </div>
@@ -424,73 +384,22 @@ export function GeneralSubtab() {
         </div>
       </div>
 
-      {/* MCP & Channels */}
-      <div className="settings-section">
-        <h3>MCP & Channels</h3>
-        <p className="small">
-          Set per-channel inference models. Provider is inferred from the model name; use base URL and keys from Infrastructure or
-          Models for proxies/local engines.
-        </p>
-        <div className="input-row">
-          <div className="input-group">
-            <label>HTTP Responses Model</label>
-            <input type="text" value={httpModel} onChange={(e) => setHttpModel(e.target.value)} placeholder="e.g., gpt-4" />
-          </div>
-          <div className="input-group">
-            <label>MCP stdio Model</label>
-            <input type="text" value={mcpModel} onChange={(e) => setMcpModel(e.target.value)} placeholder="e.g., gpt-4" />
-          </div>
-        </div>
-        <div className="input-row">
-          <div className="input-group">
-            <label>CLI Chat Model</label>
-            <input type="text" value={cliModel} onChange={(e) => setCliModel(e.target.value)} placeholder="e.g., gpt-4" />
-          </div>
-          <div className="input-group">
-            <label>MCP HTTP (host/port/path)</label>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <input type="text" value={mcpHttpHost} onChange={(e) => setMcpHttpHost(e.target.value)} placeholder="0.0.0.0" style={{ width: '40%' }} />
-              <input type="number" value={mcpHttpPort} onChange={(e) => setMcpHttpPort(Number(e.target.value))} placeholder="8013" style={{ width: '30%' }} />
-              <input type="text" value={mcpHttpPath} onChange={(e) => setMcpHttpPath(e.target.value)} placeholder="/mcp" style={{ width: '30%' }} />
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Webhooks */}
       <div className="settings-section" style={{ borderLeft: '3px solid var(--link)' }}>
         <h3>
           <span style={{ color: 'var(--link)' }}>●</span> Alert Notifications (Slack/Discord)
         </h3>
-        <p className="small">Configure webhook URLs for alert notifications. Leave blank to disable notifications for that platform.</p>
+        <p className="small">Webhook URLs are configured in .env. Use the status checks below and adjust notification settings here.</p>
 
         <div className="input-row">
           <div className="input-group">
-            <label>Slack Webhook URL</label>
-            <input
-              type="password"
-              value={slackWebhookUrl}
-              onChange={(e) => setSlackWebhookUrl(e.target.value)}
-              placeholder="https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXX"
-            />
-            <p className="small" style={{ color: 'var(--fg-muted)', marginTop: '4px' }}>
-              Password field for security - not saved in browser
-            </p>
+            <ApiKeyStatus keyName="SLACK_WEBHOOK_URL" label="Slack Webhook URL" />
           </div>
         </div>
 
         <div className="input-row">
           <div className="input-group">
-            <label>Discord Webhook URL</label>
-            <input
-              type="password"
-              value={discordWebhookUrl}
-              onChange={(e) => setDiscordWebhookUrl(e.target.value)}
-              placeholder="https://discordapp.com/api/webhooks/000000000000000000/XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-            />
-            <p className="small" style={{ color: 'var(--fg-muted)', marginTop: '4px' }}>
-              Password field for security - not saved in browser
-            </p>
+            <ApiKeyStatus keyName="DISCORD_WEBHOOK_URL" label="Discord Webhook URL" />
           </div>
         </div>
 

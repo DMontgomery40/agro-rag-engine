@@ -1,5 +1,5 @@
 // AGRO GUI app.js (main coordinator - modularized)
-(function () {
+;(function () {
     'use strict';
 
     // Import core utilities from CoreUtils module
@@ -49,6 +49,19 @@
     // ---------------- Chat ----------------
     // DISABLED: Chat is now handled by React ChatInterface component
     // These legacy functions are retained for reference only
+    /**
+     * ---agentspec
+     * what: |
+     *   Appends chat message DOM element to #chat-messages container. Takes role (user/assistant) and text; skips if React ChatInterface active.
+     *
+     * why: |
+     *   Provides fallback DOM-based chat rendering when React component not present.
+     *
+     * guardrails:
+     *   - DO NOT append if data-react-chat="true"; React owns the DOM
+     *   - NOTE: Silent no-op if #chat-messages missing; add error logging if needed
+     * ---/agentspec
+     */
     function appendChatMessage(role, text){
         // Skip if React ChatInterface is managing the chat
         if (document.querySelector('[data-react-chat="true"]')) return;
@@ -115,23 +128,50 @@
     const saveConfig = window.Config?.saveConfig || (async () => {});
 
 
-    // ---------------- Prices & Cost ----------------
-    async function loadPrices() {
+    // ---------------- models & Cost ----------------
+    async function loadmodels() {
         try {
-            const r = await fetch(api('/api/prices'));
-            state.prices = await r.json();
+            const r = await fetch(api('/api/models'));
+            state.models = await r.json();
             populatePriceDatalists();
         } catch (e) {
-            console.error('Failed to load prices:', e);
+            console.error('Failed to load models:', e);
         }
     }
 
+    /**
+     * ---agentspec
+     * what: |
+     *   Deduplicates provider and model strings from state.models.models array. Returns two unique arrays: providers and allModels.
+     *
+     * why: |
+     *   Populates datalists with distinct values to avoid duplicate options in UI dropdowns.
+     *
+     * guardrails:
+     *   - DO NOT assume state.models exists; guard with early return
+     *   - NOTE: Filters empty/whitespace strings before deduplication
+     * ---/agentspec
+     */
     function unique(xs) { return Array.from(new Set(xs)); }
 
+    /**
+     * ---agentspec
+     * what: |
+     *   Populates HTML datalists for price filter UI. Extracts unique providers and models from state.models.models array, renders into cost-provider select and model-list datalist.
+     *
+     * why: |
+     *   Centralizes datalist population logic to keep UI sync'd with price data state.
+     *
+     * guardrails:
+     *   - DO NOT render if state.models or state.models.models missing; early return prevents crashes
+     *   - NOTE: Assumes cost-provider and model-list elements exist in DOM
+     *   - NOTE: Trims whitespace; filters empty strings to avoid blank options
+     * ---/agentspec
+     */
     function populatePriceDatalists() {
-        if (!state.prices || !Array.isArray(state.prices.models)) return;
+        if (!state.models || !Array.isArray(state.models.models)) return;
 
-        const models = state.prices.models;
+        const models = state.models.models;
         const providers = unique(models.map(m => (m.provider || '').trim()).filter(Boolean));
         const allModels = unique(models.map(m => (m.model || '').trim()).filter(Boolean));
 
@@ -282,6 +322,19 @@
     }
 
     // ---------------- Hardware Scan & Profiles ----------------
+    /**
+     * ---agentspec
+     * what: |
+     *   Formats hardware scan object into HTML divs. Input: {info, runtimes} object. Output: HTML string with OS, CPU cores, memory.
+     *
+     * why: |
+     *   Centralizes hardware display logic; guards against null/malformed data.
+     *
+     * guardrails:
+     *   - DO NOT render user input without sanitization; XSS risk in info.os, info.cpu_cores
+     *   - NOTE: Returns 'No scan data' if input falsy or not object; silent skip if keys missing
+     * ---/agentspec
+     */
     function formatHardwareScan(data) {
         if (!data || typeof data !== 'object') return 'No scan data';
         const info = data.info || {};
@@ -316,6 +369,20 @@
         }
     }
 
+    /**
+     * ---agentspec
+     * what: |
+     *   Proposes LLM profile (model, embedding, rerank) based on runtime scan + budget. Returns config object with GEN_MODEL, EMBEDDING_TYPE, RERANK_BACKEND, MAX_QUERY_REWRITES.
+     *
+     * why: |
+     *   Budget-aware defaults prevent paid API calls at $0 budget; prefers local runtimes (ollama, coreml) when available.
+     *
+     * guardrails:
+     *   - DO NOT use gpt-4o-mini; only gpt-5 allowed
+     *   - NOTE: $0 budget forces local or 'none' provider; paid providers (cohere, openai) only if budget > 0
+     *   - ASK USER: Confirm gpt-5 substitution before deployment
+     * ---/agentspec
+     */
     function proposeProfile(scan, budget) {
         // Budget-aware defaults (avoid paid providers at $0)
         const hasLocal = scan?.runtimes?.ollama || scan?.runtimes?.coreml;
@@ -323,8 +390,8 @@
         const prof = {
             GEN_MODEL: hasLocal && Number(budget) === 0 ? 'qwen3-coder:14b' : 'gpt-4o-mini',
             EMBEDDING_TYPE: (Number(budget) === 0) ? (hasLocal ? 'local' : 'mxbai') : 'openai',
-            RERANK_BACKEND: rprov,
-            MQ_REWRITES: Number(budget) > 50 ? '6' : '3',
+            RERANKER_MODE: rprov,
+            MAX_QUERY_REWRITES: Number(budget) > 50 ? '6' : '3',
             TOPK_SPARSE: '75',
             TOPK_DENSE: '75',
             FINAL_K: Number(budget) > 50 ? '20' : '10',
@@ -333,6 +400,19 @@
         return prof;
     }
 
+    /**
+     * ---agentspec
+     * what: |
+     *   Generates tooltip HTML for a given key. Returns cached map from window.Tooltips.buildTooltipMap() or fallback with key name + docs links.
+     *
+     * why: |
+     *   Centralizes tooltip rendering logic; graceful fallback prevents blank tooltips on missing data.
+     *
+     * guardrails:
+     *   - DO NOT assume window.Tooltips exists; wrapped in try-catch
+     *   - NOTE: Fallback always returns valid HTML; never null
+     * ---/agentspec
+     */
     function _tooltipHtmlForKey(k){
         try{
             const map = (window.Tooltips && window.Tooltips.buildTooltipMap && window.Tooltips.buildTooltipMap()) || {};
@@ -340,6 +420,19 @@
         }catch{return `<span class="tt-title">${k}</span><div>No details found.</div>`}
     }
 
+    /**
+     * ---agentspec
+     * what: |
+     *   Formats configuration profile object into grouped key-value display. Returns string preview or fallback message.
+     *
+     * why: |
+     *   Organizes model/retrieval settings by category (Generation, Embeddings, Reranking, Retrieval) for readable UI output.
+     *
+     * guardrails:
+     *   - DO NOT mutate input prof object
+     *   - NOTE: Returns fallback if prof is null/undefined/non-object
+     * ---/agentspec
+     */
     function formatProfile(prof) {
         if (!prof || typeof prof !== 'object') return '(Preview will appear here)';
         const parts = [];
@@ -348,7 +441,7 @@
             'Generation': ['GEN_MODEL', 'ENRICH_MODEL', 'ENRICH_MODEL_OLLAMA'],
             'Embeddings': ['EMBEDDING_TYPE', 'VOYAGE_EMBED_DIM', 'EMBEDDING_DIM'],
             'Reranking': ['RERANK_BACKEND', 'COHERE_RERANK_MODEL', 'RERANKER_MODEL'],
-            'Retrieval': ['MQ_REWRITES', 'FINAL_K', 'TOPK_SPARSE', 'TOPK_DENSE', 'HYDRATION_MODE'],
+            'Retrieval': ['MAX_QUERY_REWRITES', 'FINAL_K', 'TOPK_SPARSE', 'TOPK_DENSE', 'HYDRATION_MODE'],
         };
 
         for (const [group, keys] of Object.entries(keyGroups)) {
@@ -374,6 +467,20 @@
         return parts.join('');
     }
 
+    /**
+     * ---agentspec
+     * what: |
+     *   Binds hover/focus listeners to help icons in profile preview. Shows/hides tooltip bubbles on mouseover/focus events.
+     *
+     * why: |
+     *   Centralizes tooltip visibility logic; decouples event handling from markup.
+     *
+     * guardrails:
+     *   - DO NOT assume .tooltip-bubble exists; check presence before classList operations
+     *   - NOTE: Requires #profile-preview root; silently exits if missing
+     *   - DO NOT attach listeners if wrap or bubble is null; guard all DOM queries
+     * ---/agentspec
+     */
     function bindPreviewTooltips(){
         const root = document.getElementById('profile-preview');
         if (!root) return;
@@ -437,6 +544,20 @@
     }
 
     // Tri-Candidate Generation (from docs)
+    /**
+     * ---agentspec
+     * what: |
+     *   Generates 3 model candidates (local, cloud, hybrid) based on runtime scan, memory, budget. Returns array of {name, env, model, cost_estimate}.
+     *
+     * why: |
+     *   Encapsulates candidate selection logic to decouple deployment strategy from caller.
+     *
+     * guardrails:
+     *   - DO NOT assume scan.runtimes exists; validate before access
+     *   - NOTE: budgetNum=0 disables cost filtering; clarify intent with caller
+     *   - ASK USER: Should hybrid fallback to cloud if local fails?
+     * ---/agentspec
+     */
     function generateCandidates(scan, budget) {
         const hasLocal = !!(scan?.runtimes?.ollama || scan?.runtimes?.coreml);
         const mem = (scan?.info?.mem_gb || 8);
@@ -449,7 +570,7 @@
                 GEN_MODEL: hasLocal ? 'qwen3-coder:14b' : 'gpt-4o-mini',
                 EMBEDDING_TYPE: hasLocal ? 'local' : 'mxbai',
                 RERANK_BACKEND: hasLocal ? 'local' : 'none',
-                MQ_REWRITES: mem >= 32 ? '4' : '3',
+                MAX_QUERY_REWRITES: mem >= 32 ? '4' : '3',
                 FINAL_K: mem >= 32 ? '10' : '8',
                 TOPK_DENSE: '60', TOPK_SPARSE: '60', HYDRATION_MODE: 'lazy'
             }
@@ -458,7 +579,7 @@
             name: 'cheap_cloud',
             env: {
                 GEN_MODEL: 'gpt-4o-mini', EMBEDDING_TYPE: 'openai', RERANK_BACKEND: 'local',
-                MQ_REWRITES: budgetNum > 25 ? '4' : '3',
+                MAX_QUERY_REWRITES: budgetNum > 25 ? '4' : '3',
                 FINAL_K: budgetNum > 25 ? '10' : '8',
                 TOPK_DENSE: '75', TOPK_SPARSE: '75', HYDRATION_MODE: 'lazy'
             }
@@ -467,7 +588,7 @@
             name: 'premium',
             env: {
                 GEN_MODEL: 'gpt-4o-mini', EMBEDDING_TYPE: 'openai', RERANK_BACKEND: 'cohere',
-                MQ_REWRITES: budgetNum > 100 ? '6' : '4',
+                MAX_QUERY_REWRITES: budgetNum > 100 ? '6' : '4',
                 FINAL_K: budgetNum > 100 ? '20' : '12',
                 TOPK_DENSE: '120', TOPK_SPARSE: '120', HYDRATION_MODE: 'lazy'
             }
@@ -547,7 +668,7 @@
                 lines.push(`  Inference:  ${r.env.GEN_MODEL || '—'}`);
                 lines.push(`  Embedding:  ${r.env.EMBEDDING_TYPE || '—'}`);
                 lines.push(`  Rerank:     ${r.env.RERANK_BACKEND || 'none'}`);
-                lines.push(`  MQ:${r.env.MQ_REWRITES||'3'}  Final-K:${r.env.FINAL_K||'10'}  Sparse:${r.env.TOPK_SPARSE||'75'}  Dense:${r.env.TOPK_DENSE||'75'}`);
+                lines.push(`  MQ:${r.env.MAX_QUERY_REWRITES||'3'}  Final-K:${r.env.FINAL_K||'10'}  Sparse:${r.env.TOPK_SPARSE||'75'}  Dense:${r.env.TOPK_DENSE||'75'}`);
                 lines.push('');
             });
             triOut.textContent = lines.join('\n').trim();
@@ -676,6 +797,20 @@
     }
 
     // Wizard helpers
+    /**
+     * ---agentspec
+     * what: |
+     *   Builds single wizard profile from system scan + budget. Returns model/embedding/retrieval defaults based on local runtime availability and budget tier.
+     *
+     * why: |
+     *   Legacy compatibility layer; centralizes profile defaults to avoid scattered config logic.
+     *
+     * guardrails:
+     *   - DO NOT use gpt-4o-mini; only gpt-5 allowed for LLM
+     *   - NOTE: Hardcoded model names ('qwen3-coder:14b', 'mxbai') may be stale; ASK USER before deploying
+     *   - DO NOT assume budgetNum=0 means local-only; verify scan.runtimes actually populated
+     * ---/agentspec
+     */
     function buildWizardProfile(scan, budget) {
         // Legacy single-profile builder (kept for compatibility)
         const hasLocal = scan?.runtimes?.ollama || scan?.runtimes?.coreml;
@@ -688,7 +823,7 @@
             GEN_MODEL: defaultGen,
             EMBEDDING_TYPE: defaultEmb,
             RERANK_BACKEND: defaultRprov,
-            MQ_REWRITES: budgetNum > 50 ? '6' : '3',
+            MAX_QUERY_REWRITES: budgetNum > 50 ? '6' : '3',
             FINAL_K: budgetNum > 50 ? '20' : '10',
             TOPK_SPARSE: budgetNum > 50 ? '120' : '75',
             TOPK_DENSE: budgetNum > 50 ? '120' : '75',
@@ -697,6 +832,20 @@
         return profile;
     }
 
+    /**
+     * ---agentspec
+     * what: |
+     *   Populates wizard form fields (gen model, embedding provider, rerank provider/model) from environment variables. Reads env object, writes to DOM via jQuery selectors.
+     *
+     * why: |
+     *   Initializes UI state from runtime config without manual form entry.
+     *
+     * guardrails:
+     *   - DO NOT assume all env vars exist; checks presence before assignment
+     *   - NOTE: Falls back to RERANKER_MODEL if COHERE_RERANK_MODEL absent
+     *   - ASK USER: Validate env vars loaded before calling; silent no-op if selectors missing
+     * ---/agentspec
+     */
     function seedWizardFromEnv(env) {
         const wzGen = $('#wizard-gen-model');
         if (wzGen && env.GEN_MODEL) wzGen.value = env.GEN_MODEL;
@@ -708,12 +857,39 @@
         if (wzRmod && (env.COHERE_RERANK_MODEL || env.RERANKER_MODEL)) wzRmod.value = env.COHERE_RERANK_MODEL || env.RERANKER_MODEL;
     }
 
+    /**
+     * ---agentspec
+     * what: |
+     *   Loads wizard config from state.config.env, seeds wizard state, updates UI summary display.
+     *
+     * why: |
+     *   Centralizes env-to-UI sync to prevent stale state.
+     *
+     * guardrails:
+     *   - DO NOT assume state.config exists; check before access
+     *   - NOTE: updateWizardSummary() requires #scan-out DOM element present
+     * ---/agentspec
+     */
     function loadWizardFromEnv() {
         const env = (state.config && state.config.env) || {};
         seedWizardFromEnv(env);
         updateWizardSummary();
     }
 
+    /**
+     * ---agentspec
+     * what: |
+     *   Reads scan data from DOM dataset, parses JSON, extracts CPU cores/RAM/runtimes. Returns formatted hardware string or fallback "(hardware not scanned)".
+     *
+     * why: |
+     *   Centralizes hardware summary generation from cached scan results for UI display.
+     *
+     * guardrails:
+     *   - DO NOT assume scanOut exists; check presence before access
+     *   - NOTE: Silently falls back on parse error; consider logging for debugging
+     *   - DO NOT mutate s.runtimes; filter only for display
+     * ---/agentspec
+     */
     function updateWizardSummary() {
         const scanOut = $('#scan-out');
         let hw = '';
@@ -850,6 +1026,20 @@
         }
     }
 
+    /**
+     * ---agentspec
+     * what: |
+     *   Hides profile tooltip by setting display:none. Loads and applies user profile by name asynchronously.
+     *
+     * why: |
+     *   Separates UI hide logic from profile loading to avoid blocking tooltip removal.
+     *
+     * guardrails:
+     *   - DO NOT assume tooltip exists; check before accessing style property
+     *   - NOTE: loadAndApplyProfile incomplete; error handling missing
+     *   - ASK USER: What happens on profile load failure?
+     * ---/agentspec
+     */
     function hideProfileTooltip() {
         const tooltip = $('#profile-tooltip');
         if (tooltip) {
@@ -938,6 +1128,67 @@
     const ingestFile = window.Secrets?.ingestFile || (async () => {});
 
     // ---------------- Quick Action Helpers ----------------
+    /**
+     * ---agentspec
+     * what: |
+     *   Detects React dashboard presence via window flag or DOM query. Checks if DOM node is contained within dashboard root. Manages button UI state (loading/success/error classes).
+     *
+     * why: |
+     *   Centralizes dashboard detection and button state logic to avoid scattered conditionals.
+     *
+     * guardrails:
+     *   - DO NOT assume window.__AGRO_REACT_DASHBOARD__ persists across navigation; re-check on state changes
+     *   - NOTE: getReactDashboardRoot() queries DOM each call; cache if called frequently
+     *   - DO NOT apply button state without validating btn exists; setButtonState guards but caller must verify
+     * ---/agentspec
+     */
+    const getReactDashboardRoot = () => document.querySelector('[data-react-dashboard="true"]');
+    /**
+     * ---agentspec
+     * what: |
+     *   Detects React dashboard presence and manages button UI states (loading/success/error). Checks window globals and DOM containment.
+     *
+     * why: |
+     *   Centralizes dashboard detection and button state logic to avoid scattered conditional rendering.
+     *
+     * guardrails:
+     *   - DO NOT rely on window.__AGRO_REACT_DASHBOARD__ alone; verify DOM root exists
+     *   - NOTE: Button state removal clears all states before applying new one; idempotent
+     * ---/agentspec
+     */
+    const isReactDashboardActive = () => Boolean(window.__AGRO_REACT_DASHBOARD__) || Boolean(getReactDashboardRoot());
+    /**
+     * ---agentspec
+     * what: |
+     *   Checks if DOM node is inside React dashboard root. Sets button UI state (loading/success/error) via classList.
+     *
+     * why: |
+     *   Scoped DOM queries prevent side effects outside dashboard; classList toggling avoids inline styles.
+     *
+     * guardrails:
+     *   - DO NOT call setButtonState with null btn; guard already present but silent
+     *   - NOTE: isInsideReactDashboard depends on getReactDashboardRoot() availability
+     *   - ASK USER: Should error state be handled in setButtonState?
+     * ---/agentspec
+     */
+    const isInsideReactDashboard = (node) => {
+        const root = getReactDashboardRoot();
+        return Boolean(root && node && root.contains(node));
+    };
+    /**
+     * ---agentspec
+     * what: |
+     *   setButtonState: Removes all state classes, adds one matching state ('loading'|'success'|'error'). showStatus: Displays message with type. Both mutate DOM.
+     *
+     * why: |
+     *   Centralizes UI state management to avoid scattered classList calls.
+     *
+     * guardrails:
+     *   - DO NOT call setButtonState(null); guard with !btn check
+     *   - NOTE: showStatus incomplete; implementation missing
+     *   - ASK USER: Where does showStatus render? (toast, modal, inline?)
+     * ---/agentspec
+     */
     function setButtonState(btn, state) {
         if (!btn) return;
         btn.classList.remove('loading', 'success', 'error');
@@ -946,7 +1197,22 @@
         else if (state === 'error') btn.classList.add('error');
     }
 
+    /**
+     * ---agentspec
+     * what: |
+     *   Displays status messages to DOM element #dash-index-status with timestamp, icon, and color. Skips if React dashboard active.
+     *
+     * why: |
+     *   Centralizes UI feedback logic; prevents duplicate messages when React component handles display.
+     *
+     * guardrails:
+     *   - DO NOT call if isReactDashboardActive() returns true; React owns the UI
+     *   - NOTE: Requires #dash-index-status and #dash-index-bar elements in DOM
+     *   - DO NOT assume color vars (--accent, --err, --link) exist; will fail silently if missing
+     * ---/agentspec
+     */
     function showStatus(message, type = 'info') {
+        if (isReactDashboardActive()) return;
         const status = document.getElementById('dash-index-status');
         const bar = document.getElementById('dash-index-bar');
         if (!status) return;
@@ -978,7 +1244,24 @@
     }
 
     // Simulated progress ticker for long-running actions
+    /**
+     * ---agentspec
+     * what: |
+     *   Initializes a progress bar UI element with label and total steps. Returns object with stop() method. Skips if React dashboard active.
+     *
+     * why: |
+     *   Conditional rendering: uses DOM progress bar for vanilla JS, skips for React to avoid conflicts.
+     *
+     * guardrails:
+     *   - DO NOT call stop() multiple times; idempotent but wasteful
+     *   - NOTE: Requires 'dash-index-status' and 'dash-index-bar' DOM elements present
+     *   - ASK USER: Is tick() interval set elsewhere? Function incomplete (no interval/timeout visible)
+     * ---/agentspec
+     */
     function startSimProgress(label, total = 80, tips = []) {
+        if (isReactDashboardActive()) {
+            return { stop: () => {} };
+        }
         const status = document.getElementById('dash-index-status');
         const bar = document.getElementById('dash-index-bar');
         let step = 0; let tipIdx = 0;
@@ -1007,9 +1290,23 @@
         };
     }
 
+    /**
+     * ---agentspec
+     * what: |
+     *   Binds click handler to DOM button by ID. Skips if button missing or inside React dashboard. Sets loading state on click, then executes async handler.
+     *
+     * why: |
+     *   Prevents event binding conflicts in hybrid React/vanilla JS environments.
+     *
+     * guardrails:
+     *   - DO NOT bind if isInsideReactDashboard() returns true; React manages its own events
+     *   - NOTE: Handler must be async-safe; setButtonState() called before execution
+     * ---/agentspec
+     */
     function bindQuickAction(btnId, handler) {
         const btn = document.getElementById(btnId);
         if (!btn) return;
+        if (isInsideReactDashboard(btn)) return;
 
         btn.addEventListener('click', async (e) => {
             e.preventDefault();
@@ -1029,6 +1326,7 @@
 
     // ---------------- Quick Actions ----------------
     async function changeRepo() {
+        if (isReactDashboardActive()) return;
         showStatus('Loading repositories...', 'loading');
 
         try {
@@ -1112,6 +1410,7 @@
     }
 
     async function createKeywords() {
+        if (isReactDashboardActive()) return;
         const btn = document.getElementById('btn-generate-keywords');
         setButtonState(btn, 'loading');
         showStatus('Generating keywords (this may take 2–5 minutes)...', 'loading');
@@ -1232,6 +1531,20 @@
     }
 
     // ---------------- Bindings ----------------
+    /**
+     * ---agentspec
+     * what: |
+     *   Binds click handlers to UI buttons (health, save, estimate, scan, apply, profile). Each handler triggers corresponding action function.
+     *
+     * why: |
+     *   Centralizes event listener attachment; guards against null elements with conditional checks.
+     *
+     * guardrails:
+     *   - DO NOT assume elements exist; all bindings check null before addEventListener
+     *   - NOTE: Mixed jQuery ($) and vanilla DOM selectors; standardize to one approach
+     *   - ASK USER: genBtn binding incomplete; handler missing
+     * ---/agentspec
+     */
     function bindActions() {
         const btnHealth = $('#btn-health'); if (btnHealth) btnHealth.addEventListener('click', checkHealth);
         const saveBtn = $('#save-btn'); if (saveBtn) saveBtn.addEventListener('click', saveConfig);
@@ -1278,6 +1591,7 @@
 
         // Dopamine-y feedback on any button click
         document.querySelectorAll('button').forEach(btn => {
+            if (isInsideReactDashboard(btn)) return;
             if (btn.dataset && btn.dataset.dopamineBound) return;
             if (!btn.dataset) btn.dataset = {};
             btn.dataset.dopamineBound = '1';
@@ -1352,21 +1666,15 @@
     // ---------------- Autotune ----------------
     // Delegated to Autotune module (gui/js/autotune.js)
     const refreshAutotune = window.Autotune?.refreshAutotune || (async () => {});
-    const setAutotuneEnabled = window.Autotune?.setAutotuneEnabled || (async () => {});
-
-    // ---------------- Keywords ----------------
-    // Delegated to Keywords module (gui/js/keywords.js)
-    const loadKeywords = window.Keywords?.loadKeywords || (async () => {});
+    const setAutotuneEnabled = window.Autotune?.setAutotuneEnabled || fallbackSetAutotuneEnabled;
 
     // ---------------- Help Tooltips (delegated) ----------------
-    const addHelpTooltips = window.Tooltips?.attachTooltips || (() => {});
+    const addHelpTooltips = window.Tooltips?.attachTooltips || fallbackAddHelpTooltips;
 
-    // ---------- Numbers formatting + per‑day converters ----------
-    // Number formatting functions - delegated to UiHelpers module
-    const getNum = window.UiHelpers?.getNum || ((id) => 0);
-    const setNum = window.UiHelpers?.setNum || (() => {});
-    const attachCommaFormatting = window.UiHelpers?.attachCommaFormatting || (() => {});
     const wireDayConverters = window.UiHelpers?.wireDayConverters || (() => {});
+
+    // ---------------- Keywords (delegated) ----------------
+    const loadKeywords = window.Keywords?.loadKeywords || (async () => {});
 
     // ---------------- Init ----------------
     async function init() {
@@ -1385,7 +1693,7 @@
         const genKwBtn = document.getElementById('btn-generate-keywords'); if (genKwBtn) genKwBtn.addEventListener('click', createKeywords);
 
         await Promise.all([
-            loadPrices(),
+            loadmodels(),
             loadConfig(),
             loadProfiles(),
             loadKeywords(),
@@ -1434,6 +1742,9 @@
 
     // ---------------- Dashboard Summary ----------------
     async function refreshDashboard() {
+        if (isReactDashboardActive()) {
+            return;
+        }
         try {
             const c = state.config || (await (await fetch(api('/api/config'))).json());
             const repo = (c.env && (c.env.REPO || c.default_repo)) || '(none)';
@@ -1559,6 +1870,19 @@
         }
     }
 
+    /**
+     * ---agentspec
+     * what: |
+     *   Navigates to file:line via CustomEvent dispatch. Logs navigation target with emoji prefix.
+     *
+     * why: |
+     *   Decouples navigation logic from UI; allows listeners to handle jumps independently.
+     *
+     * guardrails:
+     *   - DO NOT assume event listener exists; dispatch is fire-and-forget
+     *   - NOTE: lineNumber must be positive integer; no validation here
+     * ---/agentspec
+     */
     function jumpToLine(filePath, lineNumber) {
         // Enhanced navigation with visual feedback
         console.log(`📍 Navigate to: ${filePath}:${lineNumber}`);
@@ -1625,7 +1949,20 @@
     // Cards module auto-binds on DOMContentLoaded (see gui/js/cards.js)
 
     // ---------------- Help Tooltips ----------------
-    function addHelpTooltips() {
+    /**
+     * ---agentspec
+     * what: |
+     *   Adds help tooltips to UI by mapping config keys (GEN_MODEL, OPENAI_API_KEY, etc.) to human-readable descriptions. Returns HELP object with key→tooltip pairs.
+     *
+     * why: |
+     *   Centralizes tooltip text to avoid duplication and enable easy localization/updates.
+     *
+     * guardrails:
+     *   - DO NOT expose secrets in tooltip text; keep descriptions generic
+     *   - NOTE: HELP object must match all config keys used in UI
+     * ---/agentspec
+     */
+    function fallbackAddHelpTooltips() {
         const HELP = {
             // Generation
             GEN_MODEL: 'Primary inference model for generation (e.g., gpt-4o-mini or qwen3-coder:14b).',
@@ -1656,7 +1993,7 @@
             RERANK_INPUT_SNIPPET_CHARS: 'Max code/text characters sent to the reranker per candidate.\nCohere typical: 700. HF/local typical: 600.\nIncrease for more context (potentially higher latency); decrease for speed.',
 
             // Retrieval
-            MQ_REWRITES: 'Multi-query expansion count (more rewrites → better recall, more cost).',
+            MAX_QUERY_REWRITES: 'Multi-query expansion count (more rewrites → better recall, more cost).',
             FINAL_K: 'Final top-K after fusion + rerank (downstream consumers use these).',
             TOPK_DENSE: 'Number of dense candidates (Qdrant) to fuse.',
             TOPK_SPARSE: 'Number of sparse candidates (BM25) to fuse.',
@@ -1680,7 +2017,7 @@
             REPO_PATH: 'Fallback path when repos.json is absent.',
             REPO_ROOT: 'Override project root. Affects GUI/docs/files mounts.',
             FILES_ROOT: 'Root directory served at /files.',
-            GUI_DIR: 'Directory of GUI assets served at /gui.',
+            GUI_DIR: 'Directory for shared UI assets (pricing/profile data). Defaults to ./web/public.',
             DOCS_DIR: 'Directory of docs served at /docs.',
             DATA_DIR: 'Directory for local data files (excludes, keywords).',
             REPOS_FILE: 'Path to repos.json configuration file.',
@@ -1709,14 +2046,7 @@
         });
     }
 
-    // ---------- Numbers formatting + per‑day converters ----------
-    // Number formatting functions - delegated to UiHelpers module
-    const getNum = window.UiHelpers?.getNum || ((id) => 0);
-    const setNum = window.UiHelpers?.setNum || (() => {});
-    const attachCommaFormatting = window.UiHelpers?.attachCommaFormatting || (() => {});
-    const wireDayConverters = window.UiHelpers?.wireDayConverters || (() => {});
-
-    async function setAutotuneEnabled() {
+    async function fallbackSetAutotuneEnabled() {
         try {
             const enabled = document.getElementById('autotune-enabled').checked;
             const r = await fetch(api('/api/autotune/status'), {
@@ -1737,13 +2067,22 @@
         }
     }
 
-    // ---------------- Keywords ----------------
-    // Delegated to Keywords module (gui/js/keywords.js)
-    const loadKeywords = window.Keywords?.loadKeywords || (async () => {});
-
-    /* DUPLICATE REMOVED: Indexing + Cards (use window.IndexStatus)
+    // DUPLICATE REMOVED: Indexing + Cards (use window.IndexStatus)
     // ---------------- Indexing + Cards ----------------
     let indexPoll = null;
+    /**
+     * ---agentspec
+     * what: |
+     *   Parses log lines to estimate indexing progress. Returns percentage (5–100) based on regex matches for chunk preparation, BM25 save, and Qdrant indexing completion.
+     *
+     * why: |
+     *   Provides real-time progress feedback without blocking on async indexing operations.
+     *
+     * guardrails:
+     *   - DO NOT rely on log order; regex matches are independent
+     *   - NOTE: Returns 5% if no patterns match; final state is 100% only after Qdrant confirmation
+     * ---/agentspec
+     */
     function progressFromLog(lines) {
         const text = (lines||[]).join(' ');
         let pct = 5;
@@ -1758,7 +2097,7 @@
             showStatus('Starting indexer...', 'loading');
             await fetch(api('/api/index/start'), { method: 'POST' });
             if (indexPoll) clearInterval(indexPoll);
-            indexPoll = setInterval(pollIndexStatus, 800);
+            indexPoll = setInterval(pollIndexStatus, 2000); // poll every 2 seconds during indexing
             await pollIndexStatus();
         } catch (e) {
             showStatus('Failed to start indexer: ' + e.message, 'error');
@@ -1766,6 +2105,19 @@
         }
     }
 
+    /**
+     * ---agentspec
+     * what: |
+     *   Converts byte count to human-readable format (B, KB, MB, GB). Takes numeric bytes, returns formatted string.
+     *
+     * why: |
+     *   Standardizes file size display across UI without repeated conversion logic.
+     *
+     * guardrails:
+     *   - DO NOT use for network throughput; only file sizes
+     *   - NOTE: Returns '0 B' for null/undefined/zero input
+     * ---/agentspec
+     */
     function formatBytes(bytes) {
         if (!bytes || bytes === 0) return '0 B';
         const k = 1024;
@@ -1774,6 +2126,19 @@
         return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
     }
 
+    /**
+     * ---agentspec
+     * what: |
+     *   Formats index status display. Takes lines array and metadata object; returns HTML div with styled status text or "Ready to index..." placeholder.
+     *
+     * why: |
+     *   Centralizes status rendering logic with conditional metadata handling for consistent UI presentation.
+     *
+     * guardrails:
+     *   - DO NOT render unsanitized user input; escape HTML in lines
+     *   - NOTE: Returns muted gray text (13px) when no metadata; metadata path incomplete in code
+     * ---/agentspec
+     */
     function formatIndexStatus(lines, metadata) {
         if (!metadata) {
             if (!lines || !lines.length) return '<div style="color:var(--fg-muted);font-size:13px;">Ready to index...</div>';
@@ -1891,7 +2256,6 @@
     }
 
     const pollIndexStatus = window.IndexStatus?.pollIndexStatus || (async ()=>{});
-    */
 
     // ---------------- Cards Builder (delegated) ----------------
     const openCardsModal = window.CardsBuilder?.openCardsModal || (()=>{});
@@ -1918,5 +2282,5 @@
     // ============================================
     // Onboarding Wizard (delegated)
     // ============================================
-    window.ensureOnboardingInit = function(){ if (window.Onboarding?.ensureOnboardingInit) window.Onboarding.ensureOnboardingInit(); };
+    //  window.ensureOnboardingInit = function(){ if (window.Onboarding?.ensureOnboardingInit) window.Onboarding.ensureOnboardingInit(); };
 })();

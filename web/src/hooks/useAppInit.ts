@@ -1,93 +1,84 @@
 import { useState, useEffect } from 'react';
+import { useRepoStore } from '@/stores/useRepoStore';
+import { useConfigStore } from '@/stores/useConfigStore';
+import { useHealthStore } from '@/stores/useHealthStore';
+import { apiUrl } from '@/api/client';
 
 /**
  * Hook for app initialization
- * Handles loading prices, config, profiles, keywords, and commit metadata
- * Triggers initial health checks and dashboard refresh
+ * Handles loading config, profiles, and repos via Zustand stores
+ * NO LONGER depends on window.CoreUtils - uses typed API client
  */
 export function useAppInit() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
+  const { loadRepos } = useRepoStore();
+  const { loadConfig, loadKeywords } = useConfigStore();
+  const { checkHealth } = useHealthStore();
 
   useEffect(() => {
     const init = async () => {
       try {
-        console.log('[useAppInit] Starting app initialization...');
+        console.log('[useAppInit] Starting app initialization (no CoreUtils dependency)...');
 
-        // Wait for CoreUtils to be available (loaded by legacy modules)
-        let attempts = 0;
-        while (!(window as any).CoreUtils && attempts < 50) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-          attempts++;
-        }
-
-        if (!(window as any).CoreUtils) {
-          throw new Error('CoreUtils module did not load');
-        }
-
-        const { api } = (window as any).CoreUtils;
-
-        // Load initial data in parallel
+        // Load initial data in parallel using Zustand stores and typed API
         await Promise.all([
-          // Load prices.json for cost estimation
-          fetch(api('/api/prices'))
-            .then(r => r.json())
-            .then(prices => {
-              if ((window as any).CoreUtils.state) {
-                (window as any).CoreUtils.state.prices = prices;
-              }
-            })
-            .catch(err => console.warn('Failed to load prices:', err)),
-
-          // Load config
-          fetch(api('/api/config'))
-            .then(r => r.json())
-            .then(config => {
-              if ((window as any).CoreUtils.state) {
-                (window as any).CoreUtils.state.config = config;
-              }
-            })
+          // Load config via Zustand store
+          loadConfig()
             .catch(err => console.warn('Failed to load config:', err)),
 
-          // Load profiles
-          fetch(api('/api/profiles'))
+          // Load repos via Zustand store
+          loadRepos()
+            .catch(err => console.warn('Failed to load repos:', err)),
+
+          // Load keywords via Zustand store
+          loadKeywords()
+            .catch(err => console.warn('Failed to load keywords:', err)),
+
+          // Load models.json for cost estimation (still needed for legacy modules during transition)
+          fetch(apiUrl('/models'))
+            .then(r => r.json())
+            .then(models => {
+              // Store in window for legacy modules that still need it
+              if ((window as any).CoreUtils?.state) {
+                (window as any).CoreUtils.state.models = models;
+              }
+            })
+            .catch(err => console.warn('Failed to load models:', err)),
+
+          // Load profiles (still needed for legacy modules during transition)
+          fetch(apiUrl('/profiles'))
             .then(r => r.json())
             .then(data => {
-              if ((window as any).CoreUtils.state) {
+              // Store in window for legacy modules that still need it
+              if ((window as any).CoreUtils?.state) {
                 (window as any).CoreUtils.state.profiles = data.profiles || [];
                 (window as any).CoreUtils.state.defaultProfile = data.default || null;
               }
             })
             .catch(err => console.warn('Failed to load profiles:', err)),
 
-          // Load keywords if available
-          (window as any).Keywords?.loadKeywords?.()
-            .catch((err: Error) => console.warn('Failed to load keywords:', err)),
-
-          // Load commit metadata if available
+          // Load commit metadata if available (legacy module)
           (window as any).GitCommitMeta?.loadCommitMeta?.()
             .catch((err: Error) => console.warn('Failed to load commit meta:', err))
         ]);
 
-        // Trigger initial checks
-        if ((window as any).Health?.checkHealth) {
-          await (window as any).Health.checkHealth().catch((err: Error) =>
-            console.warn('Initial health check failed:', err)
-          );
-        }
+        // Trigger initial health check via Zustand store
+        await checkHealth().catch((err: Error) =>
+          console.warn('Initial health check failed:', err)
+        );
 
+        // Legacy module initializations (temporary, will be removed as modules migrate)
         if ((window as any).Autotune?.refreshAutotune) {
           await (window as any).Autotune.refreshAutotune().catch((err: Error) =>
             console.warn('Failed to refresh autotune:', err)
           );
         }
 
-        // Initialize UI helpers
         if ((window as any).UiHelpers?.wireDayConverters) {
           (window as any).UiHelpers.wireDayConverters();
         }
 
-        // Initialize git hooks status
         if ((window as any).GitHooks?.refreshHooksStatus) {
           await (window as any).GitHooks.refreshHooksStatus().catch((err: Error) =>
             console.warn('Failed to refresh git hooks:', err)
@@ -105,15 +96,15 @@ export function useAppInit() {
       }
     };
 
-    // Wait for React to be ready and modules to load
+    // Wait for React to be ready
     if (document.readyState === 'loading') {
       window.addEventListener('DOMContentLoaded', init);
       return () => window.removeEventListener('DOMContentLoaded', init);
     } else {
-      // Give modules a moment to load
-      setTimeout(init, 150);
+      // Give a moment for initial render
+      setTimeout(init, 50);
     }
-  }, []);
+  }, [loadConfig, loadRepos, loadKeywords, checkHealth]);
 
   return { isInitialized, initError };
 }

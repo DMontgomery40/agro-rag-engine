@@ -1,12 +1,20 @@
 import os
 import json
-from typing import Dict, Any
+from typing import Dict, Any, List
 from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import StreamingResponse
 from common.config_loader import out_dir
 from pathlib import Path
 
 router = APIRouter()
+
+
+def _parse_csv_param(value: str) -> List[str]:
+    """Convert comma-separated query strings into clean lists."""
+    if not value:
+        return []
+    parts = [part.strip() for part in value.replace('\n', ',').split(',')]
+    return [part for part in parts if part]
 
 @router.post("/api/cards/build")
 def cards_build_legacy() -> Dict[str, Any]:
@@ -16,10 +24,27 @@ def cards_build_legacy() -> Dict[str, Any]:
     return {"ok": res.returncode == 0, "stdout": res.stdout, "stderr": res.stderr}
 
 @router.post("/api/cards/build/start")
-def cards_build_start(repo: str = Query(None), enrich: int = Query(1)):
-    from server.cards_builder import start_job
+def cards_build_start(
+    repo: str = Query(None),
+    enrich: int = Query(1),
+    exclude_dirs: str = Query(""),
+    exclude_patterns: str = Query(""),
+    exclude_keywords: str = Query(""),
+):
+    from server.cards_builder import start_job, get_card_filter_defaults
+    defaults = get_card_filter_defaults()
+    dirs = _parse_csv_param(exclude_dirs) or defaults["exclude_dirs"]
+    patterns = _parse_csv_param(exclude_patterns) or defaults["exclude_patterns"]
+    keywords = _parse_csv_param(exclude_keywords) or defaults["exclude_keywords"]
+
     try:
-        job = start_job(repo or os.getenv('REPO', 'agro'), enrich=bool(enrich))
+        job = start_job(
+            repo or os.getenv('REPO', 'agro'),
+            enrich=bool(enrich),
+            exclude_dirs=dirs,
+            exclude_patterns=patterns,
+            exclude_keywords=keywords,
+        )
         return {"job_id": job.job_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

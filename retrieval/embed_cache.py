@@ -1,12 +1,14 @@
 import os
 import json
-import tiktoken
+from common.token_utils import get_token_counter
 
 class EmbeddingCache:
     def __init__(self, outdir: str):
         os.makedirs(outdir, exist_ok=True)
         self.path = os.path.join(outdir, "embed_cache.jsonl")
         self.cache = {}
+        # Initialize token counter for OpenAI (used in embed_texts)
+        self.counter = get_token_counter('openai')
         if os.path.exists(self.path):
             with open(self.path, "r", encoding="utf-8") as f:
                 for line in f:
@@ -37,25 +39,32 @@ class EmbeddingCache:
         return pruned
 
     def embed_texts(self, client, texts, hashes, model="text-embedding-3-large", batch=64):
+        """Embed texts with caching and token truncation.
+
+        Args:
+            client: OpenAI client
+            texts: List of texts to embed
+            hashes: List of hashes for caching
+            model: Embedding model name
+            batch: Batch size
+
+        Returns:
+            List of embeddings
+        """
         embs = [None] * len(texts)
         to_embed, idx_map = [], []
         for i, (t, h) in enumerate(zip(texts, hashes)):
             v = self.get(h)
             if v is None:
                 idx_map.append(i)
-                to_embed.append(t)
+                # Use shared truncation utility
+                truncated, was_truncated = self.counter.truncate_to_tokens(t, 8000)
+                to_embed.append(truncated)
             else:
                 embs[i] = v
-        enc = tiktoken.get_encoding('cl100k_base')
-
-        def _clip_for_openai(text: str, max_tokens: int = 8000) -> str:
-            toks = enc.encode(text)
-            if len(toks) <= max_tokens:
-                return text
-            return enc.decode(toks[:max_tokens])
 
         for i in range(0, len(to_embed), batch):
-            sub = [_clip_for_openai(t) for t in to_embed[i:i + batch]]
+            sub = to_embed[i:i + batch]
             r = client.embeddings.create(model=model, input=sub)
             for j, d in enumerate(r.data):
                 orig = idx_map[i + j]

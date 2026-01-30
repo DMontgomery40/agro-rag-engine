@@ -35,6 +35,26 @@ from server.models.agro_config_model import AgroConfigRoot, AGRO_CONFIG_KEYS
 logger = logging.getLogger("agro.config")
 
 
+LEGACY_KEY_ALIASES = {
+    'MQ_REWRITES': 'MAX_QUERY_REWRITES',
+}
+
+# Infrastructure keys that MUST be overridable via environment variables.
+# These are deployment-specific URLs/hosts that vary between environments
+# (local dev, Docker, Kubernetes, cloud). Following 12-factor app principles,
+# infrastructure config should come from the environment, not config files.
+#
+# Precedence for these keys: ENV VAR > agro_config.json > Pydantic default
+INFRASTRUCTURE_KEYS = {
+    'QDRANT_URL',       # Vector DB - differs between host (localhost) and container (qdrant)
+    'REDIS_URL',        # Cache - differs between environments
+    'OLLAMA_URL',       # Local LLM server - deployment-specific
+    'PROMETHEUS_URL',   # Metrics - deployment-specific
+    'GRAFANA_URL',      # Dashboards - deployment-specific
+    'LOKI_URL',         # Logs - deployment-specific
+}
+
+
 class ConfigRegistry:
     """Centralized configuration registry with multi-source merging."""
 
@@ -90,21 +110,34 @@ class ConfigRegistry:
                 self._config[key] = value
                 self._sources[key] = "agro_config.json"
 
-            # Step 3: Override with .env values (precedence)
-            for key in AGRO_CONFIG_KEYS:
-                env_value = os.getenv(key)
-                if env_value is not None:
-                    # .env takes precedence
-                    self._config[key] = env_value
-                    self._sources[key] = ".env"
-                    logger.debug(f"Config key {key} overridden by .env")
-
-            # Also include other env vars for backward compatibility
-            # This allows existing code to read non-AGRO config from registry
+            # Step 3: Apply environment variable overrides
+            #
+            # Two categories of env var handling:
+            #
+            # A) INFRASTRUCTURE_KEYS: These MUST be overridable by env vars.
+            #    They are deployment-specific URLs that differ between environments
+            #    (localhost for dev, Docker hostnames for containers, cloud URLs for prod).
+            #    Precedence: ENV VAR > agro_config.json > Pydantic default
+            #
+            # B) Other env vars: Only used if not already in config (backward compat).
+            #    Secrets (API keys, etc.) come from .env and don't conflict with
+            #    agro_config.json keys.
+            #
+            infra_overrides = []
             for key, value in os.environ.items():
-                if key not in self._config:
+                if key in INFRASTRUCTURE_KEYS:
+                    # Infrastructure keys: env var takes precedence
+                    if self._config.get(key) != value:
+                        infra_overrides.append(key)
+                    self._config[key] = value
+                    self._sources[key] = "env_override"
+                elif key not in self._config:
+                    # Other keys: only add if not already present
                     self._config[key] = value
                     self._sources[key] = ".env"
+
+            if infra_overrides:
+                logger.info(f"Infrastructure env overrides applied: {infra_overrides}")
 
             self._loaded = True
             logger.info(f"Config registry loaded with {len(self._config)} keys")
@@ -131,7 +164,7 @@ class ConfigRegistry:
         """
         with self._lock:
             if not self._loaded:
-                logger.warning("Config registry accessed before load(), loading now")
+                logger.debug("Config registry accessed before load(), loading now")
                 self.load()
             return self._config.get(key, default)
 
@@ -279,8 +312,14 @@ class ConfigRegistry:
             if not self._loaded:
                 self.load()
 
+            # Normalize legacy aliases (e.g., MQ_REWRITES -> MAX_QUERY_REWRITES)
+            normalized_updates = {
+                LEGACY_KEY_ALIASES.get(k, k): v
+                for k, v in updates.items()
+            }
+
             # Filter to only AGRO_CONFIG_KEYS
-            agro_updates = {k: v for k, v in updates.items() if k in AGRO_CONFIG_KEYS}
+            agro_updates = {k: v for k, v in normalized_updates.items() if k in AGRO_CONFIG_KEYS}
             if not agro_updates:
                 logger.debug("No AGRO config keys to update")
                 return

@@ -3071,27 +3071,27 @@ Add useEffect to load from /api/config on mount.
 ## Files That SHOULD Be In Root (15 files)
 ✅ README.md, LICENSE, CONTRIBUTING.md
 ✅ Dockerfile, Dockerfile.node, Makefile
-✅ docker-compose.yml, docker-compose.services.yml
+✅ docker-compose.yml
 ✅ requirements.txt, requirements-rag.txt, requirements.lock
 ✅ package.json, package-lock.json
 ✅ repos.json, versions.env
-✅ playwright*.config.ts (3 files - standard location)
-✅ AGENTS.md, CLAUDE.md, cursor.rules (agent config)
+✅ playwright*.config.ts (multiple configs - standard location)
+✅ .claude/, .codex/, .cursor/ (agent tooling + rules)
 
 ## Files To MOVE (20+ files)
 
 ### → /scripts
 - index.sh
-- run_diagnostics.js
+- scripts/run_diagnostics.js
 
 ### → /data
-- discriminative_keywords.json
-- semantic_keywords.json  
-- llm_keywords.json
+- data/keywords/discriminative_keywords.json
+- data/keywords/semantic_keywords.json
+- data/keywords/llm_keywords.json
 
 ### → /data/evals
-- golden.json
-- embedding_eval_results.json
+- data/golden.json
+- data/evals/embedding_eval_results.json
 
 ### → /test-results (15 .png files)
 - admin-tab-debug.png
@@ -3106,14 +3106,15 @@ Add useEffect to load from /api/config on mount.
 - test-validation-report.html
 
 ### → /eval or /scripts
-- eval_embeddings.py
+- eval/eval_embeddings.py
 
 ### → /common
 - path_config.py
 
 ### → /agent_docs or DELETE
-- SESSION_1_SUMMARY.md
-- README-INDEXER.md
+- agent_docs/archive/SESSION_1_SUMMARY.md
+- agent_docs/AUDIT_SUMMARY.md
+- indexer/README.md
 
 ### DELETE (temp/empty)
 - mcp-test.log (0 bytes)
@@ -3131,6 +3132,33 @@ Add useEffect to load from /api/config on mount.
 ---
 
 # CHANGES LOG (Updated After Each Modification)
+
+## 2026-01-27 Repo cleanup: governance + keywords + eval artifacts
+
+Status: ✅ COMPLETE (repo structure cleanup + reference updates)
+
+Summary:
+- Moved agent governance docs into `.claude/docs/` + `.codex/docs/` and updated workflows/scripts/docs to match.
+- Consolidated legacy keyword artifacts into `data/keywords/` and updated all keyword tooling + docs.
+- Archived root eval output artifacts into `data/evals/archive/` and removed duplicate root `golden.json` (canonical: `data/golden.json`).
+- Archived one-off migration helpers and Docker safety snapshot files under `_archived/`.
+- Removed tracked `.bak`/`.old`/`.backup` files that were cluttering the repo.
+
+Files Changed (high level):
+- Moved: `CLAUDE.md` → `.claude/docs/CLAUDE.md`
+- Moved: `AGENTS.md` → `.codex/docs/AGENTS.md`
+- Moved: `cursor.rules` → `.claude/docs/cursor.rules`
+- Archived: `GEMINI.md` → `_archived/ai/GEMINI.md`
+- Archived: migration helpers → `_archived/migrations/`
+- Consolidated: keyword JSONs → `data/keywords/` (removed legacy duplicates under `data/`)
+- Archived: eval output `*_eval.txt` → `data/evals/archive/`
+- Moved: `embedding_eval_results.json` → `data/evals/embedding_eval_results.json`
+- Moved: `run_diagnostics.js` → `scripts/run_diagnostics.js`
+- Moved: `eval_embeddings.py` → `eval/eval_embeddings.py`
+- Moved: `extract_endpoints.py` → `scripts/audit/extract_endpoints.py`
+- Moved: `README-INDEXER.md` → `indexer/README.md`
+- Moved: `SESSION_1_SUMMARY.md` → `agent_docs/archive/SESSION_1_SUMMARY.md`
+- Moved: `AUDIT_SUMMARY.md` → `agent_docs/AUDIT_SUMMARY.md`
 
 ## 2025-11-22 Codex Agent: Hardcoding Audit artifacts added
 
@@ -4187,8 +4215,8 @@ tests/config_migration_routers_smoke.py::test_config_values_are_readable PASSED
   - POST /api/secrets/ingest - Upload secrets file
   - GET /api/config - Get current config (with masking)
   - POST /api/config - Update configuration
-  - GET /api/prices - Get pricing data
-  - POST /api/prices/upsert - Update pricing entry
+  - GET /api/models - Get pricing data
+  - POST /api/models/upsert - Update pricing entry
 
 **Testing Results:**
 - ✅ Python syntax check: PASSED
@@ -5100,7 +5128,7 @@ Files Changed:
 
 Changes:
 - web/src/components/Chat/ChatSettings.tsx
-  - Added `modelOptions` state; fetches `/api/prices` and renders a dropdown when available; safe text input fallback otherwise.
+  - Added `modelOptions` state; fetches `/api/models` and renders a dropdown when available; safe text input fallback otherwise.
   - Added `#chat-temperature` numeric input (kept slider) for Playwright stability and accessibility.
   - Removed duplicate Top‑K control; kept single `#chat-top-k` with default 10.
   - Guarded effects and renders to prevent `ReferenceError: models is not defined` crash.
@@ -5126,7 +5154,7 @@ Verification (Playwright GUI, ?fast=1):
 
 Impact:
 - Eliminates Chat black-screen by guarding Settings and adding an error boundary.
-- Model dropdown now populated from live `/api/prices`; text input fallback ensures no-block.
+- Model dropdown now populated from live `/api/models`; text input fallback ensures no-block.
 - Chat Settings temperature test stable via `#chat-temperature`.
 - Quick Settings includes Fast Mode toggle for GUI smokes without altering profile/env.
 - Per-request overrides reliably take effect for model/Top‑K due to backend reloads.

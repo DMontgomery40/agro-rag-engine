@@ -50,9 +50,11 @@ export const healthApi = {
 export const configApi = {
     get: () => get('/api/config'),
     update: (data: any) => post('/api/config', data),
-    reloadEnv: () => post('/api/env/reload'),
+    // Renamed from reloadEnv - reloads agro_config.json, NOT .env
+    reloadConfig: () => post('/api/env/reload'),
+    reloadEnv: () => post('/api/env/reload'), // DEPRECATED: use reloadConfig
     load: () => get('/api/config'),
-    saveEnv: (env: any) => post('/api/config', { env }),
+    saveEnv: (env: any) => post('/api/config', { env }), // DEPRECATED naming
     saveConfig: (update: any) => post('/api/config', update),
     loadKeywords: () => get('/api/keywords'),
     addKeyword: (keyword: string, category?: string) => post('/api/keywords/add', { keyword, category }),

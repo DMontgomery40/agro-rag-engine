@@ -4,6 +4,20 @@
   const api = (window.CoreUtils && window.CoreUtils.api) ? window.CoreUtils.api : (p=>p);
   const state = (window.CoreUtils && window.CoreUtils.state) ? window.CoreUtils.state : {};
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Binds click handler to #btn-ls-latest button. Populates #ls-project input with LANGCHAIN_PROJECT from state.config.env. Executes async handler on click.
+   *
+   * why: |
+   *   Centralizes UI binding logic and prevents duplicate event listeners via dataset.bound flag.
+   *
+   * guardrails:
+   *   - DO NOT assume state.config.env exists; check all three levels before access
+   *   - NOTE: Handler incomplete; async click behavior undefined
+   *   - ASK USER: What does click handler do? (code truncated)
+   * ---/agentspec
+   */
   function bind(){
     const btn = document.getElementById('btn-ls-latest');
     if (!btn || btn.dataset.bound) return;

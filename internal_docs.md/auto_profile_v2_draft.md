@@ -69,7 +69,7 @@ def _meets_policy_maps(candidate: Dict[str, Any], policy: Dict[str, Any]) -> boo
 def _component_rows(
     comp_type: str,
     ALLOW: set,
-    prices: Dict[str, Any],
+    models: Dict[str, Any],
     include_local: bool = False
 ) -> List[Dict[str, Any]]:
     """Return a small list of viable rows for a component.
@@ -78,7 +78,7 @@ def _component_rows(
        For RERANK: rows with rerank_per_1k > 0 (or per_request) + optional local stub.
     """
     rows = []
-    models = prices.get("models") or []
+    models = models.get("models") or []
     comp = comp_type.upper()
 
     for m in models:
@@ -249,10 +249,10 @@ def _select_balanced(C: List[Dict[str, Any]], B: Optional[Number]) -> Dict[str, 
     # No budget: behave like performance
     return _select_performance(C)
 
-def autoprofile(request: Dict[str, Any], prices: Dict[str, Any]) -> Tuple[Dict[str, str], Dict[str, Any]]:
+def autoprofile(request: Dict[str, Any], models: Dict[str, Any]) -> Tuple[Dict[str, str], Dict[str, Any]]:
     """
     request: {hardware, policy, workload, objective, defaults}
-    prices : price catalog dict (with optional quality/latency metadata)
+    models : price catalog dict (with optional quality/latency metadata)
     returns: (env_map, reason)
     """
     hw = request.get("hardware", {})
@@ -279,16 +279,16 @@ def autoprofile(request: Dict[str, Any], prices: Dict[str, Any]) -> Tuple[Dict[s
     # Local-hybrid path (GEN can be local or cloud; EMB/RR can be local or cloud)
     if local_cap:
         gen_local = defaults.get("gen_model") if _looks_local(defaults.get("gen_model")) else None
-        top_cloud_gen = _component_rows("GEN", ALLOW, prices, include_local=False)
+        top_cloud_gen = _component_rows("GEN", ALLOW, models, include_local=False)
         GENs = [{"provider":"local","model":gen_local}] if gen_local else top_cloud_gen
-        EMBs = _component_rows("EMB", ALLOW, prices, include_local=True)   # include local
-        RRs  = _component_rows("RERANK", ALLOW, prices, include_local=True) # include local
+        EMBs = _component_rows("EMB", ALLOW, models, include_local=True)   # include local
+        RRs  = _component_rows("RERANK", ALLOW, models, include_local=True) # include local
         C.extend(_pair_limited(GENs, EMBs, RRs, limit=60))
 
     # Pure cloud
-    GENs = _component_rows("GEN", ALLOW, prices, include_local=False)
-    EMBs = _component_rows("EMB", ALLOW, prices, include_local=local_cap)    # allow local ER too
-    RRs  = _component_rows("RERANK", ALLOW, prices, include_local=local_cap)
+    GENs = _component_rows("GEN", ALLOW, models, include_local=False)
+    EMBs = _component_rows("EMB", ALLOW, models, include_local=local_cap)    # allow local ER too
+    RRs  = _component_rows("RERANK", ALLOW, models, include_local=local_cap)
     C.extend(_pair_limited(GENs, EMBs, RRs, limit=60))
 
     # Validate and optional filters
@@ -357,12 +357,12 @@ try:
 except Exception as e:
     _ap_select = None
 
-def _read_prices_fallback() -> Dict[str, Any]:
+def _read_models_fallback() -> Dict[str, Any]:
     # Try common locations; fall back to empty catalog
     candidates = [
-        os.path.join("gui", "prices.json"),
-        os.path.join("gui_phase_1", "gui", "prices.json"),
-        "prices.json"
+        os.path.join("gui", "models.json"),
+        os.path.join("gui_phase_1", "gui", "models.json"),
+        "models.json"
     ]
     for p in candidates:
         if os.path.exists(p):
@@ -376,8 +376,8 @@ def _read_prices_fallback() -> Dict[str, Any]:
 def api_profile_autoselect(payload: Dict[str, Any] = Body(...)):
     if _ap_select is None:
         raise HTTPException(status_code=500, detail="autoprofile module not available")
-    prices = _read_prices_fallback()
-    env, reason = _ap_select(payload, prices)
+    models = _read_models_fallback()
+    env, reason = _ap_select(payload, models)
     if not env:
         raise HTTPException(status_code=422, detail=reason)
     return {"env": env, "reason": reason}
@@ -406,11 +406,11 @@ try:
 except Exception as e:
     _ap_select = None
 
-def _read_prices_fallback() -> Dict[str, Any]:
+def _read_models_fallback() -> Dict[str, Any]:
     candidates = [
-        os.path.join("gui", "prices.json"),
-        os.path.join("gui_phase_1", "gui", "prices.json"),
-        "prices.json"
+        os.path.join("gui", "models.json"),
+        os.path.join("gui_phase_1", "gui", "models.json"),
+        "models.json"
     ]
     for p in candidates:
         if os.path.exists(p):
@@ -424,8 +424,8 @@ def _read_prices_fallback() -> Dict[str, Any]:
 def api_profile_autoselect(payload: Dict[str, Any] = Body(...)):
     if _ap_select is None:
         raise HTTPException(status_code=500, detail="autoprofile module not available")
-    prices = _read_prices_fallback()
-    env, reason = _ap_select(payload, prices)
+    models = _read_models_fallback()
+    env, reason = _ap_select(payload, models)
     if not env:
         raise HTTPException(status_code=422, detail=reason)
     return {"env": env, "reason": reason}

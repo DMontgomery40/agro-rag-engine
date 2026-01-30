@@ -21,7 +21,8 @@ REPO = os.getenv('REPO','project').strip()
 if _config_registry is not None:
     MAX_CHUNKS = _config_registry.get_int('CARDS_MAX', 100)
 else:
-    MAX_CHUNKS = int(os.getenv('CARDS_MAX') or '0')
+    # Fallback when registry not available - should not happen in production
+    MAX_CHUNKS = 100
 
 BASE = out_dir(REPO)
 CHUNKS = os.path.join(BASE, 'chunks.jsonl')
@@ -104,14 +105,25 @@ def main() -> None:
         import bm25s  # type: ignore
         from bm25s.tokenization import Tokenizer  # type: ignore
         from Stemmer import Stemmer  # type: ignore
-        stemmer = Stemmer('english')
-        tok = Tokenizer(stemmer=stemmer, stopwords='en')
-        with open(CARDS_TXT,'r',encoding='utf-8') as f:
-            docs = [line.strip() for line in f if line.strip()]
-        tokens = tok.tokenize(docs)
         # Load BM25 parameters from config
         from server.services.config_registry import get_config_registry
         cfg = get_config_registry()
+
+        # Config-driven tokenization
+        tokenizer_type = cfg.get_str('BM25_TOKENIZER', 'stemmer').lower()
+        stemmer_lang = cfg.get_str('BM25_STEMMER_LANG', 'english')
+        stopwords_lang = cfg.get_str('BM25_STOPWORDS_LANG', 'en')
+
+        if tokenizer_type == 'whitespace':
+            tok = Tokenizer(stemmer=None, stopwords=[], splitter=r"\s+")
+        else:
+            stemmer = Stemmer(stemmer_lang)
+            tok = Tokenizer(stemmer=stemmer, stopwords=stopwords_lang)
+
+        with open(CARDS_TXT,'r',encoding='utf-8') as f:
+            docs = [line.strip() for line in f if line.strip()]
+        tokens = tok.tokenize(docs)
+
         bm25_k1 = cfg.get_float('BM25_K1', 1.2)
         bm25_b = cfg.get_float('BM25_B', 0.4)
         

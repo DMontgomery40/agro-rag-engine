@@ -171,7 +171,7 @@ export function EmbeddingConfigPanel() {
             title="Click to configure in RAG → Retrieval"
           >
             {config.precision}
-          </span>
+          </a>
         </div>
       </div>
     </div>

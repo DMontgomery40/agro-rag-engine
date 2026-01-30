@@ -396,7 +396,7 @@ AGRO_RERANKER_TOPN:
 | Collection Name | ✅ data-tooltip="COLLECTION_NAME" | Good |
 | Chunk Size | ✅ data-tooltip="CHUNK_SIZE" | Good |
 | Chunk Overlap | ✅ data-tooltip="CHUNK_OVERLAP" | Good |
-| Index Max Workers | ✅ data-tooltip="INDEX_MAX_WORKERS" | Good |
+| Indexing Workers | ✅ data-tooltip="INDEXING_WORKERS" | Good |
 | Start Indexing button | ❌ | Missing |
 | Stop button | ❌ | Missing |
 | Refresh stats button | ❌ | Missing |

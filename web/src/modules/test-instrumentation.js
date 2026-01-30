@@ -12,6 +12,20 @@
         init();
     }
 
+    /**
+     * ---agentspec
+     * what: |
+     *   Initializes test infrastructure by adding data-testid attributes to DOM elements and exposing test helper functions globally.
+     *
+     * why: |
+     *   Centralizes test setup to enable reliable element selection and helper access across test suites.
+     *
+     * guardrails:
+     *   - DO NOT add testids to elements that may be removed/refactored; coordinate with component owners
+     *   - NOTE: exposeTestHelpers() must complete before tests run; verify execution order
+     *   - ASK USER: Should testids be scoped to avoid collisions in nested components?
+     * ---/agentspec
+     */
     function init() {
         addTestIds();
         exposeTestHelpers();
@@ -19,6 +33,20 @@
 
     /**
      * Add data-testid attributes to critical elements
+     */
+    /**
+     * ---agentspec
+     * what: |
+     *   Adds data-testid attributes to tab buttons. Iterates .tab-bar buttons, extracts data-tab value, sets data-testid to `tab-btn-{tabName}`. Supports new tab bar + backward compat.
+     *
+     * why: |
+     *   Enables reliable E2E test selectors without brittle CSS/class dependencies.
+     *
+     * guardrails:
+     *   - DO NOT assume all buttons have data-tab; add null checks
+     *   - NOTE: Backward compat branch incomplete; clarify old tab selector strategy
+     *   - ASK USER: Should old tabs also get testid prefix, or different naming?
+     * ---/agentspec
      */
     function addTestIds() {
         // Tab buttons in new tab bar
@@ -94,6 +122,19 @@
 
     /**
      * Expose test helpers on window
+     */
+    /**
+     * ---agentspec
+     * what: |
+     *   Exposes window.TestHelpers object with getAllTestIds() method. Returns array of all data-testid attribute values from DOM.
+     *
+     * why: |
+     *   Centralizes test utilities for consistent test harness access across specs.
+     *
+     * guardrails:
+     *   - DO NOT call before DOM ready; elements may not exist yet
+     *   - NOTE: Returns empty array if no [data-testid] elements present
+     * ---/agentspec
      */
     function exposeTestHelpers() {
         window.TestHelpers = {

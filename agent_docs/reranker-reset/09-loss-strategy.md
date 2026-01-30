@@ -1,6 +1,6 @@
 # Cross-Encoder Loss Strategy
 
-> **Agents:** Re-read [`AGENTS.md`](../AGENTS.md) before touching training code or docs. All GUI/CLI controls must stay mirrored with backend behaviour.
+> **Agents:** Re-read [`AGENTS.md`](../../.codex/docs/AGENTS.md) before touching training code or docs. All GUI/CLI controls must stay mirrored with backend behaviour.
 
 _Last updated: 2025-10-24_
 

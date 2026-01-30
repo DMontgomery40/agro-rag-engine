@@ -23,6 +23,11 @@ import requests  # type: ignore[import-untyped]
 from pathlib import Path
 from typing import Any, Optional
 
+# Ensure project root is in sys.path for imports to work from any directory
+_project_root = Path(__file__).resolve().parent.parent
+if str(_project_root) not in sys.path:
+    sys.path.insert(0, str(_project_root))
+
 try:
     from dotenv import load_dotenv as _maybe_load_dotenv  # type: ignore
 except Exception:
@@ -269,8 +274,8 @@ Type your question or use `/help` for commands.
                 console.print("[dim]Thinking...[/dim]")
                 result = self.ask(user_input)
 
-                # Show answer
-                answer = self._format_answer(result.get('generation', ''))
+                # Show answer (API returns 'answer', local graph returns 'generation')
+                answer = self._format_answer(result.get('answer') or result.get('generation', ''))
                 confidence = result.get('confidence', 0.0)
                 docs = result.get('documents', [])
                 event_id = result.get('event_id')

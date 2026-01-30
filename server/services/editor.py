@@ -31,7 +31,7 @@ def read_settings() -> Dict[str, Any]:
         "enabled": registry.get_bool("EDITOR_ENABLED", True),
         "embed_enabled": registry.get_bool("EDITOR_EMBED_ENABLED", True),
         "bind": registry.get_str("EDITOR_BIND", "local"),  # 'local' or 'public'
-        "image": registry.get_str("EDITOR_IMAGE", "agro-vscode:latest"),
+        "image": registry.get_str("EDITOR_IMAGE", "codercom/code-server:latest"),
         "host": "127.0.0.1",
     }
 
@@ -87,11 +87,20 @@ def write_settings(settings: Dict[str, Any]) -> bool:
 
 def health() -> Dict[str, Any]:
     """Editor health with config-based fallback so UI never spins indefinitely."""
+    import os
     registry = get_config_registry()
     cfg_enabled = registry.get_bool("EDITOR_ENABLED", True)
     cfg_embed = registry.get_bool("EDITOR_EMBED_ENABLED", True)
     cfg_port = registry.get_int("EDITOR_PORT", 4440)
-    cfg_host = "127.0.0.1"
+    
+    # Use configured host from settings (defaults to 127.0.0.1)
+    # Browser always needs 127.0.0.1, not host.docker.internal
+    settings = read_settings()
+    cfg_host = settings.get("host", "127.0.0.1")
+    # Ensure browser-accessible URL always uses 127.0.0.1
+    if cfg_host in ("0.0.0.0", "host.docker.internal"):
+        cfg_host = "127.0.0.1"
+    
     proxy_url = "/editor/"
     direct_url = f"http://{cfg_host}:{cfg_port}/"
     token = None
@@ -113,12 +122,25 @@ def health() -> Dict[str, Any]:
             status_data = json.loads(p.read_text())
             token = status_data.get("token")
             cfg_port = int(status_data.get("port", cfg_port))
-            direct_url = status_data.get("url", direct_url) or direct_url
+            # Use status.json URL if it exists, but normalize host to 127.0.0.1 for browser
+            url_from_status = status_data.get("url")
+            if url_from_status:
+                # Parse and normalize the URL to ensure browser-accessible host
+                from urllib.parse import urlparse
+                parsed = urlparse(url_from_status)
+                if parsed.hostname in ("0.0.0.0", "host.docker.internal"):
+                    direct_url = f"http://127.0.0.1:{parsed.port or cfg_port}/"
+                else:
+                    direct_url = str(url_from_status)
+            else:
+                direct_url = f"http://{cfg_host}:{cfg_port}/"
     except Exception as e:
         logger.warning("editor health check failed reading status: %s", e)
 
     # Live probe takes precedence so iframe can load even if status.json is stale
-    healthy = _probe(direct_url.rstrip("/") + "/")
+    # Use direct_url for probe, but ensure it's browser-accessible
+    probe_url = direct_url.rstrip("/") + "/"
+    healthy = _probe(probe_url)
     if healthy and cfg_enabled:
         return {
             "ok": True,

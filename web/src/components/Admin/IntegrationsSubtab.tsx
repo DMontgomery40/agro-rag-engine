@@ -1,21 +1,20 @@
 // AGRO - Integrations Subtab Component
 // External service integrations and webhooks
+// API keys are configured in .env ONLY - never written programmatically
 
 import { useState } from 'react';
 import { configApi } from '@/api/config';
 import { webhooksApi } from '@/api/webhooks';
+import { ApiKeyStatus } from '@/components/ui/ApiKeyStatus';
 
 export function IntegrationsSubtab() {
-  // LangSmith settings
+  // LangSmith settings (non-secret config only)
   const [langsmithEndpoint, setLangsmithEndpoint] = useState('https://api.smith.langchain.com');
-  const [langsmithKey, setLangsmithKey] = useState('');
-  const [langsmithKeyAlias, setLangsmithKeyAlias] = useState('');
   const [langsmithProject, setLangsmithProject] = useState('agro');
   const [langchainTracingV2, setLangchainTracingV2] = useState(true);
 
-  // Grafana settings
+  // Grafana settings (non-secret config only)
   const [grafanaUrl, setGrafanaUrl] = useState('http://127.0.0.1:3000');
-  const [grafanaApiKey, setGrafanaApiKey] = useState('');
 
   // VS Code settings
   const [vscodeEnabled, setVscodeEnabled] = useState(false);
@@ -29,9 +28,7 @@ export function IntegrationsSubtab() {
   const [mcpHttpPort, setMcpHttpPort] = useState('8013');
   const [mcpHttpPath, setMcpHttpPath] = useState('/mcp');
 
-  // Alert Notifications
-  const [slackWebhook, setSlackWebhook] = useState('');
-  const [discordWebhook, setDiscordWebhook] = useState('');
+  // Alert Notifications (webhook URLs are secrets - configured in .env only)
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [notifyCritical, setNotifyCritical] = useState(true);
   const [notifyWarning, setNotifyWarning] = useState(true);
@@ -45,16 +42,15 @@ export function IntegrationsSubtab() {
     setSaveStatus('');
     const integrations: Record<string, any> = {};
 
-    // LangSmith
+    // LangSmith (non-secret settings only - API keys must be in .env)
     if (langsmithEndpoint) integrations.LANGSMITH_ENDPOINT = langsmithEndpoint;
-    if (langsmithKey) integrations.LANGSMITH_API_KEY = langsmithKey;
-    if (langsmithKeyAlias) integrations.LANGCHAIN_API_KEY = langsmithKeyAlias;
+    // NEVER send API keys - they are in .env only
     if (langsmithProject) integrations.LANGSMITH_PROJECT = langsmithProject;
     integrations.LANGCHAIN_TRACING_V2 = langchainTracingV2 ? '1' : '0';
 
-    // Grafana
+    // Grafana (non-secret settings only - API keys must be in .env)
     if (grafanaUrl) integrations.GRAFANA_BASE_URL = grafanaUrl;
-    if (grafanaApiKey) integrations.GRAFANA_API_KEY = grafanaApiKey;
+    // NEVER send API keys - they are in .env only
 
     // VS Code
     integrations.VSCODE_ENABLED = vscodeEnabled ? '1' : '0';
@@ -68,9 +64,8 @@ export function IntegrationsSubtab() {
     if (mcpHttpPort) integrations.MCP_HTTP_PORT = mcpHttpPort;
     if (mcpHttpPath) integrations.MCP_HTTP_PATH = mcpHttpPath;
 
-    // Webhooks
-    if (slackWebhook) integrations.SLACK_WEBHOOK_URL = slackWebhook;
-    if (discordWebhook) integrations.DISCORD_WEBHOOK_URL = discordWebhook;
+    // Webhooks (URLs are secrets - configured in .env only)
+    // NEVER send webhook URLs - they are secrets in .env only
     integrations.NOTIFICATIONS_ENABLED = notificationsEnabled ? '1' : '0';
     integrations.NOTIFY_CRITICAL = notifyCritical ? '1' : '0';
     integrations.NOTIFY_WARNING = notifyWarning ? '1' : '0';
@@ -123,9 +118,9 @@ export function IntegrationsSubtab() {
   async function saveWebhooks() {
     setSaveStatus('');
 
+    // Webhook URLs are secrets - configured in .env only
+    // Only save the non-secret settings
     const config = {
-      slack_url: slackWebhook,
-      discord_url: discordWebhook,
       enabled: notificationsEnabled,
       severity: {
         critical: notifyCritical,
@@ -138,13 +133,13 @@ export function IntegrationsSubtab() {
     try {
       const result = await webhooksApi.save(config);
       if (result.status === 'success') {
-        setSaveStatus(result.message || 'Webhook configuration saved successfully!');
+        setSaveStatus(result.message || 'Webhook settings saved! URLs must be configured in .env file.');
         setTimeout(() => setSaveStatus(''), 3000);
       } else {
-        setSaveStatus('Failed to save webhook configuration');
+        setSaveStatus('Failed to save webhook settings');
       }
     } catch (error: any) {
-      setSaveStatus(`Error saving webhook configuration: ${error.message}`);
+      setSaveStatus(`Error saving webhook settings: ${error.message}`);
     }
   }
 
@@ -341,41 +336,13 @@ export function IntegrationsSubtab() {
           </div>
         </div>
 
+        {/* API Keys - configured in .env only, never entered in GUI */}
         <div className="input-row">
           <div className="input-group">
-            <label>LangSmith API Key</label>
-            <input
-              type="password"
-              value={langsmithKey}
-              onChange={(e) => setLangsmithKey(e.target.value)}
-              placeholder="Enter API key"
-              data-testid="langsmith-api-key"
-              style={{
-                width: '100%',
-                padding: '8px',
-                background: 'var(--input-bg)',
-                border: '1px solid var(--line)',
-                borderRadius: '4px',
-                color: 'var(--fg)'
-              }}
-            />
+            <ApiKeyStatus keyName="LANGSMITH_API_KEY" label="LangSmith API Key" />
           </div>
           <div className="input-group">
-            <label>LangSmith API Key (Alias)</label>
-            <input
-              type="password"
-              value={langsmithKeyAlias}
-              onChange={(e) => setLangsmithKeyAlias(e.target.value)}
-              placeholder="Enter alias key"
-              style={{
-                width: '100%',
-                padding: '8px',
-                background: 'var(--input-bg)',
-                border: '1px solid var(--line)',
-                borderRadius: '4px',
-                color: 'var(--fg)'
-              }}
-            />
+            <ApiKeyStatus keyName="LANGCHAIN_API_KEY" label="LangChain API Key" />
           </div>
         </div>
 
@@ -438,21 +405,7 @@ export function IntegrationsSubtab() {
             />
           </div>
           <div className="input-group">
-            <label>Grafana API Key</label>
-            <input
-              type="password"
-              value={grafanaApiKey}
-              onChange={(e) => setGrafanaApiKey(e.target.value)}
-              placeholder="Optional API key"
-              style={{
-                width: '100%',
-                padding: '8px',
-                background: 'var(--input-bg)',
-                border: '1px solid var(--line)',
-                borderRadius: '4px',
-                color: 'var(--fg)'
-              }}
-            />
+            <ApiKeyStatus keyName="GRAFANA_API_KEY" label="Grafana API Key" />
           </div>
         </div>
 
@@ -543,49 +496,16 @@ export function IntegrationsSubtab() {
           Configure webhook URLs for alert notifications. Leave blank to disable.
         </p>
 
+        {/* Webhook URLs - configured in .env only */}
         <div className="input-row">
           <div className="input-group">
-            <label>Slack Webhook URL</label>
-            <input
-              type="password"
-              value={slackWebhook}
-              onChange={(e) => setSlackWebhook(e.target.value)}
-              placeholder="https://hooks.slack.com/services/..."
-              style={{
-                width: '100%',
-                padding: '8px',
-                background: 'var(--input-bg)',
-                border: '1px solid var(--line)',
-                borderRadius: '4px',
-                color: 'var(--fg)'
-              }}
-            />
-            <p className="small" style={{ color: 'var(--fg-muted)', marginTop: '4px' }}>
-              Password field for security - not saved in browser
-            </p>
+            <ApiKeyStatus keyName="SLACK_WEBHOOK_URL" label="Slack Webhook URL" />
           </div>
         </div>
 
         <div className="input-row">
           <div className="input-group">
-            <label>Discord Webhook URL</label>
-            <input
-              type="password"
-              value={discordWebhook}
-              onChange={(e) => setDiscordWebhook(e.target.value)}
-              placeholder="https://discordapp.com/api/webhooks/..."
-              style={{
-                width: '100%',
-                padding: '8px',
-                background: 'var(--input-bg)',
-                border: '1px solid var(--line)',
-                borderRadius: '4px',
-                color: 'var(--fg)'
-              }}
-            />
-            <p className="small" style={{ color: 'var(--fg-muted)', marginTop: '4px' }}>
-              Password field for security - not saved in browser
-            </p>
+            <ApiKeyStatus keyName="DISCORD_WEBHOOK_URL" label="Discord Webhook URL" />
           </div>
         </div>
 

@@ -2,8 +2,8 @@
 // Shows calculated storage requirements with formatted bytes
 
 import React from 'react';
-import type { StorageResults } from '@/types/storage';
-import { formatBytes, formatNumber } from '@/utils/formatters';
+import type { StorageResults } from '@web/types/storage';
+import { formatBytes, formatNumber } from '@web/utils/formatters';
 
 interface ResultsDisplayProps {
   results: StorageResults;

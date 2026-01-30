@@ -1,90 +1,72 @@
 // AGRO - Paths & Stores Subtab Component
 // Directory paths and storage configuration
 
-import { useState, useEffect } from 'react';
-import { configApi } from '@/api/config';
-import { useTooltips } from '@/hooks/useTooltips';
+import { useState } from 'react';
+import { TooltipIcon } from '@/components/ui/TooltipIcon';
+import { useConfig, useConfigField } from '@/hooks';
 
-interface PathConfig {
-  QDRANT_URL: string;
-  REDIS_URL: string;
-  REPO_ROOT: string;
-  FILES_ROOT: string;
-  REPO: string;
-  COLLECTION_SUFFIX: string;
-  COLLECTION_NAME: string;
-  REPO_PATH: string;
-  GUI_DIR: string;
-  DOCS_DIR: string;
-  DATA_DIR: string;
-  REPOS_FILE: string;
-  OUT_DIR_BASE: string;
-  RAG_OUT_BASE: string;
-  MCP_HTTP_HOST: string;
-  MCP_HTTP_PORT: string;
-  MCP_HTTP_PATH: string;
-}
-
+/**
+ * ---agentspec
+ * what: |
+ *   React component that manages a configuration subtab for file paths within a settings interface.
+ *   Accepts no props; uses Zustand-backed config fields plus local saving/action message state.
+ *   Returns JSX rendering a form/UI for path configuration with real-time feedback.
+ *   Reads/writes config via useConfigField and saveNow for explicit saves.
+ *   Handles loading and saving states independently to show spinners/disabled states during async operations.
+ *
+ * why: |
+ *   Separates path configuration UI from business logic by using Zustand for config and local state for UI.
+ *   Follows standard React patterns: loading state prevents render-before-data bugs, saving state prevents double-submit, actionMessage provides user feedback.
+ *
+ * guardrails:
+ *   - DO NOT keep config values in local state; use useConfigField/useConfig instead
+ *   - ALWAYS call setSaving(false) after save operations complete (success or failure) to re-enable form controls
+ *   - NOTE: actionMessage state has no auto-clear timeout; component relies on parent or explicit setActionMessage(null) to dismiss messages
+ *   - ASK USER: Confirm whether tooltips should be optional (graceful fallback if useTooltips() returns undefined) or required before rendering
+ * ---/agentspec
+ */
 export function PathsSubtab() {
-  const [config, setConfig] = useState<Partial<PathConfig>>({});
-  const [loading, setLoading] = useState(true);
+  const { loading: configLoading, saveNow } = useConfig();
   const [saving, setSaving] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
-  const tooltips = useTooltips();
 
-  useEffect(() => {
-    loadConfig();
-  }, []);
-
-  async function loadConfig() {
-    try {
-      const data = await configApi.load();
-      // Extract relevant fields from env
-      const pathConfig: Partial<PathConfig> = {
-        QDRANT_URL: data.env?.QDRANT_URL || '',
-        REDIS_URL: data.env?.REDIS_URL || '',
-        REPO_ROOT: data.env?.REPO_ROOT || '',
-        FILES_ROOT: data.env?.FILES_ROOT || '',
-        REPO: data.env?.REPO || '',
-        COLLECTION_SUFFIX: data.env?.COLLECTION_SUFFIX || '',
-        COLLECTION_NAME: data.env?.COLLECTION_NAME || '',
-        REPO_PATH: data.env?.REPO_PATH || '',
-        GUI_DIR: data.env?.GUI_DIR || '',
-        DOCS_DIR: data.env?.DOCS_DIR || '',
-        DATA_DIR: data.env?.DATA_DIR || '',
-        REPOS_FILE: data.env?.REPOS_FILE || '',
-        OUT_DIR_BASE: data.env?.OUT_DIR_BASE || '',
-        RAG_OUT_BASE: data.env?.RAG_OUT_BASE || '',
-        MCP_HTTP_HOST: data.env?.MCP_HTTP_HOST || '',
-        MCP_HTTP_PORT: data.env?.MCP_HTTP_PORT || '',
-        MCP_HTTP_PATH: data.env?.MCP_HTTP_PATH || '',
-      };
-      setConfig(pathConfig);
-      setLoading(false);
-    } catch (error) {
-      console.error('Failed to load config:', error);
-      setLoading(false);
-    }
-  }
+  const [qdrantUrl, setQdrantUrl] = useConfigField<string>('QDRANT_URL', '');
+  const [redisUrl, setRedisUrl] = useConfigField<string>('REDIS_URL', '');
+  const [repoRoot, setRepoRoot] = useConfigField<string>('REPO_ROOT', '');
+  const [filesRoot, setFilesRoot] = useConfigField<string>('FILES_ROOT', '');
+  const [repoName, setRepoName] = useConfigField<string>('REPO', '');
+  const [collectionSuffix, setCollectionSuffix] = useConfigField<string>('COLLECTION_SUFFIX', '');
+  const [collectionName, setCollectionName] = useConfigField<string>('COLLECTION_NAME', '');
+  const [repoPath, setRepoPath] = useConfigField<string>('REPO_PATH', '');
+  const [guiDir, setGuiDir] = useConfigField<string>('GUI_DIR', '');
+  const [docsDir, setDocsDir] = useConfigField<string>('DOCS_DIR', '');
+  const [dataDir, setDataDir] = useConfigField<string>('DATA_DIR', '');
+  const [reposFile, setReposFile] = useConfigField<string>('REPOS_FILE', '');
+  const [outDirBase, setOutDirBase] = useConfigField<string>('OUT_DIR_BASE', '');
+  const [ragOutBase, setRagOutBase] = useConfigField<string>('RAG_OUT_BASE', '');
 
   async function saveConfig() {
     setSaving(true);
     setActionMessage('Saving configuration...');
 
     try {
-      // Build env update object with only non-empty values
-      const envUpdate: Record<string, string> = {};
-      for (const [key, value] of Object.entries(config)) {
-        if (value !== undefined && value !== null) {
-          envUpdate[key] = String(value);
-        }
-      }
-
-      await configApi.saveConfig({ env: envUpdate });
+      await saveNow({
+        QDRANT_URL: qdrantUrl,
+        REDIS_URL: redisUrl,
+        REPO_ROOT: repoRoot,
+        FILES_ROOT: filesRoot,
+        REPO: repoName,
+        COLLECTION_SUFFIX: collectionSuffix,
+        COLLECTION_NAME: collectionName,
+        REPO_PATH: repoPath,
+        GUI_DIR: guiDir,
+        DOCS_DIR: docsDir,
+        DATA_DIR: dataDir,
+        REPOS_FILE: reposFile,
+        OUT_DIR_BASE: outDirBase,
+        RAG_OUT_BASE: ragOutBase,
+      });
       setActionMessage('Configuration saved successfully!');
-
-      // Reload config to show updated values
-      setTimeout(() => loadConfig(), 500);
     } catch (error: any) {
       console.error('[PathsSubtab] Failed to save config:', error);
       setActionMessage(`Failed to save configuration: ${error.message || error}`);
@@ -94,11 +76,7 @@ export function PathsSubtab() {
     }
   }
 
-  const updateConfig = (key: keyof PathConfig, value: string) => {
-    setConfig(prev => ({ ...prev, [key]: value }));
-  };
-
-  if (loading) {
+  if (configLoading) {
     return (
       <div style={{ padding: '20px', textAlign: 'center', color: 'var(--fg-muted)' }}>
         Loading configuration...
@@ -132,11 +110,14 @@ export function PathsSubtab() {
       <h3>Database Endpoints</h3>
       <div className="input-row">
         <div className="input-group">
-          <label dangerouslySetInnerHTML={{ __html: tooltips.QDRANT_URL }} />
+          <label>
+            Qdrant URL
+            <TooltipIcon name="QDRANT_URL" />
+          </label>
           <input
             type="text"
-            value={config.QDRANT_URL || ''}
-            onChange={(e) => updateConfig('QDRANT_URL', e.target.value)}
+            value={qdrantUrl}
+            onChange={(e) => setQdrantUrl(e.target.value)}
             placeholder="http://127.0.0.1:6333"
             style={{
               width: '100%',
@@ -152,11 +133,14 @@ export function PathsSubtab() {
           </p>
         </div>
         <div className="input-group">
-          <label dangerouslySetInnerHTML={{ __html: tooltips.REDIS_URL }} />
+          <label>
+            Redis URL
+            <TooltipIcon name="REDIS_URL" />
+          </label>
           <input
             type="text"
-            value={config.REDIS_URL || ''}
-            onChange={(e) => updateConfig('REDIS_URL', e.target.value)}
+            value={redisUrl}
+            onChange={(e) => setRedisUrl(e.target.value)}
             placeholder="redis://127.0.0.1:6379/0"
             style={{
               width: '100%',
@@ -177,11 +161,14 @@ export function PathsSubtab() {
       <h3 style={{ marginTop: '32px' }}>Repository Configuration</h3>
       <div className="input-row">
         <div className="input-group">
-          <label dangerouslySetInnerHTML={{ __html: tooltips.REPO_ROOT }} />
+          <label>
+            Repo Root
+            <TooltipIcon name="REPO_ROOT" />
+          </label>
           <input
             type="text"
-            value={config.REPO_ROOT || ''}
-            onChange={(e) => updateConfig('REPO_ROOT', e.target.value)}
+            value={repoRoot}
+            onChange={(e) => setRepoRoot(e.target.value)}
             placeholder="Override project root (optional)"
             style={{
               width: '100%',
@@ -194,11 +181,14 @@ export function PathsSubtab() {
           />
         </div>
         <div className="input-group">
-          <label dangerouslySetInnerHTML={{ __html: tooltips.FILES_ROOT }} />
+          <label>
+            Files Root
+            <TooltipIcon name="FILES_ROOT" />
+          </label>
           <input
             type="text"
-            value={config.FILES_ROOT || ''}
-            onChange={(e) => updateConfig('FILES_ROOT', e.target.value)}
+            value={filesRoot}
+            onChange={(e) => setFilesRoot(e.target.value)}
             placeholder="/files mount root (optional)"
             style={{
               width: '100%',
@@ -214,11 +204,14 @@ export function PathsSubtab() {
 
       <div className="input-row">
         <div className="input-group">
-          <label dangerouslySetInnerHTML={{ __html: tooltips.REPO }} />
+          <label>
+            Repository
+            <TooltipIcon name="REPO" />
+          </label>
           <input
             type="text"
-            value={config.REPO || ''}
-            onChange={(e) => updateConfig('REPO', e.target.value)}
+            value={repoName}
+            onChange={(e) => setRepoName(e.target.value)}
             placeholder="agro"
             style={{
               width: '100%',
@@ -231,11 +224,14 @@ export function PathsSubtab() {
           />
         </div>
         <div className="input-group">
-          <label dangerouslySetInnerHTML={{ __html: tooltips.COLLECTION_SUFFIX }} />
+          <label>
+            Collection Suffix
+            <TooltipIcon name="COLLECTION_SUFFIX" />
+          </label>
           <input
             type="text"
-            value={config.COLLECTION_SUFFIX || ''}
-            onChange={(e) => updateConfig('COLLECTION_SUFFIX', e.target.value)}
+            value={collectionSuffix}
+            onChange={(e) => setCollectionSuffix(e.target.value)}
             placeholder="default"
             style={{
               width: '100%',
@@ -251,11 +247,14 @@ export function PathsSubtab() {
 
       <div className="input-row">
         <div className="input-group">
-          <label dangerouslySetInnerHTML={{ __html: tooltips.COLLECTION_NAME }} />
+          <label>
+            Collection Name
+            <TooltipIcon name="COLLECTION_NAME" />
+          </label>
           <input
             type="text"
-            value={config.COLLECTION_NAME || ''}
-            onChange={(e) => updateConfig('COLLECTION_NAME', e.target.value)}
+            value={collectionName}
+            onChange={(e) => setCollectionName(e.target.value)}
             placeholder="code_chunks_{REPO}"
             style={{
               width: '100%',
@@ -268,11 +267,14 @@ export function PathsSubtab() {
           />
         </div>
         <div className="input-group">
-          <label dangerouslySetInnerHTML={{ __html: tooltips.REPO_PATH }} />
+          <label>
+            Repo Path
+            <TooltipIcon name="REPO_PATH" />
+          </label>
           <input
             type="text"
-            value={config.REPO_PATH || ''}
-            onChange={(e) => updateConfig('REPO_PATH', e.target.value)}
+            value={repoPath}
+            onChange={(e) => setRepoPath(e.target.value)}
             placeholder="/path/to/repo"
             style={{
               width: '100%',
@@ -290,12 +292,15 @@ export function PathsSubtab() {
       <h3 style={{ marginTop: '32px' }}>Directory Paths</h3>
       <div className="input-row">
         <div className="input-group">
-          <label dangerouslySetInnerHTML={{ __html: tooltips.GUI_DIR }} />
+          <label>
+            GUI Directory
+            <TooltipIcon name="GUI_DIR" />
+          </label>
           <input
             type="text"
-            value={config.GUI_DIR || ''}
-            onChange={(e) => updateConfig('GUI_DIR', e.target.value)}
-            placeholder="./gui"
+            value={guiDir}
+            onChange={(e) => setGuiDir(e.target.value)}
+            placeholder="./web/public"
             style={{
               width: '100%',
               padding: '8px',
@@ -307,11 +312,14 @@ export function PathsSubtab() {
           />
         </div>
         <div className="input-group">
-          <label dangerouslySetInnerHTML={{ __html: tooltips.DOCS_DIR }} />
+          <label>
+            Docs Directory
+            <TooltipIcon name="DOCS_DIR" />
+          </label>
           <input
             type="text"
-            value={config.DOCS_DIR || ''}
-            onChange={(e) => updateConfig('DOCS_DIR', e.target.value)}
+            value={docsDir}
+            onChange={(e) => setDocsDir(e.target.value)}
             placeholder="./docs"
             style={{
               width: '100%',
@@ -327,11 +335,14 @@ export function PathsSubtab() {
 
       <div className="input-row">
         <div className="input-group">
-          <label dangerouslySetInnerHTML={{ __html: tooltips.DATA_DIR }} />
+          <label>
+            Data Directory
+            <TooltipIcon name="DATA_DIR" />
+          </label>
           <input
             type="text"
-            value={config.DATA_DIR || ''}
-            onChange={(e) => updateConfig('DATA_DIR', e.target.value)}
+            value={dataDir}
+            onChange={(e) => setDataDir(e.target.value)}
             placeholder="./data"
             style={{
               width: '100%',
@@ -344,11 +355,14 @@ export function PathsSubtab() {
           />
         </div>
         <div className="input-group">
-          <label dangerouslySetInnerHTML={{ __html: tooltips.REPOS_FILE }} />
+          <label>
+            Repos File
+            <TooltipIcon name="REPOS_FILE" />
+          </label>
           <input
             type="text"
-            value={config.REPOS_FILE || ''}
-            onChange={(e) => updateConfig('REPOS_FILE', e.target.value)}
+            value={reposFile}
+            onChange={(e) => setReposFile(e.target.value)}
             placeholder="./repos.json"
             style={{
               width: '100%',
@@ -366,11 +380,14 @@ export function PathsSubtab() {
       <h3 style={{ marginTop: '32px' }}>Storage Configuration</h3>
       <div className="input-row">
         <div className="input-group">
-          <label dangerouslySetInnerHTML={{ __html: tooltips.OUT_DIR_BASE }} />
+          <label>
+            Output Directory Base
+            <TooltipIcon name="OUT_DIR_BASE" />
+          </label>
           <input
             type="text"
-            value={config.OUT_DIR_BASE || ''}
-            onChange={(e) => updateConfig('OUT_DIR_BASE', e.target.value)}
+            value={outDirBase}
+            onChange={(e) => setOutDirBase(e.target.value)}
             placeholder="./out"
             style={{
               width: '100%',
@@ -386,11 +403,14 @@ export function PathsSubtab() {
           </p>
         </div>
         <div className="input-group">
-          <label dangerouslySetInnerHTML={{ __html: tooltips.RAG_OUT_BASE }} />
+          <label>
+            RAG Output Base
+            <TooltipIcon name="RAG_OUT_BASE" />
+          </label>
           <input
             type="text"
-            value={config.RAG_OUT_BASE || ''}
-            onChange={(e) => updateConfig('RAG_OUT_BASE', e.target.value)}
+            value={ragOutBase}
+            onChange={(e) => setRagOutBase(e.target.value)}
             placeholder="Override for OUT_DIR_BASE"
             style={{
               width: '100%',
@@ -402,66 +422,6 @@ export function PathsSubtab() {
             }}
           />
         </div>
-      </div>
-
-      {/* MCP HTTP Configuration */}
-      <h3 style={{ marginTop: '32px' }}>MCP HTTP Configuration</h3>
-      <div className="input-row">
-        <div className="input-group">
-          <label dangerouslySetInnerHTML={{ __html: tooltips.MCP_HTTP_HOST }} />
-          <input
-            type="text"
-            value={config.MCP_HTTP_HOST || ''}
-            onChange={(e) => updateConfig('MCP_HTTP_HOST', e.target.value)}
-            placeholder="0.0.0.0"
-            style={{
-              width: '100%',
-              padding: '8px',
-              background: 'var(--input-bg)',
-              border: '1px solid var(--line)',
-              borderRadius: '4px',
-              color: 'var(--fg)'
-            }}
-          />
-        </div>
-        <div className="input-group">
-          <label dangerouslySetInnerHTML={{ __html: tooltips.MCP_HTTP_PORT }} />
-          <input
-            type="number"
-            value={config.MCP_HTTP_PORT || ''}
-            onChange={(e) => updateConfig('MCP_HTTP_PORT', e.target.value)}
-            placeholder="8013"
-            style={{
-              width: '100%',
-              padding: '8px',
-              background: 'var(--input-bg)',
-              border: '1px solid var(--line)',
-              borderRadius: '4px',
-              color: 'var(--fg)'
-            }}
-          />
-        </div>
-      </div>
-
-      <div className="input-row">
-        <div className="input-group">
-          <label dangerouslySetInnerHTML={{ __html: tooltips.MCP_HTTP_PATH }} />
-          <input
-            type="text"
-            value={config.MCP_HTTP_PATH || ''}
-            onChange={(e) => updateConfig('MCP_HTTP_PATH', e.target.value)}
-            placeholder="/mcp"
-            style={{
-              width: '100%',
-              padding: '8px',
-              background: 'var(--input-bg)',
-              border: '1px solid var(--line)',
-              borderRadius: '4px',
-              color: 'var(--fg)'
-            }}
-          />
-        </div>
-        <div className="input-group"></div>
       </div>
 
       {/* Save Button */}

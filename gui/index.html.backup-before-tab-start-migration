@@ -2481,7 +2481,7 @@
                                             <label>Heuristic Quality Fallback</label>
                                             <div style="display:flex;align-items:center;gap:10px;">
                                                 <input type="checkbox" id="apv2-heuristics" style="width:auto;">
-                                                <span style="font-size:12px;color:var(--fg-muted);">Use heuristics when prices.json lacks quality_score (advanced)</span>
+                                                <span style="font-size:12px;color:var(--fg-muted);">Use heuristics when models.json lacks quality_score (advanced)</span>
                                             </div>
                                         </div>
                                     </div>
@@ -4285,10 +4285,6 @@
                         <div class="input-group">
                             <label>Chunk Overlap (tokens)</label>
                             <input type="number" name="CHUNK_OVERLAP" value="200" min="0" max="1000" step="50">
-                        </div>
-                        <div class="input-group">
-                            <label>Max Workers</label>
-                            <input type="number" name="INDEX_MAX_WORKERS" value="4" min="1" max="16">
                         </div>
                     </div>
 

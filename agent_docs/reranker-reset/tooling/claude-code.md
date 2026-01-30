@@ -1,6 +1,6 @@
 # Claude Code Guardrails
 
-> Before using Claude Code, re-read [`AGENTS.md`](../AGENTS.md). For full CLI docs see [Claude Code settings reference](https://docs.anthropic.com/en/docs/claude-code/settings).
+> Before using Claude Code, re-read [`AGENTS.md`](../../../.codex/docs/AGENTS.md). For full CLI docs see [Claude Code settings reference](https://docs.anthropic.com/en/docs/claude-code/settings).
 
 - Repo-level `.claude/settings.json` should enforce:
   ```json
@@ -16,5 +16,5 @@
   ```
 - Encourage `.claude/settings.local.json` for personal tweaks only.
 - User-level settings restrict global filesystem access.
-- Populate `CLAUDE.md` with reranker reset reminders.
+- Populate `.claude/docs/CLAUDE.md` with reranker reset reminders.
 - Use slash commands/hooks for reranker smoke tests.

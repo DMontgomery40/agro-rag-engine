@@ -10,8 +10,8 @@ cd "$ROOT_DIR"
 
 log() { echo "[dev_up] $*"; }
 
-# Load .env for HOST/PORT overrides (applied to uvicorn only)
-if [ -f "$ROOT_DIR/.env" ]; then
+# Load .env for HOST/PORT overrides (applied to uvicorn only) unless explicitly skipped
+if [ "${DEV_SKIP_ENV:-0}" != "1" ] && [ -f "$ROOT_DIR/.env" ]; then
   set -a
   # shellcheck source=/dev/null
   . "$ROOT_DIR/.env" || true
@@ -21,6 +21,27 @@ fi
 HOST="${UVICORN_HOST:-${HOST:-127.0.0.1}}"
 PORT="${UVICORN_PORT:-${PORT:-8012}}"
 OPEN_BROWSER="${OPEN_BROWSER:-1}"
+
+ensure_local_port_free() {
+  if ! command -v lsof >/dev/null 2>&1; then
+    return 0
+  fi
+  local listeners
+  listeners="$(lsof -ti tcp:${PORT} || true)"
+  if [ -z "$listeners" ]; then
+    return 0
+  fi
+  if [ "${DEV_FORCE_KILL_API:-0}" = "1" ]; then
+    log "Killing conflicting process(es) on ${PORT} per DEV_FORCE_KILL_API=1"
+    echo "$listeners" | xargs kill >/dev/null 2>&1 || true
+    sleep 1
+    return 0
+  fi
+  log "Port ${PORT} already in use by host process(es):"
+  lsof -nP -i tcp:${PORT} || true
+  log "Stop the local uvicorn (see .codex/docs/AGENTS.md) or rerun with DEV_FORCE_KILL_API=1 to auto-kill."
+  exit 1
+}
 
 if [[ "${DEV_LOCAL_UVICORN:-0}" = "1" ]]; then
   log "DEV_LOCAL_UVICORN=1 → starting Docker stack without API service ..."
@@ -33,6 +54,9 @@ if [[ "${DEV_LOCAL_UVICORN:-0}" = "1" ]]; then
     bash "$ROOT_DIR/scripts/setup.sh"
   fi
   . "$ROOT_DIR/.venv/bin/activate"
+
+  ensure_local_port_free
+
   if pgrep -f "uvicorn .*server\.asgi:create_app" >/dev/null; then
     log "Uvicorn already running."
   else

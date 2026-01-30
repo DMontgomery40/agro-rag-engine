@@ -450,7 +450,7 @@ Full pipeline cost estimate based on actual usage patterns.
 
 ---
 
-### GET `/api/prices`
+### GET `/api/models`
 
 Get model pricing database.
 
@@ -477,7 +477,7 @@ Get model pricing database.
 
 ---
 
-### POST `/api/prices/upsert`
+### POST `/api/models/upsert`
 
 Add or update model pricing.
 

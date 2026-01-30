@@ -46,7 +46,7 @@ Analyzed **8 primary JavaScript integration modules** (3,522+ lines) that connec
 **Backend API Endpoints:**
 - 10 Docker operations endpoints (`/api/docker/*`)
 - 6 MCP management endpoints (`/api/mcp/*`)
-- 4 RAG/Chat endpoints (`/api/chat`, `/api/prices`, etc.)
+- 4 RAG/Chat endpoints (`/api/chat`, `/api/models`, etc.)
 - 6 Configuration endpoints (`/api/config`, `/api/secrets/ingest`, etc.)
 - 2 Health monitoring endpoints (`/health`, `/health/editor`)
 
@@ -64,7 +64,7 @@ Analyzed **8 primary JavaScript integration modules** (3,522+ lines) that connec
 
 **Critical Dependencies:**
 - chat.js depends on config.js for RAG parameters
-- config.js depends on /api/prices for model validation
+- config.js depends on /api/models for model validation
 - docker.js depends on window.LiveTerminal for logging
 - All modules depend on window.CoreUtils
 

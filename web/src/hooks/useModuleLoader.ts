@@ -5,6 +5,29 @@ import { useState, useEffect } from 'react';
  * Note: The actual module loading is done in App.tsx for now
  * This hook just provides visibility into the loading state
  */
+/**
+ * ---agentspec
+ * what: |
+ *   Custom React hook that manages dynamic module loading with retry logic and progress tracking.
+ *   Takes no parameters; manages internal state for load completion, errors, and progress messages.
+ *   Returns object with modulesLoaded (boolean), loadError (string | null), and loadProgress (string) for UI binding.
+ *   Implements exponential backoff retry mechanism with max 100 attempts (~10 seconds total).
+ *   Handles loading failures by capturing error messages and preventing infinite retry loops.
+ *
+ * why: |
+ *   Centralizes module loading orchestration to avoid duplicating retry/error logic across components.
+ *   Progress tracking enables UI feedback during potentially slow module initialization.
+ *   Retry mechanism with attempt limits ensures graceful degradation rather than hanging indefinitely.
+ *   State separation (loaded/error/progress) allows components to handle each concern independently.
+ *
+ * guardrails:
+ *   - DO NOT remove maxAttempts limit; unbounded retries can cause browser hang or memory exhaustion
+ *   - ALWAYS clear previous errors when retrying; stale error state can mislead users about current status
+ *   - NOTE: 100 attempts with exponential backoff assumes ~100ms per attempt; adjust maxAttempts if timing changes
+ *   - ASK USER: Confirm the intended retry strategy (exponential backoff vs linear) and total timeout duration before modifying attempt logic
+ *   - DO NOT expose raw attempt counter to UI; only expose final states (loaded/error/progress) to prevent confusion
+ * ---/agentspec
+ */
 export function useModuleLoader() {
   const [modulesLoaded, setModulesLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);

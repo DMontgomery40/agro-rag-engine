@@ -3,48 +3,85 @@
 // Repository configuration and Code Cards Builder with 37 element IDs
 // Fully wired to repos.json for all repository configuration
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useAPI } from '@/hooks';
+import { useState, useEffect, useCallback } from 'react';
+import { useAPI, useConfigField } from '@/hooks';
+import { useCards } from '@/hooks/useCards';
 import { RepositoryConfig } from './RepositoryConfig';
-import { LiveTerminal } from '../LiveTerminal/LiveTerminal';
-import { TerminalService } from '@/services/TerminalService';
 import { useRepoStore } from '@/stores/useRepoStore';
+import { CardsViewer } from './CardsViewer';
+import { CardsBuilderPanel } from './CardsBuilderPanel';
+import { LiveTerminal } from '@/components/ui/LiveTerminal';
+import { PromptLink } from '@/components/ui/PromptLink';
 
-interface RepoData {
-  name: string;
-  slug?: string;
-  path?: string;
-  exclude_paths?: string[];
-  keywords?: string[];
-  path_boosts?: string[];
-  layer_bonuses?: Record<string, Record<string, number>>;
+type CardItem = {
+  file_path: string;
+  start_line?: number;
+  purpose?: string;
+  symbols?: string[];
+  technical_details?: string;
+  domain_concepts?: string[];
+};
+
+declare global {
+  interface Window {
+    Cards?: { load: () => Promise<void> | void };
+    initCards?: () => void;
+  }
 }
 
+/**
+ * ---agentspec
+ * what: |
+ *   Renders data quality UI subtab. Maps centralized repo store to repo names; manages selectedRepo, excludeDirs, excludePatterns state.
+ *
+ * why: |
+ *   Centralizes repo state via useRepoStore to avoid duplication across tabs.
+ *
+ * guardrails:
+ *   - DO NOT fetch repos directly; use storeLoadRepos for consistency
+ *   - NOTE: repos derived from storeRepos.map(r => r.name); sync state if store updates
+ * ---/agentspec
+ */
 export function DataQualitySubtab() {
   const { api } = useAPI();
-  
+
   // Use centralized repo store
-  const { repos: storeRepos, activeRepo, loadRepos: storeLoadRepos } = useRepoStore();
+  const { repos: storeRepos, activeRepo, loadRepos: storeLoadRepos, loading, error: repoError, initialized } = useRepoStore();
+
+  // Use cards store for build state - NO LOCAL USESTATE
+  const { buildInProgress, buildStage, progressRepo } = useCards();
+  /**
+   * ---agentspec
+   * what: |
+   *   React component managing repository indexing UI. Accepts repo selection, exclusion filters (dirs/patterns/keywords), card limit, enrichment toggle. Tracks build progress & stage.
+   *
+   * why: |
+   *   Centralizes indexing config state to decouple UI from API calls and enable real-time progress feedback.
+   *
+   * guardrails:
+   *   - DO NOT allow cardsMax < 10 or > Pydantic limit; validate before submit
+   *   - NOTE: enrichEnabled defaults true; confirm user intent if toggled off
+   *   - ASK USER: Clarify excludePatterns format (regex vs glob) before implementation
+   * ---/agentspec
+   */
   const repos = storeRepos.map(r => r.name);
   const [selectedRepo, setSelectedRepo] = useState('');
-  const [repoData, setRepoData] = useState<RepoData | null>(null);
-  const [excludeDirs, setExcludeDirs] = useState('');
-  const [excludePatterns, setExcludePatterns] = useState('');
-  const [excludeKeywords, setExcludeKeywords] = useState('');
-  const [cardsMax, setCardsMax] = useState(0);
-  const [enrichEnabled, setEnrichEnabled] = useState(true);
-  const [buildInProgress, setBuildInProgress] = useState(false);
-  const [currentStage, setCurrentStage] = useState('');
-  const [progressRepo, setProgressRepo] = useState('');
-  const [showTerminal, setShowTerminal] = useState(false);
-  const terminalRef = useRef<any>(null);
 
-  // Keywords Manager state
-  const [keywordsMaxPerRepo, setKeywordsMaxPerRepo] = useState<number>(50);
-  const [keywordsMinFreq, setKeywordsMinFreq] = useState<number>(3);
-  const [keywordsBoost, setKeywordsBoost] = useState<number>(1.3);
-  const [keywordsAutoGenerate, setKeywordsAutoGenerate] = useState<number>(1);
-  const [keywordsRefreshHours, setKeywordsRefreshHours] = useState<number>(24);
+  // Config values via useConfigField (auto-sync with backend)
+  const [excludeDirs, setExcludeDirs] = useConfigField<string>('CARDS_EXCLUDE_DIRS', '');
+  const [excludePatterns, setExcludePatterns] = useConfigField<string>('CARDS_EXCLUDE_PATTERNS', '');
+  const [excludeKeywords, setExcludeKeywords] = useConfigField<string>('CARDS_EXCLUDE_KEYWORDS', '');
+  const [cardsMax, setCardsMax] = useConfigField<number>('CARDS_MAX', 100);
+  const [enrichEnabled, setEnrichEnabled] = useConfigField<string>('CARDS_ENRICH', '1');
+
+  // Keywords Manager config
+  const [keywordsMaxPerRepo, setKeywordsMaxPerRepo] = useConfigField<number>('KEYWORDS_MAX_PER_REPO', 50);
+  const [keywordsMinFreq, setKeywordsMinFreq] = useConfigField<number>('KEYWORDS_MIN_FREQ', 3);
+  const [keywordsBoost, setKeywordsBoost] = useConfigField<number>('KEYWORDS_BOOST', 1.3);
+  const [keywordsAutoGenerate, setKeywordsAutoGenerate] = useConfigField<number>('KEYWORDS_AUTO_GENERATE', 1);
+  const [keywordsRefreshHours, setKeywordsRefreshHours] = useConfigField<number>('KEYWORDS_REFRESH_HOURS', 24);
+
+  // Local UI state
   const [error, setError] = useState<string>('');
 
   // Keyword generation state
@@ -52,13 +89,26 @@ export function DataQualitySubtab() {
   const [keywordsGenerateStatus, setKeywordsGenerateStatus] = useState<string>('');
   const [generatedKeywordsCount, setGeneratedKeywordsCount] = useState<number | null>(null);
 
-  // Load repos list via store
+  // Terminal state for build logs
+  const [showTerminal, setShowTerminal] = useState<boolean>(false);
+  const [terminalLines, setTerminalLines] = useState<string[]>([]);
+  const [terminalProgress, setTerminalProgress] = useState<{ percent: number; message: string } | null>(null);
+
+  // Load repos list via store (once if not initialized)
   useEffect(() => {
-    if (storeRepos.length === 0) {
+    if (!initialized && !loading) {
       storeLoadRepos();
     }
-  }, [storeRepos.length, storeLoadRepos]);
-  
+  }, [initialized, loading, storeLoadRepos]);
+
+  // Show error if repo loading failed
+  useEffect(() => {
+    if (repoError) {
+      console.error('[DataQualitySubtab] Failed to load repos:', repoError);
+      // Optionally show error to user
+    }
+  }, [repoError]);
+
   // Sync selectedRepo with store's activeRepo or first repo when available
   useEffect(() => {
     if (repos.length > 0 && !selectedRepo) {
@@ -68,139 +118,27 @@ export function DataQualitySubtab() {
     }
   }, [repos, activeRepo, selectedRepo]);
 
-  // Load selected repo's data from repos.json
-  useEffect(() => {
-    if (!selectedRepo) return;
+  // Config loading is handled automatically by useConfigField hooks
 
-    const loadRepoData = async () => {
-      try {
-        const response = await fetch(api(`repos/${selectedRepo}`));
-        const data = await response.json();
-        if (data.ok && data.repo) {
-          setRepoData(data.repo);
-          // Pre-fill exclude_paths from repos.json into Cards Builder field
-          const excludePaths = data.repo.exclude_paths || [];
-          setExcludeDirs(excludePaths.join(', '));
-        }
-      } catch (e) {
-        console.error('Failed to load repo data:', e);
-      }
-    };
-    loadRepoData();
-  }, [selectedRepo, api]);
 
-  // Sync excludeDirs changes back to repos.json (debounced)
-  // This keeps Cards Builder exclude directories in sync with repos.json
-  useEffect(() => {
-    if (!selectedRepo || !repoData) return;
-
-    const timeoutId = setTimeout(async () => {
-      try {
-        const excludePaths = excludeDirs
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean);
-
-        // Only save if changed
-        const currentPaths = (repoData.exclude_paths || []).sort().join(',');
-        const newPaths = excludePaths.sort().join(',');
-        if (currentPaths === newPaths) return;
-
-        const response = await fetch(api(`repos/${selectedRepo}`), {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ exclude_paths: excludePaths })
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.ok) {
-            console.log('[DataQuality] Updated exclude_paths in repos.json from Cards Builder');
-            // Update local repoData
-            setRepoData((prev: RepoData | null) => ({
-              ...prev!,
-              exclude_paths: excludePaths
-            }));
-          }
-        }
-      } catch (e) {
-        console.error('Failed to update repos.json:', e);
-      }
-    }, 1000); // Debounce 1 second
-
-    return () => clearTimeout(timeoutId);
-  }, [excludeDirs, selectedRepo, api, repoData]);
-
-  // Load exclude keywords (separate from repos.json)
-  useEffect(() => {
-    const loadExcludeKeywords = async () => {
-      try {
-        const response = await fetch(api('data-quality/exclude-keywords'));
-        const data = await response.json();
-        if (data.keywords) {
-          setExcludeKeywords(data.keywords);
-        }
-      } catch (e) {
-        console.error('Failed to load exclude keywords:', e);
-      }
-    };
-    loadExcludeKeywords();
-  }, [api]);
-
-  // Load keywords config on mount
-  useEffect(() => {
-    const loadKeywordsConfig = async () => {
-      try {
-        const response = await fetch(api('config'));
-        if (!response.ok) {
-          console.warn('[DataQualitySubtab] Config fetch returned', response.status, '- using defaults');
-          return;
-        }
-        const data = await response.json();
-        const env = data.env || {};
-
-        setKeywordsMaxPerRepo(parseInt(env.KEYWORDS_MAX_PER_REPO || '50', 10));
-        setKeywordsMinFreq(parseInt(env.KEYWORDS_MIN_FREQ || '3', 10));
-        setKeywordsBoost(parseFloat(env.KEYWORDS_BOOST || '1.3'));
-        setKeywordsAutoGenerate(parseInt(env.KEYWORDS_AUTO_GENERATE || '1', 10));
-        setKeywordsRefreshHours(parseInt(env.KEYWORDS_REFRESH_HOURS || '24', 10));
-      } catch (err) {
-        // Don't show error banner for config load failures - just use defaults
-        console.warn('[DataQualitySubtab] Could not load keywords config, using defaults:', err);
-      }
-    };
-    loadKeywordsConfig();
-  }, [api]);
-
-  const updateConfig = async (key: string, value: any) => {
-    try {
-      setError('');
-
-      const response = await fetch(api('config'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ env: { [key]: value } })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to save ${key}: ${response.status}`);
-      }
-
-      // Reload config to ensure backend picks up changes
-      await fetch(api('env/reload'), { method: 'POST' });
-
-      console.log(`[DataQualitySubtab] Successfully saved ${key} = ${value}`);
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : `Failed to save ${key}`;
-      console.error(`[DataQualitySubtab] Error saving ${key}:`, err);
-      setError(errorMsg);
-    }
-  };
+  // Config updates are handled automatically by useConfigField setters
 
   /**
    * Generate keywords for the selected repository
    * Calls /api/keywords/generate endpoint
+   */
+  /**
+   * ---agentspec
+   * what: |
+   *   Generates keywords for selected repository. Validates repo selection, sets loading state, updates UI with generation status.
+   *
+   * why: |
+   *   Centralizes keyword generation trigger with validation and user feedback.
+   *
+   * guardrails:
+   *   - DO NOT proceed without selectedRepo; return early with error message
+   *   - NOTE: Sets three state vars (generating flag, status text, count reset) atomically
+   * ---/agentspec
    */
   const handleGenerateKeywords = async () => {
     if (!selectedRepo) {
@@ -239,50 +177,6 @@ export function DataQualitySubtab() {
       console.error('[DataQualitySubtab] Keyword generation error:', err);
     } finally {
       setKeywordsGenerating(false);
-    }
-  };
-
-  const handleBuildCards = async () => {
-    setBuildInProgress(true);
-    setProgressRepo(selectedRepo);
-    setShowTerminal(true);
-
-    try {
-      // Show terminal and connect to SSE stream
-      const terminal = (window as any).terminal_cards_terminal;
-      if (terminal) {
-        terminal.show();
-        terminal.clear();
-        terminal.setTitle(`Building Cards: ${selectedRepo}`);
-      }
-
-      // Start the build
-      const response = await fetch(api('cards/build'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          repo: selectedRepo,
-          exclude_dirs: excludeDirs.split(',').map(s => s.trim()).filter(Boolean),
-          exclude_patterns: excludePatterns.split(',').map(s => s.trim()).filter(Boolean),
-          exclude_keywords: excludeKeywords.split(',').map(s => s.trim()).filter(Boolean),
-          max: cardsMax,
-          enrich: enrichEnabled
-        })
-      });
-
-      if (response.ok) {
-        // Connect to SSE stream for real logs
-        TerminalService.streamBuildLogs('cards_terminal', 'cards', selectedRepo);
-      } else {
-        throw new Error(`Build failed: ${response.statusText}`);
-      }
-    } catch (e) {
-      console.error('Failed to start cards build:', e);
-      const terminal = (window as any).terminal_cards_terminal;
-      if (terminal) {
-        terminal.appendLine(`\x1b[31mError: ${e}\x1b[0m`);
-      }
-      setBuildInProgress(false);
     }
   };
 
@@ -348,9 +242,6 @@ export function DataQualitySubtab() {
       <div className="settings-section">
         <h3>Repository Configuration</h3>
         <RepositoryConfig
-          repos={repos}
-          selectedRepo={selectedRepo}
-          onRepoChange={setSelectedRepo}
           onExcludePathsChange={(paths) => {
             // Sync exclude_paths changes from RepositoryConfig to Cards Builder field
             setExcludeDirs(paths.join(', '));
@@ -381,8 +272,7 @@ export function DataQualitySubtab() {
               min="10"
               max="500"
               step="10"
-              onChange={(e) => setKeywordsMaxPerRepo(parseInt(e.target.value, 10))}
-              onBlur={() => updateConfig('KEYWORDS_MAX_PER_REPO', keywordsMaxPerRepo)}
+              onChange={(e) => setKeywordsMaxPerRepo(parseInt(e.target.value, 10) || 50)}
             />
           </div>
           <div className="input-group">
@@ -398,8 +288,7 @@ export function DataQualitySubtab() {
               min="1"
               max="10"
               step="1"
-              onChange={(e) => setKeywordsMinFreq(parseInt(e.target.value, 10))}
-              onBlur={() => updateConfig('KEYWORDS_MIN_FREQ', keywordsMinFreq)}
+              onChange={(e) => setKeywordsMinFreq(parseInt(e.target.value, 10) || 3)}
             />
           </div>
         </div>
@@ -418,8 +307,7 @@ export function DataQualitySubtab() {
               min="1.0"
               max="3.0"
               step="0.1"
-              onChange={(e) => setKeywordsBoost(parseFloat(e.target.value))}
-              onBlur={() => updateConfig('KEYWORDS_BOOST', keywordsBoost)}
+              onChange={(e) => setKeywordsBoost(parseFloat(e.target.value) || 1.3)}
             />
           </div>
           <div className="input-group">
@@ -431,11 +319,7 @@ export function DataQualitySubtab() {
               id="KEYWORDS_AUTO_GENERATE"
               name="KEYWORDS_AUTO_GENERATE"
               value={keywordsAutoGenerate}
-              onChange={(e) => {
-                const value = parseInt(e.target.value, 10);
-                setKeywordsAutoGenerate(value);
-                updateConfig('KEYWORDS_AUTO_GENERATE', value);
-              }}
+              onChange={(e) => setKeywordsAutoGenerate(parseInt(e.target.value, 10))}
             >
               <option value="1">Enabled</option>
               <option value="0">Disabled</option>
@@ -457,8 +341,7 @@ export function DataQualitySubtab() {
               min="1"
               max="168"
               step="1"
-              onChange={(e) => setKeywordsRefreshHours(parseInt(e.target.value, 10))}
-              onBlur={() => updateConfig('KEYWORDS_REFRESH_HOURS', keywordsRefreshHours)}
+              onChange={(e) => setKeywordsRefreshHours(parseInt(e.target.value, 10) || 24)}
             />
           </div>
         </div>
@@ -552,7 +435,7 @@ export function DataQualitySubtab() {
           <div className="input-group">
             <label>
               Exclude Directories (comma-separated)
-              <span className="help-icon" data-tooltip="EXCLUDE_PATHS">?</span>
+              <span className="help-icon" data-tooltip="CARDS_EXCLUDE_DIRS">?</span>
             </label>
             <input
               type="text"
@@ -564,14 +447,17 @@ export function DataQualitySubtab() {
               style={{ width: '100%' }}
             />
             <p className="small" style={{ color: 'var(--fg-muted)' }}>
-              Directories to skip when building cards. Synced with repos.json exclude_paths.
+              Directories skipped during cards builds. Stored in agro_config.json (CARDS_EXCLUDE_DIRS).
             </p>
           </div>
         </div>
 
         <div className="input-row" style={{ marginBottom: '12px' }}>
           <div className="input-group">
-            <label>Exclude Patterns (comma-separated)</label>
+            <label>
+              Exclude Patterns (comma-separated)
+              <span className="help-icon" data-tooltip="CARDS_EXCLUDE_PATTERNS">?</span>
+            </label>
             <input
               type="text"
               id="cards-exclude-patterns"
@@ -582,14 +468,17 @@ export function DataQualitySubtab() {
               style={{ width: '100%' }}
             />
             <p className="small" style={{ color: 'var(--fg-muted)' }}>
-              File patterns to skip
+              File patterns to skip (CARDS_EXCLUDE_PATTERNS).
             </p>
           </div>
         </div>
 
         <div className="input-row" style={{ marginBottom: '16px' }}>
           <div className="input-group">
-            <label>Exclude Keywords (comma-separated)</label>
+            <label>
+              Exclude Keywords (comma-separated)
+              <span className="help-icon" data-tooltip="CARDS_EXCLUDE_KEYWORDS">?</span>
+            </label>
             <input
               type="text"
               id="cards-exclude-keywords"
@@ -600,7 +489,7 @@ export function DataQualitySubtab() {
               style={{ width: '100%' }}
             />
             <p className="small" style={{ color: 'var(--fg-muted)' }}>
-              Skip chunks containing these keywords. These are saved and will be used by the Apply All Changes button.
+              Skip chunks containing these keywords (CARDS_EXCLUDE_KEYWORDS).
             </p>
           </div>
         </div>
@@ -614,13 +503,17 @@ export function DataQualitySubtab() {
               id="cards-max"
               name="CARDS_MAX"
               value={cardsMax}
-              onChange={(e) => setCardsMax(Number(e.target.value))}
-              min="0"
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                // Enforce Pydantic constraint: ge=10
+                setCardsMax(Math.max(10, val));
+              }}
+              min="10"
               step="10"
               style={{ maxWidth: '160px' }}
             />
             <p className="small" style={{ color: 'var(--fg-muted)' }}>
-              Limit chunks (0 = all)
+              Max chunks to process (min: 10, default: 100)
             </p>
           </div>
           <div className="input-group">
@@ -629,14 +522,20 @@ export function DataQualitySubtab() {
                 type="checkbox"
                 id="cards-enrich-gui"
                 name="CARDS_ENRICH"
-                checked={enrichEnabled}
-                onChange={(e) => setEnrichEnabled(e.target.checked)}
+                checked={enrichEnabled === '1'}
+                onChange={(e) => setEnrichEnabled(e.target.checked ? '1' : '0')}
               />{' '}
               Enrich with AI
             </label>
             <p className="small" style={{ color: 'var(--fg-muted)' }}>
               Use LLM for rich semantic cards
             </p>
+            {/* Quick links to edit card-related system prompts */}
+            <div className="related-prompts" style={{ marginTop: '10px' }}>
+              <span className="related-prompts-label">Edit:</span>
+              <PromptLink promptKey="semantic_cards">Semantic Cards</PromptLink>
+              <PromptLink promptKey="code_enrichment">Code Enrichment</PromptLink>
+            </div>
           </div>
         </div>
 
@@ -724,131 +623,55 @@ export function DataQualitySubtab() {
               className="small-button"
               onClick={() => {
                 setShowTerminal(true);
-                // Simulate some logs for testing
-                setTimeout(() => {
-                  const terminal = (window as any).terminal_cards_terminal;
-                  if (terminal) {
-                    terminal.appendLine('\x1b[32m✓\x1b[0m Connected to build server');
-                    terminal.appendLine('Scanning repository files...');
-                    terminal.updateProgress(10, 'Scanning files...');
-
-                    setTimeout(() => {
-                      terminal.appendLine('Found 247 files to process');
-                      terminal.appendLine('\x1b[33mWarning:\x1b[0m Skipping node_modules');
-                      terminal.updateProgress(30, 'Chunking code...');
-                    }, 500);
-
-                    setTimeout(() => {
-                      terminal.appendLine('Creating code chunks...');
-                      terminal.appendLine('\x1b[34mInfo:\x1b[0m Average chunk size: 150 lines');
-                      terminal.updateProgress(50, 'Generating summaries...');
-                    }, 1000);
-
-                    setTimeout(() => {
-                      terminal.appendLine('\x1b[31mError:\x1b[0m Failed to summarize chunk 42');
-                      terminal.appendLine('Retrying...');
-                      terminal.updateProgress(70, 'Creating embeddings...');
-                    }, 1500);
-
-                    setTimeout(() => {
-                      terminal.appendLine('\x1b[32m✓\x1b[0m Successfully built cards!');
-                      terminal.updateProgress(100, 'Complete!');
-                    }, 2000);
-                  }
-                }, 100);
+                // Demo: add some test log lines
+                setTerminalLines(prev => [
+                  ...prev,
+                  '\x1b[32m✓\x1b[0m Connected to build server',
+                  'Scanning repository files...'
+                ]);
+                setTerminalProgress({ percent: 10, message: 'Scanning files...' });
               }}
             >
-              View Logs (Test)
+              View Logs
             </button>
-            <button id="cards-progress-clear" className="small-button">
+            <button id="cards-progress-clear" className="small-button" onClick={() => {
+              setTerminalLines([]);
+              setTerminalProgress(null);
+            }}>
               Clear
             </button>
           </div>
         </div>
 
-        {/* Cards Terminal - Real SSE Streaming */}
-        {showTerminal && (
-          <LiveTerminal
-            ref={terminalRef}
-            id="cards_terminal"
-            title={`Building Cards: ${selectedRepo}`}
-            initialContent={[
-              '\x1b[32m✓\x1b[0m Starting cards build...',
-              `\x1b[34mRepository:\x1b[0m ${selectedRepo}`,
-              `\x1b[34mExclude Dirs:\x1b[0m ${excludeDirs || 'none'}`,
-              'Waiting for server connection...'
-            ]}
-            onClose={() => {
-              setShowTerminal(false);
-              TerminalService.disconnect('cards_terminal');
-            }}
-          />
-        )}
+        {/* Live Terminal for Build Logs */}
+        <LiveTerminal
+          title="Cards Build Logs"
+          isVisible={showTerminal}
+          onClose={() => setShowTerminal(false)}
+          lines={terminalLines}
+          progress={terminalProgress}
+        />
 
         {/* Action Buttons */}
-        <div className="input-row" style={{ marginBottom: '16px' }}>
-          <div className="input-group">
-            <button
-              id="btn-cards-build"
-              onClick={handleBuildCards}
-              disabled={buildInProgress}
-              style={{
-                width: '100%',
-                background: buildInProgress ? 'var(--fg-muted)' : 'var(--accent)',
-                color: buildInProgress ? 'var(--bg)' : 'var(--accent-contrast)',
-                border: 'none',
-                padding: '12px',
-                borderRadius: '6px',
-                fontSize: '14px',
-                fontWeight: 700,
-                cursor: buildInProgress ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {buildInProgress ? 'Building...' : '⚡ Build Cards'}
-            </button>
-          </div>
-          <div className="input-group">
-            <button id="btn-cards-refresh" className="small-button" style={{ width: '100%' }}>
-              🔄 Refresh
-            </button>
-          </div>
-          <div className="input-group">
-            <button id="btn-cards-view-all" className="small-button" style={{ width: '100%' }}>
-              👁️ View All Cards
-            </button>
-          </div>
-        </div>
+        <CardsBuilderPanel
+          api={api}
+          repos={repos}
+          selectedRepo={selectedRepo}
+          onSelectRepo={setSelectedRepo}
+          excludeDirs={excludeDirs}
+          onChangeExcludeDirs={setExcludeDirs}
+          excludePatterns={excludePatterns}
+          onChangeExcludePatterns={setExcludePatterns}
+          excludeKeywords={excludeKeywords}
+          onChangeExcludeKeywords={setExcludeKeywords}
+          cardsMax={cardsMax}
+          onChangeCardsMax={setCardsMax}
+          enrichEnabled={enrichEnabled}
+          onChangeEnrich={setEnrichEnabled}
+          onError={setError}
+        />
 
-        {/* Cards Viewer */}
-        <div
-          id="cards-viewer-container"
-          style={{
-            display: 'none',
-            background: 'var(--card-bg)',
-            border: '1px solid var(--line)',
-            borderRadius: '8px',
-            padding: '16px',
-            marginTop: '16px',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <h4 style={{ margin: 0 }}>Code Cards</h4>
-            <div id="cards-last-build" className="mono" style={{ fontSize: '11px', color: 'var(--fg-muted)' }}>
-              Last build: —
-            </div>
-          </div>
-          <div
-            id="cards-viewer"
-            style={{
-              maxHeight: '400px',
-              overflowY: 'auto',
-              fontFamily: "'SF Mono', monospace",
-              fontSize: '12px',
-            }}
-          >
-            Click "View All Cards" to display cards
-          </div>
-        </div>
+        <CardsViewer api={api} />
       </div>
     </div>
   );

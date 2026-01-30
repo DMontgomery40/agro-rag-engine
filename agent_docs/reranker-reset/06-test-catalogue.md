@@ -1,6 +1,6 @@
 # Reranker Test Catalogue
 
-> **Agents:** Read [`AGENTS.md`](../AGENTS.md) before running or modifying any tests. Accessibility rules require GUI + backend parity, so keep the catalogue in sync with UI changes.
+> **Agents:** Read [`AGENTS.md`](../../.codex/docs/AGENTS.md) before running or modifying any tests. Accessibility rules require GUI + backend parity, so keep the catalogue in sync with UI changes.
 
 _Last updated: 2025-10-24_
 

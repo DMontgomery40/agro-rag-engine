@@ -97,7 +97,7 @@ async function init() {
     if (genKwBtn) genKwBtn.addEventListener('click', createKeywords);
 
     await Promise.all([
-        loadPrices(),
+        loadmodels(),
         loadConfig(),
         loadProfiles(),
         loadKeywords()

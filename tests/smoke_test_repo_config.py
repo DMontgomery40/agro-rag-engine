@@ -22,9 +22,9 @@ print("=" * 80)
 
 # Test 1: Load configuration
 print("\n[1] Loading repos.json configuration...")
-from common.config_loader import load_repos, exclude_paths, get_repo_paths
+from common.config_loader import _load_repos_raw, exclude_paths, _get_repo_paths_raw
 
-cfg = load_repos()
+cfg = _load_repos_raw()
 assert "repos" in cfg
 agro = next((r for r in cfg["repos"] if r["name"] == "agro"), None)
 assert agro is not None
@@ -58,7 +58,7 @@ for field in required_fields:
 # Test 5: Test path resolution
 print("\n[5] Testing path resolution...")
 try:
-    paths = get_repo_paths("agro")
+    paths = _get_repo_paths_raw("agro")
     assert len(paths) > 0
     print(f"    ✓ Resolved to: {paths[0]}")
 except Exception as e:

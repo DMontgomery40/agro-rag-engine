@@ -1,10 +1,10 @@
 {
+  "_name_or_path": "cross-encoder/ms-marco-MiniLM-L-12-v2",
   "architectures": [
     "BertForSequenceClassification"
   ],
   "attention_probs_dropout_prob": 0.1,
   "classifier_dropout": null,
-  "dtype": "float32",
   "gradient_checkpointing": false,
   "hidden_act": "gelu",
   "hidden_dropout_prob": 0.1,
@@ -28,7 +28,8 @@
     "activation_fn": "torch.nn.modules.linear.Identity",
     "version": "5.1.1"
   },
-  "transformers_version": "4.57.0",
+  "torch_dtype": "float32",
+  "transformers_version": "4.46.3",
   "type_vocab_size": 2,
   "use_cache": true,
   "vocab_size": 30522

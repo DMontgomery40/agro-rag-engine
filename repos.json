@@ -4,7 +4,7 @@
     {
       "name": "agro",
       "slug": "agro",
-      "path": "/Users/davidmontgomery/agro-rag-engine",
+      "path": ".",
       "exclude_paths": [
         "docs",
         "agent_docs",
@@ -23,8 +23,7 @@
         "bin/",
         "reports/",
         "screenshots/",
-        "web/dist",
-        "gui"
+        "web/dist"
       ],
       "keywords": [
         "alertmanager",
@@ -96,10 +95,6 @@
         "web"
       ],
       "layer_bonuses": {
-        "gui": {
-          "web": 0.15,
-          "server": 0.05
-        },
         "retrieval": {
           "retrieval": 0.15,
           "server": 0.05

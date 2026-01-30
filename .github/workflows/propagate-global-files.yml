@@ -3,8 +3,9 @@ name: Propagate Global Files to All Branches
 on:
   push:
     paths:
-      - 'CLAUDE.md'
-      - 'AGENTS.md'
+      - '.claude/docs/CLAUDE.md'
+      - '.claude/docs/cursor.rules'
+      - '.codex/docs/AGENTS.md'
       - 'README.md'
       - 'docs/**'
       - 'assets/**'
@@ -57,7 +58,7 @@ jobs:
           PATHS=()
           for p in $CHANGED; do
             case "$p" in
-              CLAUDE.md|AGENTS.md|README.md|docs/*|assets/*) PATHS+=("$p");;
+              .claude/docs/CLAUDE.md|.claude/docs/cursor.rules|.codex/docs/AGENTS.md|README.md|docs/*|assets/*) PATHS+=("$p");;
               *) ;;
             esac
           done

@@ -48,7 +48,7 @@ const SETTING_INFO: Record<string, {
     category: 'Retrieval',
     icon: '⚙️'
   },
-  MQ_REWRITES: {
+  MAX_QUERY_REWRITES: {
     name: 'Multi-Query Expansion',
     description: 'Number of query variations generated to cast a wider search net. More rewrites = better recall but higher cost.',
     category: 'Search Strategy',
@@ -214,12 +214,14 @@ export function ProfileEditor({ config, onSave }: ProfileEditorProps) {
               {settings.map(({ key, value, info }) => {
                 let displayValue = info.valueExplainer ? info.valueExplainer(value) : value;
 
-                // Handle rerank backend display
-                if (key === 'RERANK_BACKEND') {
-                  if (String(value) === 'cohere' && config.COHERE_RERANK_MODEL) {
-                    displayValue = `${value}: ${config.COHERE_RERANK_MODEL}`;
-                  } else if ((String(value) === 'hf' || String(value) === 'local') && config.RERANKER_MODEL) {
-                    displayValue = `${value}: ${config.RERANKER_MODEL}`;
+                // Handle reranker mode display
+                if (key === 'RERANKER_MODE') {
+                  if (String(value) === 'cloud' && config.RERANKER_CLOUD_PROVIDER) {
+                    displayValue = `cloud: ${config.RERANKER_CLOUD_PROVIDER}/${config.RERANKER_CLOUD_MODEL || ''}`;
+                  } else if (String(value) === 'local' && config.RERANKER_LOCAL_MODEL) {
+                    displayValue = `local: ${config.RERANKER_LOCAL_MODEL}`;
+                  } else if (String(value) === 'learning') {
+                    displayValue = `learning: ${config.AGRO_RERANKER_MODEL_PATH || 'models/cross-encoder-agro'}`;
                   }
                 }
 

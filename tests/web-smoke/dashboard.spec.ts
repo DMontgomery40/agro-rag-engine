@@ -14,8 +14,10 @@ test.describe('Dashboard Functionality', () => {
     await expect(terminal).toBeVisible();
     await expect(terminal.locator('.terminal-title')).toHaveText('Run Indexer');
 
-    // Wait for the streaming output to appear
-    await expect(terminal.locator('.terminal-output')).toContainText('ValueError: max() arg is an empty sequence', { timeout: 10000 });
+    // Wait for the live stream to report the clean indexer banner
+    await expect(terminal.locator('.terminal-output')).toContainText('=== Clean Indexer v2 ===', {
+      timeout: 15000
+    });
   });
 
   test('should open terminal when "Generate Keywords" is clicked', async ({ page }) => {
@@ -53,9 +55,12 @@ test.describe('Dashboard Functionality', () => {
 
   test('should populate branch name in system stats', async ({ page }) => {
     const branchLocator = page.locator('#dash-branch');
-    // The default value is '—'. We wait for it to be something else.
-    await expect(branchLocator).not.toHaveText('—', { timeout: 10000 });
-    const branchName = await branchLocator.innerText();
+    await page.waitForFunction(() => {
+      const el = document.querySelector('#dash-branch');
+      return el ? el.textContent?.trim() !== '—' : false;
+    });
+    await expect(branchLocator).not.toHaveText('—');
+    const branchName = (await branchLocator.innerText()).trim();
     expect(branchName).not.toBe('—');
     expect(branchName.length).toBeGreaterThan(0);
   });

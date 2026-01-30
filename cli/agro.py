@@ -1,4 +1,12 @@
 #!/usr/bin/env python3
+import sys
+from pathlib import Path
+
+# Ensure project root is in sys.path for imports to work from any directory
+_project_root = Path(__file__).resolve().parent.parent
+if str(_project_root) not in sys.path:
+    sys.path.insert(0, str(_project_root))
+
 import click
 from rich.console import Console
 from rich.panel import Panel
@@ -78,79 +86,85 @@ cli.add_command(chat.chat)
 cli.add_command(index.index)
 cli.add_command(index.status, name="index-status")
 
-# Config group
-@cli.group()
-def configuration():
+# Config group (short: config, long: configuration)
+@click.group(name="config")
+def config_group():
     """Configuration management."""
     pass
-configuration.add_command(config.show)
-configuration.add_command(config.set)
-configuration.add_command(config.profiles)
-configuration.add_command(config.apply_profile)
-cli.add_command(configuration, name="config")
+config_group.add_command(config.show)
+config_group.add_command(config.set)
+config_group.add_command(config.profiles)
+config_group.add_command(config.apply_profile)
+cli.add_command(config_group)
+cli.add_command(config_group, name="configuration")
 
-# Eval group
-@cli.group()
-def evaluation():
+# Eval group (short: eval, long: evaluation)
+@click.group(name="eval")
+def eval_group():
     """Evaluation suite."""
     pass
-evaluation.add_command(eval.run)
-evaluation.add_command(eval.status)
-evaluation.add_command(eval.results)
-evaluation.add_command(eval.save_baseline)
-evaluation.add_command(eval.compare)
-cli.add_command(evaluation, name="eval")
+eval_group.add_command(eval.run)
+eval_group.add_command(eval.status)
+eval_group.add_command(eval.results)
+eval_group.add_command(eval.save_baseline)
+eval_group.add_command(eval.compare)
+cli.add_command(eval_group)
+cli.add_command(eval_group, name="evaluation")
 
-# Reranker group
-@cli.group()
-def reranking():
+# Reranker group (short: reranker, long: reranking)
+@click.group(name="reranker")
+def reranker_group():
     """Reranker operations."""
     pass
-reranking.add_command(reranker.status)
-reranking.add_command(reranker.train)
-reranking.add_command(reranker.mine)
-reranking.add_command(reranker.mine_golden)
-reranking.add_command(reranker.evaluate)
-reranking.add_command(reranker.costs)
-cli.add_command(reranking, name="reranker")
+reranker_group.add_command(reranker.status)
+reranker_group.add_command(reranker.train)
+reranker_group.add_command(reranker.mine)
+reranker_group.add_command(reranker.mine_golden)
+reranker_group.add_command(reranker.evaluate)
+reranker_group.add_command(reranker.costs)
+cli.add_command(reranker_group)
+cli.add_command(reranker_group, name="reranking")
 
-# Golden group
-@cli.group()
-def gold():
+# Golden group (short: golden, long: gold)
+@click.group(name="golden")
+def golden_group():
     """Golden dataset management."""
     pass
-gold.add_command(golden.list)
-gold.add_command(golden.add)
-gold.add_command(golden.test)
-cli.add_command(gold, name="golden")
+golden_group.add_command(golden.list)
+golden_group.add_command(golden.add)
+golden_group.add_command(golden.test)
+cli.add_command(golden_group)
+cli.add_command(golden_group, name="gold")
 
-# Ops group (Docker/Git/Hardware)
-@cli.group()
-def operations():
+# Ops group (short: ops, long: operations)
+@click.group(name="ops")
+def ops_group():
     """System operations."""
     pass
-operations.add_command(ops.status)
-operations.add_command(ops.scan_hw)
-operations.add_command(ops.containers)
-operations.add_command(ops.start)
-operations.add_command(ops.stop)
-operations.add_command(ops.restart)
-operations.add_command(ops.logs)
-operations.add_command(ops.git_status)
-operations.add_command(ops.git_install)
-cli.add_command(operations, name="ops")
+ops_group.add_command(ops.status)
+ops_group.add_command(ops.scan_hw)
+ops_group.add_command(ops.containers)
+ops_group.add_command(ops.start)
+ops_group.add_command(ops.stop)
+ops_group.add_command(ops.restart)
+ops_group.add_command(ops.logs)
+ops_group.add_command(ops.git_status)
+ops_group.add_command(ops.git_install)
+cli.add_command(ops_group)
+cli.add_command(ops_group, name="operations")
 
-# MCP group
-@cli.group()
-def model_context():
+# MCP group (short: mcp, long: model-context)
+@click.group(name="mcp")
+def mcp_group():
     """MCP server management."""
     pass
-model_context.add_command(mcp.status)
-model_context.add_command(mcp.start)
-model_context.add_command(mcp.stop)
-model_context.add_command(mcp.restart)
-model_context.add_command(mcp.test)
-cli.add_command(model_context, name="mcp")
+mcp_group.add_command(mcp.status)
+mcp_group.add_command(mcp.start)
+mcp_group.add_command(mcp.stop)
+mcp_group.add_command(mcp.restart)
+mcp_group.add_command(mcp.test)
+cli.add_command(mcp_group)
+cli.add_command(mcp_group, name="model-context")
 
 if __name__ == "__main__":
     cli()

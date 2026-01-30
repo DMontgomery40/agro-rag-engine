@@ -90,7 +90,7 @@ This document maps all integration points and data flows in the /gui frontend, f
 │    │    │    └──> Text/number: set value                    │
 │    │    └──> Set input.value = data.env[key]                │
 │    ├──> Render repos section (dynamic forms)                │
-│    └──> Populate model dropdowns from prices                │
+│    └──> Populate model dropdowns from models                │
 └────────────┬─────────────────────────────────────────────────┘
              │
 ┌────────────▼─────────────────────────────────────────────────┐
@@ -402,7 +402,7 @@ This document maps all integration points and data flows in the /gui frontend, f
 - `GET /api/config` - Load current configuration
 - `POST /api/config` - Save configuration updates
 - `POST /api/env/reload` - Refresh environment from disk
-- `GET /api/prices` - Get model pricing data
+- `GET /api/models` - Get model pricing data
 - `POST /api/repos/{name}/validate-path` - Validate repository path
 - `POST /api/keywords/add` - Add new keyword
 
@@ -457,7 +457,7 @@ This document maps all integration points and data flows in the /gui frontend, f
 
 ```javascript
 window.CoreUtils.state = {
-  prices: null,        // { models: [...] } from /api/prices
+  models: null,        // { models: [...] } from /api/models
   config: null,        // { env, repos, hints } from /api/config
   profiles: [],        // User-saved profiles
   defaultProfile: null // Currently active profile

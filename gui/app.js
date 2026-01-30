@@ -109,23 +109,23 @@
     const saveConfig = window.Config?.saveConfig || (async () => {});
 
 
-    // ---------------- Prices & Cost ----------------
-    async function loadPrices() {
+    // ---------------- models & Cost ----------------
+    async function loadmodels() {
         try {
-            const r = await fetch(api('/api/prices'));
-            state.prices = await r.json();
+            const r = await fetch(api('/api/models'));
+            state.models = await r.json();
             populatePriceDatalists();
         } catch (e) {
-            console.error('Failed to load prices:', e);
+            console.error('Failed to load models:', e);
         }
     }
 
     function unique(xs) { return Array.from(new Set(xs)); }
 
     function populatePriceDatalists() {
-        if (!state.prices || !Array.isArray(state.prices.models)) return;
+        if (!state.models || !Array.isArray(state.models.models)) return;
 
-        const models = state.prices.models;
+        const models = state.models.models;
         const providers = unique(models.map(m => (m.provider || '').trim()).filter(Boolean));
         const allModels = unique(models.map(m => (m.model || '').trim()).filter(Boolean));
 
@@ -1372,7 +1372,7 @@
         const genKwBtn = document.getElementById('btn-generate-keywords'); if (genKwBtn) genKwBtn.addEventListener('click', createKeywords);
 
         await Promise.all([
-            loadPrices(),
+            loadmodels(),
             loadConfig(),
             loadProfiles(),
             loadKeywords(),

@@ -44,14 +44,14 @@ export function RepoSelector({
   'data-tooltip': dataTooltip,
   className
 }: RepoSelectorProps) {
-  const { repos, activeRepo, loading, switching, loadRepos, setActiveRepo } = useRepoStore();
-  
-  // Load repos on mount if not loaded
+  const { repos, activeRepo, loading, switching, loadRepos, setActiveRepo, initialized } = useRepoStore();
+
+  // Load repos once on mount if not yet initialized
   useEffect(() => {
-    if (repos.length === 0 && !loading) {
+    if (!initialized && !loading) {
       loadRepos();
     }
-  }, [repos.length, loading, loadRepos]);
+  }, [initialized, loading, loadRepos]);
   
   // Determine selected value: explicit value prop > store activeRepo
   const selectedValue = value !== undefined ? value : activeRepo;
@@ -113,4 +113,6 @@ export function RepoSelector({
 }
 
 export default RepoSelector;
+
+
 

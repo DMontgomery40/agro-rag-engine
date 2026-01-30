@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import Ansi from 'ansi-to-react';
 
 interface LiveTerminalProps {
   title: string;
@@ -7,24 +8,6 @@ interface LiveTerminalProps {
   lines: string[];
   progress: { percent: number; message: string } | null;
 }
-
-const parseAnsi = (text: string) => {
-    const colorMap: { [key: string]: string } = {
-        '30': '#000', '31': '#ff5f57', '32': '#28c840', '33': '#ffbd2e',
-        '34': '#5c9fd8', '35': '#c678dd', '36': '#56b6c2', '37': '#e0e0e0',
-        '90': '#666', '91': '#ff6b6b', '92': '#5af78e', '93': '#f9f871',
-        '94': '#6baeff', '95': '#e599f7', '96': '#76e1ff', '97': '#fff'
-    };
-
-    const html = text
-        .replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/\x1b\[([0-9;]+)m/g, (match, code) => {
-            if (code === '0') return '</span>';
-            const color = colorMap[code];
-            return color ? `<span style="color: ${color};">` : '';
-        });
-    return { __html: html };
-};
 
 
 export const LiveTerminal: React.FC<LiveTerminalProps> = ({ title, isVisible, onClose, lines, progress }) => {
@@ -121,7 +104,7 @@ export const LiveTerminal: React.FC<LiveTerminalProps> = ({ title, isVisible, on
             }}>
                 <pre className="terminal-output" style={{ margin: 0, whiteSpace: 'pre-wrap', wordWrap: 'break-word', color: '#e0e0e0' }}>
                     {lines.length > 0 ? lines.map((line, i) => (
-                        <div key={i} dangerouslySetInnerHTML={parseAnsi(line)} />
+                        <div key={i}><Ansi>{line}</Ansi></div>
                     )) : <span style={{ color: '#888' }}>Waiting for output...</span>}
                 </pre>
             </div>

@@ -1,6 +1,6 @@
 # Deep Dive: Reranker Stack Surface Area
 
-> **Agents:** treat this inventory as mandatory reading alongside [`AGENTS.md`](../AGENTS.md) before attempting any change. The global rules there govern how you apply the findings here.
+> **Agents:** treat this inventory as mandatory reading alongside [`AGENTS.md`](../../.codex/docs/AGENTS.md) before attempting any change. The global rules there govern how you apply the findings here.
 
 _Last updated: 2025-10-23_
 
@@ -72,7 +72,7 @@ _Last updated: 2025-10-23_
 
 ## 5. Data & Storage Dependencies
 
-> Agents: revisit [`AGENTS.md`](../AGENTS.md) before touching any of these paths. Accessibility rules require GUI + backend parity for every change listed here.
+> Agents: revisit [`AGENTS.md`](../../.codex/docs/AGENTS.md) before touching any of these paths. Accessibility rules require GUI + backend parity for every change listed here.
 
 ### 5.1 Query log writers (`data/logs/queries.jsonl`)
 
@@ -200,7 +200,7 @@ Historical docs and smoke tests assume triplets share `doc_id` semantics with qu
 
 ## 12. Shared Loader Strategy (Draft)
 
-> Agents: do **not** ship code until every GUI binding that manipulates reranker config has been cross-checked against [`AGENTS.md`](../AGENTS.md). The shared loader must keep existing environment knobs visible and accessible.
+> Agents: do **not** ship code until every GUI binding that manipulates reranker config has been cross-checked against [`AGENTS.md`](../../.codex/docs/AGENTS.md). The shared loader must keep existing environment knobs visible and accessible.
 
 ### 12.1 Objectives
 
@@ -308,7 +308,7 @@ Third-party references:
 
 ## 13. Reranker API Contracts & Observability (2025-10-24)
 
-> Agents: treat this as the canonical contract list before rewriting endpoints or introducing async workers. Every change must keep GUI + tests accessible per [`AGENTS.md`](../AGENTS.md).
+> Agents: treat this as the canonical contract list before rewriting endpoints or introducing async workers. Every change must keep GUI + tests accessible per [`AGENTS.md`](../../.codex/docs/AGENTS.md).
 
 ### 13.1 Endpoint matrix
 

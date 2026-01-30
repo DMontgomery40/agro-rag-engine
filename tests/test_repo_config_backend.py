@@ -16,13 +16,13 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from common.config_loader import load_repos, exclude_paths, get_repo_paths
+from common.config_loader import _load_repos_raw, exclude_paths, _get_repo_paths_raw
 
 
 def test_load_repos():
     """Test loading repos.json configuration."""
     print("\n[TEST] Loading repos configuration...")
-    cfg = load_repos()
+    cfg = _load_repos_raw()
 
     assert "repos" in cfg, "Config should have 'repos' key"
     assert isinstance(cfg["repos"], list), "repos should be a list"
@@ -76,7 +76,7 @@ def test_repo_path_resolution():
     print("\n[TEST] Testing repo path resolution...")
 
     try:
-        paths = get_repo_paths('agro')
+        paths = _get_repo_paths_raw('agro')
         assert isinstance(paths, list), "get_repo_paths should return a list"
         assert len(paths) > 0, "Should have at least one path"
 

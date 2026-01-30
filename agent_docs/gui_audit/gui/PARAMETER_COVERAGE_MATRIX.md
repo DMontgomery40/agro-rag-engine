@@ -100,11 +100,10 @@
 | Parameter | Status | HTML Location | JS Handler | Issues |
 |-----------|--------|---------------|------------|--------|
 | COLLECTION_NAME | ⚠️ Partial | Line 3960 | config.js | No validation |
-| INDEX_MAX_WORKERS | ⚠️ Partial | Line 3976 | config.js | Type conversion issue |
+| INDEXING_WORKERS | ✅ Working | Line 4733 | config.js | None |
 | QDRANT_URL | ✅ Working | Line 4620 | config.js | None |
 | VECTOR_BACKEND | ⚠️ Partial | Line 3119 | config.js | Duplicate from retrieval |
 | INDEXING_BATCH_SIZE | ❌ Missing | - | - | Not in GUI |
-| INDEXING_WORKERS | ❌ Missing | - | - | Not in GUI |
 | BM25_TOKENIZER | ❌ Missing | - | - | Not in GUI |
 | INDEX_EXCLUDED_EXTS | ❌ Missing | - | - | Not in GUI |
 | INDEX_MAX_FILE_SIZE_MB | ❌ Missing | - | - | Not in GUI |

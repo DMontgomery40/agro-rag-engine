@@ -18,6 +18,28 @@ const DEFAULT_SETTINGS: EditorSettings = {
   embed_enabled: true
 };
 
+/**
+ * ---agentspec
+ * what: |
+ *   Custom React hook that manages VS Code embedded editor lifecycle, health checks, and configuration.
+ *   Accepts no parameters; uses useAPI() and useState hooks internally.
+ *   Returns object with: settings (EditorSettings), iframeUrl (string), isHealthy (boolean), isEnabled (boolean), statusMessage (string), statusColor (string), copyButtonText (string).
+ *   Initializes editor with DEFAULT_SETTINGS, performs health checks to set isHealthy state, manages iframe URL generation, and tracks UI feedback states (status messages, button text).
+ *   Side effects: calls api.healthCheck() or similar during mount/dependency changes; updates multiple state variables asynchronously.
+ *
+ * why: |
+ *   Encapsulates all VS Code embed state management in a single reusable hook to avoid prop drilling and reduce component complexity.
+ *   Separates concerns: settings management, health monitoring, iframe URL handling, and UI feedback are all coordinated in one place.
+ *   Allows multiple components to consume editor state without duplicating logic or creating tight coupling to the API layer.
+ *
+ * guardrails:
+ *   - DO NOT expose raw api object to consuming components; always wrap API calls within this hook to maintain abstraction
+ *   - ALWAYS initialize all state variables (settings, iframeUrl, isHealthy, isEnabled, statusMessage, statusColor, copyButtonText) before returning to prevent undefined reference errors
+ *   - NOTE: Health check logic is not visible in this hook signature; ASK USER whether health checks run on mount, on demand, or on interval to document side effects accurately
+ *   - ASK USER: Confirm the dependency array for any useEffect that drives health checks, iframe URL updates, or settings changes; missing dependencies can cause stale state bugs
+ *   - ASK USER: Clarify whether statusColor and copyButtonText are derived from isHealthy/isEnabled state or managed independently; if derived, consider computing them instead of storing separately
+ * ---/agentspec
+ */
 export function useVSCodeEmbed() {
   const { api } = useAPI();
   const [settings, setSettings] = useState<EditorSettings>(DEFAULT_SETTINGS);
@@ -95,7 +117,7 @@ export function useVSCodeEmbed() {
 
   useEffect(() => {
     void checkHealth();
-    const id = setInterval(() => void checkHealth(), 15000);
+    const id = setInterval(() => void checkHealth(), 30000);
     return () => clearInterval(id);
   }, [checkHealth]);
 

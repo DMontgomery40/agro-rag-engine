@@ -10,7 +10,7 @@ These models provide:
 - Support for Anthropic extended thinking and OpenAI reasoning models
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List, Dict, Any, Literal
 
 
@@ -98,8 +98,8 @@ class ChatRequest(BaseModel):
         description="Reasoning effort for Anthropic extended thinking or OpenAI o-series"
     )
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "question": "How does hybrid search work in this codebase?",
                 "repo": "agro",
@@ -110,6 +110,7 @@ class ChatRequest(BaseModel):
                 "stream": False
             }
         }
+    )
 
 
 class SearchRequest(BaseModel):
@@ -136,8 +137,7 @@ class SearchRequest(BaseModel):
         description="Number of results to return"
     )
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class RetrievedDocument(BaseModel):
@@ -208,8 +208,8 @@ class ChatResponse(BaseModel):
         description="LLM provider metadata"
     )
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "answer": "Hybrid search combines BM25 sparse retrieval with dense vector search...",
                 "confidence": 0.85,
@@ -220,6 +220,7 @@ class ChatResponse(BaseModel):
                 "meta": {"backend": "openai", "model": "gpt-4o-mini"}
             }
         }
+    )
 
 
 class SearchResponse(BaseModel):
@@ -254,15 +255,16 @@ class StreamChunk(BaseModel):
         description="Structured data (for citations/trace/meta/error types)"
     )
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "examples": [
                 {"type": "thinking", "content": "Let me analyze the hybrid search implementation..."},
                 {"type": "content", "content": "Hybrid search combines..."},
                 {"type": "citations", "data": {"citations": ["file.py:1-10"]}},
-                {"type": "done", "data": None}
+                {"type": "done", "data": None},
             ]
         }
+    )
 
 
 # Legacy compatibility: these can be used to validate incoming requests
@@ -297,4 +299,5 @@ class LegacyChatPayload(BaseModel):
             stream=False,
             include_reasoning=False
         )
+
 

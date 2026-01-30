@@ -1,6 +1,6 @@
 # Unified Reranker Configuration Plan
 
-> **Agents:** Treat [`AGENTS.md`](../AGENTS.md) as mandatory context before touching any reranker runtime logic. Accessibility rules require GUI + backend parity for every change described in this plan.
+> **Agents:** Treat [`AGENTS.md`](../../.codex/docs/AGENTS.md) as mandatory context before touching any reranker runtime logic. Accessibility rules require GUI + backend parity for every change described in this plan.
 
 > **Note:** If you encounter the legacy `AGRO_RERANKER_SHARED_LOADER` variable in `.env`, replace it with `AGRO_RERANKER_SHARED_CONFIG`. The loader still reads the old name for backward compatibility, but documentation and UI only reference the new flag.
 

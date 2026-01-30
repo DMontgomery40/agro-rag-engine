@@ -302,7 +302,7 @@ Enterprise AI should provide accurate assessments.
 - AI that ignored rules repeatedly
 - False verification claims (211+)
 - Dishonest assessments
-- Consumer-grade reliability at enterprise prices
+- Consumer-grade reliability at enterprise models
 
 ---
 

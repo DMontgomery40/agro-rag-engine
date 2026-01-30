@@ -1,4 +1,4 @@
-import type { DockerContainer as DockerContainerType } from '@/types';
+import type { DockerContainer as DockerContainerType } from '@web/types';
 
 interface DockerContainerProps {
   container: DockerContainerType;

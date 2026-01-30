@@ -12,7 +12,7 @@
 AGRO GUI backend (stubbed):
 - Serves / (gui/index.html) and /gui static assets
 - Live config GET/POST (/api/config)
-- Prices (/api/prices)
+- models (/api/models)
 - Cost estimator (/api/cost/estimate)
 - Hardware scan (/api/scan-hw)
 - Profiles list/apply/save (/api/profiles*)
@@ -41,7 +41,7 @@ from pydantic import BaseModel, Field
 # --------------------------- Constants & Paths ---------------------------
 ROOT = Path(__file__).resolve().parent
 GUI_DIR = ROOT / "gui"
-PRICES_PATH = GUI_DIR / "prices.json"
+models_PATH = GUI_DIR / "models.json"
 PROFILES_DIR = GUI_DIR / "profiles"
 DEFAULTS_PATH = PROFILES_DIR / "defaults.json"
 
@@ -295,10 +295,10 @@ def post_config(req: UpdateConfigRequest) -> Dict[str, Any]:
     return {"status": "success"}
 
 
-@app.get("/api/prices")
-def get_prices() -> Any:
-    """Return prices.json; if missing, create a minimal starter set."""
-    default_prices = {
+@app.get("/api/models")
+def get_models() -> Any:
+    """Return models.json; if missing, create a minimal starter set."""
+    default_models = {
         "last_updated": "2025-10-10",
         "currency": "USD",
         "models": [
@@ -315,14 +315,14 @@ def get_prices() -> Any:
              "unit": "request", "per_request": 0.0, "notes": "Local inference assumed $0; electricity optional"}
         ]
     }
-    data = _read_json(PRICES_PATH, default_prices)
+    data = _read_json(models_PATH, default_models)
     return JSONResponse(data)
 
 
 @app.post("/api/cost/estimate", response_model=CostEstimateResponse)
 def cost_estimate(req: CostEstimateRequest) -> CostEstimateResponse:
-    prices = _read_json(PRICES_PATH, {"models": []})
-    models = prices.get("models", [])
+    models = _read_json(models_PATH, {"models": []})
+    models = models.get("models", [])
 
     # Find matching pricing row
     row = None
@@ -336,7 +336,7 @@ def cost_estimate(req: CostEstimateRequest) -> CostEstimateResponse:
         # Unknown model; return zeros with note
         daily = 0.0
         monthly = 0.0
-        return CostEstimateResponse(provider=req.provider, model=req.model, daily=daily, monthly=monthly, breakdown=breakdown, notes="Model not found in prices.json")
+        return CostEstimateResponse(provider=req.provider, model=req.model, daily=daily, monthly=monthly, breakdown=breakdown, notes="Model not found in models.json")
 
     unit = row.get("unit", "1k_tokens")
     in_rate = float(row.get("input_per_1k", 0.0))
@@ -679,7 +679,7 @@ details summary { cursor:pointer; color: var(--muted); }
   const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
   const state = {
-    prices: null,
+    models: null,
     config: null,
     profiles: [],
     defaultProfile: null,
@@ -792,10 +792,10 @@ details summary { cursor:pointer; color: var(--muted); }
     alert('Configuration updated.');
   }
 
-  // ---------------- Prices & Cost ----------------
-  async function loadPrices() {
-    const r = await fetch('/api/prices');
-    state.prices = await r.json();
+  // ---------------- models & Cost ----------------
+  async function loadmodels() {
+    const r = await fetch('/api/models');
+    state.models = await r.json();
   }
 
   function buildCostPayload() {
@@ -932,7 +932,7 @@ details summary { cursor:pointer; color: var(--muted); }
     bindTabs();
     bindActions();
     bindDropzone();
-    await Promise.all([loadPrices(), loadConfig(), loadProfiles()]);
+    await Promise.all([loadmodels(), loadConfig(), loadProfiles()]);
     await checkHealth();
   }
 
@@ -942,7 +942,7 @@ details summary { cursor:pointer; color: var(--muted); }
 
 ---
 
-## File: `gui/prices.json` (example starter you can update weekly)
+## File: `gui/models.json` (example starter you can update weekly)
 
 ```json
 {
@@ -1023,7 +1023,7 @@ mkdir -p gui/profiles/examples && \
   [ -f gui/index.html ] || echo "<!-- paste canvas index.html here -->" > gui/index.html && \
   [ -f gui/style.css ] || echo "/* paste canvas style.css here */" > gui/style.css && \
   [ -f gui/app.js ] || echo "// paste canvas app.js here" > gui/app.js && \
-  [ -f gui/prices.json ] || cat > gui/prices.json <<'JSON'
+  [ -f gui/models.json ] || cat > gui/models.json <<'JSON'
 {
   "last_updated": "2025-10-10",
   "currency": "USD",
@@ -1041,7 +1041,7 @@ JSON
 
 ### Notes for the junior dev
 - All functions/handlers are **defined**; replace TODO comments with real logic.
-- Keep `prices.json` fresh via your updater; these numbers are examples for testing math.
+- Keep `models.json` fresh via your updater; these numbers are examples for testing math.
 - `secrets/ingest` accepts `.env|.txt|.md`, canonicalizes with regex maps, and updates `os.environ` immediately.
 - Profiles are plain JSON files in `gui/profiles/`. Use `apply` to set env, `save` to store.
 - The UI is accessible: keyboard on dropzone, dark theme, and small monospace outputs.

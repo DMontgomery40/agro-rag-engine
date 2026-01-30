@@ -151,7 +151,7 @@ def test_profiles_list():
 - Use `common.paths.data_dir()` → `/app/data` in Docker
 - Use `common.paths.repo_root()` → `/app` in Docker
 - Use `Path(__file__).parent.parent` for relative paths
-- Read from `data/profiles/`, `data/prices.json`, etc. via path helpers
+- Read from `data/profiles/`, `data/models.json`, etc. via path helpers
 
 ### ❌ DON'T:
 - Hardcode `/Users/davidmontgomery/...`

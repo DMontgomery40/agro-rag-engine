@@ -42,7 +42,7 @@ This is the long‑form reference that pairs with the streamlined, tech‑forwar
 ## Evals & Tracing
 
 - Eval harness: eval/eval_loop.py
-- Golden tests: golden.json
+- Golden tests: data/golden.json
 - Local traces and LangSmith integration: server/tracing.py, docs/LANGSMITH_SETUP.md
 
 ## Assets
@@ -125,7 +125,7 @@ These are referenced from the main README as links only (no inline gallery).
 **Contents:**
 - ✅ Feedback collection (clicks, thumbs up/down)
 - ✅ Training workflow:
-  - Mine triplets from logs or golden.json
+  - Mine triplets from logs or data/golden.json
   - Train cross-encoder models
   - Evaluate with MRR and Hit@K metrics
   - Promote models to production
@@ -311,8 +311,8 @@ These are referenced from the main README as links only (no inline gallery).
 | File | Purpose |
 |------|---------|
 | **[../START_HERE.md](../START_HERE.md)** | Navigation hub, quick start options |
-| **[../AGENTS.md](../AGENTS.md)** | Agent behavior rules and guidelines |
-| **[../golden.json](../golden.json)** | Eval test cases (replace with yours) |
+| **[../.codex/docs/AGENTS.md](../.codex/docs/AGENTS.md)** | Agent behavior rules and guidelines |
+| **[../data/golden.json](../data/golden.json)** | Eval test cases (replace with yours) |
 | **[../.env](../.env)** | Environment configuration |
 | **[../data/exclude_globs.txt](../data/exclude_globs.txt)** | `.ragignore` patterns |
 

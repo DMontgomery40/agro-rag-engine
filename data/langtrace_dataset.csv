@@ -170,9 +170,9 @@ golden_19,Where are the keyword generation scripts?,"1. /Users/davidmontgomery/a
 4. /Users/davidmontgomery/agro-rag-engine/gui/app.js
 5. /Users/davidmontgomery/agro-rag-engine/public/agro/js/keywords.js","Expected files:
   - scripts/generate_smart_keywords.py
-  - data/discriminative_keywords.json
-  - data/semantic_keywords.json
-  - data/llm_keywords.json
+  - data/keywords/discriminative_keywords.json
+  - data/keywords/semantic_keywords.json
+  - data/keywords/llm_keywords.json
   - retrieval/hybrid_search.py",agro,false
 golden_20,How does the reranker training with triplets work?,"1. /Users/davidmontgomery/agro-rag-engine/scripts/train_reranker.py
 2. /Users/davidmontgomery/agro-rag-engine/scripts/eval_reranker.py
@@ -308,7 +308,7 @@ golden_34,Where are the cost calculation utilities for token usage?,"1. /Users/d
 4. /Users/davidmontgomery/agro-rag-engine/gui/js/cost_logic.js
 5. /Users/davidmontgomery/agro-rag-engine/public/agro/app.js","Expected files:
   - gui/js/cost.js
-  - gui/prices.json
+  - gui/models.json
   - server/metrics.py
   - gui/index.html",agro,false
 golden_35,How does the dashboard tab render system status?,"1. /Users/davidmontgomery/agro-rag-engine/gui/js/index_status.js

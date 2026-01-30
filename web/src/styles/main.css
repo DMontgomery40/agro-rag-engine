@@ -966,9 +966,12 @@
            TABLET RESPONSIVE (768px - 1024px)
            PRIMARY FOCUS - Most Used
            =================================== */
+        /* ===================================
+           TABLET (<1024px) - Sidepanel to bottom
+           =================================== */
         @media (max-width: 1024px) {
             :root {
-                --sidepanel-width: 350px;
+                --sidepanel-width: 320px;
             }
 
             /* More compact topbar */
@@ -992,7 +995,7 @@
             }
 
             #global-search {
-                width: 240px;
+                width: 200px;
                 height: 36px;
                 font-size: 13px;
             }
@@ -1002,15 +1005,54 @@
                 font-size: 12px;
             }
 
-            /* Tab bar optimization */
+            /* Tab bar: horizontal scroll on tablet */
             .tab-bar {
                 padding: 8px 12px;
                 gap: 4px;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+            }
+            .tab-bar::-webkit-scrollbar {
+                display: none;
             }
 
-            .tab-bar button {
-                padding: 8px 14px;
+            .tab-bar a {
+                padding: 8px 12px;
                 font-size: 12px;
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+
+            /* CRITICAL: Sidepanel goes to BOTTOM on tablet */
+            .layout {
+                display: flex !important;
+                flex-direction: column !important;
+                grid-template-columns: none !important;
+                height: auto !important;
+                min-height: calc(100vh - 60px);
+            }
+
+            .content {
+                border-right: none;
+                order: 1 !important;
+                flex: 1 1 auto !important;
+                min-height: 40vh;
+                grid-column: auto !important;
+            }
+
+            .sidepanel {
+                order: 2 !important;
+                border-top: 1px solid var(--line);
+                max-height: 45vh;
+                overflow-y: auto;
+                flex-shrink: 0;
+                grid-column: auto !important;
+                padding: 16px;
+            }
+
+            .resize-handle {
+                display: none;
             }
 
             /* Settings sections: maintain readability */
@@ -1029,11 +1071,6 @@
                 gap: 12px;
             }
 
-            /* Sidepanel adjustments */
-            .sidepanel {
-                padding: 16px;
-            }
-
             /* Action buttons grid: adapt to tablet */
             .action-buttons {
                 flex-wrap: wrap;
@@ -1049,9 +1086,38 @@
            MOBILE & SMALL TABLET (<768px)
            =================================== */
         @media (max-width: 768px) {
-            /* Hide regular tab bar, show hamburger */
+            /* Convert tab-bar to collapsible mobile menu */
             .tab-bar {
-                display: none;
+                position: fixed;
+                top: 56px;
+                left: 0;
+                right: 0;
+                background: var(--bg-elev1);
+                border-bottom: 1px solid var(--line);
+                padding: 12px;
+                flex-direction: column;
+                gap: 8px;
+                z-index: 100;
+                max-height: 70vh;
+                overflow-y: auto;
+                transform: translateY(-100%);
+                opacity: 0;
+                pointer-events: none;
+                transition: transform 0.3s ease, opacity 0.3s ease;
+            }
+            
+            .tab-bar.mobile-open {
+                transform: translateY(0);
+                opacity: 1;
+                pointer-events: auto;
+            }
+            
+            .tab-bar a {
+                padding: 12px 16px;
+                font-size: 14px;
+                width: 100%;
+                text-align: left;
+                border-radius: 8px;
             }
 
             /* Hamburger menu button */
@@ -1102,25 +1168,13 @@
                 width: auto;
             }
 
-            /* Layout: full single column */
-            .layout {
-                grid-template-columns: 1fr;
-                height: auto;
-                min-height: calc(100vh - 80px);
-            }
-
+            /* Layout already column from 1024px, just adjust spacing */
             .content {
-                border-right: none;
+                min-height: 50vh;
             }
 
-            /* Sidepanel: stacked below */
             .sidepanel {
-                border-top: 1px solid var(--line);
-                max-height: 60vh;
-            }
-
-            .resize-handle {
-                display: none;
+                max-height: 50vh;
             }
 
             /* Tab content: reduced padding */

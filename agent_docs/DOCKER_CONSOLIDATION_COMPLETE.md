@@ -29,9 +29,9 @@ Created comprehensive backups before any changes:
 - **Qdrant vector DB**: 14 MB backed up to `data/backups/qdrant_20251122_131832/`
 - **Eval results**: 29 JSON files backed up to `data/backups/evals_20251122_131850/`
 - **Redis cache**: Backed up to `data/backups/redis_20251122_131850/`
-- **Container state**: Documented in `backup-containers.txt`
-- **Volume list**: Documented in `backup-volumes.txt`
-- **Compose config**: Saved to `backup-docker-compose-config.yml`
+- **Container state**: Documented in `_archived/docker/backup-containers.txt`
+- **Volume list**: Documented in `_archived/docker/backup-volumes.txt`
+- **Compose config**: Saved to `_archived/docker/backup-docker-compose-config.yml`
 
 ### Phase 3: ENHANCED ROOT COMPOSE ✅
 **File**: `docker-compose.yml`
@@ -70,7 +70,7 @@ Created comprehensive backups before any changes:
    - Eliminates split-brain container management
 
 3. **Deprecated old compose files**
-   - Renamed: `docker-compose.services.yml` → `docker-compose.services.yml.DEPRECATED`
+   - Renamed: `docker-compose.services.yml` → `_archived/docker/docker-compose.services.yml.DEPRECATED`
    - Added deprecation header to `infra/docker-compose.yml`
    - Created `infra/README.md` explaining status
 
@@ -199,12 +199,12 @@ curl http://127.0.0.1:8012/health
 ### Files Created
 1. `DOCKER_CONSOLIDATION_BACKUP.md` - Backup documentation
 2. `infra/README.md` - Explains infra/ directory status
-3. `backup-containers.txt` - Container state snapshot
-4. `backup-volumes.txt` - Volume list snapshot
-5. `backup-docker-compose-config.yml` - Config snapshot
+3. `_archived/docker/backup-containers.txt` - Container state snapshot
+4. `_archived/docker/backup-volumes.txt` - Volume list snapshot
+5. `_archived/docker/backup-docker-compose-config.yml` - Config snapshot
 
 ### Files Deprecated
-1. `docker-compose.services.yml` → `docker-compose.services.yml.DEPRECATED`
+1. `docker-compose.services.yml` → `_archived/docker/docker-compose.services.yml.DEPRECATED`
 2. `infra/docker-compose.yml` - Added deprecation header
 
 ---

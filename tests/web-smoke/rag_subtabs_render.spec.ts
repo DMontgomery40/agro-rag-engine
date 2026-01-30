@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('RAG Subtabs Rendering', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:5173/');
+    await page.goto('/');
 
     // Wait for app to load
     await page.waitForSelector('#root', { timeout: 10000 });

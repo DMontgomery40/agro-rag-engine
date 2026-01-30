@@ -10,69 +10,54 @@ NOT to be confused with retrieval/rerank.py which is the production search reran
 used during retrieval operations.
 
 Purpose: Hot-reloadable cross-encoder for enhanced search with feedback-driven training
+
+Configuration flows through Pydantic (agro_config.json -> config_registry).
 """
-import os
 import math
 import time
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 from sentence_transformers import CrossEncoder
 
-# Module-level cached configuration
-try:
+
+def _get_config_registry():
+    """Get config registry singleton. Import here to avoid circular imports."""
     from server.services.config_registry import get_config_registry
-    _config_registry = get_config_registry()
-except ImportError:
-    _config_registry = None
+    return get_config_registry()
 
-# Cached parameters
-_AGRO_RERANKER_BATCH = None
-_AGRO_RERANKER_MAXLEN = None
-_AGRO_RERANKER_MODEL_PATH = None
-_AGRO_RERANKER_RELOAD_ON_CHANGE = None
-_AGRO_RERANKER_RELOAD_PERIOD_SEC = None
-_AGRO_RERANKER_ALPHA = None
-_AGRO_RERANKER_TOPN = None
-_AGRO_RERANKER_ENABLED = None
-
-def _load_cached_config():
-    """Load reranker config values into module-level cache."""
-    global _AGRO_RERANKER_BATCH, _AGRO_RERANKER_MAXLEN, _AGRO_RERANKER_MODEL_PATH
-    global _AGRO_RERANKER_RELOAD_ON_CHANGE, _AGRO_RERANKER_RELOAD_PERIOD_SEC
-    global _AGRO_RERANKER_ALPHA, _AGRO_RERANKER_TOPN, _AGRO_RERANKER_ENABLED
-
-    if _config_registry is None:
-        _AGRO_RERANKER_BATCH = int(os.getenv('AGRO_RERANKER_BATCH', '16') or '16')
-        _AGRO_RERANKER_MAXLEN = int(os.getenv('AGRO_RERANKER_MAXLEN', '512') or '512')
-        _AGRO_RERANKER_MODEL_PATH = os.getenv('AGRO_RERANKER_MODEL_PATH', 'cross-encoder/ms-marco-MiniLM-L-12-v2')
-        _AGRO_RERANKER_RELOAD_ON_CHANGE = int(os.getenv('AGRO_RERANKER_RELOAD_ON_CHANGE', '0') or '0')
-        _AGRO_RERANKER_RELOAD_PERIOD_SEC = int(os.getenv('AGRO_RERANKER_RELOAD_PERIOD_SEC', '60') or '60')
-        _AGRO_RERANKER_ALPHA = float(os.getenv('AGRO_RERANKER_ALPHA', '0.7') or '0.7')
-        _AGRO_RERANKER_TOPN = int(os.getenv('AGRO_RERANKER_TOPN', '50') or '50')
-        _AGRO_RERANKER_ENABLED = int(os.getenv('AGRO_RERANKER_ENABLED', '1') or '1')
-    else:
-        _AGRO_RERANKER_BATCH = _config_registry.get_int('AGRO_RERANKER_BATCH', 16)
-        _AGRO_RERANKER_MAXLEN = _config_registry.get_int('AGRO_RERANKER_MAXLEN', 512)
-        _AGRO_RERANKER_MODEL_PATH = _config_registry.get_str('AGRO_RERANKER_MODEL_PATH', 'cross-encoder/ms-marco-MiniLM-L-12-v2')
-        _AGRO_RERANKER_RELOAD_ON_CHANGE = _config_registry.get_int('AGRO_RERANKER_RELOAD_ON_CHANGE', 0)
-        _AGRO_RERANKER_RELOAD_PERIOD_SEC = _config_registry.get_int('AGRO_RERANKER_RELOAD_PERIOD_SEC', 60)
-        _AGRO_RERANKER_ALPHA = _config_registry.get_float('AGRO_RERANKER_ALPHA', 0.7)
-        _AGRO_RERANKER_TOPN = _config_registry.get_int('AGRO_RERANKER_TOPN', 50)
-        _AGRO_RERANKER_ENABLED = _config_registry.get_int('AGRO_RERANKER_ENABLED', 1)
-
-def reload_config():
-    """Reload all cached config values from registry."""
-    _load_cached_config()
-
-# Initialize cache
-_load_cached_config()
 
 _RERANKER: Optional[CrossEncoder] = None
 _RERANKER_PATH: Optional[str] = None
 _RERANKER_MTIME: float = 0.0
 _LAST_CHECK: float = 0.0
 
+
+def _get_int(key: str, default: int) -> int:
+    """Read int from config registry."""
+    registry = _get_config_registry()
+    return registry.get_int(key, default)
+
+
+def _get_float(key: str, default: float) -> float:
+    """Read float from config registry."""
+    registry = _get_config_registry()
+    return registry.get_float(key, default)
+
+
+def _get_str(key: str, default: str) -> str:
+    """Read string from config registry."""
+    registry = _get_config_registry()
+    return registry.get_str(key, default)
+
+
+def _get_bool(key: str, default: bool) -> bool:
+    """Read bool from config registry."""
+    registry = _get_config_registry()
+    return registry.get_bool(key, default)
+
+
 def _latest_mtime(p: str) -> float:
+    """Get the latest modification time of a path or directory."""
     try:
         base = Path(p)
         if not base.exists():
@@ -80,7 +65,7 @@ def _latest_mtime(p: str) -> float:
         latest = base.stat().st_mtime
         if base.is_file():
             return latest
-        for root, _, files in os.walk(base):
+        for root, _, files in base.iterdir():
             for name in files:
                 try:
                     t = Path(root, name).stat().st_mtime
@@ -92,19 +77,18 @@ def _latest_mtime(p: str) -> float:
     except Exception:
         return 0.0
 
+
 def get_reranker() -> CrossEncoder:
-    """
-    Loads and (optionally) hot-reloads the CrossEncoder model.
-    Uses cached config values from config_registry.
-    """
+    """Loads and (optionally) hot-reloads the CrossEncoder model."""
     global _RERANKER, _RERANKER_PATH, _RERANKER_MTIME, _LAST_CHECK
-    path = _AGRO_RERANKER_MODEL_PATH or "cross-encoder/ms-marco-MiniLM-L-12-v2"
+
+    path = _get_str('AGRO_RERANKER_MODEL_PATH', 'models/cross-encoder-agro')
     need_reload = False
 
     if _RERANKER is None or path != _RERANKER_PATH:
         need_reload = True
-    elif _AGRO_RERANKER_RELOAD_ON_CHANGE:
-        period = _AGRO_RERANKER_RELOAD_PERIOD_SEC or 60
+    elif _get_bool('AGRO_RERANKER_RELOAD_ON_CHANGE', False):
+        period = _get_int('AGRO_RERANKER_RELOAD_PERIOD_SEC', 60)
         now = time.monotonic()
         if now - _LAST_CHECK >= period:
             _LAST_CHECK = now
@@ -113,13 +97,15 @@ def get_reranker() -> CrossEncoder:
                 need_reload = True
 
     if need_reload:
-        max_length = _AGRO_RERANKER_MAXLEN or 512
+        max_length = _get_int('AGRO_RERANKER_MAXLEN', 512)
         _RERANKER = CrossEncoder(path, max_length=max_length)
         _RERANKER_PATH = path
         _RERANKER_MTIME = _latest_mtime(path)
     return _RERANKER
 
+
 def _minmax(scores: List[float]) -> List[float]:
+    """Min-max normalize scores to [0, 1] range."""
     if not scores:
         return []
     mn, mx = min(scores), max(scores)
@@ -127,31 +113,27 @@ def _minmax(scores: List[float]) -> List[float]:
         return [0.5 for _ in scores]
     return [(s - mn) / (mx - mn) for s in scores]
 
+
 def rerank_candidates(
     query: str,
     candidates: List[Dict[str, Any]],
     blend_alpha: Optional[float] = None
 ) -> List[Dict[str, Any]]:
-    """
-    Rerank candidates using cached config values.
-    candidates: [{"doc_id": str, "score": float, "text": str, "clicked": bool}, ...]
-    """
+    """Rerank candidates using cross-encoder with alpha blending."""
     if not candidates or "text" not in candidates[0]:
         return candidates
 
-    # Use cached config values
     if blend_alpha is None:
-        blend_alpha = _AGRO_RERANKER_ALPHA or 0.7
+        blend_alpha = _get_float('AGRO_RERANKER_ALPHA', 0.7)
 
     base_sorted = sorted(candidates, key=lambda c: float(c.get("score", 0.0)), reverse=True)
-    topn = _AGRO_RERANKER_TOPN if _AGRO_RERANKER_TOPN is not None else 50
-    topn = max(0, topn)
+    topn = max(0, _get_int('AGRO_RERANKER_TOPN', 50))
     head = base_sorted if topn == 0 else base_sorted[:topn]
     tail = [] if topn == 0 else base_sorted[topn:]
 
     model = get_reranker()
     pairs = [(query, c.get("text", "")) for c in head]
-    batch_size = _AGRO_RERANKER_BATCH or 16
+    batch_size = _get_int('AGRO_RERANKER_BATCH', 16)
     ce_scores = model.predict(pairs, batch_size=batch_size)
     base_scores = [float(c.get("score", 0.0)) for c in head]
     base_norm = _minmax(base_scores)
@@ -167,28 +149,29 @@ def rerank_candidates(
     reranked_head.sort(key=lambda x: x["rerank_score"], reverse=True)
     return reranked_head + tail
 
+
 def get_reranker_info() -> Dict[str, Any]:
-    """
-    Returns current reranker config/state using cached config values.
-    """
-    global _RERANKER, _RERANKER_PATH, _RERANKER_MTIME, _LAST_CHECK
-    path = _AGRO_RERANKER_MODEL_PATH or "cross-encoder/ms-marco-MiniLM-L-12-v2"
+    """Returns current reranker config/state from registry."""
+    global _RERANKER, _RERANKER_MTIME, _LAST_CHECK
+
+    path = _get_str('AGRO_RERANKER_MODEL_PATH', 'models/cross-encoder-agro')
     try:
         resolved = str(Path(path).resolve())
     except Exception:
         resolved = path
+
     info: Dict[str, Any] = {
-        "enabled": bool(_AGRO_RERANKER_ENABLED),
+        "enabled": _get_str('RERANKER_MODE', 'none') == "learning",
         "path": path,
         "resolved_path": resolved,
         "model_loaded": _RERANKER is not None,
         "device": None,
-        "alpha": _AGRO_RERANKER_ALPHA or 0.7,
-        "topn": _AGRO_RERANKER_TOPN or 50,
-        "batch": _AGRO_RERANKER_BATCH or 16,
-        "maxlen": _AGRO_RERANKER_MAXLEN or 512,
-        "reload_on_change": bool(_AGRO_RERANKER_RELOAD_ON_CHANGE),
-        "reload_period_sec": _AGRO_RERANKER_RELOAD_PERIOD_SEC or 60,
+        "alpha": _get_float('AGRO_RERANKER_ALPHA', 0.7),
+        "topn": _get_int('AGRO_RERANKER_TOPN', 50),
+        "batch": _get_int('AGRO_RERANKER_BATCH', 16),
+        "maxlen": _get_int('AGRO_RERANKER_MAXLEN', 512),
+        "reload_on_change": _get_bool('AGRO_RERANKER_RELOAD_ON_CHANGE', False),
+        "reload_period_sec": _get_int('AGRO_RERANKER_RELOAD_PERIOD_SEC', 60),
         "model_dir_mtime": _RERANKER_MTIME,
         "last_check_monotonic": _LAST_CHECK,
     }
@@ -198,3 +181,16 @@ def get_reranker_info() -> Dict[str, Any]:
         except Exception:
             pass
     return info
+
+
+def reload_config() -> None:
+    """Reload configuration by invalidating cached state.
+
+    The model will be reloaded on next get_reranker() call
+    if the path or mtime has changed.
+    """
+    global _RERANKER, _RERANKER_PATH, _RERANKER_MTIME, _LAST_CHECK
+    _RERANKER = None
+    _RERANKER_PATH = None
+    _RERANKER_MTIME = 0.0
+    _LAST_CHECK = 0.0

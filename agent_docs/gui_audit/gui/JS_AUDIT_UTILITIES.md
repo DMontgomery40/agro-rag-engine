@@ -29,7 +29,7 @@ window.CoreUtils = {
   api(path),          // Function: construct full API URL
   $(selector),        // Function: document.querySelector
   $$(selector),       // Function: querySelectorAll array
-  state,              // Object: { prices, config, profiles }
+  state,              // Object: { models, config, profiles }
   events              // Object: event bus (on/off/emit)
 }
 ```

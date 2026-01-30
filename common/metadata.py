@@ -20,10 +20,10 @@ def _load_cached_config():
     global _ENRICH_DISABLED, _ENRICH_MIN_CHARS, _ENRICH_MAX_CHARS
 
     if _config_registry is None:
-        # Fallback to env vars
-        _ENRICH_DISABLED = int(os.getenv('ENRICH_DISABLED', '0') or '0')
-        _ENRICH_MIN_CHARS = int(os.getenv('ENRICH_MIN_CHARS', '50') or '50')
-        _ENRICH_MAX_CHARS = int(os.getenv('ENRICH_MAX_CHARS', '1000') or '1000')
+        # Fallback when registry not available - should not happen in production
+        _ENRICH_DISABLED = 0
+        _ENRICH_MIN_CHARS = 50
+        _ENRICH_MAX_CHARS = 1000
     else:
         _ENRICH_DISABLED = _config_registry.get_int('ENRICH_DISABLED', 0)
         _ENRICH_MIN_CHARS = _config_registry.get_int('ENRICH_MIN_CHARS', 50)

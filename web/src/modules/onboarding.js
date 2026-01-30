@@ -28,6 +28,19 @@
     settings: { speed: 2, quality: 2, cloud: 1 }
   };
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Updates onboarding UI to step n. Validates bounds, toggles dot/step active/completed classes, syncs state.
+   *
+   * why: |
+   *   Centralized step navigation prevents inconsistent UI state across dots and step panels.
+   *
+   * guardrails:
+   *   - DO NOT allow n outside [1, maxStep]; silently return on invalid input
+   *   - NOTE: Assumes $$() returns NodeList; will fail if selector engine unavailable
+   * ---/agentspec
+   */
   function showOnboardStep(n){
     if (n < 1 || n > onboardingState.maxStep) return;
     onboardingState.step = n;
@@ -43,6 +56,20 @@
     try { localStorage.setItem('onboarding_step', String(n)); localStorage.setItem('onboarding_state', JSON.stringify(onboardingState)); } catch {}
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Advances onboarding to next step. On final step, saves completion state to server then navigates to 'start' tab via Navigation API (with Tabs fallback).
+   *
+   * why: |
+   *   Dual API support ensures compatibility across browser versions while persisting progress before navigation.
+   *
+   * guardrails:
+   *   - DO NOT navigate before saveOnboardingCompletion() completes; risk data loss
+   *   - NOTE: Fallback assumes window.Tabs exists; add error handling if unavailable
+   *   - ASK USER: Should saveOnboardingCompletion() be async/await to guarantee server sync before nav?
+   * ---/agentspec
+   */
   function nextOnboard(){
     if (onboardingState.step === onboardingState.maxStep){
       // Save completion state to server before navigating away
@@ -74,6 +101,20 @@
     showOnboardStep(onboardingState.step + 1);
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Manages onboarding UI state transitions and file indexing progress. Decrements step on back; runs async indexing with progress bar updates (scan → keywords stages).
+   *
+   * why: |
+   *   Centralizes onboarding flow control and indexing feedback in single handler to avoid scattered DOM mutations.
+   *
+   * guardrails:
+   *   - DO NOT proceed if indexing.running already true; prevents concurrent index jobs
+   *   - NOTE: Disables next button during indexing; re-enable on completion or error
+   *   - ASK USER: What happens on indexing failure? (current code incomplete)
+   * ---/agentspec
+   */
   function backOnboard(){ if (onboardingState.step > 1) showOnboardStep(onboardingState.step - 1); }
 
   async function startOnboardingIndexing(){
@@ -105,6 +146,20 @@
     }
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Updates onboarding UI state: progress bar width, stage badges (active/completed). Accepts stage name and progress percentage (0-100).
+   *
+   * why: |
+   *   Centralizes stage tracking logic to keep UI in sync with indexing state machine.
+   *
+   * guardrails:
+   *   - DO NOT call outside onboarding flow; assumes onboardingState.indexing exists
+   *   - NOTE: Stage order hardcoded as ['scan','keywords','smart']; changes require code update
+   *   - NOTE: askQuestion incomplete; only shows "Thinking..." state, no API call visible
+   * ---/agentspec
+   */
   function updateIndexStage(stage, progress){
     onboardingState.indexing.stage = stage; onboardingState.indexing.progress = progress;
     const bar = $('#onboard-index-bar'); if (bar) bar.style.width = progress + '%';
@@ -129,11 +184,25 @@
     catch(err){ panel.textContent = 'Error loading trace: ' + err.message; }
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Renders onboarding settings summary by mapping speed/quality/cloud enum values to config strings. Updates DOM #onboard-summary-content with three config lines.
+   *
+   * why: |
+   *   Centralizes settings→config translation; avoids scattered magic strings.
+   *
+   * guardrails:
+   *   - DO NOT use gpt-4o; only gpt-5 allowed (quality level 3 violates constraint)
+   *   - NOTE: Early return if summary element missing; silent fail
+   *   - ASK USER: Confirm gpt-4o-mini (quality=2) is permitted or upgrade to gpt-5
+   * ---/agentspec
+   */
   function updateSettingsSummary(){
     const summary = $('#onboard-summary-content'); if (!summary) return;
     const { speed, quality, cloud } = onboardingState.settings;
-    const speedMap = { 1:'MQ_REWRITES=1, LANGGRAPH_FINAL_K=10', 2:'MQ_REWRITES=2, LANGGRAPH_FINAL_K=15', 3:'MQ_REWRITES=3, LANGGRAPH_FINAL_K=20', 4:'MQ_REWRITES=4, LANGGRAPH_FINAL_K=25' };
-    const qualityMap = { 1:'RERANK_BACKEND=none, GEN_MODEL=local', 2:'RERANK_BACKEND=local, GEN_MODEL=gpt-4o-mini', 3:'RERANK_BACKEND=cohere, GEN_MODEL=gpt-4o, CONF_TOP1=0.55' };
+    const speedMap = { 1:'MAX_QUERY_REWRITES=1, LANGGRAPH_FINAL_K=10', 2:'MAX_QUERY_REWRITES=2, LANGGRAPH_FINAL_K=15', 3:'MAX_QUERY_REWRITES=3, LANGGRAPH_FINAL_K=20', 4:'MAX_QUERY_REWRITES=4, LANGGRAPH_FINAL_K=25' };
+    const qualityMap = { 1:'RERANKER_MODE=none, GEN_MODEL=local', 2:'RERANKER_MODE=local, GEN_MODEL=gpt-4o-mini', 3:'RERANKER_MODE=cloud, RERANKER_CLOUD_PROVIDER=cohere, GEN_MODEL=gpt-4o, CONF_TOP1=0.55' };
     const cloudMap = { 1:'EMBEDDING_TYPE=local, VECTOR_BACKEND=qdrant (local)', 2:'EMBEDDING_TYPE=openai, VECTOR_BACKEND=qdrant (cloud)' };
     summary.innerHTML = `<div>Speed: ${speedMap[speed]||'default'}</div><div>Quality: ${qualityMap[quality]||'default'}</div><div>Cloud: ${cloudMap[cloud]||'default'}</div>`;
   }
@@ -141,7 +210,7 @@
   async function saveAsProject(){
     const name = prompt('Enter a name for this project:'); if (!name || !name.trim()) return;
     const { speed, quality, cloud } = onboardingState.settings;
-    const profile = { name: name.trim(), sources: onboardingState.projectDraft, settings: { MQ_REWRITES: speed, LANGGRAPH_FINAL_K: 10 + (speed*5), RERANK_BACKEND: quality===1?'none':(quality===2?'local':'cohere'), GEN_MODEL: quality===1?'local':'gpt-4o-mini', EMBEDDING_TYPE: cloud===1?'local':'openai' }, golden: onboardingState.questions.map(q=>q.text) };
+    const profile = { name: name.trim(), sources: onboardingState.projectDraft, settings: { MAX_QUERY_REWRITES: speed, LANGGRAPH_FINAL_K: 10 + (speed*5), RERANKER_MODE: quality===1?'none':(quality===2?'local':'cloud'), RERANKER_CLOUD_PROVIDER: quality===3?'cohere':'', GEN_MODEL: quality===1?'local':'gpt-4o-mini', EMBEDDING_TYPE: cloud===1?'local':'openai' }, golden: onboardingState.questions.map(q=>q.text) };
     try{ const res = await fetch(api('/api/profiles/save'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(profile) }); if (!res.ok) throw new Error('Failed to save project'); alert('Project saved successfully!'); await fetch(api('/api/profiles/apply'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ profile_name: name.trim() }) }); }
     catch(err){ console.error('Save project error:', err); alert('Error saving project: ' + err.message); }
   }
@@ -196,9 +265,48 @@
     }
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Initializes onboarding by retrieving current step from window.__onboardingFallbackStep or localStorage. Returns step number or undefined.
+   *
+   * why: |
+   *   Allows runtime override via global variable; falls back to persisted localStorage for resumable onboarding flow.
+   *
+   * guardrails:
+   *   - DO NOT assume localStorage is always available; wrap in try-catch for private/incognito modes
+   *   - NOTE: parseInt(savedStep, 10) prevents octal parsing; validate step is valid number before use
+   *   - ASK USER: Should invalid/missing steps default to 0 or throw?
+   * ---/agentspec
+   */
   function initOnboarding(){
-    try{ const savedStep = localStorage.getItem('onboarding_step'); if(savedStep){ const step=parseInt(savedStep,10); if(step>=1 && step<=onboardingState.maxStep){ onboardingState.step = step; } } }catch{}
+    try{
+      let stepOverride;
+      if (typeof window.__onboardingFallbackStep === 'number') {
+        stepOverride = window.__onboardingFallbackStep;
+      } else {
+        const savedStep = localStorage.getItem('onboarding_step');
+        if(savedStep){
+          const parsed = parseInt(savedStep,10);
+          if(parsed>=1 && parsed<=onboardingState.maxStep){
+            stepOverride = parsed;
+          }
+        }
+      }
+      if (stepOverride && stepOverride >=1 && stepOverride <= onboardingState.maxStep) {
+        onboardingState.step = stepOverride;
+      }
+    }catch{}
     $$('.ob-card').forEach(card=>{ card.addEventListener('click', ()=>{ const choice = card.getAttribute('data-choice'); onboardingState.projectDraft.sourceType = choice; nextOnboard(); }); });
+    $$('.ob-dot').forEach(dot => {
+      dot.addEventListener('click', () => {
+        const stepAttr = dot.getAttribute('data-step');
+        const stepNum = stepAttr ? parseInt(stepAttr, 10) : NaN;
+        if (!Number.isNaN(stepNum)) {
+          showOnboardStep(stepNum);
+        }
+      });
+    });
     $$('.ob-mode-tab').forEach(tab=>{ tab.addEventListener('click', ()=>{ const mode = tab.getAttribute('data-mode'); onboardingState.projectDraft.sourceType = mode; $$('.ob-mode-tab').forEach(t=>t.classList.remove('active')); tab.classList.add('active'); $$('.ob-mode-content').forEach(c=>c.classList.remove('active')); const tgt=$(`#onboard-${mode}-mode`); if(tgt) tgt.classList.add('active'); }); });
     const folderBtn=$('#onboard-folder-btn'), folderPicker=$('#onboard-folder-picker'), folderDisplay=$('#onboard-folder-display'), folderPath=$('#onboard-folder-path');
     if (folderBtn && folderPicker){ folderBtn.addEventListener('click', ()=>folderPicker.click()); folderPicker.addEventListener('change',(e)=>{ if(e.target.files && e.target.files.length>0){ const path=e.target.files[0].webkitRelativePath || e.target.files[0].path || ''; const folderName = path.split('/')[0] || 'Selected folder'; if (folderDisplay) folderDisplay.textContent = folderName; if (folderPath) folderPath.value = folderName; } }); }
@@ -213,8 +321,25 @@
     const openChat=$('#onboard-open-chat'); if (openChat){ openChat.addEventListener('click',(e)=>{ e.preventDefault(); if (window.Navigation && window.Navigation.navigateTo) { window.Navigation.navigateTo('chat'); } else if (window.Tabs && window.Tabs.switchTab) { window.Tabs.switchTab('chat'); } }); }
     const backBtn=$('#onboard-back'), nextBtn=$('#onboard-next'); if (backBtn) backBtn.addEventListener('click', backOnboard); if (nextBtn) nextBtn.addEventListener('click', nextOnboard);
     showOnboardStep(onboardingState.step);
+    try {
+      window.__onboardingReady = true;
+      delete window.__onboardingFallbackStep;
+    } catch {}
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Ensures onboarding module initializes exactly once. Checks _initialized flag; calls initOnboarding() if false, sets flag true.
+   *
+   * why: |
+   *   Prevents duplicate initialization and side effects from repeated setup calls.
+   *
+   * guardrails:
+   *   - DO NOT call initOnboarding() directly; use ensureOnboardingInit() only
+   *   - NOTE: _initialized is module-scoped; no cross-window state sharing
+   * ---/agentspec
+   */
   function ensureOnboardingInit(){ if (!onboardingState._initialized){ initOnboarding(); onboardingState._initialized = true; } }
 
   window.Onboarding = { ensureOnboardingInit, initOnboarding, checkOnboardingCompletion, saveOnboardingCompletion };

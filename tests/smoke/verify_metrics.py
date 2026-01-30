@@ -97,15 +97,15 @@ def main():
     # Test 6: Check pricing data
     print(f"\n{'='*60}")
     print(f"Checking: Pricing Data")
-    print(f"File: gui/prices.json")
+    print(f"File: web/public/models.json")
     print(f"{'='*60}")
 
-    prices_file = root / "gui" / "prices.json"
-    if prices_file.exists():
-        with open(prices_file) as f:
-            prices = json.load(f)
+    models_file = root / "web" / "public" / "models.json"
+    if models_file.exists():
+        with open(models_file) as f:
+            models = json.load(f)
 
-        models = prices.get("models", [])
+        models = models.get("models", [])
         cohere_models = [m for m in models if m.get("provider") == "cohere"]
         voyage_models = [m for m in models if m.get("provider") == "voyage"]
         openai_models = [m for m in models if m.get("provider") == "openai"]
@@ -137,7 +137,7 @@ def main():
 
         results.append(has_rerank and has_voyage_code and has_openai_embed)
     else:
-        print(f"❌ prices.json not found")
+        print(f"❌ models.json not found")
         results.append(False)
 
     # Test 7: Check tracking logs
@@ -226,7 +226,7 @@ def main():
         print(f"  3. ✓ OpenAI embeddings tracking (retrieval/hybrid_search.py)")
         print(f"  4. ✓ OpenAI generation tracking (server/env_model.py)")
         print(f"  5. ✓ Response headers (server/app.py)")
-        print(f"  6. ✓ Pricing data (gui/prices.json)")
+        print(f"  6. ✓ Pricing data (web/public/models.json)")
         print(f"  7. ✓ API call logging (data/tracking/api_calls.jsonl)")
         print(f"  8. ✓ Environment configuration")
         return 0

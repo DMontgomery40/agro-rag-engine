@@ -16,14 +16,14 @@ interface RepoSwitcherModalProps {
 }
 
 export function RepoSwitcherModal({ isOpen, onClose }: RepoSwitcherModalProps) {
-  const { repos, activeRepo, switching, loading, loadRepos, setActiveRepo, error } = useRepoStore();
-  
-  // Load repos when modal opens
+  const { repos, activeRepo, switching, loading, loadRepos, setActiveRepo, error, initialized } = useRepoStore();
+
+  // Load repos when modal opens (if not yet initialized)
   useEffect(() => {
-    if (isOpen && repos.length === 0 && !loading) {
+    if (isOpen && !initialized && !loading) {
       loadRepos();
     }
-  }, [isOpen, repos.length, loading, loadRepos]);
+  }, [isOpen, initialized, loading, loadRepos]);
   
   // Close on escape key
   useEffect(() => {
@@ -258,4 +258,6 @@ export function RepoSwitcherModal({ isOpen, onClose }: RepoSwitcherModalProps) {
 }
 
 export default RepoSwitcherModal;
+
+
 

@@ -2,7 +2,6 @@
 // Main dashboard with System Status, Monitoring, Storage, Help, and Glossary subtabs
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { DashboardSubtabs } from '../components/Dashboard/DashboardSubtabs';
 import { SystemStatusSubtab } from '../components/Dashboard/SystemStatusSubtab';
 import { MonitoringSubtab } from '../components/Dashboard/MonitoringSubtab';
@@ -11,28 +10,25 @@ import { HelpSubtab } from '../components/Dashboard/HelpSubtab';
 import { GlossarySubtab } from '../components/Dashboard/GlossarySubtab';
 
 export function Dashboard() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [activeSubtab, setActiveSubtab] = useState(searchParams.get('subtab') || 'system');
+  // Simple useState for subtab - matches RAGTab.tsx pattern (no URL sync to avoid infinite loops)
+  const [activeSubtab, setActiveSubtab] = useState('system');
 
-  // Update URL when subtab changes
+  // Flag for legacy modules so they can avoid mutating React-rendered dashboard DOM
   useEffect(() => {
-    if (activeSubtab !== 'system') {
-      setSearchParams({ subtab: activeSubtab });
-    } else {
-      setSearchParams({});
-    }
-  }, [activeSubtab, setSearchParams]);
-
-  // Listen for URL changes (e.g., from Learn button in topbar)
-  useEffect(() => {
-    const urlSubtab = searchParams.get('subtab');
-    if (urlSubtab && urlSubtab !== activeSubtab) {
-      setActiveSubtab(urlSubtab);
-    }
-  }, [searchParams, activeSubtab]);
+    (window as any).__AGRO_REACT_DASHBOARD__ = true;
+    window.dispatchEvent(new CustomEvent('react-dashboard-ready'));
+    return () => {
+      delete (window as any).__AGRO_REACT_DASHBOARD__;
+      window.dispatchEvent(new CustomEvent('react-dashboard-unmount'));
+    };
+  }, []);
 
   return (
-    <div id="tab-dashboard" className="tab-content">
+    <div
+      id="tab-dashboard"
+      className="tab-content"
+      data-react-dashboard="true"
+    >
       {/* Subtab navigation */}
       <DashboardSubtabs activeSubtab={activeSubtab} onSubtabChange={setActiveSubtab} />
 

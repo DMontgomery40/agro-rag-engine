@@ -5,6 +5,53 @@
   let indexPoll = null;
   let backgroundPoll = null;  // Persistent background poll for index display
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Detects React dashboard DOM elements and formats byte sizes. Returns boolean for containment check; returns formatted string (e.g., "1.5 MB") for byte input.
+   *
+   * why: |
+   *   Centralizes dashboard element detection and human-readable storage formatting.
+   *
+   * guardrails:
+   *   - DO NOT rely on window.__AGRO_REACT_DASHBOARD__ as primary source; prioritize data-react-dashboard attribute
+   *   - NOTE: formatBytes silently returns '0 B' for null/undefined/0; add explicit validation if strict type-checking required
+   *   - ASK USER: Should formatBytes throw on negative bytes or non-numeric input?
+   * ---/agentspec
+   */
+  const getReactDashboardRoot = () => document.querySelector('[data-react-dashboard="true"]');
+  /**
+   * ---agentspec
+   * what: |
+   *   isReactDashboardElement checks if a DOM node belongs to React dashboard root. formatBytes converts byte count to human-readable string (B, KB, MB, GB).
+   *
+   * why: |
+   *   Utility pair for dashboard DOM validation and memory/file size display.
+   *
+   * guardrails:
+   *   - DO NOT call getReactDashboardRoot() repeatedly; cache result
+   *   - NOTE: formatBytes returns '0 B' for null/undefined/0; handles edge cases
+   *   - NOTE: isReactDashboardElement requires window.__AGRO_REACT_DASHBOARD__ or root to exist
+   * ---/agentspec
+   */
+  const isReactDashboardElement = (node) => {
+    const root = getReactDashboardRoot();
+    return Boolean((window.__AGRO_REACT_DASHBOARD__ || root) && node && root && root.contains(node));
+  };
+
+  /**
+   * ---agentspec
+   * what: |
+   *   Formats byte counts to human-readable units (B, KB, MB, GB). Accepts bytes integer, returns string with value + unit.
+   *
+   * why: |
+   *   Standardizes file size display across UI without external dependencies.
+   *
+   * guardrails:
+   *   - DO NOT use for network throughput; bytes-per-second requires different formatting
+   *   - NOTE: Returns '0 B' for null/undefined/0 input
+   * ---/agentspec
+   */
   function formatBytes(bytes){
     if (!bytes || bytes === 0) return '0 B';
     const k = 1024; const sizes = ['B','KB','MB','GB'];
@@ -12,6 +59,19 @@
     return Math.round((bytes / Math.pow(k,i))*100)/100 + ' ' + sizes[i];
   }
 
+  /**
+   * ---agentspec
+   * what: |
+   *   Formats index status UI. Takes lines array + optional metadata; returns HTML div with styled status text or metadata display.
+   *
+   * why: |
+   *   Centralizes status rendering logic to avoid duplication across index UI components.
+   *
+   * guardrails:
+   *   - DO NOT inject unsanitized user input into HTML; escape metadata values
+   *   - NOTE: Falls back to "Ready to index..." if no lines/metadata provided
+   * ---/agentspec
+   */
   function formatIndexStatus(lines, metadata){
     if (!metadata){
       if (!lines || !lines.length) return '<div style="color:var(--fg-muted);font-size:13px;">Ready to index...</div>';
@@ -84,10 +144,16 @@
       const pct = d.running ? 50 : (d.metadata ? 100 : 0);
       if (box1) box1.innerHTML = formatted;
       if (bar1) bar1.style.width = pct + '%';
-      if (box2) box2.innerHTML = formatted;
-      if (bar2) bar2.style.width = pct + '%';
+      if (box2 && !isReactDashboardElement(box2)) box2.innerHTML = formatted;
+      if (bar2 && !isReactDashboardElement(bar2)) bar2.style.width = pct + '%';
       if (lastIndexedDisplay && d.metadata && d.metadata.timestamp){ lastIndexedDisplay.textContent = new Date(d.metadata.timestamp).toLocaleString(); }
-      if (!d.running && indexPoll){ clearInterval(indexPoll); indexPoll = null; if (bar2){ setTimeout(()=>{bar2.style.width='0%';}, 2000); } }
+      if (!d.running && indexPoll){
+        clearInterval(indexPoll);
+        indexPoll = null;
+        if (bar2 && !isReactDashboardElement(bar2)){
+          setTimeout(()=>{bar2.style.width='0%';}, 2000);
+        }
+      }
     }catch(_e){}
   }
 
@@ -96,13 +162,26 @@
       if (window.showStatus) window.showStatus('Starting indexer...', 'loading');
       await fetch(api('/api/index/start'), { method:'POST' });
       if (indexPoll) clearInterval(indexPoll);
-      indexPoll = setInterval(pollIndexStatus, 800);
+      indexPoll = setInterval(pollIndexStatus, 2000); // poll every 2 seconds during indexing
       await pollIndexStatus();
     }catch(e){ if (window.showStatus) window.showStatus('Failed to start indexer: ' + e.message, 'error'); throw e; }
   }
 
   // Start persistent background poll to keep index display updated
   // This runs every 30 seconds and ensures the display is always populated
+  /**
+   * ---agentspec
+   * what: |
+   *   Starts a recurring 30-second poll of index status. Calls pollIndexStatus() immediately, then every 30s. Returns early if poll already running.
+   *
+   * why: |
+   *   Keeps dashboard display fresh without manual refresh; guards against duplicate intervals.
+   *
+   * guardrails:
+   *   - DO NOT poll if target elements missing; add visibility check before setInterval
+   *   - NOTE: backgroundPoll must be cleared on unmount/logout to prevent memory leak
+   * ---/agentspec
+   */
   function startBackgroundPoll() {
     if (backgroundPoll) return; // Already running
 
@@ -122,6 +201,20 @@
 
   // Watch for DOM changes to detect when dashboard elements appear
   // This ensures the display is populated when navigating back to dashboard
+  /**
+   * ---agentspec
+   * what: |
+   *   Observes DOM mutations for target elements (#dash-index-status, #index-status). Triggers callback on element addition.
+   *
+   * why: |
+   *   MutationObserver detects dynamic DOM changes without polling; efficient for async-rendered content.
+   *
+   * guardrails:
+   *   - DO NOT observe entire document without subtree limit; scope to parent container
+   *   - NOTE: nodeType === Node.ELEMENT_NODE filters text/comment nodes; querySelector may be null on non-Element nodes
+   *   - ASK USER: Define callback action; observer setup incomplete without handler
+   * ---/agentspec
+   */
   function setupDOMWatcher() {
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {

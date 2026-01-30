@@ -116,7 +116,7 @@ if __name__ == '__main__':
     print(f'  {", ".join(sorted(list(fax_keywords - viv_keywords)[:10]))}')
     
     # Save to data/
-    out_path = Path('data/discriminative_keywords.json')
+    out_path = Path('data/keywords/discriminative_keywords.json')
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, 'w') as f:
         json.dump(all_results, f, indent=2)

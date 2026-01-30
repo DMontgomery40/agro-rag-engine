@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="06981a01-68f6-4278-af0e-6fdee9153f5c" name="Changes" comment="indexing subtab refactor">
+      <change beforePath="$PROJECT_DIR$/.github/workflows/deploy-docs.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/deploy-docs.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.github/workflows/docs-ai.yml" beforeDir="false" afterPath="$PROJECT_DIR$/.github/workflows/docs-ai.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/AGENTS.md" beforeDir="false" afterPath="$PROJECT_DIR$/AGENTS.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CLAUDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/CLAUDE.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/agro_config.json" beforeDir="false" afterPath="$PROJECT_DIR$/agro_config.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/eval/eval_loop.py" beforeDir="false" afterPath="$PROJECT_DIR$/eval/eval_loop.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/eval/eval_rag.py" beforeDir="false" afterPath="$PROJECT_DIR$/eval/eval_rag.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/eval/eval_rag_instrumented.py" beforeDir="false" afterPath="$PROJECT_DIR$/eval/eval_rag_instrumented.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/indexer/index_repo.py" beforeDir="false" afterPath="$PROJECT_DIR$/indexer/index_repo.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs.yml" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/api/endpoints.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/api/endpoints.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/api/openapi.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/api/openapi.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/configuration/models.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/configuration/models.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/configuration/profiles.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/configuration/profiles.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/configuration/settings.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/configuration/settings.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/features/cli-chat.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/features/cli-chat.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/features/evaluation.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/features/evaluation.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/features/learning-reranker.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/features/learning-reranker.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/features/mcp.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/features/mcp.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/features/rag.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/features/rag.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/getting-started/first-steps.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/getting-started/first-steps.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/getting-started/installation.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/getting-started/installation.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/getting-started/quickstart.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/getting-started/quickstart.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/index.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/index.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/operations/monitoring.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/operations/monitoring.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mkdocs/docs/operations/troubleshooting.md" beforeDir="false" afterPath="$PROJECT_DIR$/mkdocs/docs/operations/troubleshooting.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/cross-encoder-agro/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/models/cross-encoder-agro/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/models/cross-encoder-agro/model.safetensors" beforeDir="false" afterPath="$PROJECT_DIR$/models/cross-encoder-agro/model.safetensors" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/reranker/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/reranker/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/retrieval/ast_chunker.py" beforeDir="false" afterPath="$PROJECT_DIR$/retrieval/ast_chunker.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/retrieval/hybrid_search.py" beforeDir="false" afterPath="$PROJECT_DIR$/retrieval/hybrid_search.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/retrieval/hybrid_search_v2.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/retrieval/rerank.py" beforeDir="false" afterPath="$PROJECT_DIR$/retrieval/rerank.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/retrieval/synonym_expander.py" beforeDir="false" afterPath="$PROJECT_DIR$/retrieval/synonym_expander.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/docs_ai/docs_autopilot_enhanced.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/docs_ai/docs_autopilot_enhanced.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/docs_ai/generate_docs_from_diff.py" beforeDir="false" afterPath="$PROJECT_DIR$/scripts/docs_ai/generate_docs_from_diff.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/learning_reranker.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/learning_reranker.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/models/agro_config_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/models/agro_config_model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/routers/eval.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/routers/eval.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server/routers/indexing.py" beforeDir="false" afterPath="$PROJECT_DIR$/server/routers/indexing.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web/src/AGENTS.md" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/AGENTS.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web/src/components/Evaluation/EvalDrillDown.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/components/Evaluation/EvalDrillDown.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web/src/components/RAG/EvaluateSubtab.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/components/RAG/EvaluateSubtab.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web/src/components/RAG/RerankerConfigSubtab.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/components/RAG/RerankerConfigSubtab.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web/src/components/RAG/RetrievalSubtab.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/components/RAG/RetrievalSubtab.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web/src/modules/tooltips.js" beforeDir="false" afterPath="$PROJECT_DIR$/web/src/modules/tooltips.js" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;DMontgomery40&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/DMontgomery40/agro-rag-engine&quot;,
+    &quot;accountId&quot;: &quot;7208a450-f433-4257-87f8-871e56c2cc16&quot;
+  }
+}</component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="CurrentFile" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;customColor&quot;: &quot;&quot;,
+  &quot;associatedIndex&quot;: 5
+}</component>
+  <component name="ProjectId" id="36MdCIJ99tPc22jZpC5QQGxLZgz" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Node.js.IndexingSubtab.tsx.executor": "Debug",
+    "Node.js.useEventBus.ts.executor": "Debug",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
+    "git-widget-placeholder": "development",
+    "junie.onboarding.icon.badge.shown": "true",
+    "kotlin-language-version-configured": "true",
+    "llm.McpServerEditPanel.switcher": "1",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "project.structure.last.edited": "Modules",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.2",
+    "settings.editor.selected.configurable": "ml.llm.LLMThirdPartyAiProvidersConfigurable",
+    "to.speed.mode.migration.done": "true",
+    "ts.external.directory.path": "/Users/davidmontgomery/agro-rag-engine/.editor_data/code-server-data/extensions/ms-python.python-2025.16.0-universal/out/client/node_modules/typescript/lib",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="RunManager" selected="Node.js.IndexingSubtab.tsx">
+    <configuration name="IndexingSubtab.tsx" type="NodeJSConfigurationType" temporary="true" node-parameters="--require ts-node/register " path-to-js-file="$PROJECT_DIR$/web/src/components/RAG/IndexingSubtab.tsx" working-dir="$PROJECT_DIR$/web/src/components/RAG">
+      <method v="2" />
+    </configuration>
+    <configuration name="useEventBus.ts" type="NodeJSConfigurationType" temporary="true" node-parameters="--require ts-node/register " path-to-js-file="$PROJECT_DIR$/web/src/hooks/useEventBus.ts" working-dir="$PROJECT_DIR$/web/src/hooks">
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Node.js.IndexingSubtab.tsx" />
+        <item itemvalue="Node.js.useEventBus.ts" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-9823dce3aa75-bf35d07a577b-intellij.indexing.shared.core-IU-252.28238.7" />
+        <option value="bundled-js-predefined-d6986cc7102b-a71380e98a7c-JavaScript-IU-252.28238.7" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="06981a01-68f6-4278-af0e-6fdee9153f5c" name="Changes" comment="" />
+      <created>1764820245918</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1764820245918</updated>
+      <workItem from="1764820247767" duration="653000" />
+      <workItem from="1764820913189" duration="69592000" />
+    </task>
+    <task id="LOCAL-00001" summary="indexing subtab refactor">
+      <option name="closed" value="true" />
+      <created>1764969823325</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1764969823325</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+    <option name="exactExcludedFiles">
+      <list>
+        <option value="$PROJECT_DIR$/.editor_data/code-server-data/extensions/ms-python.python-2025.16.0-universal/.eslintplugin/no-bad-gdpr-comment.js" />
+        <option value="$PROJECT_DIR$/web/src/components/tabs/VSCodeTab.jsx" />
+        <option value="$PROJECT_DIR$/web/src/components/tabs/ChatTab.jsx" />
+        <option value="$PROJECT_DIR$/web/src/components/tabs/StartTab.jsx" />
+      </list>
+    </option>
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="RECENT_FILTERS">
+      <map>
+        <entry key="Branch">
+          <value>
+            <list>
+              <RecentGroup>
+                <option name="FILTER_VALUES">
+                  <option value="HEAD" />
+                </option>
+              </RecentGroup>
+              <RecentGroup>
+                <option name="FILTER_VALUES">
+                  <option value="origin/development" />
+                </option>
+              </RecentGroup>
+            </list>
+          </value>
+        </entry>
+      </map>
+    </option>
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="HEAD" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="indexing subtab refactor" />
+    <option name="LAST_COMMIT_MESSAGE" value="indexing subtab refactor" />
+  </component>
+  <component name="XSLT-Support.FileAssociations.UIState">
+    <expand />
+    <select />
+  </component>
+</project>

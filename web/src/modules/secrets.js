@@ -37,12 +37,38 @@
   }
 
   // Bind dropzone for drag & drop
+  /**
+   * ---agentspec
+   * what: |
+   *   Binds click handler to dropzone element (#dropzone) that triggers file input (#file-input) click. Opens native file picker on interaction.
+   *
+   * why: |
+   *   Decouples styled dropzone UI from native file input; allows custom UX while preserving browser file selection.
+   *
+   * guardrails:
+   *   - DO NOT assume #dropzone and #file-input exist; early return if missing
+   *   - NOTE: Requires both elements present in DOM before binding
+   * ---/agentspec
+   */
   function bindDropzone() {
     const dz = $('#dropzone');
     const fi = $('#file-input');
 
     if (!dz || !fi) return;
 
+    /**
+     * ---agentspec
+     * what: |
+     *   Attaches click and dragover listeners to dropzone element. Click opens file picker; dragover prevents default and highlights dropzone.
+     *
+     * why: |
+     *   Centralizes UI interaction logic for file upload initiation via click or drag.
+     *
+     * guardrails:
+     *   - NOTE: Assumes `fi` (file input) and `dz` (dropzone) elements exist in DOM
+     *   - DO NOT add drop listener here; handle separately to avoid incomplete upload flow
+     * ---/agentspec
+     */
     function openPicker() {
       fi.click();
     }

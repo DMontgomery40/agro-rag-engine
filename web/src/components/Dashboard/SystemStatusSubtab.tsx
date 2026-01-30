@@ -1,11 +1,11 @@
 // AGRO - System Status Subtab
 // Real-time system health, status, and quick overview
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import * as DashAPI from '@/api/dashboard';
 import { QuickActions } from './QuickActions';
-import { LiveTerminal } from '../LiveTerminal';
-import { TerminalService } from '../../services/TerminalService';
+import { IndexDisplayPanels } from './IndexDisplayPanels';
+import { useDockerStore } from '@/stores/useDockerStore';
 
 export function SystemStatusSubtab() {
   const [health, setHealth] = useState<string>('—');
@@ -18,6 +18,32 @@ export function SystemStatusSubtab() {
   const [gitHooks, setGitHooks] = useState<string>('—');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [topFolders, setTopFolders] = useState<
+    Array<{ name: string; profile?: string; chunkCount: number; storageBytes: number }>
+  >([]);
+
+  // Dev Stack state from Zustand (Pydantic: DevStackStatusResponse)
+  const {
+    devStackStatus,
+    devStackLoading,
+    restartingFrontend,
+    restartingBackend,
+    restartingStack,
+    clearingCache,
+    fetchDevStackStatus,
+    restartFrontend,
+    restartBackend,
+    restartStack,
+    clearCacheAndRestart,
+  } = useDockerStore();
+
+  const formatBytes = (bytes: number) => {
+    if (!bytes || bytes <= 0) return '0 B';
+    const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
+    const idx = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
+    const value = bytes / Math.pow(1024, idx);
+    return `${value.toFixed(idx === 0 ? 0 : 1)} ${units[idx]}`;
+  };
 
   const refreshStatus = async () => {
     setLoading(true);
@@ -57,10 +83,43 @@ export function SystemStatusSubtab() {
         const repoName = (c.env?.REPO || c.default_repo || '(none)');
         const reposCount = (c.repos || []).length;
         setRepo(`${repoName} (${reposCount} repos)`);
+        const branchName = c.env?.GIT_BRANCH || c.env?.BRANCH || c.git_branch;
+        if (branchName) {
+          setBranch(branchName);
+        }
       }
 
       if (indexData.status === 'fulfilled' && indexData.value.metadata) {
-        setBranch(indexData.value.metadata.current_branch);
+        const metadata = indexData.value.metadata;
+        if (metadata.current_branch) {
+          setBranch(metadata.current_branch);
+        }
+
+        if (metadata.repos && metadata.repos.length > 0) {
+          const sortedByActivity = metadata.repos
+            .map(repo => {
+              const chunkCount = repo.chunk_count || 0;
+              const storageBytes =
+                (repo.sizes?.chunks || 0) + (repo.sizes?.bm25 || 0) + (repo.sizes?.cards || 0);
+              return {
+                name: repo.name,
+                profile: repo.profile,
+                chunkCount,
+                storageBytes
+              };
+            })
+            .sort((a, b) => {
+              if (b.chunkCount === a.chunkCount) {
+                return b.storageBytes - a.storageBytes;
+              }
+              return b.chunkCount - a.chunkCount;
+            })
+            .slice(0, 5);
+
+          setTopFolders(sortedByActivity);
+        } else {
+          setTopFolders([]);
+        }
       }
 
       // Cards
@@ -122,19 +181,26 @@ export function SystemStatusSubtab() {
 
   useEffect(() => {
     refreshStatus();
+    fetchDevStackStatus();
 
-    // Poll status every 10 seconds
-    const interval = setInterval(refreshStatus, 10000);
+    // Poll status every 30 seconds
+    const interval = setInterval(() => {
+      refreshStatus();
+      fetchDevStackStatus();
+    }, 30000);
 
     // Listen for manual refresh events
-    const handleRefresh = () => refreshStatus();
+    const handleRefresh = () => {
+      refreshStatus();
+      fetchDevStackStatus();
+    };
     window.addEventListener('dashboard-refresh', handleRefresh);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener('dashboard-refresh', handleRefresh);
     };
-  }, []);
+  }, []); // Empty array - run once on mount, Zustand actions are stable
 
   return (
     <div
@@ -226,6 +292,192 @@ export function SystemStatusSubtab() {
                 {/* <StatusItem label="Auto-Tune" value={autotune} id="dash-autotune" color="var(--warn)" /> */}
                 <StatusItem label="Docker" value={docker} id="dash-docker" color="var(--link)" />
                 <StatusItem label="Git Hooks" value={gitHooks} id="dash-git-hooks" color="var(--ok)" />
+
+                {/* Dev Stack Controls - Pydantic: DevStackStatusResponse */}
+                <div
+                  className="dev-stack-section"
+                  style={{
+                    marginTop: '8px',
+                    padding: '12px',
+                    background: 'var(--card-bg)',
+                    border: '1px solid var(--line)',
+                    borderRadius: '4px',
+                    borderLeft: '3px solid var(--link)',
+                    transition: 'border-color var(--timing-fast) var(--ease-out), box-shadow var(--timing-fast) var(--ease-out)'
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      color: 'var(--link)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      marginBottom: '10px'
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: '6px',
+                        height: '6px',
+                        borderRadius: '50%',
+                        background: 'var(--link)',
+                        boxShadow: '0 0 6px var(--link)'
+                      }}
+                    />
+                    Dev Stack
+                  </span>
+
+                  {/* Status indicators */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        fontSize: '11px'
+                      }}
+                    >
+                      <span style={{ color: 'var(--fg-muted)' }}>Frontend</span>
+                      <span
+                        className={devStackStatus?.frontend_running ? 'status-running' : 'status-stopped'}
+                        style={{
+                          color: devStackStatus?.frontend_running ? 'var(--ok)' : 'var(--err)',
+                          fontWeight: 600,
+                          fontFamily: "'SF Mono', monospace"
+                        }}
+                      >
+                        {devStackLoading ? '...' : devStackStatus?.frontend_running ? `running :${devStackStatus.frontend_port}` : 'stopped'}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        fontSize: '11px'
+                      }}
+                    >
+                      <span style={{ color: 'var(--fg-muted)' }}>Backend</span>
+                      <span
+                        className={devStackStatus?.backend_running ? 'status-running' : 'status-stopped'}
+                        style={{
+                          color: devStackStatus?.backend_running ? 'var(--ok)' : 'var(--err)',
+                          fontWeight: 600,
+                          fontFamily: "'SF Mono', monospace"
+                        }}
+                      >
+                        {devStackLoading ? '...' : devStackStatus?.backend_running ? `running :${devStackStatus.backend_port}` : 'stopped'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Restart buttons */}
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={restartFrontend}
+                      disabled={restartingFrontend || restartingStack || clearingCache}
+                      className="dev-stack-btn"
+                      style={{
+                        flex: 1,
+                        minWidth: '70px',
+                        padding: '6px 8px',
+                        background: 'var(--bg-elev2)',
+                        color: 'var(--fg)',
+                        border: '1px solid var(--line)',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        fontWeight: 500,
+                        cursor: restartingFrontend || restartingStack || clearingCache ? 'wait' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      {restartingFrontend && <span className="loading-spinner" style={{ width: '10px', height: '10px' }} />}
+                      ↻ Frontend
+                    </button>
+
+                    <button
+                      onClick={restartBackend}
+                      disabled={restartingBackend || restartingStack || clearingCache}
+                      className="dev-stack-btn"
+                      style={{
+                        flex: 1,
+                        minWidth: '70px',
+                        padding: '6px 8px',
+                        background: 'var(--bg-elev2)',
+                        color: 'var(--fg)',
+                        border: '1px solid var(--line)',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        fontWeight: 500,
+                        cursor: restartingBackend || restartingStack || clearingCache ? 'wait' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      {restartingBackend && <span className="loading-spinner" style={{ width: '10px', height: '10px' }} />}
+                      ↻ Backend
+                    </button>
+
+                    <button
+                      onClick={restartStack}
+                      disabled={restartingFrontend || restartingBackend || restartingStack || clearingCache}
+                      className="dev-stack-btn btn-primary"
+                      style={{
+                        flex: 1,
+                        minWidth: '80px',
+                        padding: '6px 8px',
+                        background: 'var(--accent)',
+                        color: 'var(--accent-contrast)',
+                        border: 'none',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        fontWeight: 600,
+                        cursor: restartingFrontend || restartingBackend || restartingStack || clearingCache ? 'wait' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      {restartingStack && <span className="loading-spinner" style={{ width: '10px', height: '10px', borderTopColor: 'var(--accent-contrast)' }} />}
+                      ↻ Full Stack
+                    </button>
+
+                    <button
+                      onClick={clearCacheAndRestart}
+                      disabled={restartingFrontend || restartingBackend || restartingStack || clearingCache}
+                      className="dev-stack-btn"
+                      title="Clear Python bytecode cache (__pycache__, .pyc) and restart backend"
+                      style={{
+                        flex: 1,
+                        minWidth: '90px',
+                        padding: '6px 8px',
+                        background: 'var(--warn)',
+                        color: 'var(--bg)',
+                        border: 'none',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        fontWeight: 600,
+                        cursor: restartingFrontend || restartingBackend || restartingStack || clearingCache ? 'wait' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      {clearingCache && <span className="loading-spinner" style={{ width: '10px', height: '10px', borderTopColor: 'var(--bg)' }} />}
+                      🗑 Clear Cache
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -250,8 +502,21 @@ export function SystemStatusSubtab() {
             </button>
           </div>
 
-          {/* Right: Quick Actions */}
-          <QuickActions />
+          {/* Right: Quick Actions + Index Display */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <QuickActions />
+            <div
+              style={{
+                background: 'var(--panel)',
+                borderRadius: '8px',
+                border: '1px solid var(--line)',
+                padding: '18px',
+                boxShadow: '0 15px 35px rgba(0,0,0,0.35)'
+              }}
+            >
+              <IndexDisplayPanels />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -273,7 +538,45 @@ export function SystemStatusSubtab() {
           Top Folders (Last 5 Days)
         </h3>
         <div id="dash-top-folders-metrics" style={{ color: 'var(--fg-muted)', fontSize: '12px' }}>
-          Analytics endpoint not yet available. This will show most frequently accessed code folders.
+          {topFolders.length === 0 ? (
+            <span>No recent indexing metrics available.</span>
+          ) : (
+            <table
+              style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                fontSize: '12px',
+                color: 'var(--fg)'
+              }}
+            >
+              <thead>
+                <tr style={{ textTransform: 'uppercase', fontSize: '10px', color: 'var(--fg-muted)' }}>
+                  <th style={{ textAlign: 'left', padding: '6px 0' }}>Folder</th>
+                  <th style={{ textAlign: 'left', padding: '6px 0' }}>Profile</th>
+                  <th style={{ textAlign: 'right', padding: '6px 0' }}>Chunks</th>
+                  <th style={{ textAlign: 'right', padding: '6px 0' }}>Storage</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topFolders.map(folder => (
+                  <tr key={`${folder.profile || 'default'}-${folder.name}`}>
+                    <td style={{ padding: '4px 0', fontWeight: 600, color: 'var(--accent)' }}>
+                      {folder.name}
+                    </td>
+                    <td style={{ padding: '4px 0', color: 'var(--fg-muted)' }}>
+                      {folder.profile || 'default'}
+                    </td>
+                    <td style={{ padding: '4px 0', textAlign: 'right', fontFamily: "'SF Mono', monospace" }}>
+                      {folder.chunkCount.toLocaleString()}
+                    </td>
+                    <td style={{ padding: '4px 0', textAlign: 'right', fontFamily: "'SF Mono', monospace" }}>
+                      {formatBytes(folder.storageBytes)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>

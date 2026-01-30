@@ -119,30 +119,30 @@ def test_api_tracker_module():
 
 def test_pricing_data():
     """Verify pricing data includes all providers"""
-    prices_file = Path(__file__).parent.parent.parent / "gui" / "prices.json"
-    assert prices_file.exists(), "prices.json not found"
+    models_file = Path(__file__).parent.parent.parent / "web" / "public" / "models.json"
+    assert models_file.exists(), "models.json not found"
 
-    with open(prices_file) as f:
-        prices = json.load(f)
+    with open(models_file) as f:
+        models = json.load(f)
 
-    models = prices.get("models", [])
-    assert len(models) > 0, "No models in prices.json"
+    models = models.get("models", [])
+    assert len(models) > 0, "No models in models.json"
 
     # Check for Cohere models
     cohere_models = [m for m in models if m.get("provider") == "cohere"]
-    assert len(cohere_models) > 0, "No Cohere models in prices.json"
+    assert len(cohere_models) > 0, "No Cohere models in models.json"
 
     # Check for rerank models
     rerank_models = [m for m in cohere_models if "rerank" in m.get("model", "").lower()]
-    assert len(rerank_models) > 0, "No rerank models in prices.json"
+    assert len(rerank_models) > 0, "No rerank models in models.json"
 
     # Check for Voyage models
     voyage_models = [m for m in models if m.get("provider") == "voyage"]
-    assert len(voyage_models) > 0, "No Voyage models in prices.json"
+    assert len(voyage_models) > 0, "No Voyage models in models.json"
 
     # Check for OpenAI embedding models
     openai_embed_models = [m for m in models if m.get("provider") == "openai" and "embedding" in m.get("model", "").lower()]
-    assert len(openai_embed_models) > 0, "No OpenAI embedding models in prices.json"
+    assert len(openai_embed_models) > 0, "No OpenAI embedding models in models.json"
 
     print(f"✓ Pricing data complete: {len(cohere_models)} Cohere, {len(voyage_models)} Voyage, {len(openai_embed_models)} OpenAI embedding models")
 

@@ -3,10 +3,12 @@
 // This is the keystone feature - comparing eval runs with LLM insights
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { EvalDrillDown } from '@/components/Evaluation/EvalDrillDown';
 import { SystemPromptsSubtab } from '@/components/Evaluation/SystemPromptsSubtab';
 import { LiveTerminal, LiveTerminalHandle } from '@/components/LiveTerminal/LiveTerminal';
 import { TerminalService } from '@/services/TerminalService';
+import { useConfigStore } from '@/stores/useConfigStore';
 
 type EvalSubtab = 'analysis' | 'prompts';
 
@@ -19,6 +21,7 @@ interface EvalRunMeta {
 }
 
 export const EvalAnalysisTab: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [activeSubtab, setActiveSubtab] = useState<EvalSubtab>('analysis');
   const [runs, setRuns] = useState<EvalRunMeta[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
@@ -32,12 +35,29 @@ export const EvalAnalysisTab: React.FC = () => {
   const [terminalVisible, setTerminalVisible] = useState(false);
   const terminalRef = useRef<LiveTerminalHandle>(null);
 
-  // Eval settings (stored in localStorage)
-  const [evalSettings] = useState(() => ({
-    useMulti: localStorage.getItem('eval_useMulti') === 'false' ? false : true,
-    finalK: parseInt(localStorage.getItem('eval_finalK') || '5', 10),
-    sampleSize: localStorage.getItem('eval_sampleSize') || ''
-  }));
+  // Eval settings from Pydantic config (Zustandic - syncs with backend)
+  const { config, loadConfig } = useConfigStore();
+
+  // Derive eval settings from config store - these mirror retrieval settings
+  const evalSettings = {
+    useMulti: config?.env?.EVAL_MULTI !== 0,  // 0 = disabled, 1 = enabled (LLM query expansion)
+    finalK: config?.env?.EVAL_FINAL_K || 5,
+    multiM: config?.env?.EVAL_MULTI_M || 10,
+    sampleSize: ''  // Per-run override, not persisted
+  };
+
+  // Load config on mount
+  useEffect(() => {
+    if (!config) loadConfig();
+  }, [config, loadConfig]);
+
+  // Handle URL params for cross-tab navigation (e.g., ?subtab=prompts)
+  useEffect(() => {
+    const subtabParam = searchParams.get('subtab');
+    if (subtabParam === 'prompts') {
+      setActiveSubtab('prompts');
+    }
+  }, [searchParams]);
 
   // Terminal helpers
   const getTerminal = useCallback(() => {
@@ -65,8 +85,10 @@ export const EvalAnalysisTab: React.FC = () => {
 
   // Run full evaluation
   const runFullEvaluation = useCallback(async () => {
+    console.log('[EvalAnalysisTab] runFullEvaluation called, evalRunning:', evalRunning);
     if (evalRunning) return;
 
+    console.log('[EvalAnalysisTab] Starting eval run...');
     setEvalRunning(true);
     setEvalProgress({ current: 0, total: 100, status: 'Starting evaluation...' });
     setTerminalVisible(true);
@@ -76,6 +98,7 @@ export const EvalAnalysisTab: React.FC = () => {
     appendTerminalLine('🧪 Starting full RAG evaluation...');
     appendTerminalLine(`Settings: use_multi=${evalSettings.useMulti ? 'true' : 'false'}, final_k=${evalSettings.finalK}, sample_limit=${sampleLimit || 'all'}`);
 
+    console.log('[EvalAnalysisTab] Calling TerminalService.streamEvalRun with settings:', evalSettings);
     try {
       TerminalService.streamEvalRun('eval_analysis_terminal', {
         use_multi: evalSettings.useMulti,
@@ -98,22 +121,28 @@ export const EvalAnalysisTab: React.FC = () => {
           appendTerminalLine(`\x1b[31mError: ${message}\x1b[0m`);
         },
         onComplete: async () => {
+          console.log('[EvalAnalysisTab] onComplete fired - refreshing runs list');
           try {
             // Refresh runs list to get new eval
-            const response = await fetch('/api/eval/runs');
+            const response = await fetch('/api/eval/runs', { cache: 'no-store' });
             if (response.ok) {
               const data = await response.json();
+              console.log('[EvalAnalysisTab] Got runs response:', data);
               const sortedRuns = (data.runs || []).sort((a: EvalRunMeta, b: EvalRunMeta) =>
                 b.run_id.localeCompare(a.run_id)
               );
+              console.log('[EvalAnalysisTab] Setting runs:', sortedRuns.length, 'first:', sortedRuns[0]?.run_id);
               setRuns(sortedRuns);
               // Auto-select the newest run
               if (sortedRuns.length > 0) {
+                console.log('[EvalAnalysisTab] Auto-selecting newest run:', sortedRuns[0].run_id);
                 setSelectedRunId(sortedRuns[0].run_id);
                 if (sortedRuns.length > 1) {
                   setCompareRunId(sortedRuns[1].run_id);
                 }
               }
+            } else {
+              console.error('[EvalAnalysisTab] Failed to fetch runs:', response.status);
             }
             appendTerminalLine('\x1b[32m✓ Evaluation complete!\x1b[0m');
           } catch (err) {

@@ -1,68 +1,46 @@
-import { useState, useEffect, useCallback } from 'react';
-
-interface GlobalState {
-  config: any;
-  prices: any;
-  profiles: string[];
-  defaultProfile: string | null;
-  hwScan: any;
-  keywords: any;
-  commitMeta: any;
-}
+import { useCallback } from 'react';
+import { useConfigStore } from '@/stores/useConfigStore';
+import { useRepoStore } from '@/stores/useRepoStore';
 
 /**
- * Hook for accessing and updating global application state
- * Bridges between React state and legacy window.CoreUtils.state
+ * Hook for accessing global application state via Zustand stores
+ * NO LONGER bridges to window.CoreUtils.state - uses Zustand directly
+ *
+ * @deprecated Use individual Zustand stores directly (useConfigStore, useRepoStore, etc.)
+ * This hook exists only for backwards compatibility during migration
  */
 export function useGlobalState() {
-  const [state, setState] = useState<Partial<GlobalState>>({});
+  const { config, keywordsCatalog } = useConfigStore();
+  const { repos, currentRepo } = useRepoStore();
 
-  // Sync with window.CoreUtils.state
-  useEffect(() => {
-    const syncState = () => {
-      const w = window as any;
-      if (w.CoreUtils && w.CoreUtils.state) {
-        setState({
-          config: w.CoreUtils.state.config,
-          prices: w.CoreUtils.state.prices,
-          profiles: w.CoreUtils.state.profiles,
-          defaultProfile: w.CoreUtils.state.defaultProfile,
-          hwScan: w.CoreUtils.state.hwScan,
-          keywords: w.CoreUtils.state.keywords,
-          commitMeta: w.CoreUtils.state.commitMeta
-        });
-      }
-    };
+  // Derive state from Zustand stores
+  const state = {
+    config: config?.env || null,
+    models: null, // models are loaded via useAppInit into legacy window.CoreUtils.state during transition
+    profiles: [], // Profiles managed by legacy modules during transition
+    defaultProfile: null,
+    hwScan: null,
+    keywords: keywordsCatalog,
+    commitMeta: null,
+    repos,
+    currentRepo
+  };
 
-    // Initial sync
-    syncState();
-
-    // Poll for changes (legacy modules update window.CoreUtils.state)
-    const interval = setInterval(syncState, 500);
-
-    // Listen for custom state update events
-    const handleStateUpdate = () => syncState();
-    window.addEventListener('agro-state-update', handleStateUpdate);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('agro-state-update', handleStateUpdate);
-    };
-  }, []);
-
-  const updateState = useCallback((updates: Partial<GlobalState>) => {
+  const updateState = useCallback((updates: Record<string, unknown>) => {
+    // During transition, also update legacy window.CoreUtils.state if it exists
     const w = window as any;
-    if (w.CoreUtils && w.CoreUtils.state) {
+    if (w.CoreUtils?.state) {
       Object.assign(w.CoreUtils.state, updates);
-      setState(prev => ({ ...prev, ...updates }));
-
-      // Emit event for other listeners
       window.dispatchEvent(new CustomEvent('agro-state-update', { detail: updates }));
     }
+
+    // Note: Most updates should go through individual Zustand stores
+    // This is a fallback for legacy code paths
+    console.warn('[useGlobalState] updateState called - use individual Zustand stores instead');
   }, []);
 
-  const getState = useCallback((key: keyof GlobalState) => {
-    return state[key];
+  const getState = useCallback((key: string) => {
+    return state[key as keyof typeof state];
   }, [state]);
 
   return { state, updateState, getState };

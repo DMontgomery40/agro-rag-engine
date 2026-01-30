@@ -1,6 +1,6 @@
 # Shared Loader Implementation Plan
 
-> **Agents:** Treat [`AGENTS.md`](../AGENTS.md) as mandatory context before touching any reranker runtime logic. Accessibility rules require GUI + backend parity for every change described in this plan.
+> **Agents:** Treat [`AGENTS.md`](../../.codex/docs/AGENTS.md) as mandatory context before touching any reranker runtime logic. Accessibility rules require GUI + backend parity for every change described in this plan.
 
 _Last updated: 2025-10-24_
 

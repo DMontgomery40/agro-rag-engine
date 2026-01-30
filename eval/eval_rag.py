@@ -78,6 +78,27 @@ USE_MULTI = _eval_cfg['USE_MULTI']
 FINAL_K = _eval_cfg['FINAL_K']
 MULTI_M = _eval_cfg['MULTI_M']
 
+def stamp_eval_runtime_config(
+    config_snapshot: dict,
+    use_multi_val: bool,
+    final_k_val: int,
+    multi_m_val: int | None = None,
+) -> dict:
+    """Return a copy of the config snapshot with the actual run-time values stamped in.
+
+    Without stamping, per-run overrides (use_multi/final_k/multi_m) never reach
+    the saved eval JSON, so the UI shows no config diff or AI analysis.
+    """
+    cfg = dict(config_snapshot or {})
+    cfg['eval_multi'] = int(bool(use_multi_val))
+    cfg['use_multi'] = bool(use_multi_val)
+    cfg['eval_final_k'] = int(final_k_val)
+    cfg['final_k'] = int(final_k_val)
+    if multi_m_val is not None:
+        cfg['eval_multi_m'] = int(multi_m_val)
+        cfg['multi_m'] = int(multi_m_val)
+    return cfg
+
 """
 Golden file format (golden.json):
 [
@@ -122,7 +143,11 @@ def capture_eval_config() -> dict:
         return {}
 
     # Exclude secrets (API keys, tokens, etc.) from eval tracking
-    secret_patterns = ['API_KEY', 'SECRET', 'TOKEN', 'PASSWORD', 'CREDENTIAL']
+    # Keys ending with _TOKEN are usually secrets, but TOKENIZER is not
+    secret_suffixes = ['_API_KEY', '_SECRET', '_TOKEN', '_PASSWORD', '_CREDENTIAL']
+    # But explicitly allow these keys that contain TOKEN but aren't secrets
+    token_whitelist = {'BM25_TOKENIZER', 'MAX_CHUNK_TOKENS', 'EMBEDDING_MAX_TOKENS',
+                       'GEN_MAX_TOKENS', 'CHAT_THINKING_BUDGET_TOKENS'}
 
     config = {}
     for key, info in all_config.items():
@@ -132,9 +157,10 @@ def capture_eval_config() -> dict:
         if key_upper not in RAG_EVAL_CONFIG_KEYS:
             continue
 
-        # Skip secrets
-        if any(pattern in key_upper for pattern in secret_patterns):
-            continue
+        # Skip secrets - check suffixes, but allow whitelisted keys
+        if key_upper not in token_whitelist:
+            if any(key_upper.endswith(suffix) for suffix in secret_suffixes):
+                continue
 
         # Store with lowercase key for consistency
         config[key.lower()] = info['value']
@@ -151,6 +177,19 @@ def capture_eval_config() -> dict:
 def hit(paths: List[str], expect: List[str]) -> bool:
     return any(any(exp in p for p in paths) for exp in expect)
 
+
+def reciprocal_rank(paths: List[str], expect: List[str]) -> float:
+    """Return reciprocal rank (1/(rank+1)) or 0.0 if no hit.
+
+    MRR (Mean Reciprocal Rank) is computed as the average of reciprocal ranks
+    across all questions. For a single question, RR = 1/(rank+1) where rank
+    is the 0-indexed position of the first matching result.
+    """
+    for i, path in enumerate(paths):
+        if any(exp in path for exp in expect):
+            return 1.0 / (i + 1)
+    return 0.0
+
 def main():
     if not os.path.exists(GOLDEN_PATH):
         print('No golden file found at', GOLDEN_PATH)
@@ -161,6 +200,7 @@ def main():
     total = len(gold)
     hits_top1 = 0
     hits_topk = 0
+    rr_sum = 0.0
     results = []
     t0 = time.time()
     for i, row in enumerate(gold, 1):
@@ -175,10 +215,12 @@ def main():
         paths = [d.get('file_path','') for d in docs]
         top1_hit = hit(paths[:1], expect) if paths else False
         topk_hit = hit(paths, expect) if paths else False
+        rr = reciprocal_rank(paths, expect) if paths else 0.0
         if top1_hit:
             hits_top1 += 1
         if topk_hit:
             hits_topk += 1
+        rr_sum += rr
         results.append({
             'question': q,
             'repo': repo,
@@ -186,10 +228,12 @@ def main():
             'top_paths': paths[:FINAL_K],
             'top1_path': paths[:1],
             'top1_hit': top1_hit,
-            'topk_hit': topk_hit
+            'topk_hit': topk_hit,
+            'reciprocal_rank': round(rr, 4)
         })
-        print(f"[{i}/{total}] repo={repo} q={q}\n  top1={paths[:1]}\n  top{FINAL_K} hit={topk_hit}")
+        print(f"[{i}/{total}] repo={repo} q={q}\n  top1={paths[:1]}\n  top{FINAL_K} hit={topk_hit} rr={rr:.3f}")
     dt = time.time() - t0
+    mrr = rr_sum / max(1, total)
 
     # Build summary
     run_id = time.strftime("%Y%m%d_%H%M%S")
@@ -204,6 +248,7 @@ def main():
         'topk_hits': hits_topk,
         'top1_accuracy': round(hits_top1 / max(1, total), 3),
         'topk_accuracy': round(hits_topk / max(1, total), 3),
+        'mrr': round(mrr, 4),
         'final_k': FINAL_K,
         'use_multi': USE_MULTI,
         'duration_secs': round(dt, 2),
@@ -225,6 +270,7 @@ def main():
         'total': total,
         'top1': hits_top1,
         'topk': hits_topk,
+        'mrr': round(mrr, 4),
         'final_k': FINAL_K,
         'use_multi': USE_MULTI,
         'secs': round(dt,2)

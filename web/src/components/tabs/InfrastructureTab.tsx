@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import { InfrastructureSubtabs } from '@/components/Infrastructure/InfrastructureSubtabs';
 import { ServicesSubtab } from '@/components/Infrastructure/ServicesSubtab';
+import { DockerSubtab } from '@/components/Infrastructure/DockerSubtab';
 import { MCPSubtab } from '@/components/Infrastructure/MCPSubtab';
 import { PathsSubtab } from '@/components/Infrastructure/PathsSubtab';
 import { MonitoringSubtab } from '@/components/Infrastructure/MonitoringSubtab';
@@ -35,6 +36,14 @@ export default function InfrastructureTab() {
         style={{ display: activeSubtab === 'services' ? 'block' : 'none' }}
       >
         <ServicesSubtab />
+      </div>
+
+      <div
+        id="tab-infrastructure-docker"
+        className={`infrastructure-subtab-content ${activeSubtab === 'docker' ? 'active' : ''}`}
+        style={{ display: activeSubtab === 'docker' ? 'block' : 'none' }}
+      >
+        <DockerSubtab />
       </div>
 
       <div

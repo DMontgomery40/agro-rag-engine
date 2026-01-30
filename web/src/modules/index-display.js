@@ -1,6 +1,19 @@
 // Enterprise-grade indexing status display
 // Matches storage calculator format with comprehensive metrics
 
+/**
+ * ---agentspec
+ * what: |
+ *   Formats byte counts into human-readable units (B, KB, MB, GB, TB). Input: number of bytes; output: string with value + unit.
+ *
+ * why: |
+ *   Standardizes file size display across UI without repeated conversion logic.
+ *
+ * guardrails:
+ *   - DO NOT use for network throughput; bytes-per-second requires different formatting
+ *   - NOTE: Returns '0 B' for null/undefined/zero input
+ * ---/agentspec
+ */
 function formatBytes(bytes) {
     if (!bytes || bytes === 0) return '0 B';
     const k = 1024;
@@ -9,6 +22,20 @@ function formatBytes(bytes) {
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
 }
 
+/**
+ * ---agentspec
+ * what: |
+ *   Formats index status display HTML. Takes lines array and metadata object; returns styled div with status text or embedding/storage breakdown.
+ *
+ * why: |
+ *   Centralizes UI rendering logic for consistent status presentation across index states.
+ *
+ * guardrails:
+ *   - DO NOT render unsanitized metadata; escape user input before HTML insertion
+ *   - NOTE: Falls back to "Ready to index..." if no metadata; requires lines array for fallback text
+ *   - ASK USER: Confirm metadata.embedding_config and metadata.storage_breakdown structure before production
+ * ---/agentspec
+ */
 function formatIndexStatusDisplay(lines, metadata) {
     if (!metadata) {
         if (!lines || !lines.length) return '<div style="color:var(--fg-muted);font-size:13px;">Ready to index...</div>';

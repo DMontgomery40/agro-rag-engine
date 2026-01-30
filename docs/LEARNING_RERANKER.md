@@ -52,7 +52,7 @@ Training uses **triplets**:
   "positive_doc_id": "auth/oauth.ts:45-67",
   "negative_texts": ["import axios from 'axios'", "export default config"],
   "negative_doc_ids": ["utils/http.ts:1-3", "config/index.ts:10-12"],
-  "source": "golden.json"
+  "source": "data/golden.json"
 }
 ```
 
@@ -122,7 +122,7 @@ Output: `data/training/triplets.jsonl`
 #### From Golden Questions
 
 ```bash
-# Mines triplets from golden.json test questions
+# Mines triplets from data/golden.json test questions
 python scripts/mine_from_golden.py
 ```
 
@@ -158,7 +158,7 @@ Training uses **triplet loss**: pushes positive docs closer to query, negative d
 ### 3. Evaluate
 
 ```bash
-# Test the trained model on golden.json questions
+# Test the trained model on data/golden.json questions
 python scripts/eval_reranker.py \
   --model models/cross-encoder-agro-20251015-143210
 ```
@@ -325,7 +325,7 @@ This means:
 ### Complete Training Cycle
 
 ```bash
-# 1. Mine training data from golden.json (great for bootstrapping)
+# 1. Mine training data from data/golden.json (great for bootstrapping)
 python scripts/mine_from_golden.py
 # Output: Mined 79 triplets from 79 golden questions
 
@@ -377,7 +377,7 @@ python scripts/promote_reranker.py --model models/cross-encoder-agro-20251015-14
 
 You need at least 30 training examples. Options:
 
-1. **Mine from golden.json**: `python scripts/mine_from_golden.py` (generates ~1 triplet per question with expect_paths)
+1. **Mine from data/golden.json**: `python scripts/mine_from_golden.py` (generates ~1 triplet per question with expect_paths)
 2. **Collect more feedback**: Use AGRO more, click on results, use thumbs up/down buttons
 3. **Lower threshold temporarily**: `python scripts/promote_reranker.py --min 1` (not recommended for production)
 
@@ -396,7 +396,7 @@ Check:
 
 ### "Eval metrics not improving"
 
-- Expand golden.json with more diverse questions
+- Expand data/golden.json with more diverse questions
 - Check if expect_paths are accurate (too broad or too narrow?)
 - Verify training triplets are high quality (`head data/training/triplets.jsonl`)
 - Increase training epochs or adjust learning rate in train_reranker.py
@@ -436,7 +436,7 @@ Set via `AGRO_RERANKER_BACKEND=openai`.
 **Hybrid Approach** (recommended):
 - Bootstrap with golden questions (get to 30+ triplets)
 - Continuously mine from logs as users provide feedback
-- Periodically expand golden.json with new common queries
+- Periodically expand data/golden.json with new common queries
 
 ### Integration with Other Components
 
@@ -444,7 +444,7 @@ The reranker integrates with:
 
 - **Hybrid Search** (retrieval/hybrid_search.py:170) - Rescores BM25+Vector results
 - **Telemetry** (server/telemetry.py) - Logs feedback events to queries.jsonl
-- **Golden Tests** (golden.json) - Provides eval questions and training data
+- **Golden Tests** (data/golden.json) - Provides eval questions and training data
 - **GUI** (gui/js/reranker.js) - Collects user feedback via clicks and buttons
 
 ---
@@ -459,9 +459,9 @@ The reranker integrates with:
 | `server/reranker_info.py` | `/api/reranker/info` endpoint |
 | `retrieval/hybrid_search.py` | Calls `ce_rerank()` at line 170 |
 | `scripts/mine_triplets.py` | Mines triplets from queries.jsonl |
-| `scripts/mine_from_golden.py` | Mines triplets from golden.json |
+| `scripts/mine_from_golden.py` | Mines triplets from data/golden.json |
 | `scripts/train_reranker.py` | Trains cross-encoder on triplets.jsonl |
-| `scripts/eval_reranker.py` | Evaluates model on golden.json |
+| `scripts/eval_reranker.py` | Evaluates model on data/golden.json |
 | `scripts/promote_reranker.py` | Promotes model to production path |
 | `data/logs/queries.jsonl` | Feedback event log |
 | `data/training/triplets.jsonl` | Training data |

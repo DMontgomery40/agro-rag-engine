@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useConfigStore } from '@/stores';
+import { ApiKeyStatus } from '@/components/ui/ApiKeyStatus';
 
 export function General() {
   const { config, loadConfig, saveEnv, saving } = useConfigStore();
@@ -17,9 +18,6 @@ export function General() {
   const [langchainTracingV2, setLangchainTracingV2] = useState('On');
   const [langchainProject, setLangchainProject] = useState('agro');
   const [langsmithEndpoint, setLangsmithEndpoint] = useState('https://api.smith.langchain.com');
-  const [langsmithApiKey, setLangsmithApiKey] = useState('');
-  const [langsmithApiKeyAlias, setLangsmithApiKeyAlias] = useState('');
-  const [netlifyApiKey, setNetlifyApiKey] = useState('');
   const [netlifyDomains, setNetlifyDomains] = useState('');
   const [enableEmbeddedEditor, setEnableEmbeddedEditor] = useState(false);
   const [editorPort, setEditorPort] = useState('4440');
@@ -48,9 +46,6 @@ export function General() {
       setLangchainTracingV2(config.env.LANGCHAIN_TRACING_V2 ? 'On' : 'Off');
       setLangchainProject(String(config.env.LANGCHAIN_PROJECT || 'agro'));
       setLangsmithEndpoint(String(config.env.LANGSMITH_ENDPOINT || 'https://api.smith.langchain.com'));
-      setLangsmithApiKey(String(config.env.LANGSMITH_API_KEY || ''));
-      setLangsmithApiKeyAlias(String(config.env.LANGSMITH_API_KEY_ALIAS || ''));
-      setNetlifyApiKey(String(config.env.NETLIFY_API_KEY || ''));
       setNetlifyDomains(String(config.env.NETLIFY_DOMAINS || ''));
       setEnableEmbeddedEditor(Boolean(config.env.ENABLE_EMBEDDED_EDITOR));
       setEditorPort(String(config.env.EDITOR_PORT || '4440'));
@@ -72,9 +67,6 @@ export function General() {
       LANGCHAIN_TRACING_V2: langchainTracingV2 === 'On',
       LANGCHAIN_PROJECT: langchainProject,
       LANGSMITH_ENDPOINT: langsmithEndpoint,
-      LANGSMITH_API_KEY: langsmithApiKey,
-      LANGSMITH_API_KEY_ALIAS: langsmithApiKeyAlias,
-      NETLIFY_API_KEY: netlifyApiKey,
       NETLIFY_DOMAINS: netlifyDomains,
       ENABLE_EMBEDDED_EDITOR: enableEmbeddedEditor,
       EDITOR_PORT: parseInt(editorPort, 10),
@@ -101,9 +93,6 @@ export function General() {
     setLangchainTracingV2('On');
     setLangchainProject('agro');
     setLangsmithEndpoint('https://api.smith.langchain.com');
-    setLangsmithApiKey('');
-    setLangsmithApiKeyAlias('');
-    setNetlifyApiKey('');
     setNetlifyDomains('');
     setEnableEmbeddedEditor(false);
     setEditorPort('4440');
@@ -410,66 +399,15 @@ export function General() {
           </div>
 
           <div>
-            <label htmlFor="langsmith-api-key" style={{ display: 'block', fontSize: '13px', color: 'var(--fg-muted)', marginBottom: '6px' }}>
-              LANGSMITH API KEY
-            </label>
-            <input
-              id="langsmith-api-key"
-              type="password"
-              value={langsmithApiKey}
-              onChange={(e) => { setLangsmithApiKey(e.target.value); markChanged(); }}
-              style={{
-                width: '100%',
-                background: 'var(--bg-elev2)',
-                border: '1px solid var(--line)',
-                color: 'var(--fg)',
-                padding: '8px 12px',
-                borderRadius: '4px',
-                fontSize: '14px',
-              }}
-            />
+            <ApiKeyStatus keyName="LANGSMITH_API_KEY" label="LangSmith API Key" />
           </div>
 
           <div>
-            <label htmlFor="langsmith-alias" style={{ display: 'block', fontSize: '13px', color: 'var(--fg-muted)', marginBottom: '6px' }}>
-              LANGSMITH API KEY (ALIAS)
-            </label>
-            <input
-              id="langsmith-alias"
-              type="password"
-              value={langsmithApiKeyAlias}
-              onChange={(e) => { setLangsmithApiKeyAlias(e.target.value); markChanged(); }}
-              style={{
-                width: '100%',
-                background: 'var(--bg-elev2)',
-                border: '1px solid var(--line)',
-                color: 'var(--fg)',
-                padding: '8px 12px',
-                borderRadius: '4px',
-                fontSize: '14px',
-              }}
-            />
+            <ApiKeyStatus keyName="LANGSMITH_API_KEY_ALIAS" label="LangSmith API Key (Alias)" />
           </div>
 
           <div>
-            <label htmlFor="netlify-key" style={{ display: 'block', fontSize: '13px', color: 'var(--fg-muted)', marginBottom: '6px' }}>
-              NETLIFY API KEY
-            </label>
-            <input
-              id="netlify-key"
-              type="password"
-              value={netlifyApiKey}
-              onChange={(e) => { setNetlifyApiKey(e.target.value); markChanged(); }}
-              style={{
-                width: '100%',
-                background: 'var(--bg-elev2)',
-                border: '1px solid var(--line)',
-                color: 'var(--fg)',
-                padding: '8px 12px',
-                borderRadius: '4px',
-                fontSize: '14px',
-              }}
-            />
+            <ApiKeyStatus keyName="NETLIFY_API_KEY" label="Netlify API Key" />
           </div>
 
           <div>

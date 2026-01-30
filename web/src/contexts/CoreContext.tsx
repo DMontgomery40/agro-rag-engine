@@ -8,7 +8,7 @@ import { useUIHelpers } from '../hooks/useUIHelpers';
  * Replaces window.CoreUtils.state from core-utils.js
  */
 interface CoreState {
-  prices: any | null;
+  models: any | null;
   config: any | null;
   profiles: any[];
   defaultProfile: any | null;
@@ -59,7 +59,7 @@ export function CoreProvider({ children }: CoreProviderProps) {
 
   // Application state (replaces window.CoreUtils.state)
   const [state, setState] = React.useState<CoreState>({
-    prices: null,
+    models: null,
     config: null,
     profiles: [],
     defaultProfile: null

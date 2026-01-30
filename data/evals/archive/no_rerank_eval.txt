@@ -1,0 +1,322 @@
+Config registry accessed before load(), loading now
+Invalid agro_config.json: 1 validation error for AgroConfigRoot
+reranking.reranker_backend
+  String should match pattern '^(local|cohere|voyage)$' [type=string_pattern_mismatch, input_value='none', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.11/v/string_pattern_mismatch
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     `torch_dtype` is deprecated! Use `dtype` instead!
+[vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000084833}'
+Loading TransformerRanker model /Users/davidmontgomery/agro-rag-engine/models/cross-encoder-agro (this message can be suppressed by setting verbose=0)
+No device set
+Using device mps
+No dtype set
+Using dtype torch.float32
+Loaded model /Users/davidmontgomery/agro-rag-engine/models/cross-encoder-agro
+Using device mps.
+Using dtype torch.float32.
+[1/50] repo=agro q=How does RRF (Reciprocal Rank Fusion) combine BM25 and vector results?
+  top1=['retrieval/hybrid_search.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000016209}'
+[2/50] repo=agro q=Where is the tokenizer vocab loaded for BM25 queries?
+  top1=['retrieval/hybrid_search.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000039125}'
+[3/50] repo=agro q=How are chunk IDs mapped to BM25 index positions?
+  top1=['retrieval/hybrid_search.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000020209}'
+[4/50] repo=agro q=Where does query expansion happen in the retrieval pipeline?
+  top1=['retrieval/hybrid_search.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000016792}'
+[5/50] repo=agro q=How is the BM25 index saved and what files does it create?
+  top1=['indexer/index_repo_v2.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000039625}'
+[6/50] repo=agro q=Where are code language detection functions implemented?
+  top1=['web/src/components/RAG/EvaluateSubtab.tsx']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000042834}'
+[7/50] repo=agro q=How does the system handle tree-sitter parsing errors?
+  top1=['retrieval/ast_chunker.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000036}'
+[8/50] repo=agro q=Where is the Redis checkpoint system configured for LangGraph?
+  top1=['ui/ALL_KNOBS.yaml']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000018167}'
+[9/50] repo=agro q=How does multi-query retrieval generate query variants?
+  top1=['retrieval/synonym_expander.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000039208}'
+[10/50] repo=agro q=Where are path bonuses calculated for scoring?
+  top1=['ui/ALL_KNOBS.yaml']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000037584}'
+[11/50] repo=agro q=How does layer bonus scoring work for different code layers?
+  top1=['web/src/components/RAG/RetrievalSubtab.tsx']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000043334}'
+[12/50] repo=agro q=Where is the filename boost multiplier applied?
+  top1=['ui/ALL_KNOBS.yaml']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000021541}'
+[13/50] repo=agro q=How are vendor/third-party code penalties calculated?
+  top1=['web/src/modules/app.js']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.00004025}'
+[14/50] repo=agro q=Where is streaming eval output implemented with SSE?
+  top1=['web/src/services/TerminalService.ts']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000042917}'
+[15/50] repo=agro q=How does the eval compare current results to baseline?
+  top1=['cli/commands/eval.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000014042}'
+[16/50] repo=agro q=Where are eval results stored and how are they timestamped?
+  top1=['eval/eval_rag_instrumented.py']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000037084}'
+[17/50] repo=agro q=How does the frequency limiter middleware detect anomalies?
+  top1=['server/frequency_limiter.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000037791}'
+[18/50] repo=agro q=Where is the API request interceptor configured?
+  top1=['server/api_interceptor.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000038917}'
+[19/50] repo=agro q=How are CORS origins validated and configured?
+  top1=['web/src/components/Docker/InfrastructureServices.tsx']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000012459}'
+[20/50] repo=agro q=Where is the static file serving middleware setup?
+  top1=['scripts/quick_setup.py']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000011917}'
+[21/50] repo=agro q=How does config hot-reload work when files change?
+  top1=['server/learning_reranker.py']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000012625}'
+[22/50] repo=agro q=Where are environment variable overrides handled?
+  top1=['web/src/components/Admin/SecretsSubtab.tsx']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.00001275}'
+[23/50] repo=agro q=How does the config validation ensure weights sum to 1.0?
+  top1=['web/src/components/Evaluation/EvalDrillDown.tsx']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000012584}'
+[24/50] repo=agro q=Where are Pydantic field validators defined for config?
+  top1=['server/services/config_registry.py']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000015041}'
+[25/50] repo=agro q=How does the reranker decide between local and Cohere backend?
+  top1=['web/src/modules/app.js']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000022375}'
+[26/50] repo=agro q=Where is the cross-encoder model loaded and cached?
+  top1=['server/learning_reranker.py']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000036209}'
+[27/50] repo=agro q=How does snippet truncation work for reranker input?
+  top1=['web/src/modules/app.js']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000081501}'
+[28/50] repo=agro q=Where is the embedding model selected based on provider?
+  top1=['web/src/modules/model_flows.js']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000015209}'
+[29/50] repo=agro q=How does the embedding cache handle batch operations?
+  top1=['retrieval/embed_cache.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000015042}'
+[30/50] repo=agro q=Where are chunk overlaps calculated during AST chunking?
+  top1=['ui/ALL_KNOBS.yaml']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000022208}'
+[31/50] repo=agro q=How does the indexer handle binary files and large files?
+  top1=['common/filtering.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000025833}'
+[32/50] repo=agro q=Where is the progress bar displayed during indexing?
+  top1=['web/src/modules/ux-feedback.js']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000022708}'
+[33/50] repo=agro q=How are import statements extracted from code chunks?
+  top1=['scripts/test_token_comparison.py']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000030541}'
+[34/50] repo=agro q=Where is repo routing logic that maps queries to repositories?
+  top1=['retrieval/hybrid_search.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000021042}'
+[35/50] repo=agro q=How does intent classification determine query type?
+  top1=['web/src/modules/trace.js']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000042959}'
+[36/50] repo=agro q=Where are document hydration limits enforced?
+  top1=['web/src/modules/app.js']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.00003975}'
+[37/50] repo=agro q=How does the terminal service handle SSE connections?
+  top1=['web/src/services/TerminalService.ts']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000132292}'
+[38/50] repo=agro q=Where is subprocess output captured for indexing jobs?
+  top1=['server/services/indexing.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000018667}'
+[39/50] repo=agro q=How are Qdrant collections created with proper schema?
+  top1=['common/qdrant_utils.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.0000425}'
+[40/50] repo=agro q=Where is vector search performed against Qdrant?
+  top1=['retrieval/hybrid_search.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000017375}'
+[41/50] repo=agro q=How does the system detect if Qdrant is available?
+  top1=['scripts/up.sh']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000028209}'
+[42/50] repo=agro q=Where are triplets generated for reranker training?
+  top1=['cli/commands/reranker.py']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000021167}'
+[43/50] repo=agro q=How does the learning reranker training loop work?
+  top1=['server/learning_reranker.py']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000022417}'
+[44/50] repo=agro q=Where are training metrics logged during reranker training?
+  top1=['web/src/components/RAG/LearningRankerSubtab.tsx']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000038042}'
+[45/50] repo=agro q=How are negative examples sampled for triplet mining?
+  top1=['scripts/mine_triplets.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000020708}'
+[46/50] repo=agro q=Where is the Docker daemon status checked?
+  top1=['web/src/modules/docker.js']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000038084}'
+[47/50] repo=agro q=How does the MCP server handle tool invocations?
+  top1=['scripts/test_token_comparison.py']
+  top5 hit=False
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000039792}'
+[48/50] repo=agro q=Where are LangSmith trace IDs generated and tracked?
+  top1=['web/src/components/RAG/RetrievalSubtab.tsx']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000018542}'
+[49/50] repo=agro q=How does Prometheus collect RAG performance metrics?
+  top1=['server/metrics.py']
+  top5 hit=True
+Tokenize texts:   0%|          | 0/1 [00:00<?, ?it/s]                                                     BM25S Retrieve:   0%|          | 0/1 [00:00<?, ?it/s]                                                     [vector] Search failed: Unexpected Response: 404 (Not Found)
+Raw response content:
+b'{"status":{"error":"Not found: Collection `code_chunks_{repo}` doesn\'t exist!"},"time":0.000040959}'
+[50/50] repo=agro q=Where are alertmanager webhooks received and processed?
+  top1=['server/alerts.py']
+  top5 hit=True
+{
+  "total": 50,
+  "top1": 15,
+  "topk": 24,
+  "final_k": 5,
+  "use_multi": true,
+  "secs": 22.0
+}
